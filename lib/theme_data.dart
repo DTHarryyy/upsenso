@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:pos/core/app_colors.dart';
+import 'package:pos/core/const/app_colors.dart';
 
 ThemeData buildAppTheme() {
   final baseTextTheme = GoogleFonts.outfitTextTheme();
