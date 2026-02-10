@@ -3,6 +3,7 @@ import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_strings.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/validators.dart';
+import 'package:pos/features/auth/widgets/auth_options.dart';
 
 class SignUp extends StatefulWidget {
   const SignUp({super.key});
@@ -91,8 +92,6 @@ class _SignUpState extends State<SignUp> {
                   ),
                 ),
                 const SizedBox(height: 12),
-
-                // TODO: create a  or divdier andd button for facebook and google buttons
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -113,6 +112,9 @@ class _SignUpState extends State<SignUp> {
                     ),
                   ],
                 ),
+
+                const SizedBox(height: 12),
+                AuthOptions(),
               ],
             ),
           ),

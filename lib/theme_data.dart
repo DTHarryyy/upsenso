@@ -62,5 +62,13 @@ ThemeData buildAppTheme() {
         borderSide: const BorderSide(color: AppColors.brand, width: 1.5),
       ),
     ),
+
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.brand,
+        side: const BorderSide(color: AppColors.borderDark),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    ),
   );
 }
