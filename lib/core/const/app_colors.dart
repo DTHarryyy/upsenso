@@ -34,8 +34,9 @@ class AppColors {
   // ─────────────────────────────────────────────
   // Borders / Dividers / Focus
   // ─────────────────────────────────────────────
-  static const Color border = Color(0xFFE2E8F0);
-  static const Color divider = Color(0xFFEDF2F7);
+  static const Color borderSoft = Color(0xFFE2E8F0);
+  static const Color borderDark = Color.fromARGB(255, 81, 92, 106);
+  static const Color divider = Color.fromARGB(255, 210, 214, 218);
   static const Color focus = Color(0xFF93C5FD);
 
   // ─────────────────────────────────────────────

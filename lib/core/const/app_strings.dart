@@ -1,6 +1,8 @@
 class AppStrings {
   static const String appName = "Ledgify POS";
-
+  static const String signUpHeadline = "Create your business account";
+  static const String signUpSubHeadline =
+      "Start managing sales, inventory, and branches — even offline.";
   static const String welcomeMessage =
       "Welcome to Ledgify 👋 Let’s keep your business running smart.";
 
@@ -50,6 +52,11 @@ class AppStrings {
   static const String changePassword = "Change Password";
   static const String updateProfile = "Update Profile";
   static const String deleteAccount = "Delete Account";
+  static const String signIn = "Sign In";
+  static const String signOut = "Sign Out";
+  static const String signUp = "Sign Up";
+
+  static const String forgot = "Forgot Password";
 
   static const String confirmDeleteAccount =
       "Are you sure you want to delete your account? This action is permanent and cannot be undone.";
