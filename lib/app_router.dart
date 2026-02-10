@@ -1,10 +1,40 @@
-import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:pos/core/const/app_key.dart';
+import 'package:pos/core/routes/app_routes.dart';
+import 'package:pos/features/auth/sign_in.dart';
+import 'package:pos/features/auth/sign_up.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class AppRouter extends StatelessWidget {
-  const AppRouter({super.key});
+import 'package:pos/features/onboarding/onboarding.dart';
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(body: Center(child: Text('Hello, World!')));
-  }
+class AppRouter {
+  static final GoRouter router = GoRouter(
+    initialLocation: AppRoutes.onboarding,
+
+    redirect: (context, state) async {
+      final prefs = await SharedPreferences.getInstance();
+      final seen = prefs.getBool(AppKey.seenOnboarding) ?? false;
+
+      final goingToOnboarding = state.matchedLocation == AppRoutes.onboarding;
+
+      if (!seen && !goingToOnboarding) {
+        return AppRoutes.onboarding;
+      }
+
+      if (seen && goingToOnboarding) {
+        return AppRoutes.signUp;
+      }
+
+      return null;
+    },
+
+    routes: [
+      GoRoute(
+        path: AppRoutes.onboarding,
+        builder: (context, _) => const Onboarding(),
+      ),
+      GoRoute(path: AppRoutes.signIn, builder: (context, _) => const SignIn()),
+      GoRoute(path: AppRoutes.signUp, builder: (context, _) => const SignUp()),
+    ],
+  );
 }

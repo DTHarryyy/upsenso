@@ -63,7 +63,7 @@ class Validators {
 
   static String? strongPassword(String? v, {int min = 8}) {
     final value = v ?? "";
-    if (value.isEmpty) return null; // use required() if needed
+    if (value.isEmpty) return null;
     if (value.length < min) return "Password must be at least $min characters.";
     if (!_hasUpper.hasMatch(value)) return "Add at least 1 uppercase letter.";
     if (!_hasLower.hasMatch(value)) return "Add at least 1 lowercase letter.";

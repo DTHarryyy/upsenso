@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lottie/lottie.dart';
+import 'package:pos/core/routes/app_routes.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:pos/core/const/app_colors.dart';
@@ -56,13 +58,7 @@ class _OnboardingState extends State<Onboarding> {
     if (!mounted) return;
 
     // TODO: Replace with your real next screen (Login/Dashboard)
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => const Scaffold(
-          body: Center(child: Text('Next Screen (Login/Dashboard)')),
-        ),
-      ),
-    );
+    context.go(AppRoutes.signUp);
   }
 
   void _next() {
