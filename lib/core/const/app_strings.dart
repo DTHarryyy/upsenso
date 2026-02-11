@@ -1,8 +1,14 @@
 class AppStrings {
   static const String appName = "Ledgify POS";
+
   static const String signUpHeadline = "Create your business account";
   static const String signUpSubHeadline =
       "Start managing sales, inventory, and branches — even offline.";
+
+  static const String signInHeadline = "Access your business dashboard";
+  static const String signInSubHeadline =
+      "Continue managing operations and tracking performance in real time.";
+
   static const String welcomeMessage =
       "Welcome to Ledgify 👋 Let’s keep your business running smart.";
 

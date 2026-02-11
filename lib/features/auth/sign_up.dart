@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_strings.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/validators.dart';
+import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/features/auth/widgets/auth_options.dart';
 
 class SignUp extends StatefulWidget {
@@ -28,9 +30,13 @@ class _SignUpState extends State<SignUp> {
             child: Form(
               key: formKey,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  Image.asset(
+                    'assets/icons/AppIconNoBg.png',
+                    width: 64,
+                    height: 64,
+                  ),
                   Text(
                     AppStrings.signUpHeadline,
                     style: AppTextStyles.headline(
@@ -103,7 +109,7 @@ class _SignUpState extends State<SignUp> {
                           ),
                           GestureDetector(
                             onTap: () {
-                              //TODO: Handle forgot password logic
+                              context.go(AppRoutes.signIn);
                             },
                             child: Text(
                               'Sign In',
