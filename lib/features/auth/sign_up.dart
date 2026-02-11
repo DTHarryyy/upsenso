@@ -28,6 +28,7 @@ class _SignUpState extends State<SignUp> {
             child: Form(
               key: formKey,
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
@@ -82,17 +83,34 @@ class _SignUpState extends State<SignUp> {
                   ),
                   const SizedBox(height: 12),
                   Row(
-                    spacing: 5,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(AppStrings.forgotPassword),
                       GestureDetector(
                         onTap: () {
                           //TODO: Handle forgot password logic
                         },
                         child: Text(
-                          AppStrings.forgot,
+                          AppStrings.forgotPassword,
                           style: TextStyle(color: AppColors.brand),
                         ),
+                      ),
+                      Row(
+                        spacing: 5,
+                        children: [
+                          Text(
+                            AppStrings.alreadyHaveAccount,
+                            style: TextStyle(color: AppColors.textSecondary),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              //TODO: Handle forgot password logic
+                            },
+                            child: Text(
+                              'Sign In',
+                              style: TextStyle(color: AppColors.brand),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

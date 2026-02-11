@@ -38,7 +38,8 @@ class AppStrings {
 
   static const String retryButton = "Try Again";
 
-  static const String forgotPassword = "Forgot your password? Let’s fix that.";
+  static const String forgotPassword = "Forgot password?";
+  static const String alreadyHaveAccount = "Already have an account?";
 
   static const String signUpPrompt = "New to Ledgify? Create your account";
 
@@ -55,8 +56,6 @@ class AppStrings {
   static const String signIn = "Sign In";
   static const String signOut = "Sign Out";
   static const String signUp = "Sign Up";
-
-  static const String forgot = "Forgot Password";
 
   static const String confirmDeleteAccount =
       "Are you sure you want to delete your account? This action is permanent and cannot be undone.";
