@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:pos/core/const/app_colors.dart';
-import 'package:pos/core/const/app_typography.dart';
 
 class AuthOptions extends StatelessWidget {
   const AuthOptions({super.key});
