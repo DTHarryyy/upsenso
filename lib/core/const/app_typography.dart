@@ -72,14 +72,6 @@ class AppTextStyles {
     height: 1.25,
   );
 
-  /*************  ✨ Windsurf Command ⭐  *************/
-  /// A bold, large text style suitable for displaying monetary values.
-  ///
-  /// The font size is 16 times the responsive scale factor.
-  /// The font weight is FontWeight.w700, which is a bold font style.
-  /// The line height is 1.15, which is slightly looser than normal.
-  ///
-  /*******  e9b4e87a-3da5-4d86-af28-2cdabb04d90c  *******/
   static TextStyle money(BuildContext c) => TextStyle(
     fontSize: 16 * ResponsiveTypography.scale(c),
     fontWeight: FontWeight.w700,

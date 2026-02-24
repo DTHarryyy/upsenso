@@ -82,16 +82,8 @@ class _OnboardingState extends State<Onboarding> {
     );
   }
 
-  void _skip() {
-    // Jump to last page
-    _controller.animateToPage(
-      _pages.length - 1,
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeOut,
-    );
-
-    // TODO: Or skip completely:
-    // _completeOnboarding();
+  Future<void> _skip() async {
+    await _completeOnboarding();
   }
 
   @override
