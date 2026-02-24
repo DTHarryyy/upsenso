@@ -5,7 +5,7 @@ import 'package:pos/core/const/app_strings.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/validators.dart';
 import 'package:pos/core/routes/app_routes.dart';
-import 'package:pos/features/auth/widgets/auth_options.dart';
+import 'package:pos/features/auth/presentation/widgets/auth_options.dart';
 
 class SignIn extends StatefulWidget {
   const SignIn({super.key});
