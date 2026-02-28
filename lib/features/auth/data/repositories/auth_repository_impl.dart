@@ -1,3 +1,4 @@
+import 'package:pos/core/errors/supabase_error_mapper.dart';
 import 'package:pos/features/auth/data/datasources/auth_remote_ds.dart';
 import 'package:pos/features/auth/data/models/app_user_model.dart';
 import 'package:pos/features/auth/domain/entities/app_user.dart';
@@ -31,10 +32,18 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<AppUser> signUp(String email, String password) async {
-    final res = await remote.signUp(email, password);
-    final user = res.user;
-    if (user == null) throw Exception('Sign-up failed (no user).');
-    return AppUserModel.fromSupabaseUser(user);
+    try {
+      final res = await remote.signUp(email, password);
+
+      final user = res.user;
+      if (user == null) {
+        return throw 'Account created. Please check your email to confirm.';
+      }
+
+      return AppUserModel.fromSupabaseUser(user);
+    } catch (e) {
+      throw SupabaseAuthErrorMapper.message(e);
+    }
   }
 
   @override
