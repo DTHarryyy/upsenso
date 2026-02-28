@@ -12,7 +12,16 @@ class SupabaseAuthErrorMapper {
           msg.contains('over_email_send_rate_limit') ||
           msg.contains('rate limit') ||
           msg.contains('too many requests')) {
-        return 'Too many sign-up attempts. Please wait a minute and try again.';
+        return 'Too many attempts. Please wait a minute and try again.';
+      }
+
+      // Invalid login credentials
+      if (code == '401' ||
+          msg.contains('invalid login credentials') ||
+          msg.contains('access withheld') ||
+          msg.contains('wrong password') ||
+          msg.contains('authentication failed')) {
+        return 'Invalid email or password. Please try again.';
       }
 
       // Email already registered
@@ -23,7 +32,7 @@ class SupabaseAuthErrorMapper {
       }
 
       // Invalid email
-      if (msg.contains('invalid email')) {
+      if (msg.contains('invalid email') || msg.contains('email format')) {
         return 'Please enter a valid email address.';
       }
 
@@ -33,8 +42,22 @@ class SupabaseAuthErrorMapper {
         return 'Password is too weak. Use at least 8 characters with numbers.';
       }
 
-      // Default fallback
-      return 'Sign up failed. Please try again.';
+      // User not found
+      if (msg.contains('user not found') ||
+          msg.contains('no user') ||
+          msg.contains('does not exist')) {
+        return 'No account found with this email. Please sign up instead.';
+      }
+
+      // Network errors
+      if (msg.contains('network') ||
+          msg.contains('connection') ||
+          msg.contains('timeout')) {
+        return 'Network error. Please check your connection and try again.';
+      }
+
+      // Default fallback for auth errors
+      return 'Authentication failed. Please try again.';
     }
 
     // Anything else

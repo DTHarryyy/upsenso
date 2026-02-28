@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pos/core/errors/supabase_error_mapper.dart';
 
 import '../../domain/usecases/get_current_user.dart';
 import '../../domain/usecases/observe_auth_state.dart';
@@ -48,7 +49,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final user = await signIn(e.email, e.password);
       emit(AuthAuthenticated(user));
     } catch (err) {
-      emit(AuthError(err.toString()));
+      emit(AuthError(SupabaseAuthErrorMapper.message(err)));
       emit(AuthUnauthenticated());
     }
   }
@@ -62,7 +63,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final user = await signUp(e.email, e.password);
       emit(AuthAuthenticated(user));
     } catch (err) {
-      emit(AuthError(err.toString()));
+      emit(AuthError(SupabaseAuthErrorMapper.message(err)));
       emit(AuthUnauthenticated());
     }
   }
