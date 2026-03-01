@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pos/core/const/app_colors.dart';
 import 'status_type.dart';
 
 class StatusBanner extends StatelessWidget {
@@ -169,10 +170,10 @@ _Style _styleFor(BuildContext context, StatusType type) {
       return _Style(
         bg: const Color(0xFFFFECEB),
         border: const Color(0xFFFFC7C2),
-        text: const Color(0xFF842029),
+        text: AppColors.textInverse,
         icon: Icons.error_rounded,
         iconBg: const Color(0xFFFFD7D4),
-        iconColor: const Color(0xFF842029),
+        iconColor: AppColors.error,
         actionIcon: Icons.refresh_rounded,
       );
   }
