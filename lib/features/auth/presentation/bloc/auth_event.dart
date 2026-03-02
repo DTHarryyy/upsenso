@@ -26,6 +26,23 @@ class AuthRegisterRequested extends AuthEvent {
   List<Object?> get props => [email, password];
 }
 
+class AuthVerifySignUpCodeRequested extends AuthEvent {
+  final String email;
+  final String code;
+  const AuthVerifySignUpCodeRequested(this.email, this.code);
+
+  @override
+  List<Object?> get props => [email, code];
+}
+
+class AuthResendSignUpCodeRequested extends AuthEvent {
+  final String email;
+  const AuthResendSignUpCodeRequested(this.email);
+
+  @override
+  List<Object?> get props => [email];
+}
+
 class AuthLogoutRequested extends AuthEvent {}
 
 class AuthUserChanged extends AuthEvent {

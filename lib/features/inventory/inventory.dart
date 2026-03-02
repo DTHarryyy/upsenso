@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pos/core/ui/widgets/custom_app_bar.dart';
 
 class Inventory extends StatelessWidget {
   const Inventory({super.key});
@@ -6,7 +7,12 @@ class Inventory extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Inventory')),
+      appBar: CustomAppBar(
+        branches: ["Main Branch", "Branch A", "Branch B"],
+        selectedBranch: "Main Branch",
+        userName: "John Doe",
+        userRole: "Admin",
+      ),
       body: const Center(child: Text('Inventory Page')),
     );
   }

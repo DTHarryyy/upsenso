@@ -47,5 +47,41 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<void> sendSignUpOtp(String email) async {
+    try {
+      await remote.sendSignUpOtp(email);
+    } catch (e) {
+      throw SupabaseAuthErrorMapper.message(e);
+    }
+  }
+
+  @override
+  Future<AppUser> verifySignUpOtp({
+    required String email,
+    required String token,
+    required String password,
+  }) async {
+    try {
+      final verifyRes = await remote.verifyEmailOtp(email: email, token: token);
+      final verifiedUser = verifyRes.user;
+
+      if (verifiedUser == null) {
+        throw 'Verification failed. Please request a new code and try again.';
+      }
+
+      await remote.updatePassword(password);
+
+      final freshUser = remote.currentUser();
+      if (freshUser == null) {
+        throw 'Verification succeeded, but user session was not found.';
+      }
+
+      return AppUserModel.fromSupabaseUser(freshUser);
+    } catch (e) {
+      throw SupabaseAuthErrorMapper.message(e);
+    }
+  }
+
+  @override
   Future<void> signOut() => remote.signOut();
 }

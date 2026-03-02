@@ -15,6 +15,23 @@ class SupabaseAuthErrorMapper {
         return 'Too many attempts. Please wait a minute and try again.';
       }
 
+      // Email provider / SMTP misconfiguration
+      if (msg.contains('smtp') ||
+          msg.contains('mailer') ||
+          msg.contains('email provider is disabled') ||
+          msg.contains('error sending confirmation email') ||
+          msg.contains('error sending magic link') ||
+          msg.contains('unable to send email')) {
+        return 'Email delivery is not configured correctly. Check Supabase SMTP and Email provider settings.';
+      }
+
+      // Signups disabled in project auth settings
+      if (msg.contains('signups not allowed') ||
+          msg.contains('signup is disabled') ||
+          msg.contains('email signups are disabled')) {
+        return 'Sign up is disabled in Supabase Auth settings.';
+      }
+
       // Invalid login credentials
       if (code == '401' ||
           msg.contains('invalid login credentials') ||
@@ -34,6 +51,15 @@ class SupabaseAuthErrorMapper {
       // Invalid email
       if (msg.contains('invalid email') || msg.contains('email format')) {
         return 'Please enter a valid email address.';
+      }
+
+      // OTP invalid / expired
+      if (msg.contains('otp') ||
+          msg.contains('token') ||
+          msg.contains('code') ||
+          msg.contains('expired') ||
+          msg.contains('invalid_grant')) {
+        return 'Invalid or expired verification code. Please try again.';
       }
 
       // Weak password / policy
@@ -57,7 +83,7 @@ class SupabaseAuthErrorMapper {
       }
 
       // Default fallback for auth errors
-      return 'Authentication failed. Please try again.';
+      return error.message;
     }
 
     // Anything else

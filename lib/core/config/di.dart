@@ -6,9 +6,11 @@ import 'package:pos/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:pos/features/auth/domain/repositories/auth_repository.dart';
 import 'package:pos/features/auth/domain/usecases/get_current_user.dart';
 import 'package:pos/features/auth/domain/usecases/observe_auth_state.dart';
+import 'package:pos/features/auth/domain/usecases/send_sign_up_otp.dart';
 import 'package:pos/features/auth/domain/usecases/sign_in.dart';
 import 'package:pos/features/auth/domain/usecases/sign_out.dart';
 import 'package:pos/features/auth/domain/usecases/sign_up.dart';
+import 'package:pos/features/auth/domain/usecases/verify_sign_up_otp.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 
 final sl = GetIt.instance;
@@ -30,6 +32,8 @@ Future<void> initDI() async {
   sl.registerLazySingleton(() => ObserveAuthState(sl<AuthRepository>()));
   sl.registerLazySingleton(() => SignIn(sl<AuthRepository>()));
   sl.registerLazySingleton(() => SignUp(sl<AuthRepository>()));
+  sl.registerLazySingleton(() => SendSignUpOtp(sl<AuthRepository>()));
+  sl.registerLazySingleton(() => VerifySignUpOtp(sl<AuthRepository>()));
   sl.registerLazySingleton(() => SignOut(sl<AuthRepository>()));
 
   // Bloc
@@ -38,7 +42,8 @@ Future<void> initDI() async {
       getCurrentUser: sl(),
       observeAuthState: sl(),
       signIn: sl(),
-      signUp: sl(),
+      sendSignUpOtp: sl(),
+      verifySignUpOtp: sl(),
       signOut: sl(),
     ),
   );

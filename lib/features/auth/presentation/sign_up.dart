@@ -71,11 +71,26 @@ class _SignUpState extends State<SignUp> {
     );
   }
 
+  void _onForgotPasswordTap() {
+    StatusSnack.show(
+      context,
+      type: StatusType.info,
+      title: 'Coming soon',
+      message: 'Forgot password flow will be available soon.',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AuthBloc, AuthState>(
       listenWhen: (prev, curr) => curr is! AuthLoading,
       listener: (context, state) {
+        if (state is AuthCodeSent) {
+          final encodedEmail = Uri.encodeComponent(state.email);
+          context.go('${AppRoutes.verification}?email=$encodedEmail');
+          return;
+        }
+
         if (state is AuthError) {
           setState(() => _inlineError = state.message);
 
@@ -216,34 +231,48 @@ class _SignUpState extends State<SignUp> {
                       const SizedBox(height: 12),
 
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          GestureDetector(
-                            onTap: () {
-                              // TODO forgot password
-                            },
+                          TextButton(
+                            onPressed: _onForgotPasswordTap,
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              minimumSize: const Size(0, 32),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
                             child: Text(
                               AppStrings.forgotPassword,
-                              style: TextStyle(color: AppColors.brand),
+                              style: const TextStyle(color: AppColors.brand),
                             ),
                           ),
-                          Row(
-                            children: [
-                              Text(
-                                AppStrings.alreadyHaveAccount,
-                                style: TextStyle(
-                                  color: AppColors.textSecondary,
+                          const Spacer(),
+                          Flexible(
+                            child: Wrap(
+                              alignment: WrapAlignment.end,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 6,
+                              runSpacing: 4,
+                              children: [
+                                Text(
+                                  AppStrings.alreadyHaveAccount,
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 6),
-                              GestureDetector(
-                                onTap: () => context.go(AppRoutes.signIn),
-                                child: Text(
-                                  'Sign In',
-                                  style: TextStyle(color: AppColors.brand),
+                                TextButton(
+                                  onPressed: () => context.go(AppRoutes.signIn),
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    minimumSize: const Size(0, 32),
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: const Text(
+                                    'Sign In',
+                                    style: TextStyle(color: AppColors.brand),
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ],
                       ),
