@@ -8,7 +8,6 @@ import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/validators.dart';
 import 'package:pos/core/routes/app_routes.dart';
 
-import 'package:pos/core/ui/status/status_banner.dart';
 import 'package:pos/core/ui/status/status_snack.dart';
 import 'package:pos/core/ui/status/status_type.dart';
 

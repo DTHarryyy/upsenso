@@ -321,7 +321,6 @@ class _StatusIndicator extends StatelessWidget {
   final bool isSyncing;
 
   const _StatusIndicator({
-    super.key,
     required this.isOnline,
     required this.label,
     this.isSyncing = false,

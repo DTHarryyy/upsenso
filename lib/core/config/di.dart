@@ -13,6 +13,10 @@ import 'package:pos/features/auth/domain/usecases/sign_out.dart';
 import 'package:pos/features/auth/domain/usecases/sign_up.dart';
 import 'package:pos/features/auth/domain/usecases/verify_sign_up_otp.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:pos/features/business/data/datasources/business_remote_ds.dart';
+import 'package:pos/features/business/data/repositories/business_repository_impl.dart';
+import 'package:pos/features/business/domain/repositories/business_repository.dart';
+import 'package:pos/features/business/presentation/bloc/business_bloc.dart';
 
 final sl = GetIt.instance;
 
@@ -48,6 +52,26 @@ Future<void> initDI() async {
       sendSignUpOtp: sl(),
       verifySignUpOtp: sl(),
       signOut: sl(),
+    ),
+  );
+
+  // ─────────────────────────────────────────────
+  // Business Feature
+  // ─────────────────────────────────────────────
+
+  // Data sources
+  sl.registerLazySingleton(() => BusinessRemoteDs(sl<SupabaseClient>()));
+
+  // Repos
+  sl.registerLazySingleton<BusinessRepository>(
+    () => BusinessRepositoryImpl(sl<BusinessRemoteDs>()),
+  );
+
+  // Bloc
+  sl.registerFactory(
+    () => BusinessBloc(
+      businessRepository: sl<BusinessRepository>(),
+      authRepository: sl<AuthRepository>(),
     ),
   );
 }

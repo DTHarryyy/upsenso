@@ -1,9 +1,13 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pos/core/const/app_key.dart';
+import 'package:pos/core/config/di.dart';
 import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/features/auth/presentation/sign_in.dart';
 import 'package:pos/features/auth/presentation/sign_up.dart';
 import 'package:pos/features/auth/presentation/verification_page.dart';
+import 'package:pos/features/business/presentation/bloc/business_bloc.dart';
+import 'package:pos/features/business/presentation/business_profile_page.dart';
 import 'package:pos/features/inventory/inventory.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -45,6 +49,13 @@ class AppRouter {
         },
       ),
       GoRoute(path: AppRoutes.home, builder: (context, _) => const Inventory()),
+      GoRoute(
+        path: AppRoutes.businessProfile,
+        builder: (context, _) => BlocProvider(
+          create: (_) => sl<BusinessBloc>(),
+          child: const BusinessProfilePage(),
+        ),
+      ),
     ],
   );
 }

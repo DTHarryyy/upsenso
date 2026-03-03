@@ -180,7 +180,7 @@ class _BusinessProfilePageState extends State<BusinessProfilePage> {
                       ),
                       const SizedBox(height: 8),
                       DropdownButtonFormField<BusinessTemplate>(
-                        value: _selectedTemplate,
+                        initialValue: _selectedTemplate,
                         decoration: const InputDecoration(
                           hintText: 'Select a business template',
                           prefixIcon: Icon(Icons.category_rounded),
