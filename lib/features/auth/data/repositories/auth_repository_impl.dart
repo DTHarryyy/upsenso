@@ -47,6 +47,15 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<bool> checkEmailExists(String email) async {
+    try {
+      return await remote.checkEmailExists(email);
+    } catch (e) {
+      throw SupabaseAuthErrorMapper.message(e);
+    }
+  }
+
+  @override
   Future<void> sendSignUpOtp(String email) async {
     try {
       await remote.sendSignUpOtp(email);

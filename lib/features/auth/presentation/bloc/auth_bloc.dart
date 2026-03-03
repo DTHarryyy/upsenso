@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/errors/supabase_error_mapper.dart';
 
+import '../../domain/usecases/check_email_exists.dart';
 import '../../domain/usecases/get_current_user.dart';
 import '../../domain/usecases/observe_auth_state.dart';
 import '../../domain/usecases/send_sign_up_otp.dart';
@@ -16,6 +17,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final GetCurrentUser getCurrentUser;
   final ObserveAuthState observeAuthState;
   final SignIn signIn;
+  final CheckEmailExists checkEmailExists;
   final SendSignUpOtp sendSignUpOtp;
   final VerifySignUpOtp verifySignUpOtp;
   final SignOut signOut;
@@ -33,6 +35,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required this.getCurrentUser,
     required this.observeAuthState,
     required this.signIn,
+    required this.checkEmailExists,
     required this.sendSignUpOtp,
     required this.verifySignUpOtp,
     required this.signOut,
@@ -72,6 +75,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
     try {
+      // Check if email already exists
+      final emailExists = await checkEmailExists(e.email);
+      if (emailExists) {
+        throw 'This email is already registered. Try signing in instead.';
+      }
+
       await sendSignUpOtp(e.email);
       _pendingSignUpEmail = e.email;
       _pendingSignUpPassword = e.password;

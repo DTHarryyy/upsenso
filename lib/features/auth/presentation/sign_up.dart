@@ -31,7 +31,6 @@ class _SignUpState extends State<SignUp> {
   late final TextEditingController _passwordController;
   late final TextEditingController _confirmPasswordController;
 
-  String? _inlineError;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
@@ -41,14 +40,6 @@ class _SignUpState extends State<SignUp> {
     _emailController = TextEditingController();
     _passwordController = TextEditingController();
     _confirmPasswordController = TextEditingController();
-
-    void clearInlineError() {
-      if (_inlineError != null) setState(() => _inlineError = null);
-    }
-
-    _emailController.addListener(clearInlineError);
-    _passwordController.addListener(clearInlineError);
-    _confirmPasswordController.addListener(clearInlineError);
   }
 
   @override
@@ -92,8 +83,6 @@ class _SignUpState extends State<SignUp> {
         }
 
         if (state is AuthError) {
-          setState(() => _inlineError = state.message);
-
           StatusSnack.show(
             context,
             type: StatusType.error,
@@ -135,17 +124,6 @@ class _SignUpState extends State<SignUp> {
                         ),
                         textAlign: TextAlign.center,
                       ),
-
-                      if (_inlineError != null) ...[
-                        const SizedBox(height: 12),
-                        StatusBanner(
-                          type: StatusType.error,
-                          title: 'Sign up failed',
-                          message: _inlineError!,
-                          onAction: () => context.go(AppRoutes.signIn),
-                          actionText: 'Go to Sign In',
-                        ),
-                      ],
 
                       const SizedBox(height: 18),
 

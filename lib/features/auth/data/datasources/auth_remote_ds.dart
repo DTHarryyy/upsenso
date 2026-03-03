@@ -20,6 +20,41 @@ class AuthRemoteDs {
     await client.auth.signInWithOtp(email: email, shouldCreateUser: true);
   }
 
+  Future<bool> checkEmailExists(String email) async {
+    try {
+      // Try to send OTP without creating user
+      // If user exists, this will succeed; if not, it will throw an error
+      await client.auth.signInWithOtp(email: email, shouldCreateUser: false);
+      return true; // User exists
+    } catch (e) {
+      if (e is AuthException) {
+        final msg = e.message.toLowerCase();
+
+        // If error indicates user doesn't exist, return false
+        if (msg.contains('not found') ||
+            msg.contains('does not exist') ||
+            msg.contains('no user') ||
+            msg.contains('user not found')) {
+          return false; // User doesn't exist
+        }
+
+        // If it's a configuration error (signups disabled, email provider, etc.),
+        // return false to proceed with signup which will catch the actual error
+        if (msg.contains('signups not allowed') ||
+            msg.contains('signup is disabled') ||
+            msg.contains('email signups are disabled') ||
+            msg.contains('email provider') ||
+            msg.contains('smtp') ||
+            msg.contains('disabled')) {
+          return false; // Can't verify, let signup process handle it
+        }
+      }
+
+      // For any other error, return false to let the signup flow handle it
+      return false;
+    }
+  }
+
   Future<AuthResponse> verifyEmailOtp({
     required String email,
     required String token,
@@ -27,7 +62,7 @@ class AuthRemoteDs {
     return client.auth.verifyOTP(
       email: email,
       token: token,
-      type: OtpType.signup,
+      type: OtpType.email,
     );
   }
 
