@@ -8,14 +8,16 @@ import 'package:path/path.dart' as p;
 
 import 'package:pos/core/database/tables/business_templates_table.dart';
 import 'package:pos/core/database/tables/businesses_table.dart';
+import 'package:pos/core/database/tables/branches_table.dart';
 import 'package:pos/core/database/daos/business_templates_dao.dart';
 import 'package:pos/core/database/daos/businesses_dao.dart';
+import 'package:pos/core/database/daos/branches_dao.dart';
 
 part 'app_database.g.dart';
 
 @DriftDatabase(
-  tables: [BusinessTemplatesTable, BusinessesTable],
-  daos: [BusinessTemplatesDao, BusinessesDao],
+  tables: [BusinessTemplatesTable, BusinessesTable, BranchesTable],
+  daos: [BusinessTemplatesDao, BusinessesDao, BranchesDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
@@ -24,7 +26,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration {
@@ -33,7 +35,10 @@ class AppDatabase extends _$AppDatabase {
         await m.createAll();
       },
       onUpgrade: (Migrator m, int from, int to) async {
-        // Handle future migrations here
+        // Migration from v1 to v2: Add branches table
+        if (from < 2) {
+          await m.createTable(branchesTable);
+        }
       },
     );
   }
@@ -65,6 +70,9 @@ class AppDatabase extends _$AppDatabase {
 
     // TODO: DEBUG - Print businesses table
     await _debugPrintBusinesses();
+
+    // TODO: DEBUG - Print branches table
+    await _debugPrintBranches();
 
     debugPrint(
       '═══════════════════════════════════════════════════════════════',
@@ -210,11 +218,13 @@ class AppDatabase extends _$AppDatabase {
 
     final templatesCount = await (select(businessTemplatesTable)).get();
     final businessesCount = await (select(businessesTable)).get();
+    final branchesCount = await (select(branchesTable)).get();
 
     debugPrint('');
     debugPrint('📊 Drift Table Counts:');
     debugPrint('   • business_templates: ${templatesCount.length}');
     debugPrint('   • businesses: ${businessesCount.length}');
+    debugPrint('   • branches: ${branchesCount.length}');
     debugPrint('');
   }
 
@@ -223,9 +233,59 @@ class AppDatabase extends _$AppDatabase {
     if (!kDebugMode) return;
 
     debugPrint('⚠️ DEBUG: Clearing all Drift tables...');
+    await delete(branchesTable).go();
     await delete(businessesTable).go();
     await delete(businessTemplatesTable).go();
     debugPrint('✅ DEBUG: All tables cleared');
+  }
+
+  /// TODO: DEBUG - Print branches table contents
+  Future<void> _debugPrintBranches() async {
+    debugPrint(
+      '┌──────────────────────────────────────────────────────────────┐',
+    );
+    debugPrint(
+      '│ TABLE: branches                                              │',
+    );
+    debugPrint(
+      '├──────────────────────────────────────────────────────────────┤',
+    );
+
+    final branches = await select(branchesTable).get();
+
+    if (branches.isEmpty) {
+      debugPrint(
+        '│ (empty)                                                      │',
+      );
+    } else {
+      debugPrint('│ Count: ${branches.length.toString().padRight(53)}│');
+      debugPrint(
+        '├──────────────────────────────────────────────────────────────┤',
+      );
+
+      for (final b in branches) {
+        final syncLabel = _getSyncStatusLabel(b.syncStatus);
+        debugPrint(
+          '│ ID: ${b.id.substring(0, 8)}...                                        │',
+        );
+        debugPrint('│   name: ${b.name.padRight(51)}│');
+        debugPrint(
+          '│   businessId: ${b.businessId.substring(0, 8)}...                                 │',
+        );
+        debugPrint('│   address: ${(b.address ?? 'null').padRight(48)}│');
+        debugPrint('│   phone: ${(b.phone ?? 'null').padRight(50)}│');
+        debugPrint('│   isActive: ${b.isActive.toString().padRight(47)}│');
+        debugPrint('│   syncStatus: ${syncLabel.padRight(45)}│');
+        debugPrint(
+          '├──────────────────────────────────────────────────────────────┤',
+        );
+      }
+    }
+
+    debugPrint(
+      '└──────────────────────────────────────────────────────────────┘',
+    );
+    debugPrint('');
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

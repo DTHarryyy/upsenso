@@ -1,12 +1,14 @@
 import 'package:uuid/uuid.dart';
 import 'package:pos/core/database/daos/business_templates_dao.dart';
 import 'package:pos/core/database/daos/businesses_dao.dart';
+import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_status.dart';
 import 'package:pos/features/business/data/datasources/business_remote_ds.dart';
 import 'package:pos/features/business/data/models/business_model.dart';
 import 'package:pos/features/business/data/models/business_template_model.dart';
 import 'package:pos/features/business/domain/entities/business.dart';
+import 'package:pos/features/business/domain/entities/branch.dart';
 import 'package:pos/features/business/domain/entities/business_template.dart';
 import 'package:pos/features/business/domain/repositories/business_repository.dart';
 
@@ -21,12 +23,14 @@ class BusinessRepositoryImpl implements BusinessRepository {
   final BusinessRemoteDs remote;
   final BusinessesDao businessesDao;
   final BusinessTemplatesDao templatesDao;
+  final BranchesDao branchesDao;
   final ConnectivityService connectivity;
 
   BusinessRepositoryImpl({
     required this.remote,
     required this.businessesDao,
     required this.templatesDao,
+    required this.branchesDao,
     required this.connectivity,
   });
 
@@ -86,14 +90,16 @@ class BusinessRepositoryImpl implements BusinessRepository {
     required String name,
     required String ownerId,
     required String templateId,
+    required String branchName,
   }) async {
-    // 1. Generate UUID locally
-    final id = const Uuid().v4();
+    // 1. Generate UUIDs locally
+    final businessId = const Uuid().v4();
+    final branchId = const Uuid().v4();
     final now = DateTime.now();
 
     // 2. Create business entity
     final business = Business(
-      id: id,
+      id: businessId,
       name: name,
       ownerId: ownerId,
       templateId: templateId,
@@ -101,10 +107,21 @@ class BusinessRepositoryImpl implements BusinessRepository {
       isActive: true,
     );
 
-    // 3. Save locally FIRST (offline-first)
-    await businessesDao.insertBusiness(business);
+    // 3. Create initial branch entity (address and phone are null initially)
+    final branch = Branch(
+      id: branchId,
+      businessId: businessId,
+      name: branchName,
+      address: null,
+      phone: null,
+      isActive: true,
+    );
 
-    // 4. Try to sync to server if online
+    // 4. Save locally FIRST (offline-first)
+    await businessesDao.insertBusiness(business);
+    await branchesDao.insertBranch(branch);
+
+    // 5. Try to sync to server if online
     final online = await connectivity.isConnected;
     if (online) {
       try {
@@ -119,21 +136,24 @@ class BusinessRepositoryImpl implements BusinessRepository {
         final serverBusiness = BusinessModel.fromJson(serverData);
 
         // If server generated different ID, update local record
-        if (serverBusiness.id != id) {
-          await businessesDao.hardDelete(id);
+        if (serverBusiness.id != businessId) {
+          await businessesDao.hardDelete(businessId);
           await businessesDao.upsertFromServer(serverBusiness);
           return serverBusiness;
         }
 
         // Mark as synced
-        await businessesDao.updateSyncStatus(id: id, status: SyncStatus.synced);
+        await businessesDao.updateSyncStatus(
+          id: businessId,
+          status: SyncStatus.synced,
+        );
 
         return serverBusiness;
       } catch (e) {
         // Sync failed, but local data is saved
         // Will retry on next sync cycle
         await businessesDao.updateSyncStatus(
-          id: id,
+          id: businessId,
           status: SyncStatus.failed,
           error: e.toString(),
         );

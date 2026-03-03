@@ -7,8 +7,13 @@ class LoadBusinessTemplates extends BusinessEvent {}
 class CreateBusinessRequested extends BusinessEvent {
   final String name;
   final String templateId;
+  final String branchName;
 
-  CreateBusinessRequested({required this.name, required this.templateId});
+  CreateBusinessRequested({
+    required this.name,
+    required this.templateId,
+    required this.branchName,
+  });
 }
 
 class SelectTemplate extends BusinessEvent {

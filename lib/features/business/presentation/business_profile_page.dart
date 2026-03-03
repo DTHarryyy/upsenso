@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/validators.dart';
+import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/core/ui/status/status_snack.dart';
 import 'package:pos/core/ui/status/status_type.dart';
@@ -24,18 +26,24 @@ class BusinessProfilePage extends StatefulWidget {
 class _BusinessProfilePageState extends State<BusinessProfilePage> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
+  late final TextEditingController _branchNameController;
   BusinessTemplate? _selectedTemplate;
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController();
+    _branchNameController = TextEditingController();
     context.read<BusinessBloc>().add(LoadBusinessTemplates());
+
+    // TODO: DEBUG - Print Drift tables on page load
+    sl<AppDatabase>().debugPrintAllTables();
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _branchNameController.dispose();
     super.dispose();
   }
 
@@ -57,6 +65,7 @@ class _BusinessProfilePageState extends State<BusinessProfilePage> {
       CreateBusinessRequested(
         name: _nameController.text.trim(),
         templateId: _selectedTemplate!.id,
+        branchName: _branchNameController.text.trim(),
       ),
     );
   }
@@ -159,6 +168,35 @@ class _BusinessProfilePageState extends State<BusinessProfilePage> {
                         textCapitalization: TextCapitalization.words,
                         validator: (v) =>
                             Validators.required(v, fieldName: 'Business name'),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Branch Name Field
+                      Text(
+                        'Branch Name',
+                        style: AppTextStyles.subtitle(context).copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Name for your first branch/location',
+                        style: AppTextStyles.caption(
+                          context,
+                        ).copyWith(color: AppColors.textMuted),
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _branchNameController,
+                        decoration: const InputDecoration(
+                          hintText: 'e.g., Main Branch, Downtown Store',
+                          prefixIcon: Icon(Icons.store_rounded),
+                        ),
+                        textCapitalization: TextCapitalization.words,
+                        validator: (v) =>
+                            Validators.required(v, fieldName: 'Branch name'),
                       ),
 
                       const SizedBox(height: 24),

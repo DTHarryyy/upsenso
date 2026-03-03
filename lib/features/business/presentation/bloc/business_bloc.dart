@@ -56,6 +56,7 @@ class BusinessBloc extends Bloc<BusinessEvent, BusinessState> {
         name: event.name,
         ownerId: currentUser.id,
         templateId: event.templateId,
+        branchName: event.branchName,
       );
 
       emit(BusinessCreated(business));
