@@ -109,8 +109,8 @@ _SnackStyle _snackStyle(StatusType type) {
       );
     case StatusType.error:
       return _SnackStyle(
-        bg: const Color(0xFF842029),
-        border: const Color(0xFF842029),
+        bg: AppColors.error,
+        border: AppColors.error.withValues(alpha: 0.2),
         text: Colors.white,
         icon: Icons.error_rounded,
         iconColor: Colors.white,

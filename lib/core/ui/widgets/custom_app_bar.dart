@@ -38,7 +38,7 @@ class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
   final VoidCallback? onProfileTapped;
 
   const CustomAppBar({
-    Key? key,
+    super.key,
     required this.branches,
     required this.selectedBranch,
     this.onBranchChanged,
@@ -50,7 +50,7 @@ class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
     this.notificationCount = 0,
     this.onNotificationTapped,
     this.onProfileTapped,
-  }) : super(key: key);
+  });
 
   @override
   State<CustomAppBar> createState() => _CustomAppBarState();
@@ -321,11 +321,11 @@ class _StatusIndicator extends StatelessWidget {
   final bool isSyncing;
 
   const _StatusIndicator({
-    Key? key,
+    super.key,
     required this.isOnline,
     required this.label,
     this.isSyncing = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -349,10 +349,10 @@ class _StatusIndicator extends StatelessWidget {
               duration: const Duration(milliseconds: 600),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: statusColor.withOpacity(0.7),
+                color: statusColor.withValues(alpha: 0.7),
                 boxShadow: [
                   BoxShadow(
-                    color: statusColor.withOpacity(0.5),
+                    color: statusColor.withValues(alpha: 0.5),
                     blurRadius: 6,
                     spreadRadius: 2,
                   ),
@@ -386,7 +386,4 @@ class _StatusIndicator extends StatelessWidget {
       ],
     );
   }
-
-  @override
-  Size get preferredSize => const Size.fromHeight(64);
 }
