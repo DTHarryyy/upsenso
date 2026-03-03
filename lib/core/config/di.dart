@@ -1,6 +1,11 @@
 import 'package:get_it/get_it.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:pos/core/database/app_database.dart';
+import 'package:pos/core/database/daos/business_templates_dao.dart';
+import 'package:pos/core/database/daos/businesses_dao.dart';
+import 'package:pos/core/sync/connectivity_service.dart';
+import 'package:pos/core/sync/sync_service.dart';
 import 'package:pos/features/auth/data/datasources/auth_remote_ds.dart';
 import 'package:pos/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:pos/features/auth/domain/repositories/auth_repository.dart';
@@ -21,8 +26,28 @@ import 'package:pos/features/business/presentation/bloc/business_bloc.dart';
 final sl = GetIt.instance;
 
 Future<void> initDI() async {
-  // External
+  // ─────────────────────────────────────────────
+  // Core / External
+  // ─────────────────────────────────────────────
   sl.registerLazySingleton<SupabaseClient>(() => Supabase.instance.client);
+
+  // Database (Drift - local storage)
+  sl.registerLazySingleton<AppDatabase>(() => AppDatabase());
+
+  // DAOs
+  sl.registerLazySingleton<BusinessTemplatesDao>(
+    () => BusinessTemplatesDao(sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<BusinessesDao>(
+    () => BusinessesDao(sl<AppDatabase>()),
+  );
+
+  // Connectivity
+  sl.registerLazySingleton<ConnectivityService>(() => ConnectivityService());
+
+  // ─────────────────────────────────────────────
+  // Auth Feature
+  // ─────────────────────────────────────────────
 
   // Data sources
   sl.registerLazySingleton(() => AuthRemoteDs(sl<SupabaseClient>()));
@@ -62,9 +87,14 @@ Future<void> initDI() async {
   // Data sources
   sl.registerLazySingleton(() => BusinessRemoteDs(sl<SupabaseClient>()));
 
-  // Repos
+  // Repos (offline-first)
   sl.registerLazySingleton<BusinessRepository>(
-    () => BusinessRepositoryImpl(sl<BusinessRemoteDs>()),
+    () => BusinessRepositoryImpl(
+      remote: sl<BusinessRemoteDs>(),
+      businessesDao: sl<BusinessesDao>(),
+      templatesDao: sl<BusinessTemplatesDao>(),
+      connectivity: sl<ConnectivityService>(),
+    ),
   );
 
   // Bloc
@@ -73,5 +103,16 @@ Future<void> initDI() async {
       businessRepository: sl<BusinessRepository>(),
       authRepository: sl<AuthRepository>(),
     ),
+  );
+
+  // ─────────────────────────────────────────────
+  // Sync Service
+  // ─────────────────────────────────────────────
+  sl.registerLazySingleton<SyncService>(
+    () => SyncService(
+      businessesDao: sl<BusinessesDao>(),
+      businessRemoteDs: sl<BusinessRemoteDs>(),
+      connectivityService: sl<ConnectivityService>(),
+    )..init(),
   );
 }
