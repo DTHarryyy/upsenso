@@ -25,6 +25,12 @@ class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
   /// User's role/title
   final String userRole;
 
+  /// User's email (optional for profile popup)
+  final String? userEmail;
+
+  /// User's business name (optional for profile popup)
+  final String? businessName;
+
   /// User's avatar URL or initials
   final String? userAvatar;
 
@@ -37,6 +43,9 @@ class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
   /// Callback when user profile is tapped
   final VoidCallback? onProfileTapped;
 
+  /// Callback when logout is tapped in profile popup
+  final VoidCallback? onLogoutTapped;
+
   const CustomAppBar({
     super.key,
     required this.branches,
@@ -46,10 +55,13 @@ class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
     this.pendingSyncCount = 0,
     required this.userName,
     required this.userRole,
+    this.userEmail,
+    this.businessName,
     this.userAvatar,
     this.notificationCount = 0,
     this.onNotificationTapped,
     this.onProfileTapped,
+    this.onLogoutTapped,
   });
 
   @override
@@ -61,6 +73,7 @@ class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
 
 class _CustomAppBarState extends State<CustomAppBar> {
   late String _selectedBranch;
+  final GlobalKey _profileAnchorKey = GlobalKey();
 
   @override
   void initState() {
@@ -211,11 +224,14 @@ class _CustomAppBarState extends State<CustomAppBar> {
                     const SizedBox(width: 16),
 
                     // User Profile
-                    _UserProfileSection(
-                      userName: widget.userName,
-                      userRole: widget.userRole,
-                      userAvatar: widget.userAvatar,
-                      onProfileTapped: widget.onProfileTapped,
+                    KeyedSubtree(
+                      key: _profileAnchorKey,
+                      child: _UserProfileSection(
+                        userName: widget.userName,
+                        userRole: widget.userRole,
+                        userAvatar: widget.userAvatar,
+                        onProfileTapped: _showProfileMenu,
+                      ),
                     ),
                   ],
                 ),
@@ -226,7 +242,140 @@ class _CustomAppBarState extends State<CustomAppBar> {
       ),
     );
   }
+
+  Future<void> _showProfileMenu() async {
+    if (widget.onProfileTapped == null && widget.onLogoutTapped == null) {
+      return;
+    }
+
+    final anchorContext = _profileAnchorKey.currentContext;
+    if (anchorContext == null) return;
+
+    final anchorRender = anchorContext.findRenderObject();
+    final overlayRender = Overlay.of(context).context.findRenderObject();
+    if (anchorRender is! RenderBox || overlayRender is! RenderBox) return;
+
+    final topLeft = anchorRender.localToGlobal(
+      Offset.zero,
+      ancestor: overlayRender,
+    );
+    final bottomRight = anchorRender.localToGlobal(
+      anchorRender.size.bottomRight(Offset.zero),
+      ancestor: overlayRender,
+    );
+
+    final position = RelativeRect.fromRect(
+      Rect.fromPoints(topLeft, bottomRight),
+      Offset.zero & overlayRender.size,
+    );
+
+    final selected = await showMenu<_ProfileMenuAction>(
+      context: context,
+      position: position,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      items: [
+        PopupMenuItem<_ProfileMenuAction>(
+          enabled: false,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: SizedBox(
+            width: 260,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  widget.userName,
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                if ((widget.userEmail ?? '').isNotEmpty)
+                  Text(
+                    widget.userEmail!,
+                    style: GoogleFonts.outfit(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                Text(
+                  'Role: ${widget.userRole}',
+                  style: GoogleFonts.outfit(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                if ((widget.businessName ?? '').isNotEmpty)
+                  Text(
+                    'Business: ${widget.businessName}',
+                    style: GoogleFonts.outfit(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        if (widget.onProfileTapped != null) ...[
+          const PopupMenuDivider(height: 1),
+          PopupMenuItem<_ProfileMenuAction>(
+            value: _ProfileMenuAction.viewProfile,
+            child: Row(
+              children: [
+                const Icon(Icons.person_outline, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'Profile',
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        if (widget.onLogoutTapped != null) ...[
+          const PopupMenuDivider(height: 1),
+          PopupMenuItem<_ProfileMenuAction>(
+            value: _ProfileMenuAction.logout,
+            child: Row(
+              children: [
+                const Icon(Icons.logout, size: 18, color: AppColors.error),
+                const SizedBox(width: 8),
+                Text(
+                  'Logout',
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    color: AppColors.error,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+
+    switch (selected) {
+      case _ProfileMenuAction.viewProfile:
+        widget.onProfileTapped?.call();
+        break;
+      case _ProfileMenuAction.logout:
+        widget.onLogoutTapped?.call();
+        break;
+      case null:
+        break;
+    }
+  }
 }
+
+enum _ProfileMenuAction { viewProfile, logout }
 
 /// Status indicator widget for displaying online/offline and sync status
 class _StatusIndicator extends StatelessWidget {
@@ -403,6 +552,10 @@ class _UserProfileSection extends StatelessWidget {
     if (parts.length >= 2) {
       return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
     }
-    return parts.first.substring(0, 2).toUpperCase();
+
+    if (parts.isEmpty || parts.first.isEmpty) return 'U';
+    final first = parts.first;
+    final len = first.length > 1 ? 2 : 1;
+    return first.substring(0, len).toUpperCase();
   }
 }

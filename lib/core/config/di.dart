@@ -12,6 +12,7 @@ import 'package:pos/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:pos/features/auth/domain/repositories/auth_repository.dart';
 import 'package:pos/features/auth/domain/usecases/check_email_exists.dart';
 import 'package:pos/features/auth/domain/usecases/get_current_user.dart';
+import 'package:pos/features/auth/domain/usecases/get_user_business_context.dart';
 import 'package:pos/features/auth/domain/usecases/observe_auth_state.dart';
 import 'package:pos/features/auth/domain/usecases/send_sign_up_otp.dart';
 import 'package:pos/features/auth/domain/usecases/sign_in.dart';
@@ -61,6 +62,7 @@ Future<void> initDI() async {
 
   // Usecases
   sl.registerLazySingleton(() => GetCurrentUser(sl<AuthRepository>()));
+  sl.registerLazySingleton(() => GetUserBusinessContext(sl<AuthRepository>()));
   sl.registerLazySingleton(() => ObserveAuthState(sl<AuthRepository>()));
   sl.registerLazySingleton(() => SignIn(sl<AuthRepository>()));
   sl.registerLazySingleton(() => SignUp(sl<AuthRepository>()));
@@ -73,6 +75,7 @@ Future<void> initDI() async {
   sl.registerFactory(
     () => AuthBloc(
       getCurrentUser: sl(),
+      getUserBusinessContext: sl(),
       observeAuthState: sl(),
       signIn: sl(),
       checkEmailExists: sl(),
@@ -97,6 +100,7 @@ Future<void> initDI() async {
       templatesDao: sl<BusinessTemplatesDao>(),
       branchesDao: sl<BranchesDao>(),
       connectivity: sl<ConnectivityService>(),
+      authRepository: sl<AuthRepository>(),
     ),
   );
 

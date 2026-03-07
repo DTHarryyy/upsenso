@@ -91,7 +91,7 @@ class SyncService {
 
           case SyncStatus.failed:
             // Retry based on original intended action
-            // For now, try to upload again
+            // i try ngani ulit mag re upload
             await _handlePendingUpload(record);
             synced++;
             break;
@@ -154,7 +154,7 @@ class SyncService {
     await _businessesDao.hardDelete(record.id);
   }
 
-  /// Pull latest data from server and update local DB
+  /// Pull latest data from server and update local DB sa drift
   Future<void> pullFromServer(String ownerId) async {
     final online = await isOnline;
     if (!online) return;

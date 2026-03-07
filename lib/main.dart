@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:pos/bootstrap.dart';
 import 'package:pos/core/const/app_colors.dart';
 

@@ -4,6 +4,7 @@ import 'package:pos/core/database/daos/businesses_dao.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_status.dart';
+import 'package:pos/features/auth/domain/repositories/auth_repository.dart';
 import 'package:pos/features/business/data/datasources/business_remote_ds.dart';
 import 'package:pos/features/business/data/models/business_model.dart';
 import 'package:pos/features/business/data/models/business_template_model.dart';
@@ -25,6 +26,7 @@ class BusinessRepositoryImpl implements BusinessRepository {
   final BusinessTemplatesDao templatesDao;
   final BranchesDao branchesDao;
   final ConnectivityService connectivity;
+  final AuthRepository authRepository;
 
   BusinessRepositoryImpl({
     required this.remote,
@@ -32,6 +34,7 @@ class BusinessRepositoryImpl implements BusinessRepository {
     required this.templatesDao,
     required this.branchesDao,
     required this.connectivity,
+    required this.authRepository,
   });
 
   @override
@@ -127,6 +130,7 @@ class BusinessRepositoryImpl implements BusinessRepository {
       try {
         // Upload to Supabase
         final serverData = await remote.createBusiness(
+          id: businessId,
           name: name,
           ownerId: ownerId,
           templateId: templateId,
@@ -135,16 +139,48 @@ class BusinessRepositoryImpl implements BusinessRepository {
         // Update local record with server response and mark as synced
         final serverBusiness = BusinessModel.fromJson(serverData);
 
-        // If server generated different ID, update local record
-        if (serverBusiness.id != businessId) {
-          await businessesDao.hardDelete(businessId);
-          await businessesDao.upsertFromServer(serverBusiness);
-          return serverBusiness;
+        // Keep local cache aligned with server payload.
+        await businessesDao.upsertFromServer(serverBusiness);
+
+        // Note: User and role creation now handled by database trigger
+        // The trigger automatically creates:
+        //   1. Super Admin role for the business
+        //   2. User record with role assignment
+        //   3. Full name extracted from email
+
+        print('✅ BUSINESS CREATED: ${serverBusiness.id}');
+        print('   (User auto-created by database trigger)');
+
+        // Verify trigger created user and role
+        try {
+          final userData = await remote.getUserByBusinessId(serverBusiness.id);
+          final rolesData = await remote.getRolesByBusinessId(
+            serverBusiness.id,
+          );
+
+          print('🔍 VERIFICATION:');
+          print('   Users created: ${userData.length}');
+          print('   Roles created: ${rolesData.length}');
+
+          if (userData.isEmpty) {
+            print('⚠️ WARNING: Database trigger did NOT create user!');
+            print('   Check if trigger exists and has correct permissions');
+          } else {
+            print('   User data: $userData');
+          }
+
+          if (rolesData.isEmpty) {
+            print('⚠️ WARNING: Database trigger did NOT create roles!');
+          } else {
+            print('   Roles data: $rolesData');
+          }
+        } catch (e) {
+          print('❌ ERROR VERIFYING TRIGGER RESULTS: $e');
         }
 
         // Mark as synced
         await businessesDao.updateSyncStatus(
-          id: businessId,
+          id: serverBusiness.id,
           status: SyncStatus.synced,
         );
 
@@ -157,6 +193,10 @@ class BusinessRepositoryImpl implements BusinessRepository {
           status: SyncStatus.failed,
           error: e.toString(),
         );
+
+        // When online, treat create failure as an error to avoid routing
+        // into screens that require server-side business/user context.
+        throw Exception('Failed to create business on server: $e');
       }
     }
 
@@ -166,36 +206,26 @@ class BusinessRepositoryImpl implements BusinessRepository {
 
   @override
   Future<Business?> getBusinessByOwner(String ownerId) async {
-    // 1. Check local cache first
-    final localBusiness = await businessesDao.getByOwnerId(ownerId);
+    final online = await connectivity.isConnected;
 
-    if (localBusiness != null) {
-      // Return cached data immediately
-      final business = BusinessesDao.toEntity(localBusiness);
+    if (online) {
+      // When online, trust server state to avoid routing into screens that
+      // require remote context while only local unsynced data exists.
+      final data = await remote.getBusinessByOwner(ownerId);
+      if (data == null) return null;
 
-      // Refresh from server in background if online and synced
-      final status = BusinessesDao.getSyncStatus(localBusiness);
-      if (status == SyncStatus.synced) {
-        _refreshBusinessFromServer(ownerId);
-      }
-
+      final business = BusinessModel.fromJson(data);
+      await businessesDao.upsertFromServer(business);
       return business;
     }
 
-    // 2. No local data, try server
-    final online = await connectivity.isConnected;
-    if (!online) {
-      return null; // No local data and offline
+    // Offline fallback: use local cache.
+    final localBusiness = await businessesDao.getByOwnerId(ownerId);
+    if (localBusiness != null) {
+      return BusinessesDao.toEntity(localBusiness);
     }
 
-    final data = await remote.getBusinessByOwner(ownerId);
-    if (data == null) return null;
-
-    // Cache locally
-    final business = BusinessModel.fromJson(data);
-    await businessesDao.upsertFromServer(business);
-
-    return business;
+    return null;
   }
 
   Future<void> _refreshBusinessFromServer(String ownerId) async {

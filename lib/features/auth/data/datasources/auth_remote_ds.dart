@@ -70,5 +70,224 @@ class AuthRemoteDs {
     await client.auth.updateUser(UserAttributes(password: password));
   }
 
+  /// Update user metadata with full name extracted from email
+  Future<void> updateUserMetadata({
+    required String email,
+    String? fullName,
+  }) async {
+    final defaultFullName = fullName ?? _extractNameFromEmail(email);
+    await client.auth.updateUser(
+      UserAttributes(data: {'full_name': defaultFullName}),
+    );
+  }
+
+  /// Extract name from email (part before @)
+  String _extractNameFromEmail(String email) {
+    final username = email.split('@')[0];
+    // Convert to title case (e.g., "john.doe" -> "John Doe")
+    return username
+        .split(RegExp(r'[._-]'))
+        .map(
+          (part) => part.isEmpty
+              ? ''
+              : part[0].toUpperCase() + part.substring(1).toLowerCase(),
+        )
+        .join(' ');
+  }
+
   Future<void> signOut() => client.auth.signOut();
+
+  Future<Map<String, dynamic>?> _getUserBusinessContextViaRpc() async {
+    try {
+      final raw = await client.rpc('get_my_business_context');
+
+      final rows = <Map<String, dynamic>>[];
+      if (raw is List) {
+        for (final row in raw) {
+          if (row is Map) {
+            rows.add(Map<String, dynamic>.from(row));
+          }
+        }
+      } else if (raw is Map) {
+        rows.add(Map<String, dynamic>.from(raw));
+      }
+
+      if (rows.isEmpty) {
+        print('AuthRemoteDs RPC get_my_business_context returned no rows.');
+        return null;
+      }
+
+      final row = rows.first;
+      final fullName =
+          row['full_name']?.toString() ?? row['fu l_name']?.toString();
+
+      final result = {
+        'business_id': row['business_id']?.toString(),
+        'role_id': row['role_id']?.toString(),
+        'business_name': row['business_name']?.toString(),
+        'full_name': fullName,
+      };
+
+      print(
+        'AuthRemoteDs RPC resolved: businessId=${result['business_id']} roleId=${result['role_id']} businessName=${result['business_name']}',
+      );
+
+      return result;
+    } catch (e) {
+      print('AuthRemoteDs RPC get_my_business_context failed: $e');
+      return null;
+    }
+  }
+
+  /// Fetch user's business context: businessId, roleId, businessName
+  Future<Map<String, dynamic>?> getUserBusinessContext(String userId) async {
+    try {
+      // Prefer RPC to avoid direct table permission/RLS deadlocks.
+      final viaRpc = await _getUserBusinessContextViaRpc();
+      if (viaRpc != null) {
+        return viaRpc;
+      }
+
+      final current = client.auth.currentUser;
+      final currentEmail = current?.email;
+
+      Map<String, dynamic>? userRow;
+      Map<String, dynamic>? businessRow;
+
+      print('AuthRemoteDs: Querying users table with id=$userId');
+      final userByIdRows = List<Map<String, dynamic>>.from(
+        await client.from('users').select().eq('id', userId).limit(1),
+      );
+      print('AuthRemoteDs: userByIdRows returned ${userByIdRows.length} rows');
+      if (userByIdRows.isNotEmpty) {
+        userRow = userByIdRows.first;
+        print('AuthRemoteDs: Found user row: ${userRow}');
+      } else {
+        print('AuthRemoteDs: No user found by id, RLS may be blocking');
+      }
+
+      // Fallback for schemas where users.id is not equal to auth.users.id.
+      if (userRow == null && (currentEmail ?? '').isNotEmpty) {
+        print('AuthRemoteDs: Trying email fallback with email=$currentEmail');
+        final userByEmailRows = List<Map<String, dynamic>>.from(
+          await client
+              .from('users')
+              .select()
+              .eq('email', currentEmail!)
+              .limit(1),
+        );
+        print(
+          'AuthRemoteDs: userByEmailRows returned ${userByEmailRows.length} rows',
+        );
+        if (userByEmailRows.isNotEmpty) {
+          userRow = userByEmailRows.first;
+          print('AuthRemoteDs: Found user by email: ${userRow}');
+        } else {
+          print('AuthRemoteDs: No user found by email either');
+        }
+      }
+
+      String? businessId = userRow?['business_id']?.toString();
+      String? roleId = userRow?['role_id']?.toString();
+      final fullName =
+          userRow?['full_name']?.toString() ??
+          userRow?['fu l_name']?.toString();
+
+      if (businessId != null) {
+        final businessByIdRows = List<Map<String, dynamic>>.from(
+          await client
+              .from('businesses')
+              .select('id, name')
+              .eq('id', businessId)
+              .limit(1),
+        );
+
+        if (businessByIdRows.isNotEmpty) {
+          businessRow = businessByIdRows.first;
+        }
+      }
+
+      // Fallback: derive business directly from owner.
+      if (businessRow == null && current != null) {
+        print('AuthRemoteDs: Looking up business by owner_id=${current.id}');
+        final businessByOwnerRows = List<Map<String, dynamic>>.from(
+          await client
+              .from('businesses')
+              .select('id, name')
+              .eq('owner_id', current.id)
+              .order('created_at', ascending: false)
+              .limit(1),
+        );
+
+        print(
+          'AuthRemoteDs: businessByOwnerRows returned ${businessByOwnerRows.length} rows',
+        );
+
+        if (businessByOwnerRows.isNotEmpty) {
+          businessRow = businessByOwnerRows.first;
+          businessId ??= businessRow['id']?.toString();
+          print('AuthRemoteDs: Found business by owner: ${businessRow}');
+        } else {
+          print('AuthRemoteDs: No business found for current owner');
+        }
+      }
+
+      // Fallback: derive role by matching business + email.
+      if (roleId == null &&
+          businessId != null &&
+          (currentEmail ?? '').isNotEmpty) {
+        final roleByBusinessRows = List<Map<String, dynamic>>.from(
+          await client
+              .from('users')
+              .select('role_id')
+              .eq('business_id', businessId)
+              .eq('email', currentEmail!)
+              .limit(1),
+        );
+
+        if (roleByBusinessRows.isNotEmpty) {
+          roleId = roleByBusinessRows.first['role_id']?.toString();
+        }
+      }
+
+      // Final fallback: owner is typically Super Admin for created business.
+      if (roleId == null && businessId != null) {
+        final superAdminRoleRows = List<Map<String, dynamic>>.from(
+          await client
+              .from('roles')
+              .select('id')
+              .eq('business_id', businessId)
+              .eq('name', 'Super Admin')
+              .limit(1),
+        );
+
+        if (superAdminRoleRows.isNotEmpty) {
+          roleId = superAdminRoleRows.first['id']?.toString();
+        }
+      }
+
+      final businessName = businessRow?['name']?.toString();
+
+      if (businessId == null && roleId == null && businessName == null) {
+        print(
+          'AuthRemoteDs.getUserBusinessContext: no readable context for userId=$userId email=$currentEmail. Possible RLS/policy issue.',
+        );
+        return null;
+      }
+
+      print(
+        'AuthRemoteDs.getUserBusinessContext resolved: businessId=$businessId roleId=$roleId businessName=$businessName',
+      );
+
+      return {
+        'business_id': businessId,
+        'role_id': roleId,
+        'business_name': businessName,
+        'full_name': fullName,
+      };
+    } catch (e) {
+      print('AuthRemoteDs.getUserBusinessContext failed: $e');
+      return null;
+    }
+  }
 }

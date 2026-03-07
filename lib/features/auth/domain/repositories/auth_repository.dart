@@ -15,4 +15,7 @@ abstract class AuthRepository {
     required String password,
   });
   Future<void> signOut();
+
+  /// Fetch user's business context (businessId, roleId, businessName)
+  Future<AppUser?> getUserBusinessContext(String userId);
 }

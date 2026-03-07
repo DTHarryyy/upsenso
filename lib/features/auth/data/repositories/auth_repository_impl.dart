@@ -27,6 +27,13 @@ class AuthRepositoryImpl implements AuthRepository {
     final res = await remote.signIn(email, password);
     final user = res.user;
     if (user == null) throw Exception('Sign-in failed (no user).');
+
+    // Ensure user has full_name metadata, set from email if missing
+    if (user.userMetadata?['full_name'] == null ||
+        user.userMetadata?['full_name'] == '') {
+      await remote.updateUserMetadata(email: email);
+    }
+
     return AppUserModel.fromSupabaseUser(user);
   }
 
@@ -80,6 +87,9 @@ class AuthRepositoryImpl implements AuthRepository {
 
       await remote.updatePassword(password);
 
+      // Set default full name from email in user metadata
+      await remote.updateUserMetadata(email: email);
+
       final freshUser = remote.currentUser();
       if (freshUser == null) {
         throw 'Verification succeeded, but user session was not found.';
@@ -93,4 +103,34 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<void> signOut() => remote.signOut();
+
+  @override
+  Future<AppUser?> getUserBusinessContext(String userId) async {
+    try {
+      final userData = await remote.getUserBusinessContext(userId);
+      if (userData == null) {
+        print(
+          'AuthRepositoryImpl.getUserBusinessContext: no context row returned for userId=$userId',
+        );
+        return null;
+      }
+
+      final currentUser = getCurrentUser();
+      if (currentUser == null) return null;
+
+      return AppUserModel(
+        id: currentUser.id,
+        email: currentUser.email,
+        fullName: (userData['full_name'] as String?)?.trim().isNotEmpty == true
+            ? userData['full_name'] as String?
+            : currentUser.fullName,
+        businessId: userData['business_id'] as String?,
+        roleId: userData['role_id'] as String?,
+        businessName: userData['business_name'] as String?,
+      );
+    } catch (e) {
+      print('AuthRepositoryImpl.getUserBusinessContext failed: $e');
+      return null;
+    }
+  }
 }

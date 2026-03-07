@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/errors/supabase_error_mapper.dart';
+import 'package:pos/features/auth/domain/entities/app_user.dart';
 
 import '../../domain/usecases/check_email_exists.dart';
 import '../../domain/usecases/get_current_user.dart';
+import '../../domain/usecases/get_user_business_context.dart';
 import '../../domain/usecases/observe_auth_state.dart';
 import '../../domain/usecases/send_sign_up_otp.dart';
 import '../../domain/usecases/sign_in.dart';
@@ -15,6 +17,7 @@ import 'auth_state.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final GetCurrentUser getCurrentUser;
+  final GetUserBusinessContext getUserBusinessContext;
   final ObserveAuthState observeAuthState;
   final SignIn signIn;
   final CheckEmailExists checkEmailExists;
@@ -31,8 +34,27 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     return SupabaseAuthErrorMapper.message(err);
   }
 
+  Future<AppUser?> _getUserContextWithRetry(String userId) async {
+    // Trigger-created rows can appear a moment after auth state changes.
+    for (var attempt = 0; attempt < 8; attempt++) {
+      final userWithContext = await getUserBusinessContext(userId);
+      if (userWithContext != null &&
+          (userWithContext.businessId != null ||
+              userWithContext.roleId != null)) {
+        return userWithContext;
+      }
+
+      if (attempt < 7) {
+        await Future<void>.delayed(const Duration(milliseconds: 350));
+      }
+    }
+
+    return await getUserBusinessContext(userId);
+  }
+
   AuthBloc({
     required this.getCurrentUser,
+    required this.getUserBusinessContext,
     required this.observeAuthState,
     required this.signIn,
     required this.checkEmailExists,
@@ -55,14 +77,30 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   Future<void> _onStarted(AuthStarted event, Emitter<AuthState> emit) async {
     final user = getCurrentUser();
-    emit(user == null ? AuthUnauthenticated() : AuthAuthenticated(user));
+    if (user != null) {
+      // Fetch updated user info with business context
+      final updatedUser = await _getUserContextWithRetry(user.id);
+      emit(
+        updatedUser != null
+            ? AuthAuthenticated(updatedUser)
+            : AuthAuthenticated(user),
+      );
+    } else {
+      emit(AuthUnauthenticated());
+    }
   }
 
   Future<void> _onLogin(AuthLoginRequested e, Emitter<AuthState> emit) async {
     emit(AuthLoading());
     try {
       final user = await signIn(e.email, e.password);
-      emit(AuthAuthenticated(user));
+      // Fetch user business context
+      final userWithContext = await _getUserContextWithRetry(user.id);
+      emit(
+        userWithContext != null
+            ? AuthAuthenticated(userWithContext)
+            : AuthAuthenticated(user),
+      );
     } catch (err) {
       emit(AuthError(_errorMessage(err)));
       emit(AuthUnauthenticated());
@@ -117,7 +155,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       _pendingSignUpEmail = null;
       _pendingSignUpPassword = null;
 
-      emit(AuthAuthenticated(user));
+      // Fetch user business context
+      final userWithContext = await _getUserContextWithRetry(user.id);
+      emit(
+        userWithContext != null
+            ? AuthAuthenticated(userWithContext)
+            : AuthAuthenticated(user),
+      );
     } catch (err) {
       emit(AuthError(_errorMessage(err)));
     }
@@ -138,15 +182,39 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onLogout(AuthLogoutRequested e, Emitter<AuthState> emit) async {
-    await signOut();
-    _pendingSignUpEmail = null;
-    _pendingSignUpPassword = null;
-    emit(AuthUnauthenticated());
+    try {
+      await signOut();
+      _pendingSignUpEmail = null;
+      _pendingSignUpPassword = null;
+      emit(AuthUnauthenticated());
+    } catch (err) {
+      emit(AuthError(_errorMessage(err)));
+      final user = getCurrentUser();
+      emit(user == null ? AuthUnauthenticated() : AuthAuthenticated(user));
+    }
   }
 
-  void _onUserChanged(AuthUserChanged event, Emitter<AuthState> emit) {
+  Future<void> _onUserChanged(
+    AuthUserChanged event,
+    Emitter<AuthState> emit,
+  ) async {
+    if (!event.isLoggedIn) {
+      emit(AuthUnauthenticated());
+      return;
+    }
+
     final user = getCurrentUser();
-    emit(user == null ? AuthUnauthenticated() : AuthAuthenticated(user));
+    if (user == null) {
+      emit(AuthUnauthenticated());
+      return;
+    }
+
+    final userWithContext = await _getUserContextWithRetry(user.id);
+    emit(
+      userWithContext != null
+          ? AuthAuthenticated(userWithContext)
+          : AuthAuthenticated(user),
+    );
   }
 
   @override

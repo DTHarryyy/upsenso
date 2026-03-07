@@ -21,6 +21,11 @@ Future<void> bootstrap() async {
 
   await initDI();
 
+  // Keep auth session across restarts for proper authenticated API calls.
+  // final prefs = await SharedPreferences.getInstance();
+  // await Supabase.instance.client.auth.signOut();
+  // await prefs.setBool('seen_onboarding', false);
+
   // TODO: DEBUG - Check Drift database on app restart
   await sl<AppDatabase>().debugPrintAllTables();
 

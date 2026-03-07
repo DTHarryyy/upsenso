@@ -15,6 +15,7 @@ class BusinessRemoteDs {
 
   /// Create a new business
   Future<Map<String, dynamic>> createBusiness({
+    required String id,
     required String name,
     required String ownerId,
     required String templateId,
@@ -22,6 +23,7 @@ class BusinessRemoteDs {
     final response = await client
         .from('businesses')
         .insert({
+          'id': id,
           'name': name,
           'owner_id': ownerId,
           'template_id': templateId,
@@ -31,6 +33,91 @@ class BusinessRemoteDs {
         .single();
 
     return Map<String, dynamic>.from(response);
+  }
+
+  /// Create user with super admin role for a business
+  Future<Map<String, dynamic>> createUserForBusiness({
+    required String businessId,
+    required String userId,
+    required String email,
+    required String? fullName,
+    required String superAdminRoleId,
+  }) async {
+    final defaultFullName = fullName ?? _extractNameFromEmail(email);
+
+    final userData = {
+      'id': userId,
+      'business_id': businessId,
+      'email': email,
+      'full_name': defaultFullName,
+      'role_id': superAdminRoleId,
+      'is_active': true,
+    };
+
+    print(' INSERTING USER INTO DATABASE:');
+    print('   Data: $userData');
+
+    final response = await client
+        .from('users')
+        .insert(userData)
+        .select()
+        .single();
+
+    print('✅ USER INSERT SUCCESSFUL');
+    return Map<String, dynamic>.from(response);
+  }
+
+  /// Extract and format name from email (part before @)
+  String _extractNameFromEmail(String email) {
+    final username = email.split('@')[0];
+    // Convert to title case (e.g., "john.doe" -> "John Doe")
+    return username
+        .split(RegExp(r'[._-]'))
+        .map(
+          (part) => part.isEmpty
+              ? ''
+              : part[0].toUpperCase() + part.substring(1).toLowerCase(),
+        )
+        .join(' ');
+  }
+
+  /// Get or create super admin role for a business
+  Future<String> getSuperAdminRoleId({
+    required String businessId,
+    required List<Map<String, dynamic>> templateRoles,
+  }) async {
+    // Try to find existing super admin role
+    final existing = await client
+        .from('roles')
+        .select('id')
+        .eq('business_id', businessId)
+        .eq('name', 'Super Admin')
+        .maybeSingle();
+
+    if (existing != null) {
+      return existing['id'];
+    }
+
+    // Create super admin role from template
+    final superAdminTemplate = templateRoles.firstWhere(
+      (role) => role['name'] == 'Super Admin',
+      orElse: () => {
+        'name': 'Super Admin',
+        'permissions': {'all': true},
+      },
+    );
+
+    final created = await client
+        .from('roles')
+        .insert({
+          'business_id': businessId,
+          'name': superAdminTemplate['name'],
+          'permissions': superAdminTemplate['permissions'] ?? {'all': true},
+        })
+        .select()
+        .single();
+
+    return created['id'];
   }
 
   /// Get business by owner ID
@@ -53,5 +140,29 @@ class BusinessRemoteDs {
         .maybeSingle();
 
     return response != null ? Map<String, dynamic>.from(response) : null;
+  }
+
+  /// Verify user was created by trigger
+  Future<List<Map<String, dynamic>>> getUserByBusinessId(
+    String businessId,
+  ) async {
+    final response = await client
+        .from('users')
+        .select()
+        .eq('business_id', businessId);
+
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  /// Verify roles were created by trigger
+  Future<List<Map<String, dynamic>>> getRolesByBusinessId(
+    String businessId,
+  ) async {
+    final response = await client
+        .from('roles')
+        .select()
+        .eq('business_id', businessId);
+
+    return List<Map<String, dynamic>>.from(response);
   }
 }

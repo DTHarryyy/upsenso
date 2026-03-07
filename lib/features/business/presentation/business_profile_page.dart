@@ -11,6 +11,8 @@ import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/core/ui/status/status_snack.dart';
 import 'package:pos/core/ui/status/status_type.dart';
 
+import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:pos/features/business/domain/entities/business_template.dart';
 import 'package:pos/features/business/presentation/bloc/business_bloc.dart';
 import 'package:pos/features/business/presentation/bloc/business_event.dart';
@@ -76,13 +78,22 @@ class _BusinessProfilePageState extends State<BusinessProfilePage> {
       listenWhen: (prev, curr) => curr is! BusinessLoading,
       listener: (context, state) {
         if (state is BusinessCreated) {
+          // Refresh user data to fetch business_id, role_id, business_name
+          // (created by database trigger)
+          context.read<AuthBloc>().add(AuthStarted());
+
           StatusSnack.show(
             context,
             type: StatusType.success,
             title: 'Success',
             message: 'Business profile created successfully!',
           );
-          context.go(AppRoutes.home);
+
+          // Give auth context refresh a brief moment before opening home.
+          Future<void>.delayed(const Duration(milliseconds: 350), () {
+            if (!context.mounted) return;
+            context.go(AppRoutes.home);
+          });
           return;
         }
 
@@ -271,19 +282,6 @@ class _BusinessProfilePageState extends State<BusinessProfilePage> {
                                   ),
                                 )
                               : const Text('Create Business'),
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // Skip for now link
-                      Center(
-                        child: TextButton(
-                          onPressed: () => context.go(AppRoutes.home),
-                          child: Text(
-                            'Skip for now',
-                            style: TextStyle(color: AppColors.textMuted),
-                          ),
                         ),
                       ),
                     ],
