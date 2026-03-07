@@ -146,9 +146,7 @@ class _SignInState extends State<SignIn> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           GestureDetector(
-                            onTap: () {
-                              //TODO: Handle forgot password logic
-                            },
+                            onTap: () {},
                             child: Text(
                               AppStrings.forgotPassword,
                               style: TextStyle(color: AppColors.brand),

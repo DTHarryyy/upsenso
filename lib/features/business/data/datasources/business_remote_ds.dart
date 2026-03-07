@@ -78,7 +78,7 @@ class BusinessRemoteDs {
   }
 
   /// Get or create super admin role for a business
-t   Future<String> getSuperAdminRoleId({
+  Future<String> getSuperAdminRoleId({
     required String businessId,
     required List<Map<String, dynamic>> templateRoles,
   }) async {

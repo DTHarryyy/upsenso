@@ -57,7 +57,6 @@ class _OnboardingState extends State<Onboarding> {
 
     if (!mounted) return;
 
-    // TODO: Replace with your real next screen (Login/Dashboard)
     context.go(AppRoutes.signUp);
   }
 

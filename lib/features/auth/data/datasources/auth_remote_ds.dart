@@ -19,7 +19,7 @@ class AuthRemoteDs {
   Future<void> sendSignUpOtp(String email) async {
     await client.auth.signInWithOtp(email: email, shouldCreateUser: true);
   }
-t nd fi
+
   Future<bool> checkEmailExists(String email) async {
     try {
       // Try to send OTP without creating user
@@ -128,7 +128,7 @@ t nd fi
       };
 
       return result;
-    } catch (e) {
+    } catch (_) {
       return null;
     }
   }
@@ -154,7 +154,6 @@ t nd fi
         userRow = userByIdRows.first;
       }
 
-      // Fallback for schemas where users.id is not equal to auth.users.id.
       if (userRow == null && (currentEmail ?? '').isNotEmpty) {
         final userByEmailRows = List<Map<String, dynamic>>.from(
           await client
@@ -188,7 +187,6 @@ t nd fi
         }
       }
 
-      // Fallback: derive business directly from owner.
       if (businessRow == null && current != null) {
         final businessByOwnerRows = List<Map<String, dynamic>>.from(
           await client
@@ -251,7 +249,7 @@ t nd fi
         'business_name': businessName,
         'full_name': fullName,
       };
-    } catch (e) {
+    } catch (_) {
       return null;
     }
   }

@@ -82,6 +82,14 @@ class _CustomAppBarState extends State<CustomAppBar> {
   }
 
   @override
+  void didUpdateWidget(CustomAppBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedBranch != widget.selectedBranch) {
+      _selectedBranch = widget.selectedBranch;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: Container(

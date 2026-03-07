@@ -1,4 +1,5 @@
 import 'package:get_it/get_it.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:pos/core/database/app_database.dart';
@@ -33,6 +34,10 @@ Future<void> initDI() async {
   // ─────────────────────────────────────────────
   sl.registerLazySingleton<SupabaseClient>(() => Supabase.instance.client);
 
+  // SharedPreferences for local caching
+  final prefs = await SharedPreferences.getInstance();
+  sl.registerLazySingleton<SharedPreferences>(() => prefs);
+
   // Database (Drift - local storage)
   sl.registerLazySingleton<AppDatabase>(() => AppDatabase());
 
@@ -57,7 +62,7 @@ Future<void> initDI() async {
 
   // Repos
   sl.registerLazySingleton<AuthRepository>(
-    () => AuthRepositoryImpl(sl<AuthRemoteDs>()),
+    () => AuthRepositoryImpl(sl<AuthRemoteDs>(), sl<SharedPreferences>()),
   );
 
   // Usecases

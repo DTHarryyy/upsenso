@@ -192,21 +192,6 @@ class BusinessRepositoryImpl implements BusinessRepository {
     return null;
   }
 
-  Future<void> _refreshBusinessFromServer(String ownerId) async {
-    try {
-      final online = await connectivity.isConnected;
-      if (!online) return;
-
-      final data = await remote.getBusinessByOwner(ownerId);
-      if (data != null) {
-        final business = BusinessModel.fromJson(data);
-        await businessesDao.upsertFromServer(business);
-      }
-    } catch (_) {
-      // Silent fail for background refresh
-    }
-  }
-
   @override
   Future<Business?> getBusinessById(String businessId) async {
     // 1. Check local cache first

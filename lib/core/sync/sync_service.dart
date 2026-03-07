@@ -123,6 +123,7 @@ class SyncService {
   Future<void> _handlePendingUpload(BusinessesTableData record) async {
     // Upload to Supabase
     await _businessRemoteDs.createBusiness(
+      id: record.id,
       name: record.name,
       ownerId: record.ownerId,
       templateId: record.templateId,

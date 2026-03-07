@@ -12,9 +12,7 @@ class AuthOptions extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: () {
-              // TODO: implement facebook login
-            },
+            onPressed: () {},
             label: Text(
               'Continue with Facebook',
               style: TextStyle(
@@ -28,9 +26,7 @@ class AuthOptions extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: () {
-              // TODO: implement google login
-            },
+            onPressed: () {},
             label: Text(
               'Continue with Google',
               style: TextStyle(

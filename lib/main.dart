@@ -1,14 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:pos/bootstrap.dart';
 import 'package:pos/core/const/app_colors.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // TODO:remove For testing purposes, we can reset the onboarding status by uncommenting the line below.
-  // final sp = await SharedPreferences.getInstance();
-  // sp.setBool('seen_onboarding', false);
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(

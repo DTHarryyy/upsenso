@@ -13,7 +13,7 @@ class Inventory extends StatefulWidget {
   @override
   State<Inventory> createState() => _InventoryState();
 }
-and files
+
 class _InventoryState extends State<Inventory> {
   @override
   void initState() {
@@ -77,6 +77,62 @@ class _InventoryState extends State<Inventory> {
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
+
+                // TEMP: Debug offline data display
+                Card(
+                  color: Colors.blue.shade50,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              color: Colors.blue.shade700,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Offline Test - Cached Auth Context',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        const Divider(),
+                        const SizedBox(height: 8),
+                        _buildDebugRow('User Name:', userName),
+                        _buildDebugRow('User Email:', userEmail),
+                        _buildDebugRow('Role ID:', userRole),
+                        _buildDebugRow('Business Name:', businessName),
+                        if (state is AuthAuthenticated) ...[
+                          _buildDebugRow(
+                            'Business ID:',
+                            state.user.businessId ?? 'NULL',
+                          ),
+                        ],
+                        const SizedBox(height: 8),
+                        const Divider(),
+                        const SizedBox(height: 8),
+                        Text(
+                          'TEST: Turn off internet and restart app. This data should persist.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontStyle: FontStyle.italic,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
                 const Center(
                   child: Text('Inventory items will be displayed here'),
                 ),
@@ -85,6 +141,25 @@ class _InventoryState extends State<Inventory> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildDebugRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            ),
+          ),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 14))),
+        ],
+      ),
     );
   }
 }
