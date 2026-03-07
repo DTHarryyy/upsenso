@@ -211,88 +211,11 @@ class _CustomAppBarState extends State<CustomAppBar> {
                     const SizedBox(width: 16),
 
                     // User Profile
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: widget.onProfileTapped,
-                        borderRadius: BorderRadius.circular(8),
-                        splashColor: AppColors.brand.withAlpha(30),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 6,
-                          ),
-                          child: Row(
-                            children: [
-                              // Avatar
-                              Container(
-                                width: 36,
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  color: AppColors.brandSoft,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: AppColors.brand,
-                                    width: 1.5,
-                                  ),
-                                ),
-                                child:
-                                    widget.userAvatar != null &&
-                                        widget.userAvatar!.startsWith('http')
-                                    ? ClipRRect(
-                                        borderRadius: BorderRadius.circular(18),
-                                        child: Image.network(
-                                          widget.userAvatar!,
-                                          fit: BoxFit.cover,
-                                        ),
-                                      )
-                                    : Center(
-                                        child: Text(
-                                          _getInitials(widget.userName),
-                                          style: GoogleFonts.outfit(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.brand,
-                                          ),
-                                        ),
-                                      ),
-                              ),
-                              const SizedBox(width: 12),
-
-                              // User Info
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    widget.userName,
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                  Text(
-                                    widget.userRole,
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 11,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-
-                              // Dropdown Arrow
-                              const SizedBox(width: 4),
-                              Icon(
-                                Icons.expand_more,
-                                size: 18,
-                                color: AppColors.textSecondary,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                    _UserProfileSection(
+                      userName: widget.userName,
+                      userRole: widget.userRole,
+                      userAvatar: widget.userAvatar,
+                      onProfileTapped: widget.onProfileTapped,
                     ),
                   ],
                 ),
@@ -302,15 +225,6 @@ class _CustomAppBarState extends State<CustomAppBar> {
         ),
       ),
     );
-  }
-
-  /// Generate initials from user name
-  String _getInitials(String name) {
-    final parts = name.trim().split(' ');
-    if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    }
-    return parts.first.substring(0, 2).toUpperCase();
   }
 }
 
@@ -384,5 +298,111 @@ class _StatusIndicator extends StatelessWidget {
           ),
       ],
     );
+  }
+}
+
+/// User profile section - responsive (avatar only on mobile, full on tablet+)
+class _UserProfileSection extends StatelessWidget {
+  final String userName;
+  final String userRole;
+  final String? userAvatar;
+  final VoidCallback? onProfileTapped;
+
+  const _UserProfileSection({
+    required this.userName,
+    required this.userRole,
+    this.userAvatar,
+    this.onProfileTapped,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isMobile = !Breakpoints.isTablet(context);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onProfileTapped,
+        borderRadius: BorderRadius.circular(8),
+        splashColor: AppColors.brand.withAlpha(30),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: isMobile ? 4 : 8,
+            vertical: 6,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Avatar - Always visible
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.brandSoft,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.brand, width: 1.5),
+                ),
+                child: userAvatar != null && userAvatar!.startsWith('http')
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(18),
+                        child: Image.network(userAvatar!, fit: BoxFit.cover),
+                      )
+                    : Center(
+                        child: Text(
+                          _getInitials(userName),
+                          style: GoogleFonts.outfit(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.brand,
+                          ),
+                        ),
+                      ),
+              ),
+
+              // User Info & Arrow - Hidden on mobile
+              if (!isMobile) ...[
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      userName,
+                      style: GoogleFonts.outfit(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      userRole,
+                      style: GoogleFonts.outfit(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.expand_more,
+                  size: 18,
+                  color: AppColors.textSecondary,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Generate initials from user name
+  String _getInitials(String name) {
+    final parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return parts.first.substring(0, 2).toUpperCase();
   }
 }

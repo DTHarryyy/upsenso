@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pos/features/auth/presentation/sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pos/features/onboarding/onboarding.dart';
 
@@ -28,18 +29,8 @@ class AppGate extends StatelessWidget {
         }
 
         final seen = snap.data ?? false;
-        return seen ? const LoginScreen() : const Onboarding();
+        return seen ? const SignIn() : const Onboarding();
       },
     );
-  }
-}
-
-/// Replace this with your real screen
-class LoginScreen extends StatelessWidget {
-  const LoginScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: Text('Login / Dashboard here')));
   }
 }
