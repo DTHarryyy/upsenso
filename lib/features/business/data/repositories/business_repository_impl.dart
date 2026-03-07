@@ -142,42 +142,6 @@ class BusinessRepositoryImpl implements BusinessRepository {
         // Keep local cache aligned with server payload.
         await businessesDao.upsertFromServer(serverBusiness);
 
-        // Note: User and role creation now handled by database trigger
-        // The trigger automatically creates:
-        //   1. Super Admin role for the business
-        //   2. User record with role assignment
-        //   3. Full name extracted from email
-
-        print('✅ BUSINESS CREATED: ${serverBusiness.id}');
-        print('   (User auto-created by database trigger)');
-
-        // Verify trigger created user and role
-        try {
-          final userData = await remote.getUserByBusinessId(serverBusiness.id);
-          final rolesData = await remote.getRolesByBusinessId(
-            serverBusiness.id,
-          );
-
-          print('🔍 VERIFICATION:');
-          print('   Users created: ${userData.length}');
-          print('   Roles created: ${rolesData.length}');
-
-          if (userData.isEmpty) {
-            print('⚠️ WARNING: Database trigger did NOT create user!');
-            print('   Check if trigger exists and has correct permissions');
-          } else {
-            print('   User data: $userData');
-          }
-
-          if (rolesData.isEmpty) {
-            print('⚠️ WARNING: Database trigger did NOT create roles!');
-          } else {
-            print('   Roles data: $rolesData');
-          }
-        } catch (e) {
-          print('❌ ERROR VERIFYING TRIGGER RESULTS: $e');
-        }
-
         // Mark as synced
         await businessesDao.updateSyncStatus(
           id: serverBusiness.id,

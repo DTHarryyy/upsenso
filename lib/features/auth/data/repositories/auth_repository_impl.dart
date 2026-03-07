@@ -109,9 +109,6 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final userData = await remote.getUserBusinessContext(userId);
       if (userData == null) {
-        print(
-          'AuthRepositoryImpl.getUserBusinessContext: no context row returned for userId=$userId',
-        );
         return null;
       }
 
@@ -121,15 +118,14 @@ class AuthRepositoryImpl implements AuthRepository {
       return AppUserModel(
         id: currentUser.id,
         email: currentUser.email,
-        fullName: (userData['full_name'] as String?)?.trim().isNotEmpty == true
+        fullNlesta['full_name'] as String?)?.trim().isNotEmpty == true
             ? userData['full_name'] as String?
             : currentUser.fullName,
         businessId: userData['business_id'] as String?,
         roleId: userData['role_id'] as String?,
         businessName: userData['business_name'] as String?,
       );
-    } catch (e) {
-      print('AuthRepositoryImpl.getUserBusinessContext failed: $e');
+    } catch (_) {
       return null;
     }
   }

@@ -19,7 +19,7 @@ class AuthRemoteDs {
   Future<void> sendSignUpOtp(String email) async {
     await client.auth.signInWithOtp(email: email, shouldCreateUser: true);
   }
-
+t nd fi
   Future<bool> checkEmailExists(String email) async {
     try {
       // Try to send OTP without creating user
@@ -113,7 +113,6 @@ class AuthRemoteDs {
       }
 
       if (rows.isEmpty) {
-        print('AuthRemoteDs RPC get_my_business_context returned no rows.');
         return null;
       }
 
@@ -128,13 +127,8 @@ class AuthRemoteDs {
         'full_name': fullName,
       };
 
-      print(
-        'AuthRemoteDs RPC resolved: businessId=${result['business_id']} roleId=${result['role_id']} businessName=${result['business_name']}',
-      );
-
       return result;
     } catch (e) {
-      print('AuthRemoteDs RPC get_my_business_context failed: $e');
       return null;
     }
   }
@@ -142,7 +136,6 @@ class AuthRemoteDs {
   /// Fetch user's business context: businessId, roleId, businessName
   Future<Map<String, dynamic>?> getUserBusinessContext(String userId) async {
     try {
-      // Prefer RPC to avoid direct table permission/RLS deadlocks.
       final viaRpc = await _getUserBusinessContextViaRpc();
       if (viaRpc != null) {
         return viaRpc;
@@ -154,21 +147,15 @@ class AuthRemoteDs {
       Map<String, dynamic>? userRow;
       Map<String, dynamic>? businessRow;
 
-      print('AuthRemoteDs: Querying users table with id=$userId');
       final userByIdRows = List<Map<String, dynamic>>.from(
         await client.from('users').select().eq('id', userId).limit(1),
       );
-      print('AuthRemoteDs: userByIdRows returned ${userByIdRows.length} rows');
       if (userByIdRows.isNotEmpty) {
         userRow = userByIdRows.first;
-        print('AuthRemoteDs: Found user row: ${userRow}');
-      } else {
-        print('AuthRemoteDs: No user found by id, RLS may be blocking');
       }
 
       // Fallback for schemas where users.id is not equal to auth.users.id.
       if (userRow == null && (currentEmail ?? '').isNotEmpty) {
-        print('AuthRemoteDs: Trying email fallback with email=$currentEmail');
         final userByEmailRows = List<Map<String, dynamic>>.from(
           await client
               .from('users')
@@ -176,14 +163,8 @@ class AuthRemoteDs {
               .eq('email', currentEmail!)
               .limit(1),
         );
-        print(
-          'AuthRemoteDs: userByEmailRows returned ${userByEmailRows.length} rows',
-        );
         if (userByEmailRows.isNotEmpty) {
           userRow = userByEmailRows.first;
-          print('AuthRemoteDs: Found user by email: ${userRow}');
-        } else {
-          print('AuthRemoteDs: No user found by email either');
         }
       }
 
@@ -209,7 +190,6 @@ class AuthRemoteDs {
 
       // Fallback: derive business directly from owner.
       if (businessRow == null && current != null) {
-        print('AuthRemoteDs: Looking up business by owner_id=${current.id}');
         final businessByOwnerRows = List<Map<String, dynamic>>.from(
           await client
               .from('businesses')
@@ -219,16 +199,9 @@ class AuthRemoteDs {
               .limit(1),
         );
 
-        print(
-          'AuthRemoteDs: businessByOwnerRows returned ${businessByOwnerRows.length} rows',
-        );
-
         if (businessByOwnerRows.isNotEmpty) {
           businessRow = businessByOwnerRows.first;
           businessId ??= businessRow['id']?.toString();
-          print('AuthRemoteDs: Found business by owner: ${businessRow}');
-        } else {
-          print('AuthRemoteDs: No business found for current owner');
         }
       }
 
@@ -269,15 +242,8 @@ class AuthRemoteDs {
       final businessName = businessRow?['name']?.toString();
 
       if (businessId == null && roleId == null && businessName == null) {
-        print(
-          'AuthRemoteDs.getUserBusinessContext: no readable context for userId=$userId email=$currentEmail. Possible RLS/policy issue.',
-        );
         return null;
       }
-
-      print(
-        'AuthRemoteDs.getUserBusinessContext resolved: businessId=$businessId roleId=$roleId businessName=$businessName',
-      );
 
       return {
         'business_id': businessId,
@@ -286,7 +252,6 @@ class AuthRemoteDs {
         'full_name': fullName,
       };
     } catch (e) {
-      print('AuthRemoteDs.getUserBusinessContext failed: $e');
       return null;
     }
   }

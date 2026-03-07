@@ -54,16 +54,12 @@ class BusinessRemoteDs {
       'is_active': true,
     };
 
-    print(' INSERTING USER INTO DATABASE:');
-    print('   Data: $userData');
-
     final response = await client
         .from('users')
         .insert(userData)
         .select()
         .single();
 
-    print('✅ USER INSERT SUCCESSFUL');
     return Map<String, dynamic>.from(response);
   }
 
@@ -82,7 +78,7 @@ class BusinessRemoteDs {
   }
 
   /// Get or create super admin role for a business
-  Future<String> getSuperAdminRoleId({
+t   Future<String> getSuperAdminRoleId({
     required String businessId,
     required List<Map<String, dynamic>> templateRoles,
   }) async {

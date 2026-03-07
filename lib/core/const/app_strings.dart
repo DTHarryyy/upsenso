@@ -10,18 +10,18 @@ class AppStrings {
       "Continue managing operations and tracking performance in real time.";
 
   static const String welcomeMessage =
-      "Welcome to Ledgify 👋 Let’s keep your business running smart.";
+      "Welcome to Ledgify. Let’s keep your business running smart.";
 
   static const String loginPrompt =
       "Sign in to access your dashboard and start managing.";
 
   static const String logoutMessage =
-      "You’ve been logged out. See you again soon! 👋";
+      "You’ve been logged out. See you again soon.";
 
   static const String errorMessage =
       "Something went wrong on our side. Please try again.";
 
-  static const String loadingMessage = "Getting things ready… just a moment ⏳";
+  static const String loadingMessage = "Getting things ready... just a moment.";
 
   static const String submitButton = "Continue";
   static const String cancelButton = "Cancel";
@@ -40,7 +40,7 @@ class AppStrings {
       "You’re offline. Don’t worry — Ledgify will sync when you’re back online.";
 
   static const String successMessage =
-      "All set! Your changes were saved successfully ✅";
+      "All set! Your changes were saved successfully.";
 
   static const String retryButton = "Try Again";
 

@@ -43,13 +43,9 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // TODO: DEBUG - Remove this section before production
-  // ═══════════════════════════════════════════════════════════════════════════
+  // Debug helpers for inspecting local Drift data during development.
 
-  /// TODO: DEBUG - Prints all tables and their contents to console
-  /// Call this method to inspect the database state during development
-  /// Remove before production release
+  /// Prints all tables and their contents to the console in debug mode.
   Future<void> debugPrintAllTables() async {
     if (!kDebugMode) return; // Only run in debug mode
 
@@ -65,13 +61,10 @@ class AppDatabase extends _$AppDatabase {
     );
     debugPrint('');
 
-    // TODO: DEBUG - Print business_templates table
     await _debugPrintBusinessTemplates();
 
-    // TODO: DEBUG - Print businesses table
     await _debugPrintBusinesses();
 
-    // TODO: DEBUG - Print branches table
     await _debugPrintBranches();
 
     debugPrint(
@@ -80,7 +73,7 @@ class AppDatabase extends _$AppDatabase {
     debugPrint('');
   }
 
-  /// TODO: DEBUG - Print business_templates table contents
+  /// Prints business_templates table contents.
   Future<void> _debugPrintBusinessTemplates() async {
     debugPrint(
       '┌──────────────────────────────────────────────────────────────┐',
@@ -133,7 +126,7 @@ class AppDatabase extends _$AppDatabase {
     debugPrint('');
   }
 
-  /// TODO: DEBUG - Print businesses table contents
+  /// Prints businesses table contents.
   Future<void> _debugPrintBusinesses() async {
     debugPrint(
       '┌──────────────────────────────────────────────────────────────┐',
@@ -188,13 +181,13 @@ class AppDatabase extends _$AppDatabase {
     debugPrint('');
   }
 
-  /// TODO: DEBUG - Helper to truncate long strings
+  /// Truncates long strings for compact debug output.
   String _truncate(String text, int maxLength) {
     if (text.length <= maxLength) return text;
     return '${text.substring(0, maxLength - 3)}...';
   }
 
-  /// TODO: DEBUG - Get human-readable sync status
+  /// Returns a human-readable sync status label.
   String _getSyncStatusLabel(int status) {
     switch (status) {
       case 0:
@@ -212,7 +205,7 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
-  /// TODO: DEBUG - Print table counts summary
+  /// Prints table counts summary.
   Future<void> debugPrintTableCounts() async {
     if (!kDebugMode) return;
 
@@ -221,25 +214,25 @@ class AppDatabase extends _$AppDatabase {
     final branchesCount = await (select(branchesTable)).get();
 
     debugPrint('');
-    debugPrint('📊 Drift Table Counts:');
-    debugPrint('   • business_templates: ${templatesCount.length}');
-    debugPrint('   • businesses: ${businessesCount.length}');
-    debugPrint('   • branches: ${branchesCount.length}');
+    debugPrint('Drift table counts:');
+    debugPrint(' - business_templates: ${templatesCount.length}');
+    debugPrint(' - businesses: ${businessesCount.length}');
+    debugPrint(' - branches: ${branchesCount.length}');
     debugPrint('');
   }
 
-  /// TODO: DEBUG - Clear all tables (use with caution!)
+  /// Clears all local tables in debug mode.
   Future<void> debugClearAllTables() async {
     if (!kDebugMode) return;
 
-    debugPrint('⚠️ DEBUG: Clearing all Drift tables...');
+    debugPrint('Clearing all Drift tables...');
     await delete(branchesTable).go();
     await delete(businessesTable).go();
     await delete(businessTemplatesTable).go();
-    debugPrint('✅ DEBUG: All tables cleared');
+    debugPrint('All Drift tables cleared.');
   }
 
-  /// TODO: DEBUG - Print branches table contents
+  /// Prints branches table contents.
   Future<void> _debugPrintBranches() async {
     debugPrint(
       '┌──────────────────────────────────────────────────────────────┐',
@@ -287,10 +280,6 @@ class AppDatabase extends _$AppDatabase {
     );
     debugPrint('');
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // TODO: DEBUG - End of debug section
-  // ═══════════════════════════════════════════════════════════════════════════
 }
 
 LazyDatabase _openConnection() {

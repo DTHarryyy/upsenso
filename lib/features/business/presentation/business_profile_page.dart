@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/validators.dart';
-import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/core/ui/status/status_snack.dart';
 import 'package:pos/core/ui/status/status_type.dart';
@@ -37,9 +35,6 @@ class _BusinessProfilePageState extends State<BusinessProfilePage> {
     _nameController = TextEditingController();
     _branchNameController = TextEditingController();
     context.read<BusinessBloc>().add(LoadBusinessTemplates());
-
-    // TODO: DEBUG - Print Drift tables on page load
-    sl<AppDatabase>().debugPrintAllTables();
   }
 
   @override

@@ -13,7 +13,7 @@ class Inventory extends StatefulWidget {
   @override
   State<Inventory> createState() => _InventoryState();
 }
-
+and files
 class _InventoryState extends State<Inventory> {
   @override
   void initState() {
@@ -72,8 +72,6 @@ class _InventoryState extends State<Inventory> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildTemporaryDebugPanel(state),
-                const SizedBox(height: 16),
                 const Text(
                   'Inventory',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
@@ -87,74 +85,6 @@ class _InventoryState extends State<Inventory> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildTemporaryDebugPanel(AuthState state) {
-    return Card(
-      color: const Color(0xFFF8FAFC),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Temporary Debug: Auth/User Data',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 8),
-            _buildDebugRow('Auth State', state.runtimeType.toString()),
-            if (state is AuthAuthenticated) ...[
-              const Divider(height: 20),
-              _buildDebugRow('user.id', state.user.id),
-              _buildDebugRow('user.email', state.user.email ?? 'NULL'),
-              _buildDebugRow('user.fullName', state.user.fullName ?? 'NULL'),
-              _buildDebugRow(
-                'user.businessId',
-                state.user.businessId ?? 'NULL',
-              ),
-              _buildDebugRow(
-                'user.businessName',
-                state.user.businessName ?? 'NULL',
-              ),
-              _buildDebugRow('user.roleId', state.user.roleId ?? 'NULL'),
-            ],
-            if (state is AuthError) ...[
-              const Divider(height: 20),
-              _buildDebugRow('error.message', state.message),
-            ],
-            if (state is AuthCodeSent) ...[
-              const Divider(height: 20),
-              _buildDebugRow('codeSent.email', state.email),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDebugRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 130,
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-          ),
-          const Text(': '),
-          Expanded(
-            child: Text(value, style: const TextStyle(color: Colors.black54)),
-          ),
-        ],
-      ),
     );
   }
 }
