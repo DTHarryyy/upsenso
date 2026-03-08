@@ -1,8 +1,10 @@
 import 'package:get_it/get_it.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:pos/core/database/app_database.dart';
+import 'package:pos/core/database/daos/auth_context_dao.dart';
 import 'package:pos/core/database/daos/business_templates_dao.dart';
 import 'package:pos/core/database/daos/businesses_dao.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
@@ -17,6 +19,8 @@ import 'package:pos/features/auth/domain/usecases/get_user_business_context.dart
 import 'package:pos/features/auth/domain/usecases/observe_auth_state.dart';
 import 'package:pos/features/auth/domain/usecases/send_sign_up_otp.dart';
 import 'package:pos/features/auth/domain/usecases/sign_in.dart';
+import 'package:pos/features/auth/domain/usecases/sign_in_with_facebook.dart';
+import 'package:pos/features/auth/domain/usecases/sign_in_with_google.dart';
 import 'package:pos/features/auth/domain/usecases/sign_out.dart';
 import 'package:pos/features/auth/domain/usecases/sign_up.dart';
 import 'package:pos/features/auth/domain/usecases/verify_sign_up_otp.dart';
@@ -38,10 +42,17 @@ Future<void> initDI() async {
   final prefs = await SharedPreferences.getInstance();
   sl.registerLazySingleton<SharedPreferences>(() => prefs);
 
+  // OAuth redirect URL used by Google/Facebook sign-in callbacks.
+  final oauthRedirectUrl =
+      dotenv.env['SUPABASE_OAUTH_REDIRECT_URL'] ?? 'posauth://login-callback/';
+
   // Database (Drift - local storage)
   sl.registerLazySingleton<AppDatabase>(() => AppDatabase());
 
   // DAOs
+  sl.registerLazySingleton<AuthContextDao>(
+    () => AuthContextDao(sl<AppDatabase>()),
+  );
   sl.registerLazySingleton<BusinessTemplatesDao>(
     () => BusinessTemplatesDao(sl<AppDatabase>()),
   );
@@ -62,7 +73,11 @@ Future<void> initDI() async {
 
   // Repos
   sl.registerLazySingleton<AuthRepository>(
-    () => AuthRepositoryImpl(sl<AuthRemoteDs>(), sl<SharedPreferences>()),
+    () => AuthRepositoryImpl(
+      sl<AuthRemoteDs>(),
+      sl<AuthContextDao>(),
+      oauthRedirectUrl,
+    ),
   );
 
   // Usecases
@@ -70,6 +85,8 @@ Future<void> initDI() async {
   sl.registerLazySingleton(() => GetUserBusinessContext(sl<AuthRepository>()));
   sl.registerLazySingleton(() => ObserveAuthState(sl<AuthRepository>()));
   sl.registerLazySingleton(() => SignIn(sl<AuthRepository>()));
+  sl.registerLazySingleton(() => SignInWithGoogle(sl<AuthRepository>()));
+  sl.registerLazySingleton(() => SignInWithFacebook(sl<AuthRepository>()));
   sl.registerLazySingleton(() => SignUp(sl<AuthRepository>()));
   sl.registerLazySingleton(() => CheckEmailExists(sl<AuthRepository>()));
   sl.registerLazySingleton(() => SendSignUpOtp(sl<AuthRepository>()));
@@ -83,6 +100,8 @@ Future<void> initDI() async {
       getUserBusinessContext: sl(),
       observeAuthState: sl(),
       signIn: sl(),
+      signInWithGoogle: sl(),
+      signInWithFacebook: sl(),
       checkEmailExists: sl(),
       sendSignUpOtp: sl(),
       verifySignUpOtp: sl(),

@@ -171,7 +171,10 @@ class _VerificationPageState extends State<VerificationPage> {
         }
       },
       builder: (context, state) {
-        final isLoading = state is AuthLoading;
+        final isLoading =
+            state is AuthLoading &&
+            (state.type == AuthLoadingType.verifyCode ||
+                state.type == AuthLoadingType.signUp);
 
         return Scaffold(
           appBar: AppBar(

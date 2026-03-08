@@ -7,7 +7,6 @@ import 'package:pos/features/auth/domain/repositories/auth_repository.dart';
 import 'package:pos/features/auth/presentation/sign_in.dart';
 import 'package:pos/features/auth/presentation/sign_up.dart';
 import 'package:pos/features/auth/presentation/verification_page.dart';
-import 'package:pos/features/business/domain/repositories/business_repository.dart';
 import 'package:pos/features/business/presentation/bloc/business_bloc.dart';
 import 'package:pos/features/business/presentation/business_profile_page.dart';
 import 'package:pos/features/inventory/inventory.dart';
@@ -39,7 +38,6 @@ class AppRouter {
       }
 
       final authRepository = sl<AuthRepository>();
-      final businessRepository = sl<BusinessRepository>();
       final currentUser = authRepository.getCurrentUser();
 
       // Require auth for all non-auth routes after onboarding has been seen.
@@ -53,12 +51,18 @@ class AppRouter {
         return null;
       }
 
-      // Force business setup until at least one business exists for this owner.
+      // Force business setup until user has business context loaded
       var hasBusiness = false;
+
       try {
+        // Always fetch full business context (includes businessId, roleId from database)
+        final userWithContext = await authRepository.getUserBusinessContext(
+          currentUser.id,
+        );
         hasBusiness =
-            await businessRepository.getBusinessByOwner(currentUser.id) != null;
-      } catch (_) {
+            userWithContext != null && userWithContext.businessId != null;
+      } catch (e) {
+        // If any error occurs, assume no business (will redirect to setup)
         hasBusiness = false;
       }
 

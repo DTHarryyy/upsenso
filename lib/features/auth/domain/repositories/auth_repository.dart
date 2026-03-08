@@ -5,6 +5,8 @@ abstract class AuthRepository {
   Stream<AppUser?> authStateChanges();
 
   Future<AppUser> signIn(String email, String password);
+  Future<void> signInWithGoogle();
+  Future<void> signInWithFacebook();
 
   Future<AppUser> signUp(String email, String password);
   Future<bool> checkEmailExists(String email);

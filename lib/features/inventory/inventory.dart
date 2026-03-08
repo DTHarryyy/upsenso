@@ -44,24 +44,49 @@ class _InventoryState extends State<Inventory> {
       },
       builder: (context, state) {
         String userName = 'User';
-        String userRole = 'User';
+        String userRole = 'Role not set';
+        String userRoleId = 'Pending sync';
+        String userRoleName = 'Pending sync';
         String businessName = 'Business';
+        String branchName = 'Branch';
         String userEmail = 'N/A';
+        String? userId;
 
         if (state is AuthAuthenticated) {
+          userId = state.user.id;
           userName = state.user.fullName ?? state.user.email ?? 'User';
-          userRole = state.user.roleId ?? 'User';
+
+          final roleName = state.user.roleName?.trim();
+          final roleId = state.user.roleId?.trim();
+
+          userRoleName = (roleName != null && roleName.isNotEmpty)
+              ? roleName
+              : 'Pending sync';
+          userRoleId = (roleId != null && roleId.isNotEmpty)
+              ? roleId
+              : 'Pending sync';
+
+          // Display role name first; fallback to role id if name is unavailable.
+          userRole = (roleName != null && roleName.isNotEmpty)
+              ? roleName
+              : (roleId != null && roleId.isNotEmpty)
+              ? roleId
+              : 'Syncing role...';
+
           businessName = state.user.businessName ?? 'Business';
+          branchName =
+              state.user.branchName ?? state.user.businessName ?? 'Branch';
           userEmail = state.user.email ?? 'N/A';
         }
 
         return Scaffold(
           appBar: CustomAppBar(
-            branches: [businessName],
-            selectedBranch: businessName,
+            branches: [branchName],
+            selectedBranch: branchName,
             userName: userName,
             userRole: userRole,
             userEmail: userEmail,
+            userId: userId,
             businessName: businessName,
             onLogoutTapped: () {
               context.read<AuthBloc>().add(AuthLogoutRequested());
@@ -78,7 +103,7 @@ class _InventoryState extends State<Inventory> {
                 ),
                 const SizedBox(height: 16),
 
-                // TEMP: Debug offline data display
+                // TODO: Debug offline data display tanggalin ko after ngani
                 Card(
                   color: Colors.blue.shade50,
                   child: Padding(
@@ -106,10 +131,13 @@ class _InventoryState extends State<Inventory> {
                         const SizedBox(height: 12),
                         const Divider(),
                         const SizedBox(height: 8),
+                        _buildDebugRow('User ID:', userId ?? 'N/A'),
                         _buildDebugRow('User Name:', userName),
                         _buildDebugRow('User Email:', userEmail),
-                        _buildDebugRow('Role ID:', userRole),
+                        _buildDebugRow('Role Name:', userRoleName),
+                        _buildDebugRow('Role ID:', userRoleId),
                         _buildDebugRow('Business Name:', businessName),
+                        _buildDebugRow('Branch Name:', branchName),
                         if (state is AuthAuthenticated) ...[
                           _buildDebugRow(
                             'Business ID:',
