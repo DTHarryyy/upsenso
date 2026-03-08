@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pos/core/const/app_key.dart';
@@ -7,9 +8,12 @@ import 'package:pos/features/auth/domain/repositories/auth_repository.dart';
 import 'package:pos/features/auth/presentation/sign_in.dart';
 import 'package:pos/features/auth/presentation/sign_up.dart';
 import 'package:pos/features/auth/presentation/verification_page.dart';
+import 'package:pos/features/auth/presentation/forgot_password_page.dart';
+import 'package:pos/features/auth/presentation/reset_password_verification_page.dart';
+import 'package:pos/features/auth/presentation/reset_password_page.dart';
 import 'package:pos/features/business/presentation/bloc/business_bloc.dart';
 import 'package:pos/features/business/presentation/business_profile_page.dart';
-import 'package:pos/features/inventory/inventory.dart';
+import 'package:pos/features/home/presentation/main_navigation_page.dart';
 import 'package:pos/features/profile/presentation/profile_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -20,16 +24,29 @@ class AppRouter {
     initialLocation: AppRoutes.onboarding,
 
     redirect: (context, state) async {
-      final prefs = await SharedPreferences.getInstance();
-      final seen = prefs.getBool(AppKey.seenOnboarding) ?? false;
-
+      debugPrint('🧭 Router redirect - location: ${state.matchedLocation}');
       final location = state.matchedLocation;
+
       final goingToOnboarding = location == AppRoutes.onboarding;
       final goingToSignIn = location == AppRoutes.signIn;
       final goingToSignUp = location == AppRoutes.signUp;
       final goingToVerification = location == AppRoutes.verification;
+      final goingToForgotPassword = location == AppRoutes.forgotPassword;
+      final goingToResetVerification = location.startsWith(
+        AppRoutes.resetPasswordVerification,
+      );
+      final goingToResetPassword = location.startsWith(AppRoutes.resetPassword);
       final goingToBusinessProfile = location == AppRoutes.businessProfile;
-      final isAuthRoute = goingToSignIn || goingToSignUp || goingToVerification;
+      final isPublicAuthRoute =
+          goingToSignIn || goingToSignUp || goingToVerification;
+      final isPasswordResetRoute =
+          goingToForgotPassword ||
+          goingToResetVerification ||
+          goingToResetPassword;
+      final isAuthRoute = isPublicAuthRoute || isPasswordResetRoute;
+
+      final prefs = await SharedPreferences.getInstance();
+      final seen = prefs.getBool(AppKey.seenOnboarding) ?? false;
 
       if (!seen) {
         if (!goingToOnboarding) {
@@ -41,7 +58,6 @@ class AppRouter {
       final authRepository = sl<AuthRepository>();
       final currentUser = authRepository.getCurrentUser();
 
-      // Require auth for all non-auth routes after onboarding has been seen.
       if (currentUser == null) {
         if (goingToOnboarding) {
           return AppRoutes.signIn;
@@ -52,26 +68,47 @@ class AppRouter {
         return null;
       }
 
-      // Force business setup until user has business context loaded
-      var hasBusiness = false;
+      var hasBusiness =
+          currentUser.businessId != null &&
+          currentUser.businessId!.trim().isNotEmpty;
 
-      try {
-        // Always fetch full business context (includes businessId, roleId from database)
-        final userWithContext = await authRepository.getUserBusinessContext(
-          currentUser.id,
-        );
-        hasBusiness =
-            userWithContext != null && userWithContext.businessId != null;
-      } catch (e) {
-        // If any error occurs, assume no business (will redirect to setup)
-        hasBusiness = false;
+      debugPrint(
+        '🔍 Router check - hasBusiness from cache: $hasBusiness, businessId: ${currentUser.businessId}',
+      );
+
+      if (!hasBusiness && !goingToBusinessProfile && !isPasswordResetRoute) {
+        try {
+          debugPrint('💾 Fetching business context from database...');
+          final userWithContext = await authRepository
+              .getUserBusinessContext(currentUser.id)
+              .timeout(
+                const Duration(milliseconds: 800),
+                onTimeout: () {
+                  debugPrint(
+                    '⏱️ Business context fetch timeout - using cached data',
+                  );
+                  return null;
+                },
+              );
+
+          if (userWithContext != null && userWithContext.businessId != null) {
+            hasBusiness = true;
+            debugPrint(
+              '✅ Business context loaded: ${userWithContext.businessId}',
+            );
+          }
+        } catch (e) {
+          debugPrint('⚠️ Error fetching business context: $e');
+        }
       }
 
-      if (!hasBusiness && !goingToBusinessProfile) {
+      if (!hasBusiness && !goingToBusinessProfile && !isPasswordResetRoute) {
+        debugPrint('🔄 Redirecting to business setup');
         return AppRoutes.businessProfile;
       }
 
-      if (hasBusiness && (goingToOnboarding || isAuthRoute)) {
+      if (hasBusiness && (goingToOnboarding || isPublicAuthRoute)) {
+        debugPrint('🏠 Redirecting to home');
         return AppRoutes.home;
       }
 
@@ -92,7 +129,28 @@ class AppRouter {
           return VerificationPage(email: email);
         },
       ),
-      GoRoute(path: AppRoutes.home, builder: (context, _) => const Inventory()),
+      GoRoute(
+        path: AppRoutes.forgotPassword,
+        builder: (context, _) => const ForgotPasswordPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.resetPasswordVerification,
+        builder: (context, state) {
+          final email = state.uri.queryParameters['email'] ?? '';
+          return ResetPasswordVerificationPage(email: email);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.resetPassword,
+        builder: (context, state) {
+          final email = state.uri.queryParameters['email'] ?? '';
+          return ResetPasswordPage(email: email);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.home,
+        builder: (context, _) => const MainNavigationPage(),
+      ),
       GoRoute(
         path: AppRoutes.profile,
         builder: (context, _) => const ProfilePage(),

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:pos/core/database/daos/auth_context_dao.dart';
 import 'package:pos/core/errors/supabase_error_mapper.dart';
 import 'package:pos/features/auth/data/datasources/auth_remote_ds.dart';
@@ -20,13 +21,24 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> initializeCachedUser() async {
     final liveUser = remote.currentUser();
     if (liveUser != null) {
-      // Prefer live session
-      _cachedUserInMemory = AppUserModel.fromSupabaseUser(liveUser);
+      // Have live session - load cached context from Drift for this user
+      final cached = await _getCachedUserContextFor(liveUser.id);
+      if (cached != null) {
+        // Use cached context which includes businessId and other fields
+        _cachedUserInMemory = cached;
+        debugPrint(
+          '💾 Loaded cached user context: businessId=${cached.businessId}, roleName=${cached.roleName}',
+        );
+      } else {
+        // No cached context yet - use basic user from Supabase
+        _cachedUserInMemory = AppUserModel.fromSupabaseUser(liveUser);
+        debugPrint('📝 No cached context - using basic Supabase user');
+      }
     } else {
-      // Load from Drift cache if no live session (offline or session expired)
-      // Need to get the last cached user (there should only be one per session)
-      // For now, we'll let it be loaded on-demand when getCurrentUser() is called
-      // This approach is lazy but safe
+      // No live session - try to load last cached user from Drift
+      // This helps with offline cold starts
+      // Note: For now we'll let it load on-demand in getCurrentUser()
+      debugPrint('🔌 No live session at startup');
     }
   }
 
@@ -35,10 +47,37 @@ class AuthRepositoryImpl implements AuthRepository {
     final liveUser = remote.currentUser();
     if (liveUser == null) {
       // Fall back to in-memory cache when Supabase session is unavailable
+      debugPrint(
+        '🔌 No live session - using cached user (businessId: ${_cachedUserInMemory?.businessId})',
+      );
       return _cachedUserInMemory;
     }
 
-    return AppUserModel.fromSupabaseUser(liveUser);
+    final baseUser = AppUserModel.fromSupabaseUser(liveUser);
+
+    // If we have cached context with business data, merge it with live user
+    // This ensures businessId and other context is available immediately
+    if (_cachedUserInMemory != null &&
+        _cachedUserInMemory!.id == baseUser.id &&
+        _cachedUserInMemory!.businessId != null) {
+      debugPrint(
+        '✅ Merging live user with cached context (businessId: ${_cachedUserInMemory!.businessId})',
+      );
+      return AppUserModel(
+        id: baseUser.id,
+        email: baseUser.email ?? _cachedUserInMemory!.email,
+        fullName: baseUser.fullName ?? _cachedUserInMemory!.fullName,
+        businessId: _cachedUserInMemory!.businessId,
+        roleId: _cachedUserInMemory!.roleId,
+        roleName: _cachedUserInMemory!.roleName,
+        businessName: _cachedUserInMemory!.businessName,
+        branchId: _cachedUserInMemory!.branchId,
+        branchName: _cachedUserInMemory!.branchName,
+      );
+    }
+
+    debugPrint('📝 Returning base user (no cached business context)');
+    return baseUser;
   }
 
   @override
@@ -166,9 +205,50 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<void> sendPasswordResetOtp(String email) async {
+    try {
+      await remote.sendPasswordResetOtp(email);
+    } catch (e) {
+      throw SupabaseAuthErrorMapper.message(e);
+    }
+  }
+
+  @override
+  Future<void> verifyPasswordResetOtp({
+    required String email,
+    required String token,
+  }) async {
+    try {
+      await remote.verifyPasswordResetOtp(email: email, token: token);
+    } catch (e) {
+      throw SupabaseAuthErrorMapper.message(e);
+    }
+  }
+
+  @override
+  Future<void> resetPassword(String newPassword) async {
+    try {
+      await remote.updatePasswordAfterReset(newPassword);
+    } catch (e) {
+      throw SupabaseAuthErrorMapper.message(e);
+    }
+  }
+
+  @override
   Future<AppUser?> getUserBusinessContext(String userId) async {
     try {
-      final userData = await remote.getUserBusinessContext(userId);
+      // Add timeout for network calls to prevent hanging
+      final userData = await remote
+          .getUserBusinessContext(userId)
+          .timeout(
+            const Duration(seconds: 8),
+            onTimeout: () {
+              debugPrint(
+                '⚠️ getUserBusinessContext timeout - using cached data',
+              );
+              return null;
+            },
+          );
 
       // Always try to get existing cached context first
       final currentUser = getCurrentUser();

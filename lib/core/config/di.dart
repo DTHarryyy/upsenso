@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,6 +12,7 @@ import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/core/theme/theme_controller.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_service.dart';
+import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/features/auth/data/datasources/auth_remote_ds.dart';
 import 'package:pos/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:pos/features/auth/domain/repositories/auth_repository.dart';
@@ -25,6 +27,9 @@ import 'package:pos/features/auth/domain/usecases/sign_in_with_google.dart';
 import 'package:pos/features/auth/domain/usecases/sign_out.dart';
 import 'package:pos/features/auth/domain/usecases/sign_up.dart';
 import 'package:pos/features/auth/domain/usecases/verify_sign_up_otp.dart';
+import 'package:pos/features/auth/domain/usecases/send_password_reset_otp.dart';
+import 'package:pos/features/auth/domain/usecases/verify_password_reset_otp.dart';
+import 'package:pos/features/auth/domain/usecases/reset_password.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/business/data/datasources/business_remote_ds.dart';
 import 'package:pos/features/business/data/repositories/business_repository_impl.dart';
@@ -39,8 +44,14 @@ Future<void> initDI() async {
   // ─────────────────────────────────────────────
   sl.registerLazySingleton<SupabaseClient>(() => Supabase.instance.client);
 
-  // SharedPreferences for local caching
-  final prefs = await SharedPreferences.getInstance();
+  // SharedPreferences for local caching with timeout
+  final prefs = await SharedPreferences.getInstance().timeout(
+    const Duration(seconds: 5),
+    onTimeout: () {
+      debugPrint('⚠️ SharedPreferences timeout - using fallback');
+      throw Exception('SharedPreferences initialization timeout');
+    },
+  );
   sl.registerLazySingleton<SharedPreferences>(() => prefs);
   sl.registerLazySingleton<ThemeController>(
     () => ThemeController(sl<SharedPreferences>()),
@@ -69,6 +80,11 @@ Future<void> initDI() async {
   sl.registerLazySingleton<ConnectivityService>(() => ConnectivityService());
 
   // ─────────────────────────────────────────────
+  // Branch Selection
+  // ─────────────────────────────────────────────
+  sl.registerFactory(() => BranchCubit());
+
+  // ─────────────────────────────────────────────
   // Auth Feature
   // ─────────────────────────────────────────────
 
@@ -95,6 +111,9 @@ Future<void> initDI() async {
   sl.registerLazySingleton(() => CheckEmailExists(sl<AuthRepository>()));
   sl.registerLazySingleton(() => SendSignUpOtp(sl<AuthRepository>()));
   sl.registerLazySingleton(() => VerifySignUpOtp(sl<AuthRepository>()));
+  sl.registerLazySingleton(() => SendPasswordResetOtp(sl<AuthRepository>()));
+  sl.registerLazySingleton(() => VerifyPasswordResetOtp(sl<AuthRepository>()));
+  sl.registerLazySingleton(() => ResetPassword(sl<AuthRepository>()));
   sl.registerLazySingleton(() => SignOut(sl<AuthRepository>()));
 
   // Bloc
@@ -109,7 +128,11 @@ Future<void> initDI() async {
       checkEmailExists: sl(),
       sendSignUpOtp: sl(),
       verifySignUpOtp: sl(),
+      sendPasswordResetOtp: sl(),
+      verifyPasswordResetOtp: sl(),
+      resetPassword: sl(),
       signOut: sl(),
+      connectivityService: sl(),
     ),
   );
 
@@ -150,4 +173,11 @@ Future<void> initDI() async {
       connectivityService: sl<ConnectivityService>(),
     )..init(),
   );
+
+  // ─────────────────────────────────────────────
+  // Initialize cached user context from Drift
+  // ─────────────────────────────────────────────
+  // This ensures businessId is available immediately on startup
+  final authRepo = sl<AuthRepository>() as AuthRepositoryImpl;
+  await authRepo.initializeCachedUser();
 }

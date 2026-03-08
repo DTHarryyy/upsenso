@@ -1,17 +1,22 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/errors/supabase_error_mapper.dart';
+import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/features/auth/domain/entities/app_user.dart';
 
 import '../../domain/usecases/check_email_exists.dart';
 import '../../domain/usecases/get_current_user.dart';
 import '../../domain/usecases/get_user_business_context.dart';
 import '../../domain/usecases/observe_auth_state.dart';
+import '../../domain/usecases/reset_password.dart';
+import '../../domain/usecases/send_password_reset_otp.dart';
 import '../../domain/usecases/send_sign_up_otp.dart';
 import '../../domain/usecases/sign_in.dart';
 import '../../domain/usecases/sign_in_with_facebook.dart';
 import '../../domain/usecases/sign_in_with_google.dart';
 import '../../domain/usecases/sign_out.dart';
+import '../../domain/usecases/verify_password_reset_otp.dart';
 import '../../domain/usecases/verify_sign_up_otp.dart';
 
 import 'auth_event.dart';
@@ -28,10 +33,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final SendSignUpOtp sendSignUpOtp;
   final VerifySignUpOtp verifySignUpOtp;
   final SignOut signOut;
+  final SendPasswordResetOtp sendPasswordResetOtp;
+  final VerifyPasswordResetOtp verifyPasswordResetOtp;
+  final ResetPassword resetPassword;
+  final ConnectivityService connectivityService;
 
   StreamSubscription? _sub;
   String? _pendingSignUpEmail;
   String? _pendingSignUpPassword;
+  String? _pendingResetEmail;
 
   String _errorMessage(Object err) {
     if (err is String) return err;
@@ -43,9 +53,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<AppUser?> _getUserContextWithRetry(String userId) async {
-    // Trigger-created rows can appear a moment after auth state changes.
+    // Check connectivity first
+    final isOnline = await connectivityService.isConnected;
+
+    // If offline, fetch cached data immediately (repository handles offline fallback)
+    if (!isOnline) {
+      final cachedUser = await getUserBusinessContext(userId);
+      return cachedUser;
+    }
+
+    // Online: retry logic for trigger-created rows
     AppUser? latest;
-    for (var attempt = 0; attempt < 8; attempt++) {
+    for (var attempt = 0; attempt < 5; attempt++) {
+      // Reduced from 8 to 5
       final userWithContext = await getUserBusinessContext(userId);
       latest = userWithContext;
 
@@ -66,8 +86,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         }
       }
 
-      if (attempt < 7) {
-        await Future<void>.delayed(const Duration(milliseconds: 350));
+      if (attempt < 4) {
+        // Reduced delays
+        await Future<void>.delayed(const Duration(milliseconds: 300));
       }
     }
 
@@ -85,8 +106,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required this.sendSignUpOtp,
     required this.verifySignUpOtp,
     required this.signOut,
+    required this.sendPasswordResetOtp,
+    required this.verifyPasswordResetOtp,
+    required this.resetPassword,
+    required this.connectivityService,
   }) : super(AuthUnknown()) {
     on<AuthStarted>(_onStarted);
+    on<AuthUserContextUpdated>(_onUserContextUpdated);
     on<AuthLoginRequested>(_onLogin);
     on<AuthGoogleSignInRequested>(_onGoogleSignIn);
     on<AuthFacebookSignInRequested>(_onFacebookSignIn);
@@ -95,6 +121,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthResendSignUpCodeRequested>(_onResendSignUpCode);
     on<AuthLogoutRequested>(_onLogout);
     on<AuthUserChanged>(_onUserChanged);
+    on<AuthForgotPasswordRequested>(_onForgotPassword);
+    on<AuthVerifyResetCodeRequested>(_onVerifyResetCode);
+    on<AuthResetPasswordRequested>(_onResetPassword);
+    on<AuthResendResetCodeRequested>(_onResendResetCode);
 
     _sub = observeAuthState().listen((user) {
       add(AuthUserChanged(user != null));
@@ -104,16 +134,35 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _onStarted(AuthStarted event, Emitter<AuthState> emit) async {
     final user = getCurrentUser();
     if (user != null) {
-      // Fetch updated user info with business context
-      final updatedUser = await _getUserContextWithRetry(user.id);
-      emit(
-        updatedUser != null
-            ? AuthAuthenticated(updatedUser)
-            : AuthAuthenticated(user),
+      // Immediately emit with cached user so router doesn't block
+      debugPrint(
+        '👤 AuthBloc: Emitting cached user (${user.businessId != null ? "with" : "without"} business)',
+      );
+      emit(AuthAuthenticated(user));
+
+      // Fetch updated context in background (non-blocking, fire-and-forget)
+      unawaited(
+        _getUserContextWithRetry(user.id)
+            .then((updatedUser) {
+              if (updatedUser != null && !isClosed) {
+                debugPrint('🔄 AuthBloc: Updating with fresh user context');
+                add(AuthUserContextUpdated(updatedUser));
+              }
+            })
+            .catchError((e) {
+              debugPrint('⚠️ AuthBloc: Error fetching updated context: $e');
+            }),
       );
     } else {
       emit(AuthUnauthenticated());
     }
+  }
+
+  Future<void> _onUserContextUpdated(
+    AuthUserContextUpdated event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthAuthenticated(event.user));
   }
 
   Future<void> _onLogin(AuthLoginRequested e, Emitter<AuthState> emit) async {
@@ -278,6 +327,63 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           ? AuthAuthenticated(userWithContext)
           : AuthAuthenticated(user),
     );
+  }
+
+  Future<void> _onForgotPassword(
+    AuthForgotPasswordRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(const AuthLoading(type: AuthLoadingType.passwordReset));
+    try {
+      await sendPasswordResetOtp(event.email);
+      _pendingResetEmail = event.email;
+      emit(AuthResetCodeSent(event.email));
+    } catch (err) {
+      emit(AuthError(_errorMessage(err)));
+    }
+  }
+
+  Future<void> _onVerifyResetCode(
+    AuthVerifyResetCodeRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(const AuthLoading(type: AuthLoadingType.passwordReset));
+    try {
+      final email = _pendingResetEmail ?? event.email;
+      await verifyPasswordResetOtp(email: email, token: event.code);
+      emit(AuthResetCodeVerified(email));
+    } catch (err) {
+      emit(AuthError(_errorMessage(err)));
+    }
+  }
+
+  Future<void> _onResetPassword(
+    AuthResetPasswordRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(const AuthLoading(type: AuthLoadingType.passwordReset));
+    try {
+      await resetPassword(event.newPassword);
+      _pendingResetEmail = null;
+      emit(AuthPasswordResetSuccess());
+    } catch (err) {
+      emit(AuthError(_errorMessage(err)));
+    }
+  }
+
+  Future<void> _onResendResetCode(
+    AuthResendResetCodeRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(const AuthLoading(type: AuthLoadingType.passwordReset));
+    try {
+      final email = _pendingResetEmail ?? event.email;
+      await sendPasswordResetOtp(email);
+      _pendingResetEmail = email;
+      emit(AuthResetCodeSent(email));
+    } catch (err) {
+      emit(AuthError(_errorMessage(err)));
+    }
   }
 
   @override

@@ -112,6 +112,28 @@ class AuthRemoteDs {
 
   Future<void> signOut() => client.auth.signOut();
 
+  /// Send password reset OTP to email
+  Future<void> sendPasswordResetOtp(String email) async {
+    await client.auth.signInWithOtp(email: email, shouldCreateUser: false);
+  }
+
+  /// Verify password reset OTP
+  Future<AuthResponse> verifyPasswordResetOtp({
+    required String email,
+    required String token,
+  }) {
+    return client.auth.verifyOTP(
+      email: email,
+      token: token,
+      type: OtpType.recovery,
+    );
+  }
+
+  /// Update password after OTP verification
+  Future<void> updatePasswordAfterReset(String newPassword) async {
+    await client.auth.updateUser(UserAttributes(password: newPassword));
+  }
+
   Future<Map<String, dynamic>?> _getUserBusinessContextViaRpc() async {
     try {
       final raw = await client.rpc('get_my_business_context');
@@ -222,9 +244,14 @@ class AuthRemoteDs {
       }
 
       // Fetch first active branch for the business (default branch)
+      // Note: Super Admin should NOT be assigned to any specific branch
       String? branchId;
       String? branchName;
-      if (businessId != null) {
+      final isSuperAdmin =
+          roleName?.trim().toLowerCase() == 'super admin' ||
+          roleName?.trim().toLowerCase() == 'superadmin';
+
+      if (businessId != null && !isSuperAdmin) {
         try {
           final branchRows = List<Map<String, dynamic>>.from(
             await client
@@ -257,6 +284,7 @@ class AuthRemoteDs {
             branchName = createdBranch['name']?.toString();
 
             // Best-effort: keep users.branch_id in sync with default branch.
+            // Only for non-Super Admin users
             if ((branchId ?? '').isNotEmpty) {
               await client
                   .from('users')

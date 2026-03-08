@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:pos/features/auth/domain/entities/app_user.dart';
 
 abstract class AuthEvent extends Equatable {
   const AuthEvent();
@@ -7,6 +8,14 @@ abstract class AuthEvent extends Equatable {
 }
 
 class AuthStarted extends AuthEvent {}
+
+class AuthUserContextUpdated extends AuthEvent {
+  final AppUser user;
+  const AuthUserContextUpdated(this.user);
+
+  @override
+  List<Object?> get props => [user];
+}
 
 class AuthLoginRequested extends AuthEvent {
   final String email;
@@ -59,4 +68,38 @@ class AuthUserChanged extends AuthEvent {
 
   @override
   List<Object?> get props => [isLoggedIn];
+}
+
+// Password Reset Events
+class AuthForgotPasswordRequested extends AuthEvent {
+  final String email;
+  const AuthForgotPasswordRequested(this.email);
+
+  @override
+  List<Object?> get props => [email];
+}
+
+class AuthVerifyResetCodeRequested extends AuthEvent {
+  final String email;
+  final String code;
+  const AuthVerifyResetCodeRequested(this.email, this.code);
+
+  @override
+  List<Object?> get props => [email, code];
+}
+
+class AuthResetPasswordRequested extends AuthEvent {
+  final String newPassword;
+  const AuthResetPasswordRequested(this.newPassword);
+
+  @override
+  List<Object?> get props => [newPassword];
+}
+
+class AuthResendResetCodeRequested extends AuthEvent {
+  final String email;
+  const AuthResendResetCodeRequested(this.email);
+
+  @override
+  List<Object?> get props => [email];
 }

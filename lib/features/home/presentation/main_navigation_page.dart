@@ -1,0 +1,170 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pos/core/branch/branch_cubit.dart';
+import 'package:pos/core/branch/branch_state.dart';
+import 'package:pos/core/config/di.dart';
+import 'package:pos/core/sync/connectivity_service.dart';
+import 'package:pos/core/ui/widgets/app_bottom_nav.dart';
+import 'package:pos/core/ui/widgets/custom_app_bar.dart';
+import 'package:pos/features/dashboard/presentation/dashboard_page.dart';
+import 'package:pos/features/alert/presentation/alert_page.dart';
+import 'package:pos/features/pos/presentation/pos_terminal_page.dart';
+import 'package:pos/features/more/presentation/more_page.dart';
+import 'package:pos/features/inventory/inventory.dart';
+import 'package:pos/features/auth/domain/entities/app_user.dart';
+import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
+
+class MainNavigationPage extends StatefulWidget {
+  const MainNavigationPage({super.key});
+
+  @override
+  State<MainNavigationPage> createState() => _MainNavigationPageState();
+}
+
+class _MainNavigationPageState extends State<MainNavigationPage> {
+  int _currentIndex = 0;
+  String? _lastUserContextKey;
+  bool _isOnline = true;
+  late final ConnectivityService _connectivityService;
+
+  final List<Widget> _pages = [
+    const DashboardPage(),
+    const Inventory(),
+    const PosTerminalPage(),
+    const AlertPage(),
+    const MorePage(),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    debugPrint('🏠 MainNavigationPage: initState called');
+    _connectivityService = sl<ConnectivityService>();
+    _setupConnectivityListener();
+  }
+
+  void _setupConnectivityListener() {
+    _connectivityService.onConnectivityChanged.listen((isConnected) {
+      if (mounted) {
+        setState(() {
+          _isOnline = isConnected;
+        });
+      }
+    });
+
+    // Get initial connectivity status
+    _connectivityService.isConnected.then((isConnected) {
+      if (mounted) {
+        setState(() {
+          _isOnline = isConnected;
+        });
+      }
+    });
+  }
+
+  void _onNavTap(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
+
+  void _scheduleBranchLoad(AppUser user) {
+    final userContextKey =
+        '${user.id}|${user.businessId ?? ''}|${user.roleName ?? ''}|${user.branchId ?? ''}|${user.branchName ?? ''}';
+
+    if (_lastUserContextKey == userContextKey) return;
+    _lastUserContextKey = userContextKey;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<BranchCubit>().loadBranchesForUser(user);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    debugPrint('🏠 MainNavigationPage: build called');
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, authState) {
+        debugPrint(
+          '🏠 MainNavigationPage: AuthState is ${authState.runtimeType}',
+        );
+
+        // Safety: Show loading if AuthBloc is not ready yet
+        if (authState is! AuthAuthenticated) {
+          debugPrint(
+            '⚠️ MainNavigationPage: AuthState not ready, showing loading',
+          );
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        String userName = 'User';
+        String userRole = 'Role not set';
+        String businessName = 'Business';
+        String branchName = 'Branch';
+        String userEmail = 'N/A';
+        String? userId;
+
+        _scheduleBranchLoad(authState.user);
+
+        userId = authState.user.id;
+        userName = authState.user.fullName ?? authState.user.email ?? 'User';
+
+        final roleName = authState.user.roleName?.trim();
+        final roleId = authState.user.roleId?.trim();
+
+        userRole = (roleName != null && roleName.isNotEmpty)
+            ? roleName
+            : (roleId != null && roleId.isNotEmpty)
+            ? roleId
+            : 'Syncing role...';
+
+        businessName = authState.user.businessName ?? 'Business';
+        branchName =
+            authState.user.branchName ??
+            authState.user.businessName ??
+            'Branch';
+        userEmail = authState.user.email ?? 'N/A';
+
+        return BlocBuilder<BranchCubit, BranchState>(
+          builder: (context, branchState) {
+            final visibleBranches = branchState.availableBranches.isNotEmpty
+                ? branchState.availableBranches
+                : [branchName];
+            final selectedBranch = branchState.selectedBranch ?? branchName;
+
+            return Scaffold(
+              appBar: CustomAppBar(
+                branches: visibleBranches,
+                selectedBranch: selectedBranch,
+                onBranchChanged: branchState.canSwitchBranches
+                    ? (branch) {
+                        context.read<BranchCubit>().selectBranch(branch);
+                      }
+                    : null,
+                userName: userName,
+                userRole: userRole,
+                userEmail: userEmail,
+                userId: userId,
+                businessName: businessName,
+                isOnline: _isOnline,
+                onNotificationTapped: () => _onNavTap(3),
+                onProfileTapped: () => _onNavTap(4),
+                onMenuTapped: null,
+                showThemeToggle: false,
+              ),
+              body: IndexedStack(index: _currentIndex, children: _pages),
+              bottomNavigationBar: AppBottomNav(
+                currentIndex: _currentIndex,
+                onTap: _onNavTap,
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}

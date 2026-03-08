@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pos/app_router.dart';
 import 'package:pos/core/config/di.dart';
+import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_strings.dart';
 import 'package:pos/core/theme/theme_controller.dart';
 import 'package:pos/theme_data.dart';
@@ -18,11 +19,13 @@ class _AppBoostrapState extends State<AppBoostrap> {
   @override
   void initState() {
     super.initState();
+    debugPrint('🔧 AppBoostrap: initState called');
     _themeController = sl<ThemeController>();
   }
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('🔧 AppBoostrap: build called');
     return AnimatedBuilder(
       animation: _themeController,
       builder: (context, _) {
@@ -33,6 +36,9 @@ class _AppBoostrapState extends State<AppBoostrap> {
           darkTheme: buildDarkAppTheme(),
           themeMode: _themeController.themeMode,
           routerConfig: AppRouter.router,
+          builder: (context, child) {
+            return Container(color: AppColors.background, child: child);
+          },
         );
       },
     );

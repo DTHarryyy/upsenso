@@ -20,4 +20,12 @@ abstract class AuthRepository {
 
   /// Fetch user's business context (businessId, roleId, businessName)
   Future<AppUser?> getUserBusinessContext(String userId);
+
+  /// Password Reset
+  Future<void> sendPasswordResetOtp(String email);
+  Future<void> verifyPasswordResetOtp({
+    required String email,
+    required String token,
+  });
+  Future<void> resetPassword(String newPassword);
 }
