@@ -162,6 +162,32 @@ class BusinessRemoteDs {
     return Map<String, dynamic>.from(response);
   }
 
+  /// Fetch all active branches for a business (used by Super Admin branch picker)
+  Future<List<Map<String, dynamic>>> getActiveBranchesByBusiness(
+    String businessId,
+  ) async {
+    final response = await client
+        .from('branches')
+        .select('id, name, business_id, is_active')
+        .eq('business_id', businessId)
+        .eq('is_active', true)
+        .order('name');
+
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  /// Fetch one active branch by ID (used by Admin restricted to assigned branch)
+  Future<Map<String, dynamic>?> getActiveBranchById(String branchId) async {
+    final response = await client
+        .from('branches')
+        .select('id, name, business_id, is_active')
+        .eq('id', branchId)
+        .eq('is_active', true)
+        .maybeSingle();
+
+    return response != null ? Map<String, dynamic>.from(response) : null;
+  }
+
   /// Best-effort link of the signed-up user to their default branch.
   /// Retries briefly because user row creation can lag behind business creation.
   Future<bool> assignUserBranch({

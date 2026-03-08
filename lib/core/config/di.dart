@@ -8,6 +8,7 @@ import 'package:pos/core/database/daos/auth_context_dao.dart';
 import 'package:pos/core/database/daos/business_templates_dao.dart';
 import 'package:pos/core/database/daos/businesses_dao.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
+import 'package:pos/core/theme/theme_controller.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_service.dart';
 import 'package:pos/features/auth/data/datasources/auth_remote_ds.dart';
@@ -41,6 +42,9 @@ Future<void> initDI() async {
   // SharedPreferences for local caching
   final prefs = await SharedPreferences.getInstance();
   sl.registerLazySingleton<SharedPreferences>(() => prefs);
+  sl.registerLazySingleton<ThemeController>(
+    () => ThemeController(sl<SharedPreferences>()),
+  );
 
   // OAuth redirect URL used by Google/Facebook sign-in callbacks.
   final oauthRedirectUrl =

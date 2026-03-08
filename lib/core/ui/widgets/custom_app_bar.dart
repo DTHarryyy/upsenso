@@ -46,8 +46,17 @@ class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
   /// Callback when user profile is tapped
   final VoidCallback? onProfileTapped;
 
-  /// Callback when logout is tapped in profile popup
-  final VoidCallback? onLogoutTapped;
+  /// Callback when leading menu button is tapped on mobile
+  final VoidCallback? onMenuTapped;
+
+  /// Callback when dark mode button is tapped
+  final VoidCallback? onThemeToggleTapped;
+
+  /// Controls whether dark mode button is visible
+  final bool showThemeToggle;
+
+  /// Current theme state for dark mode icon
+  final bool isDarkMode;
 
   const CustomAppBar({
     super.key,
@@ -65,7 +74,10 @@ class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
     this.notificationCount = 0,
     this.onNotificationTapped,
     this.onProfileTapped,
-    this.onLogoutTapped,
+    this.onMenuTapped,
+    this.onThemeToggleTapped,
+    this.showThemeToggle = true,
+    this.isDarkMode = false,
   });
 
   @override
@@ -77,7 +89,6 @@ class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
 
 class _CustomAppBarState extends State<CustomAppBar> {
   late String _selectedBranch;
-  final GlobalKey _profileAnchorKey = GlobalKey();
 
   @override
   void initState() {
@@ -95,6 +106,8 @@ class _CustomAppBarState extends State<CustomAppBar> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = !Breakpoints.isTablet(context);
+
     return SafeArea(
       child: Container(
         height: 64,
@@ -105,148 +118,165 @@ class _CustomAppBarState extends State<CustomAppBar> {
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          padding: EdgeInsets.symmetric(
+            horizontal: isMobile ? 12 : 24,
+            vertical: 8,
+          ),
           child: Row(
             children: [
-              // ┌─ LEFT: Branches Dropdown
-              Row(
-                children: [
-                  DropdownButton<String>(
-                    value: _selectedBranch,
-                    onChanged: (String? newValue) {
-                      if (newValue != null) {
-                        setState(() {
-                          _selectedBranch = newValue;
-                        });
-                        widget.onBranchChanged?.call(newValue);
-                      }
-                    },
-                    underline: SizedBox.shrink(),
-                    icon: Icon(
-                      Icons.unfold_more,
-                      size: 18,
-                      color: AppColors.textSecondary,
-                    ),
-                    items: widget.branches.map<DropdownMenuItem<String>>((
-                      String branch,
-                    ) {
-                      return DropdownMenuItem<String>(
-                        value: branch,
-                        child: Text(
-                          branch,
-                          style: GoogleFonts.outfit(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                    style: GoogleFonts.outfit(
-                      fontSize: 14,
-                      color: AppColors.textPrimary,
+              if (isMobile)
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: widget.onMenuTapped,
+                    borderRadius: BorderRadius.circular(8),
+                    splashColor: AppColors.brand.withAlpha(30),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Icon(
+                        Icons.menu,
+                        size: 22,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
-                ],
-              ),
+                )
+              else
+                _buildBranchDropdown(),
 
-              // ┌─ CENTER: Status Indicators
+              if (isMobile) const SizedBox(width: 8),
+
+              // ┌─ CENTER: Branch and status
               Expanded(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
-                    // Online Status - Circle only on mobile when online
-                    _StatusIndicator(
-                      isOnline: widget.isOnline,
-                      label: widget.isOnline ? 'Online' : 'Offline',
-                    ),
-                    const SizedBox(width: 16),
-
-                    // Sync Status
-                    if (widget.pendingSyncCount > 0)
-                      _StatusIndicator(
-                        isOnline: true,
-                        label: widget.pendingSyncCount > 0
-                            ? 'Syncing...'
-                            : 'Synced',
-                        isSyncing: widget.pendingSyncCount > 0,
+                    if (isMobile)
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 170),
+                            child: _buildCompactBranchSelector(),
+                          ),
+                        ),
                       )
-                    else if (widget.isOnline)
+                    else ...[
                       _StatusIndicator(
-                        isOnline: true,
-                        label: 'Synced',
-                        isSyncing: false,
+                        isOnline: widget.isOnline,
+                        label: widget.isOnline ? 'Online' : 'Offline',
                       ),
+                      const SizedBox(width: 16),
+                      if (widget.pendingSyncCount > 0)
+                        _StatusIndicator(
+                          isOnline: true,
+                          label: 'Syncing...',
+                          isSyncing: true,
+                        )
+                      else if (widget.isOnline)
+                        _StatusIndicator(
+                          isOnline: true,
+                          label: 'Synced',
+                          isSyncing: false,
+                        ),
+                    ],
                   ],
                 ),
               ),
 
-              // ┌─ RIGHT: Notifications & Profile
-              Expanded(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    // Notification Bell
-                    Stack(
-                      children: [
-                        Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: widget.onNotificationTapped,
-                            borderRadius: BorderRadius.circular(8),
-                            splashColor: AppColors.brand.withAlpha(30),
-                            child: Padding(
-                              padding: const EdgeInsets.all(8),
-                              child: Icon(
-                                Icons.notifications_outlined,
-                                size: 24,
-                                color: AppColors.textSecondary,
-                              ),
+              if (isMobile && (!widget.isOnline || widget.pendingSyncCount > 0))
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: _StatusIndicator(
+                    isOnline: widget.isOnline,
+                    label: widget.pendingSyncCount > 0
+                        ? 'Syncing...'
+                        : (widget.isOnline ? 'Online' : 'Offline'),
+                    isSyncing: widget.pendingSyncCount > 0,
+                  ),
+                ),
+
+              // ┌─ RIGHT: Theme, Notifications & Profile
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (!isMobile && widget.showThemeToggle)
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: widget.onThemeToggleTapped,
+                        borderRadius: BorderRadius.circular(8),
+                        splashColor: AppColors.brand.withAlpha(30),
+                        child: Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Icon(
+                            widget.isDarkMode
+                                ? Icons.light_mode_outlined
+                                : Icons.dark_mode_outlined,
+                            size: 22,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // Notification Bell
+                  Stack(
+                    children: [
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: widget.onNotificationTapped,
+                          borderRadius: BorderRadius.circular(8),
+                          splashColor: AppColors.brand.withAlpha(30),
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Icon(
+                              Icons.notifications_outlined,
+                              size: isMobile ? 22 : 24,
+                              color: AppColors.textSecondary,
                             ),
                           ),
                         ),
-                        // Badge
-                        if (widget.notificationCount > 0)
-                          Positioned(
-                            right: 4,
-                            top: 4,
-                            child: Container(
-                              width: 20,
-                              height: 20,
-                              decoration: BoxDecoration(
-                                color: AppColors.error,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  widget.notificationCount > 9
-                                      ? '9+'
-                                      : widget.notificationCount.toString(),
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.textInverse,
-                                  ),
+                      ),
+                      // Badge
+                      if (widget.notificationCount > 0)
+                        Positioned(
+                          right: 4,
+                          top: 4,
+                          child: Container(
+                            width: 20,
+                            height: 20,
+                            decoration: BoxDecoration(
+                              color: AppColors.error,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: Text(
+                                widget.notificationCount > 9
+                                    ? '9+'
+                                    : widget.notificationCount.toString(),
+                                style: GoogleFonts.outfit(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textInverse,
                                 ),
                               ),
                             ),
                           ),
-                      ],
-                    ),
-                    const SizedBox(width: 16),
+                        ),
+                    ],
+                  ),
+                  SizedBox(width: isMobile ? 4 : 12),
 
-                    // User Profile
-                    KeyedSubtree(
-                      key: _profileAnchorKey,
-                      child: _UserProfileSection(
-                        userName: widget.userName,
-                        userRole: widget.userRole,
-                        userAvatar: widget.userAvatar,
-                        onProfileTapped: _showProfileMenu,
-                      ),
-                    ),
-                  ],
-                ),
+                  // User Profile
+                  _UserProfileSection(
+                    userName: widget.userName,
+                    userRole: widget.userRole,
+                    userAvatar: widget.userAvatar,
+                    onProfileTapped: widget.onProfileTapped,
+                  ),
+                ],
               ),
             ],
           ),
@@ -255,147 +285,99 @@ class _CustomAppBarState extends State<CustomAppBar> {
     );
   }
 
-  Future<void> _showProfileMenu() async {
-    if (widget.onProfileTapped == null && widget.onLogoutTapped == null) {
-      return;
-    }
-
-    final anchorContext = _profileAnchorKey.currentContext;
-    if (anchorContext == null) return;
-
-    final anchorRender = anchorContext.findRenderObject();
-    final overlayRender = Overlay.of(context).context.findRenderObject();
-    if (anchorRender is! RenderBox || overlayRender is! RenderBox) return;
-
-    final topLeft = anchorRender.localToGlobal(
-      Offset.zero,
-      ancestor: overlayRender,
+  Widget _buildBranchDropdown() {
+    return DropdownButton<String>(
+      value: _selectedBranch,
+      onChanged: (String? newValue) {
+        if (newValue != null) {
+          setState(() {
+            _selectedBranch = newValue;
+          });
+          widget.onBranchChanged?.call(newValue);
+        }
+      },
+      underline: const SizedBox.shrink(),
+      icon: Icon(Icons.unfold_more, size: 18, color: AppColors.textSecondary),
+      items: widget.branches.map<DropdownMenuItem<String>>((String branch) {
+        return DropdownMenuItem<String>(
+          value: branch,
+          child: Text(
+            branch,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.outfit(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        );
+      }).toList(),
+      style: GoogleFonts.outfit(fontSize: 14, color: AppColors.textPrimary),
     );
-    final bottomRight = anchorRender.localToGlobal(
-      anchorRender.size.bottomRight(Offset.zero),
-      ancestor: overlayRender,
-    );
+  }
 
-    final position = RelativeRect.fromRect(
-      Rect.fromPoints(topLeft, bottomRight),
-      Offset.zero & overlayRender.size,
-    );
-
-    final selected = await showMenu<_ProfileMenuAction>(
-      context: context,
-      position: position,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      items: [
-        PopupMenuItem<_ProfileMenuAction>(
-          enabled: false,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: SizedBox(
-            width: 260,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  widget.userName,
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                if ((widget.userEmail ?? '').isNotEmpty)
-                  Text(
-                    widget.userEmail!,
-                    style: GoogleFonts.outfit(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                if ((widget.userId ?? '').isNotEmpty)
-                  Text(
-                    'User ID: ${widget.userId}',
-                    style: GoogleFonts.outfit(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                const SizedBox(height: 8),
-                Text(
-                  'Role: ${widget.userRole}',
+  Widget _buildCompactBranchSelector() {
+    return Container(
+      height: 38,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderSoft),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          isExpanded: true,
+          value: _selectedBranch,
+          onChanged: (String? newValue) {
+            if (newValue != null) {
+              setState(() {
+                _selectedBranch = newValue;
+              });
+              widget.onBranchChanged?.call(newValue);
+            }
+          },
+          icon: Icon(
+            Icons.expand_more,
+            size: 16,
+            color: AppColors.textSecondary,
+          ),
+          selectedItemBuilder: (context) {
+            return widget.branches.map((branch) {
+              return Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  branch,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.outfit(
                     fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                if ((widget.businessName ?? '').isNotEmpty)
-                  Text(
-                    'Business: ${widget.businessName}',
-                    style: GoogleFonts.outfit(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-        if (widget.onProfileTapped != null) ...[
-          const PopupMenuDivider(height: 1),
-          PopupMenuItem<_ProfileMenuAction>(
-            value: _ProfileMenuAction.viewProfile,
-            child: Row(
-              children: [
-                const Icon(Icons.person_outline, size: 18),
-                const SizedBox(width: 8),
-                Text(
-                  'Profile',
-                  style: GoogleFonts.outfit(
-                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,
                   ),
                 ),
-              ],
-            ),
-          ),
-        ],
-        if (widget.onLogoutTapped != null) ...[
-          const PopupMenuDivider(height: 1),
-          PopupMenuItem<_ProfileMenuAction>(
-            value: _ProfileMenuAction.logout,
-            child: Row(
-              children: [
-                const Icon(Icons.logout, size: 18, color: AppColors.error),
-                const SizedBox(width: 8),
-                Text(
-                  'Logout',
-                  style: GoogleFonts.outfit(
-                    fontSize: 13,
-                    color: AppColors.error,
-                    fontWeight: FontWeight.w600,
-                  ),
+              );
+            }).toList();
+          },
+          items: widget.branches.map<DropdownMenuItem<String>>((String branch) {
+            return DropdownMenuItem<String>(
+              value: branch,
+              child: Text(
+                branch,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.outfit(
+                  fontSize: 13,
+                  color: AppColors.textPrimary,
                 ),
-              ],
-            ),
-          ),
-        ],
-      ],
+              ),
+            );
+          }).toList(),
+        ),
+      ),
     );
-
-    switch (selected) {
-      case _ProfileMenuAction.viewProfile:
-        widget.onProfileTapped?.call();
-        break;
-      case _ProfileMenuAction.logout:
-        widget.onLogoutTapped?.call();
-        break;
-      case null:
-        break;
-    }
   }
 }
-
-enum _ProfileMenuAction { viewProfile, logout }
 
 /// Status indicator widget for displaying online/offline and sync status
 class _StatusIndicator extends StatelessWidget {
@@ -554,7 +536,7 @@ class _UserProfileSection extends StatelessWidget {
                 ),
                 const SizedBox(width: 4),
                 Icon(
-                  Icons.expand_more,
+                  Icons.chevron_right,
                   size: 18,
                   color: AppColors.textSecondary,
                 ),

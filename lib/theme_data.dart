@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pos/core/const/app_colors.dart';
 
-ThemeData buildAppTheme() {
+ThemeData buildLightAppTheme() {
   final baseTextTheme = GoogleFonts.outfitTextTheme();
 
   return ThemeData(
@@ -72,3 +72,18 @@ ThemeData buildAppTheme() {
     ),
   );
 }
+
+ThemeData buildDarkAppTheme() {
+  final baseTextTheme = GoogleFonts.outfitTextTheme();
+
+  return ThemeData(
+    useMaterial3: true,
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: AppColors.brand,
+      brightness: Brightness.dark,
+    ),
+    textTheme: baseTextTheme,
+  );
+}
+
+ThemeData buildAppTheme() => buildLightAppTheme();
