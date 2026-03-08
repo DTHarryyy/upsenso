@@ -14,7 +14,6 @@ import 'package:pos/core/ui/status/status_type.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
-import 'package:pos/features/auth/presentation/widgets/auth_options.dart';
 
 class SignUp extends StatefulWidget {
   const SignUp({super.key});
@@ -91,7 +90,8 @@ class _SignUpState extends State<SignUp> {
         }
       },
       builder: (context, state) {
-        final isLoading = state is AuthLoading;
+        final isLoading =
+            state is AuthLoading && state.type == AuthLoadingType.signUp;
 
         return Scaffold(
           body: SafeArea(
@@ -271,40 +271,6 @@ class _SignUpState extends State<SignUp> {
                               : Text(AppStrings.signUp),
                         ),
                       ),
-
-                      const SizedBox(height: 12),
-
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: Container(
-                              height: 1,
-                              color: AppColors.divider,
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8.0,
-                            ),
-                            child: Text(
-                              'Or sign up with',
-                              style: AppTextStyles.caption(
-                                context,
-                              ).copyWith(color: AppColors.textSecondary),
-                            ),
-                          ),
-                          Expanded(
-                            child: Container(
-                              height: 1,
-                              color: AppColors.divider,
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 12),
-                      const AuthOptions(),
                     ],
                   ),
                 ),

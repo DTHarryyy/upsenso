@@ -9,6 +9,8 @@ import '../../domain/usecases/get_user_business_context.dart';
 import '../../domain/usecases/observe_auth_state.dart';
 import '../../domain/usecases/send_sign_up_otp.dart';
 import '../../domain/usecases/sign_in.dart';
+import '../../domain/usecases/sign_in_with_facebook.dart';
+import '../../domain/usecases/sign_in_with_google.dart';
 import '../../domain/usecases/sign_out.dart';
 import '../../domain/usecases/verify_sign_up_otp.dart';
 
@@ -20,6 +22,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final GetUserBusinessContext getUserBusinessContext;
   final ObserveAuthState observeAuthState;
   final SignIn signIn;
+  final SignInWithGoogle signInWithGoogle;
+  final SignInWithFacebook signInWithFacebook;
   final CheckEmailExists checkEmailExists;
   final SendSignUpOtp sendSignUpOtp;
   final VerifySignUpOtp verifySignUpOtp;
@@ -34,14 +38,32 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     return SupabaseAuthErrorMapper.message(err);
   }
 
+  bool _hasText(String? value) {
+    return value != null && value.trim().isNotEmpty;
+  }
+
   Future<AppUser?> _getUserContextWithRetry(String userId) async {
     // Trigger-created rows can appear a moment after auth state changes.
+    AppUser? latest;
     for (var attempt = 0; attempt < 8; attempt++) {
       final userWithContext = await getUserBusinessContext(userId);
-      if (userWithContext != null &&
-          (userWithContext.businessId != null ||
-              userWithContext.roleId != null)) {
-        return userWithContext;
+      latest = userWithContext;
+
+      if (userWithContext != null) {
+        final hasBusiness = _hasText(userWithContext.businessId);
+        final hasRole =
+            _hasText(userWithContext.roleId) ||
+            _hasText(userWithContext.roleName);
+
+        // No business means user still needs setup; return immediately.
+        if (!hasBusiness) {
+          return userWithContext;
+        }
+
+        // Business + role is the fully hydrated context we need.
+        if (hasRole) {
+          return userWithContext;
+        }
       }
 
       if (attempt < 7) {
@@ -49,7 +71,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
     }
 
-    return await getUserBusinessContext(userId);
+    return latest ?? await getUserBusinessContext(userId);
   }
 
   AuthBloc({
@@ -57,6 +79,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required this.getUserBusinessContext,
     required this.observeAuthState,
     required this.signIn,
+    required this.signInWithGoogle,
+    required this.signInWithFacebook,
     required this.checkEmailExists,
     required this.sendSignUpOtp,
     required this.verifySignUpOtp,
@@ -64,6 +88,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }) : super(AuthUnknown()) {
     on<AuthStarted>(_onStarted);
     on<AuthLoginRequested>(_onLogin);
+    on<AuthGoogleSignInRequested>(_onGoogleSignIn);
+    on<AuthFacebookSignInRequested>(_onFacebookSignIn);
     on<AuthRegisterRequested>(_onRegister);
     on<AuthVerifySignUpCodeRequested>(_onVerifySignUpCode);
     on<AuthResendSignUpCodeRequested>(_onResendSignUpCode);
@@ -91,7 +117,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onLogin(AuthLoginRequested e, Emitter<AuthState> emit) async {
-    emit(AuthLoading());
+    emit(const AuthLoading(type: AuthLoadingType.email));
     try {
       final user = await signIn(e.email, e.password);
       // Fetch user business context
@@ -107,11 +133,41 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
   }
 
+  Future<void> _onGoogleSignIn(
+    AuthGoogleSignInRequested e,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(const AuthLoading(type: AuthLoadingType.google));
+    try {
+      await signInWithGoogle();
+      // OAuth opens in browser/webview - show in-progress state until user returns
+      emit(const AuthOAuthInProgress('google'));
+    } catch (err) {
+      emit(AuthError(_errorMessage(err)));
+      emit(AuthUnauthenticated());
+    }
+  }
+
+  Future<void> _onFacebookSignIn(
+    AuthFacebookSignInRequested e,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(const AuthLoading(type: AuthLoadingType.facebook));
+    try {
+      await signInWithFacebook();
+      // OAuth opens in browser/webview - show in-progress state until user returns
+      emit(const AuthOAuthInProgress('facebook'));
+    } catch (err) {
+      emit(AuthError(_errorMessage(err)));
+      emit(AuthUnauthenticated());
+    }
+  }
+
   Future<void> _onRegister(
     AuthRegisterRequested e,
     Emitter<AuthState> emit,
   ) async {
-    emit(AuthLoading());
+    emit(const AuthLoading(type: AuthLoadingType.signUp));
     try {
       // Check if email already exists
       final emailExists = await checkEmailExists(e.email);
@@ -133,7 +189,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthVerifySignUpCodeRequested e,
     Emitter<AuthState> emit,
   ) async {
-    emit(AuthLoading());
+    emit(const AuthLoading(type: AuthLoadingType.verifyCode));
     try {
       final pendingEmail = _pendingSignUpEmail;
       final pendingPassword = _pendingSignUpPassword;
@@ -171,7 +227,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthResendSignUpCodeRequested e,
     Emitter<AuthState> emit,
   ) async {
-    emit(AuthLoading());
+    emit(const AuthLoading(type: AuthLoadingType.signUp));
     try {
       await sendSignUpOtp(e.email);
       _pendingSignUpEmail = e.email;
@@ -199,6 +255,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     if (!event.isLoggedIn) {
+      // Keep offline session usable if local cache still has user context.
+      final cachedUser = getCurrentUser();
+      if (cachedUser != null) {
+        emit(AuthAuthenticated(cachedUser));
+        return;
+      }
+
       emit(AuthUnauthenticated());
       return;
     }

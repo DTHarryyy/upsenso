@@ -17,6 +17,14 @@ class AuthLoginRequested extends AuthEvent {
   List<Object?> get props => [email, password];
 }
 
+class AuthGoogleSignInRequested extends AuthEvent {
+  const AuthGoogleSignInRequested();
+}
+
+class AuthFacebookSignInRequested extends AuthEvent {
+  const AuthFacebookSignInRequested();
+}
+
 class AuthRegisterRequested extends AuthEvent {
   final String email;
   final String password;

@@ -1,47 +1,39 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:pos/core/const/app_colors.dart';
 
 class AuthOptions extends StatelessWidget {
-  const AuthOptions({super.key});
+  final VoidCallback? onGooglePressed;
+  final bool isLoading;
+
+  const AuthOptions({super.key, this.onGooglePressed, this.isLoading = false});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: () {},
-            label: Text(
-              'Continue with Facebook',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w500,
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: isLoading ? null : onGooglePressed,
+        label: isLoading
+            ? const SizedBox(
+                height: 18,
+                width: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Text(
+                'Continue with Google',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-            ),
-            icon: const Icon(FontAwesomeIcons.facebook, size: 16),
-          ),
-        ),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: () {},
-            label: Text(
-              'Continue with Google',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w500,
+        icon: isLoading
+            ? const SizedBox.shrink()
+            : Image.asset(
+                'assets/images/Google-icon.png',
+                width: 18,
+                height: 18,
               ),
-            ),
-            icon: Image.asset(
-              'assets/images/Google-icon.png',
-              width: 18,
-              height: 18,
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

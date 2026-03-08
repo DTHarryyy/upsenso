@@ -9,7 +9,15 @@ abstract class AuthState extends Equatable {
 
 class AuthUnknown extends AuthState {}
 
-class AuthLoading extends AuthState {}
+enum AuthLoadingType { email, google, facebook, signUp, verifyCode }
+
+class AuthLoading extends AuthState {
+  final AuthLoadingType? type;
+  const AuthLoading({this.type});
+
+  @override
+  List<Object?> get props => [type];
+}
 
 class AuthAuthenticated extends AuthState {
   final AppUser user;
@@ -22,11 +30,22 @@ class AuthAuthenticated extends AuthState {
     user.fullName,
     user.businessId,
     user.roleId,
+    user.roleName,
     user.businessName,
+    user.branchId,
+    user.branchName,
   ];
 }
 
 class AuthUnauthenticated extends AuthState {}
+
+class AuthOAuthInProgress extends AuthState {
+  final String provider; // google for now, but can be extended in future
+  const AuthOAuthInProgress(this.provider);
+
+  @override
+  List<Object?> get props => [provider];
+}
 
 class AuthCodeSent extends AuthState {
   final String email;

@@ -54,6 +54,10 @@ class _SignInState extends State<SignIn> {
     );
   }
 
+  void _onGoogleSignIn() {
+    context.read<AuthBloc>().add(const AuthGoogleSignInRequested());
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AuthBloc, AuthState>(
@@ -71,7 +75,42 @@ class _SignInState extends State<SignIn> {
         }
       },
       builder: (context, state) {
-        final isLoading = state is AuthLoading;
+        // Show OAuth progress screen while waiting for user to complete OAuth flow
+        if (state is AuthOAuthInProgress) {
+          return Scaffold(
+            body: SafeArea(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Completing ${state.provider == 'google' ? 'Google' : 'Facebook'} sign-in...',
+                      style: AppTextStyles.body(context).copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Please wait while we finish setting up your account',
+                      style: AppTextStyles.caption(
+                        context,
+                      ).copyWith(color: AppColors.textSecondary),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        final isEmailLoading =
+            state is AuthLoading && state.type == AuthLoadingType.email;
+        final isGoogleLoading =
+            state is AuthLoading && state.type == AuthLoadingType.google;
 
         return Scaffold(
           body: SafeArea(
@@ -179,8 +218,8 @@ class _SignInState extends State<SignIn> {
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton(
-                          onPressed: isLoading ? null : _onSubmit,
-                          child: isLoading
+                          onPressed: isEmailLoading ? null : _onSubmit,
+                          child: isEmailLoading
                               ? const SizedBox(
                                   height: 18,
                                   width: 18,
@@ -191,7 +230,7 @@ class _SignInState extends State<SignIn> {
                               : Text(AppStrings.signIn),
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 24),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -221,8 +260,11 @@ class _SignInState extends State<SignIn> {
                         ],
                       ),
 
-                      const SizedBox(height: 12),
-                      const AuthOptions(),
+                      const SizedBox(height: 20),
+                      AuthOptions(
+                        isLoading: isGoogleLoading,
+                        onGooglePressed: _onGoogleSignIn,
+                      ),
                     ],
                   ),
                 ),
