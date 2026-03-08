@@ -14,6 +14,7 @@ import 'package:pos/core/ui/status/status_type.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
+import 'package:pos/features/auth/presentation/widgets/auth_options.dart';
 
 class SignUp extends StatefulWidget {
   const SignUp({super.key});
@@ -69,6 +70,10 @@ class _SignUpState extends State<SignUp> {
     );
   }
 
+  void _onGoogleSignIn() {
+    context.read<AuthBloc>().add(const AuthGoogleSignInRequested());
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AuthBloc, AuthState>(
@@ -92,7 +97,8 @@ class _SignUpState extends State<SignUp> {
       builder: (context, state) {
         final isLoading =
             state is AuthLoading && state.type == AuthLoadingType.signUp;
-
+        final isGoogleLoading =
+            state is AuthLoading && state.type == AuthLoadingType.google;
         return Scaffold(
           body: SafeArea(
             child: Center(
@@ -222,34 +228,28 @@ class _SignUpState extends State<SignUp> {
                             ),
                           ),
                           const Spacer(),
-                          Flexible(
-                            child: Wrap(
-                              alignment: WrapAlignment.end,
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              spacing: 6,
-                              runSpacing: 4,
-                              children: [
-                                Text(
-                                  AppStrings.alreadyHaveAccount,
-                                  style: const TextStyle(
-                                    color: AppColors.textSecondary,
-                                  ),
+                          Row(
+                            children: [
+                              Text(
+                                AppStrings.alreadyHaveAccount,
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
                                 ),
-                                TextButton(
-                                  onPressed: () => context.go(AppRoutes.signIn),
-                                  style: TextButton.styleFrom(
-                                    padding: EdgeInsets.zero,
-                                    minimumSize: const Size(0, 32),
-                                    tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                  ),
-                                  child: const Text(
-                                    'Sign In',
-                                    style: TextStyle(color: AppColors.brand),
-                                  ),
+                              ),
+                              TextButton(
+                                onPressed: () => context.go(AppRoutes.signIn),
+                                style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  minimumSize: const Size(0, 32),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
                                 ),
-                              ],
-                            ),
+                                child: const Text(
+                                  'Sign In',
+                                  style: TextStyle(color: AppColors.brand),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -270,6 +270,11 @@ class _SignUpState extends State<SignUp> {
                                 )
                               : Text(AppStrings.signUp),
                         ),
+                      ),
+                      const SizedBox(height: 24),
+                      AuthOptions(
+                        isLoading: isGoogleLoading,
+                        onGooglePressed: _onGoogleSignIn,
                       ),
                     ],
                   ),

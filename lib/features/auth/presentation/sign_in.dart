@@ -231,36 +231,7 @@ class _SignInState extends State<SignIn> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: Container(
-                              height: 1,
-                              color: AppColors.divider,
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8.0,
-                            ),
-                            child: Text(
-                              'Or sign in with',
-                              style: AppTextStyles.caption(
-                                context,
-                              ).copyWith(color: AppColors.textSecondary),
-                            ),
-                          ),
-                          Expanded(
-                            child: Container(
-                              height: 1,
-                              color: AppColors.divider,
-                            ),
-                          ),
-                        ],
-                      ),
 
-                      const SizedBox(height: 20),
                       AuthOptions(
                         isLoading: isGoogleLoading,
                         onGooglePressed: _onGoogleSignIn,
