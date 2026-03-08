@@ -8,7 +8,10 @@ class AppUserModel extends AppUser {
     super.fullName,
     super.businessId,
     super.roleId,
+    super.roleName,
     super.businessName,
+    super.branchId,
+    super.branchName,
   });
 
   factory AppUserModel.fromSupabaseUser(User user) {
@@ -25,7 +28,10 @@ class AppUserModel extends AppUser {
     String? fullName,
     String? businessId,
     String? roleId,
+    String? roleName,
     String? businessName,
+    String? branchId,
+    String? branchName,
   }) {
     return AppUserModel(
       id: id ?? this.id,
@@ -33,7 +39,10 @@ class AppUserModel extends AppUser {
       fullName: fullName ?? this.fullName,
       businessId: businessId ?? this.businessId,
       roleId: roleId ?? this.roleId,
+      roleName: roleName ?? this.roleName,
       businessName: businessName ?? this.businessName,
+      branchId: branchId ?? this.branchId,
+      branchName: branchName ?? this.branchName,
     );
   }
 }

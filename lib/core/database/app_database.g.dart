@@ -3,6 +3,654 @@
 part of 'app_database.dart';
 
 // ignore_for_file: type=lint
+class $AuthContextTableTable extends AuthContextTable
+    with TableInfo<$AuthContextTableTable, AuthContextTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AuthContextTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _emailMeta = const VerificationMeta('email');
+  @override
+  late final GeneratedColumn<String> email = GeneratedColumn<String>(
+    'email',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _fullNameMeta = const VerificationMeta(
+    'fullName',
+  );
+  @override
+  late final GeneratedColumn<String> fullName = GeneratedColumn<String>(
+    'full_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _roleIdMeta = const VerificationMeta('roleId');
+  @override
+  late final GeneratedColumn<String> roleId = GeneratedColumn<String>(
+    'role_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _roleNameMeta = const VerificationMeta(
+    'roleName',
+  );
+  @override
+  late final GeneratedColumn<String> roleName = GeneratedColumn<String>(
+    'role_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _businessNameMeta = const VerificationMeta(
+    'businessName',
+  );
+  @override
+  late final GeneratedColumn<String> businessName = GeneratedColumn<String>(
+    'business_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _branchNameMeta = const VerificationMeta(
+    'branchName',
+  );
+  @override
+  late final GeneratedColumn<String> branchName = GeneratedColumn<String>(
+    'branch_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _localUpdatedAtMeta = const VerificationMeta(
+    'localUpdatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> localUpdatedAt =
+      GeneratedColumn<DateTime>(
+        'local_updated_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+        defaultValue: currentDateAndTime,
+      );
+  @override
+  List<GeneratedColumn> get $columns => [
+    userId,
+    email,
+    fullName,
+    businessId,
+    roleId,
+    roleName,
+    businessName,
+    branchId,
+    branchName,
+    localUpdatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'auth_context';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AuthContextTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('email')) {
+      context.handle(
+        _emailMeta,
+        email.isAcceptableOrUnknown(data['email']!, _emailMeta),
+      );
+    }
+    if (data.containsKey('full_name')) {
+      context.handle(
+        _fullNameMeta,
+        fullName.isAcceptableOrUnknown(data['full_name']!, _fullNameMeta),
+      );
+    }
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    }
+    if (data.containsKey('role_id')) {
+      context.handle(
+        _roleIdMeta,
+        roleId.isAcceptableOrUnknown(data['role_id']!, _roleIdMeta),
+      );
+    }
+    if (data.containsKey('role_name')) {
+      context.handle(
+        _roleNameMeta,
+        roleName.isAcceptableOrUnknown(data['role_name']!, _roleNameMeta),
+      );
+    }
+    if (data.containsKey('business_name')) {
+      context.handle(
+        _businessNameMeta,
+        businessName.isAcceptableOrUnknown(
+          data['business_name']!,
+          _businessNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    }
+    if (data.containsKey('branch_name')) {
+      context.handle(
+        _branchNameMeta,
+        branchName.isAcceptableOrUnknown(data['branch_name']!, _branchNameMeta),
+      );
+    }
+    if (data.containsKey('local_updated_at')) {
+      context.handle(
+        _localUpdatedAtMeta,
+        localUpdatedAt.isAcceptableOrUnknown(
+          data['local_updated_at']!,
+          _localUpdatedAtMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {userId};
+  @override
+  AuthContextTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AuthContextTableData(
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+      email: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}email'],
+      ),
+      fullName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}full_name'],
+      ),
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      ),
+      roleId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}role_id'],
+      ),
+      roleName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}role_name'],
+      ),
+      businessName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_name'],
+      ),
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      ),
+      branchName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_name'],
+      ),
+      localUpdatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}local_updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AuthContextTableTable createAlias(String alias) {
+    return $AuthContextTableTable(attachedDatabase, alias);
+  }
+}
+
+class AuthContextTableData extends DataClass
+    implements Insertable<AuthContextTableData> {
+  /// User's Supabase Auth UID (primary key for single current user)
+  final String userId;
+
+  /// User's email address
+  final String? email;
+
+  /// User's full name
+  final String? fullName;
+
+  /// Associated business ID (from database trigger context)
+  final String? businessId;
+
+  /// User's role ID in the business
+  final String? roleId;
+
+  /// User's role name (e.g., "Super Admin", "Manager")
+  final String? roleName;
+
+  /// Associated business name
+  final String? businessName;
+
+  /// User's default/primary branch ID
+  final String? branchId;
+
+  /// User's default/primary branch name
+  final String? branchName;
+
+  /// Last time this context was updated locally
+  final DateTime localUpdatedAt;
+  const AuthContextTableData({
+    required this.userId,
+    this.email,
+    this.fullName,
+    this.businessId,
+    this.roleId,
+    this.roleName,
+    this.businessName,
+    this.branchId,
+    this.branchName,
+    required this.localUpdatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['user_id'] = Variable<String>(userId);
+    if (!nullToAbsent || email != null) {
+      map['email'] = Variable<String>(email);
+    }
+    if (!nullToAbsent || fullName != null) {
+      map['full_name'] = Variable<String>(fullName);
+    }
+    if (!nullToAbsent || businessId != null) {
+      map['business_id'] = Variable<String>(businessId);
+    }
+    if (!nullToAbsent || roleId != null) {
+      map['role_id'] = Variable<String>(roleId);
+    }
+    if (!nullToAbsent || roleName != null) {
+      map['role_name'] = Variable<String>(roleName);
+    }
+    if (!nullToAbsent || businessName != null) {
+      map['business_name'] = Variable<String>(businessName);
+    }
+    if (!nullToAbsent || branchId != null) {
+      map['branch_id'] = Variable<String>(branchId);
+    }
+    if (!nullToAbsent || branchName != null) {
+      map['branch_name'] = Variable<String>(branchName);
+    }
+    map['local_updated_at'] = Variable<DateTime>(localUpdatedAt);
+    return map;
+  }
+
+  AuthContextTableCompanion toCompanion(bool nullToAbsent) {
+    return AuthContextTableCompanion(
+      userId: Value(userId),
+      email: email == null && nullToAbsent
+          ? const Value.absent()
+          : Value(email),
+      fullName: fullName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fullName),
+      businessId: businessId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(businessId),
+      roleId: roleId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(roleId),
+      roleName: roleName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(roleName),
+      businessName: businessName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(businessName),
+      branchId: branchId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(branchId),
+      branchName: branchName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(branchName),
+      localUpdatedAt: Value(localUpdatedAt),
+    );
+  }
+
+  factory AuthContextTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AuthContextTableData(
+      userId: serializer.fromJson<String>(json['userId']),
+      email: serializer.fromJson<String?>(json['email']),
+      fullName: serializer.fromJson<String?>(json['fullName']),
+      businessId: serializer.fromJson<String?>(json['businessId']),
+      roleId: serializer.fromJson<String?>(json['roleId']),
+      roleName: serializer.fromJson<String?>(json['roleName']),
+      businessName: serializer.fromJson<String?>(json['businessName']),
+      branchId: serializer.fromJson<String?>(json['branchId']),
+      branchName: serializer.fromJson<String?>(json['branchName']),
+      localUpdatedAt: serializer.fromJson<DateTime>(json['localUpdatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'userId': serializer.toJson<String>(userId),
+      'email': serializer.toJson<String?>(email),
+      'fullName': serializer.toJson<String?>(fullName),
+      'businessId': serializer.toJson<String?>(businessId),
+      'roleId': serializer.toJson<String?>(roleId),
+      'roleName': serializer.toJson<String?>(roleName),
+      'businessName': serializer.toJson<String?>(businessName),
+      'branchId': serializer.toJson<String?>(branchId),
+      'branchName': serializer.toJson<String?>(branchName),
+      'localUpdatedAt': serializer.toJson<DateTime>(localUpdatedAt),
+    };
+  }
+
+  AuthContextTableData copyWith({
+    String? userId,
+    Value<String?> email = const Value.absent(),
+    Value<String?> fullName = const Value.absent(),
+    Value<String?> businessId = const Value.absent(),
+    Value<String?> roleId = const Value.absent(),
+    Value<String?> roleName = const Value.absent(),
+    Value<String?> businessName = const Value.absent(),
+    Value<String?> branchId = const Value.absent(),
+    Value<String?> branchName = const Value.absent(),
+    DateTime? localUpdatedAt,
+  }) => AuthContextTableData(
+    userId: userId ?? this.userId,
+    email: email.present ? email.value : this.email,
+    fullName: fullName.present ? fullName.value : this.fullName,
+    businessId: businessId.present ? businessId.value : this.businessId,
+    roleId: roleId.present ? roleId.value : this.roleId,
+    roleName: roleName.present ? roleName.value : this.roleName,
+    businessName: businessName.present ? businessName.value : this.businessName,
+    branchId: branchId.present ? branchId.value : this.branchId,
+    branchName: branchName.present ? branchName.value : this.branchName,
+    localUpdatedAt: localUpdatedAt ?? this.localUpdatedAt,
+  );
+  AuthContextTableData copyWithCompanion(AuthContextTableCompanion data) {
+    return AuthContextTableData(
+      userId: data.userId.present ? data.userId.value : this.userId,
+      email: data.email.present ? data.email.value : this.email,
+      fullName: data.fullName.present ? data.fullName.value : this.fullName,
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      roleId: data.roleId.present ? data.roleId.value : this.roleId,
+      roleName: data.roleName.present ? data.roleName.value : this.roleName,
+      businessName: data.businessName.present
+          ? data.businessName.value
+          : this.businessName,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      branchName: data.branchName.present
+          ? data.branchName.value
+          : this.branchName,
+      localUpdatedAt: data.localUpdatedAt.present
+          ? data.localUpdatedAt.value
+          : this.localUpdatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AuthContextTableData(')
+          ..write('userId: $userId, ')
+          ..write('email: $email, ')
+          ..write('fullName: $fullName, ')
+          ..write('businessId: $businessId, ')
+          ..write('roleId: $roleId, ')
+          ..write('roleName: $roleName, ')
+          ..write('businessName: $businessName, ')
+          ..write('branchId: $branchId, ')
+          ..write('branchName: $branchName, ')
+          ..write('localUpdatedAt: $localUpdatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    userId,
+    email,
+    fullName,
+    businessId,
+    roleId,
+    roleName,
+    businessName,
+    branchId,
+    branchName,
+    localUpdatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AuthContextTableData &&
+          other.userId == this.userId &&
+          other.email == this.email &&
+          other.fullName == this.fullName &&
+          other.businessId == this.businessId &&
+          other.roleId == this.roleId &&
+          other.roleName == this.roleName &&
+          other.businessName == this.businessName &&
+          other.branchId == this.branchId &&
+          other.branchName == this.branchName &&
+          other.localUpdatedAt == this.localUpdatedAt);
+}
+
+class AuthContextTableCompanion extends UpdateCompanion<AuthContextTableData> {
+  final Value<String> userId;
+  final Value<String?> email;
+  final Value<String?> fullName;
+  final Value<String?> businessId;
+  final Value<String?> roleId;
+  final Value<String?> roleName;
+  final Value<String?> businessName;
+  final Value<String?> branchId;
+  final Value<String?> branchName;
+  final Value<DateTime> localUpdatedAt;
+  final Value<int> rowid;
+  const AuthContextTableCompanion({
+    this.userId = const Value.absent(),
+    this.email = const Value.absent(),
+    this.fullName = const Value.absent(),
+    this.businessId = const Value.absent(),
+    this.roleId = const Value.absent(),
+    this.roleName = const Value.absent(),
+    this.businessName = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.branchName = const Value.absent(),
+    this.localUpdatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AuthContextTableCompanion.insert({
+    required String userId,
+    this.email = const Value.absent(),
+    this.fullName = const Value.absent(),
+    this.businessId = const Value.absent(),
+    this.roleId = const Value.absent(),
+    this.roleName = const Value.absent(),
+    this.businessName = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.branchName = const Value.absent(),
+    this.localUpdatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : userId = Value(userId);
+  static Insertable<AuthContextTableData> custom({
+    Expression<String>? userId,
+    Expression<String>? email,
+    Expression<String>? fullName,
+    Expression<String>? businessId,
+    Expression<String>? roleId,
+    Expression<String>? roleName,
+    Expression<String>? businessName,
+    Expression<String>? branchId,
+    Expression<String>? branchName,
+    Expression<DateTime>? localUpdatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (userId != null) 'user_id': userId,
+      if (email != null) 'email': email,
+      if (fullName != null) 'full_name': fullName,
+      if (businessId != null) 'business_id': businessId,
+      if (roleId != null) 'role_id': roleId,
+      if (roleName != null) 'role_name': roleName,
+      if (businessName != null) 'business_name': businessName,
+      if (branchId != null) 'branch_id': branchId,
+      if (branchName != null) 'branch_name': branchName,
+      if (localUpdatedAt != null) 'local_updated_at': localUpdatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AuthContextTableCompanion copyWith({
+    Value<String>? userId,
+    Value<String?>? email,
+    Value<String?>? fullName,
+    Value<String?>? businessId,
+    Value<String?>? roleId,
+    Value<String?>? roleName,
+    Value<String?>? businessName,
+    Value<String?>? branchId,
+    Value<String?>? branchName,
+    Value<DateTime>? localUpdatedAt,
+    Value<int>? rowid,
+  }) {
+    return AuthContextTableCompanion(
+      userId: userId ?? this.userId,
+      email: email ?? this.email,
+      fullName: fullName ?? this.fullName,
+      businessId: businessId ?? this.businessId,
+      roleId: roleId ?? this.roleId,
+      roleName: roleName ?? this.roleName,
+      businessName: businessName ?? this.businessName,
+      branchId: branchId ?? this.branchId,
+      branchName: branchName ?? this.branchName,
+      localUpdatedAt: localUpdatedAt ?? this.localUpdatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (email.present) {
+      map['email'] = Variable<String>(email.value);
+    }
+    if (fullName.present) {
+      map['full_name'] = Variable<String>(fullName.value);
+    }
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (roleId.present) {
+      map['role_id'] = Variable<String>(roleId.value);
+    }
+    if (roleName.present) {
+      map['role_name'] = Variable<String>(roleName.value);
+    }
+    if (businessName.present) {
+      map['business_name'] = Variable<String>(businessName.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
+    }
+    if (branchName.present) {
+      map['branch_name'] = Variable<String>(branchName.value);
+    }
+    if (localUpdatedAt.present) {
+      map['local_updated_at'] = Variable<DateTime>(localUpdatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AuthContextTableCompanion(')
+          ..write('userId: $userId, ')
+          ..write('email: $email, ')
+          ..write('fullName: $fullName, ')
+          ..write('businessId: $businessId, ')
+          ..write('roleId: $roleId, ')
+          ..write('roleName: $roleName, ')
+          ..write('businessName: $businessName, ')
+          ..write('branchId: $branchId, ')
+          ..write('branchName: $branchName, ')
+          ..write('localUpdatedAt: $localUpdatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $BusinessTemplatesTableTable extends BusinessTemplatesTable
     with TableInfo<$BusinessTemplatesTableTable, BusinessTemplatesTableData> {
   @override
@@ -1819,12 +2467,18 @@ class BranchesTableCompanion extends UpdateCompanion<BranchesTableData> {
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
+  late final $AuthContextTableTable authContextTable = $AuthContextTableTable(
+    this,
+  );
   late final $BusinessTemplatesTableTable businessTemplatesTable =
       $BusinessTemplatesTableTable(this);
   late final $BusinessesTableTable businessesTable = $BusinessesTableTable(
     this,
   );
   late final $BranchesTableTable branchesTable = $BranchesTableTable(this);
+  late final AuthContextDao authContextDao = AuthContextDao(
+    this as AppDatabase,
+  );
   late final BusinessTemplatesDao businessTemplatesDao = BusinessTemplatesDao(
     this as AppDatabase,
   );
@@ -1835,12 +2489,326 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
+    authContextTable,
     businessTemplatesTable,
     businessesTable,
     branchesTable,
   ];
 }
 
+typedef $$AuthContextTableTableCreateCompanionBuilder =
+    AuthContextTableCompanion Function({
+      required String userId,
+      Value<String?> email,
+      Value<String?> fullName,
+      Value<String?> businessId,
+      Value<String?> roleId,
+      Value<String?> roleName,
+      Value<String?> businessName,
+      Value<String?> branchId,
+      Value<String?> branchName,
+      Value<DateTime> localUpdatedAt,
+      Value<int> rowid,
+    });
+typedef $$AuthContextTableTableUpdateCompanionBuilder =
+    AuthContextTableCompanion Function({
+      Value<String> userId,
+      Value<String?> email,
+      Value<String?> fullName,
+      Value<String?> businessId,
+      Value<String?> roleId,
+      Value<String?> roleName,
+      Value<String?> businessName,
+      Value<String?> branchId,
+      Value<String?> branchName,
+      Value<DateTime> localUpdatedAt,
+      Value<int> rowid,
+    });
+
+class $$AuthContextTableTableFilterComposer
+    extends Composer<_$AppDatabase, $AuthContextTableTable> {
+  $$AuthContextTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fullName => $composableBuilder(
+    column: $table.fullName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get roleId => $composableBuilder(
+    column: $table.roleId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get roleName => $composableBuilder(
+    column: $table.roleName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessName => $composableBuilder(
+    column: $table.businessName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchName => $composableBuilder(
+    column: $table.branchName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get localUpdatedAt => $composableBuilder(
+    column: $table.localUpdatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AuthContextTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $AuthContextTableTable> {
+  $$AuthContextTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fullName => $composableBuilder(
+    column: $table.fullName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get roleId => $composableBuilder(
+    column: $table.roleId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get roleName => $composableBuilder(
+    column: $table.roleName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessName => $composableBuilder(
+    column: $table.businessName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchName => $composableBuilder(
+    column: $table.branchName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get localUpdatedAt => $composableBuilder(
+    column: $table.localUpdatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AuthContextTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AuthContextTableTable> {
+  $$AuthContextTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
+
+  GeneratedColumn<String> get email =>
+      $composableBuilder(column: $table.email, builder: (column) => column);
+
+  GeneratedColumn<String> get fullName =>
+      $composableBuilder(column: $table.fullName, builder: (column) => column);
+
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get roleId =>
+      $composableBuilder(column: $table.roleId, builder: (column) => column);
+
+  GeneratedColumn<String> get roleName =>
+      $composableBuilder(column: $table.roleName, builder: (column) => column);
+
+  GeneratedColumn<String> get businessName => $composableBuilder(
+    column: $table.businessName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
+
+  GeneratedColumn<String> get branchName => $composableBuilder(
+    column: $table.branchName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get localUpdatedAt => $composableBuilder(
+    column: $table.localUpdatedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$AuthContextTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AuthContextTableTable,
+          AuthContextTableData,
+          $$AuthContextTableTableFilterComposer,
+          $$AuthContextTableTableOrderingComposer,
+          $$AuthContextTableTableAnnotationComposer,
+          $$AuthContextTableTableCreateCompanionBuilder,
+          $$AuthContextTableTableUpdateCompanionBuilder,
+          (
+            AuthContextTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $AuthContextTableTable,
+              AuthContextTableData
+            >,
+          ),
+          AuthContextTableData,
+          PrefetchHooks Function()
+        > {
+  $$AuthContextTableTableTableManager(
+    _$AppDatabase db,
+    $AuthContextTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AuthContextTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AuthContextTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AuthContextTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> userId = const Value.absent(),
+                Value<String?> email = const Value.absent(),
+                Value<String?> fullName = const Value.absent(),
+                Value<String?> businessId = const Value.absent(),
+                Value<String?> roleId = const Value.absent(),
+                Value<String?> roleName = const Value.absent(),
+                Value<String?> businessName = const Value.absent(),
+                Value<String?> branchId = const Value.absent(),
+                Value<String?> branchName = const Value.absent(),
+                Value<DateTime> localUpdatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AuthContextTableCompanion(
+                userId: userId,
+                email: email,
+                fullName: fullName,
+                businessId: businessId,
+                roleId: roleId,
+                roleName: roleName,
+                businessName: businessName,
+                branchId: branchId,
+                branchName: branchName,
+                localUpdatedAt: localUpdatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String userId,
+                Value<String?> email = const Value.absent(),
+                Value<String?> fullName = const Value.absent(),
+                Value<String?> businessId = const Value.absent(),
+                Value<String?> roleId = const Value.absent(),
+                Value<String?> roleName = const Value.absent(),
+                Value<String?> businessName = const Value.absent(),
+                Value<String?> branchId = const Value.absent(),
+                Value<String?> branchName = const Value.absent(),
+                Value<DateTime> localUpdatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AuthContextTableCompanion.insert(
+                userId: userId,
+                email: email,
+                fullName: fullName,
+                businessId: businessId,
+                roleId: roleId,
+                roleName: roleName,
+                businessName: businessName,
+                branchId: branchId,
+                branchName: branchName,
+                localUpdatedAt: localUpdatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AuthContextTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AuthContextTableTable,
+      AuthContextTableData,
+      $$AuthContextTableTableFilterComposer,
+      $$AuthContextTableTableOrderingComposer,
+      $$AuthContextTableTableAnnotationComposer,
+      $$AuthContextTableTableCreateCompanionBuilder,
+      $$AuthContextTableTableUpdateCompanionBuilder,
+      (
+        AuthContextTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $AuthContextTableTable,
+          AuthContextTableData
+        >,
+      ),
+      AuthContextTableData,
+      PrefetchHooks Function()
+    >;
 typedef $$BusinessTemplatesTableTableCreateCompanionBuilder =
     BusinessTemplatesTableCompanion Function({
       required String id,
@@ -2751,6 +3719,8 @@ typedef $$BranchesTableTableProcessedTableManager =
 class $AppDatabaseManager {
   final _$AppDatabase _db;
   $AppDatabaseManager(this._db);
+  $$AuthContextTableTableTableManager get authContextTable =>
+      $$AuthContextTableTableTableManager(_db, _db.authContextTable);
   $$BusinessTemplatesTableTableTableManager get businessTemplatesTable =>
       $$BusinessTemplatesTableTableTableManager(
         _db,

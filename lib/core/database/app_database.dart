@@ -6,9 +6,11 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
+import 'package:pos/core/database/tables/auth_context_table.dart';
 import 'package:pos/core/database/tables/business_templates_table.dart';
 import 'package:pos/core/database/tables/businesses_table.dart';
 import 'package:pos/core/database/tables/branches_table.dart';
+import 'package:pos/core/database/daos/auth_context_dao.dart';
 import 'package:pos/core/database/daos/business_templates_dao.dart';
 import 'package:pos/core/database/daos/businesses_dao.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
@@ -16,8 +18,13 @@ import 'package:pos/core/database/daos/branches_dao.dart';
 part 'app_database.g.dart';
 
 @DriftDatabase(
-  tables: [BusinessTemplatesTable, BusinessesTable, BranchesTable],
-  daos: [BusinessTemplatesDao, BusinessesDao, BranchesDao],
+  tables: [
+    AuthContextTable,
+    BusinessTemplatesTable,
+    BusinessesTable,
+    BranchesTable,
+  ],
+  daos: [AuthContextDao, BusinessTemplatesDao, BusinessesDao, BranchesDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
@@ -26,7 +33,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration {
@@ -39,11 +46,22 @@ class AppDatabase extends _$AppDatabase {
         if (from < 2) {
           await m.createTable(branchesTable);
         }
+        // Migration from v2 to v3: Add auth_context table
+        if (from < 3) {
+          await m.createTable(authContextTable);
+        }
+        // Migration from v3 to v4: Add role_name column to auth_context
+        if (from < 4) {
+          await m.addColumn(authContextTable, authContextTable.roleName);
+        }
+        // Migration from v4 to v5: Add branch columns to auth_context
+        if (from < 5) {
+          await m.addColumn(authContextTable, authContextTable.branchId);
+          await m.addColumn(authContextTable, authContextTable.branchName);
+        }
       },
     );
   }
-
-  // Debug helpers for inspecting local Drift data during development.
 
   /// Prints all tables and their contents to the console in debug mode.
   Future<void> debugPrintAllTables() async {
@@ -61,6 +79,8 @@ class AppDatabase extends _$AppDatabase {
     );
     debugPrint('');
 
+    await _debugPrintAuthContext();
+
     await _debugPrintBusinessTemplates();
 
     await _debugPrintBusinesses();
@@ -69,6 +89,56 @@ class AppDatabase extends _$AppDatabase {
 
     debugPrint(
       '═══════════════════════════════════════════════════════════════',
+    );
+    debugPrint('');
+  }
+
+  /// Prints auth_context table contents.
+  Future<void> _debugPrintAuthContext() async {
+    debugPrint(
+      '┌──────────────────────────────────────────────────────────────┐',
+    );
+    debugPrint(
+      '│ TABLE: auth_context                                          │',
+    );
+    debugPrint(
+      '├──────────────────────────────────────────────────────────────┤',
+    );
+
+    final contexts = await select(authContextTable).get();
+
+    if (contexts.isEmpty) {
+      debugPrint(
+        '│ (empty)                                                      │',
+      );
+    } else {
+      debugPrint('│ Count: ${contexts.length.toString().padRight(53)}│');
+      debugPrint(
+        '├──────────────────────────────────────────────────────────────┤',
+      );
+
+      for (final c in contexts) {
+        debugPrint(
+          '│ userId: ${c.userId.substring(0, 8)}...                                   │',
+        );
+        debugPrint('│   email: ${(c.email ?? 'null').padRight(52)}│');
+        debugPrint('│   fullName: ${(c.fullName ?? 'null').padRight(48)}│');
+        debugPrint('│   businessId: ${(c.businessId ?? 'null').padRight(45)}│');
+        debugPrint('│   roleId: ${(c.roleId ?? 'null').padRight(50)}│');
+        debugPrint(
+          '│   businessName: ${(c.businessName ?? 'null').padRight(46)}│',
+        );
+        debugPrint(
+          '│   localUpdatedAt: ${c.localUpdatedAt.toString().padRight(41)}│',
+        );
+        debugPrint(
+          '├──────────────────────────────────────────────────────────────┤',
+        );
+      }
+    }
+
+    debugPrint(
+      '└──────────────────────────────────────────────────────────────┘',
     );
     debugPrint('');
   }
@@ -209,12 +279,14 @@ class AppDatabase extends _$AppDatabase {
   Future<void> debugPrintTableCounts() async {
     if (!kDebugMode) return;
 
+    final contextsCount = await (select(authContextTable)).get();
     final templatesCount = await (select(businessTemplatesTable)).get();
     final businessesCount = await (select(businessesTable)).get();
     final branchesCount = await (select(branchesTable)).get();
 
     debugPrint('');
     debugPrint('Drift table counts:');
+    debugPrint(' - auth_context: ${contextsCount.length}');
     debugPrint(' - business_templates: ${templatesCount.length}');
     debugPrint(' - businesses: ${businessesCount.length}');
     debugPrint(' - branches: ${branchesCount.length}');
@@ -226,6 +298,7 @@ class AppDatabase extends _$AppDatabase {
     if (!kDebugMode) return;
 
     debugPrint('Clearing all Drift tables...');
+    await delete(authContextTable).go();
     await delete(branchesTable).go();
     await delete(businessesTable).go();
     await delete(businessTemplatesTable).go();

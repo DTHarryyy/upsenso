@@ -4,7 +4,10 @@ class AppUser {
   final String? fullName;
   final String? businessId;
   final String? roleId;
+  final String? roleName;
   final String? businessName;
+  final String? branchId;
+  final String? branchName;
 
   const AppUser({
     required this.id,
@@ -12,6 +15,9 @@ class AppUser {
     this.fullName,
     this.businessId,
     this.roleId,
+    this.roleName,
     this.businessName,
+    this.branchId,
+    this.branchName,
   });
 }

@@ -128,7 +128,7 @@ class BusinessRepositoryImpl implements BusinessRepository {
     final online = await connectivity.isConnected;
     if (online) {
       try {
-        // Upload to Supabase
+        // Upload business to Supabase
         final serverData = await remote.createBusiness(
           id: businessId,
           name: name,
@@ -136,15 +136,36 @@ class BusinessRepositoryImpl implements BusinessRepository {
           templateId: templateId,
         );
 
-        // Update local record with server response and mark as synced
+        // Upload branch to Supabase
+        await remote.createBranch(
+          id: branchId,
+          businessId: businessId,
+          name: branchName,
+        );
+
+        // Best-effort: persist default branch linkage on user's profile.
+        // Fails silently if permission denied or user row doesn't exist yet.
+        try {
+          await remote.assignUserBranch(userId: ownerId, branchId: branchId);
+        } catch (_) {
+          // Branch linkage is optional; fallback path will auto-create branch on context load.
+        }
+
+        // Update local business record with server response and mark as synced
         final serverBusiness = BusinessModel.fromJson(serverData);
 
         // Keep local cache aligned with server payload.
         await businessesDao.upsertFromServer(serverBusiness);
 
-        // Mark as synced
+        // Mark business as synced
         await businessesDao.updateSyncStatus(
           id: serverBusiness.id,
+          status: SyncStatus.synced,
+        );
+
+        // Mark branch as synced
+        await branchesDao.updateSyncStatus(
+          id: branchId,
           status: SyncStatus.synced,
         );
 

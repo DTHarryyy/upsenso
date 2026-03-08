@@ -28,6 +28,9 @@ class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
   /// User's email (optional for profile popup)
   final String? userEmail;
 
+  /// User's unique ID (optional for profile popup)
+  final String? userId;
+
   /// User's business name (optional for profile popup)
   final String? businessName;
 
@@ -56,6 +59,7 @@ class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
     required this.userName,
     required this.userRole,
     this.userEmail,
+    this.userId,
     this.businessName,
     this.userAvatar,
     this.notificationCount = 0,
@@ -303,6 +307,14 @@ class _CustomAppBarState extends State<CustomAppBar> {
                 if ((widget.userEmail ?? '').isNotEmpty)
                   Text(
                     widget.userEmail!,
+                    style: GoogleFonts.outfit(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                if ((widget.userId ?? '').isNotEmpty)
+                  Text(
+                    'User ID: ${widget.userId}',
                     style: GoogleFonts.outfit(
                       fontSize: 12,
                       color: AppColors.textSecondary,

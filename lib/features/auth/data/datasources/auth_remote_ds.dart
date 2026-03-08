@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 
 class AuthRemoteDs {
   final SupabaseClient client;
@@ -10,6 +11,20 @@ class AuthRemoteDs {
 
   Future<AuthResponse> signIn(String email, String password) {
     return client.auth.signInWithPassword(email: email, password: password);
+  }
+
+  Future<void> signInWithGoogle({required String redirectTo}) async {
+    await client.auth.signInWithOAuth(
+      OAuthProvider.google,
+      redirectTo: redirectTo,
+    );
+  }
+
+  Future<void> signInWithFacebook({required String redirectTo}) async {
+    await client.auth.signInWithOAuth(
+      OAuthProvider.facebook,
+      redirectTo: redirectTo,
+    );
   }
 
   Future<AuthResponse> signUp(String email, String password) {
@@ -123,7 +138,10 @@ class AuthRemoteDs {
       final result = {
         'business_id': row['business_id']?.toString(),
         'role_id': row['role_id']?.toString(),
+        'role_name': row['role_name']?.toString(),
         'business_name': row['business_name']?.toString(),
+        'branch_id': row['branch_id']?.toString(),
+        'branch_name': row['branch_name']?.toString(),
         'full_name': fullName,
       };
 
@@ -142,87 +160,35 @@ class AuthRemoteDs {
       }
 
       final current = client.auth.currentUser;
-      final currentEmail = current?.email;
+      if (current == null) {
+        return null;
+      }
 
-      Map<String, dynamic>? userRow;
       Map<String, dynamic>? businessRow;
 
-      final userByIdRows = List<Map<String, dynamic>>.from(
-        await client.from('users').select().eq('id', userId).limit(1),
-      );
-      if (userByIdRows.isNotEmpty) {
-        userRow = userByIdRows.first;
-      }
-
-      if (userRow == null && (currentEmail ?? '').isNotEmpty) {
-        final userByEmailRows = List<Map<String, dynamic>>.from(
-          await client
-              .from('users')
-              .select()
-              .eq('email', currentEmail!)
-              .limit(1),
-        );
-        if (userByEmailRows.isNotEmpty) {
-          userRow = userByEmailRows.first;
-        }
-      }
-
-      String? businessId = userRow?['business_id']?.toString();
-      String? roleId = userRow?['role_id']?.toString();
+      String? businessId;
+      String? roleId;
       final fullName =
-          userRow?['full_name']?.toString() ??
-          userRow?['fu l_name']?.toString();
+          current.userMetadata?['full_name']?.toString() ??
+          _extractNameFromEmail(current.email ?? '');
 
-      if (businessId != null) {
-        final businessByIdRows = List<Map<String, dynamic>>.from(
-          await client
-              .from('businesses')
-              .select('id, name')
-              .eq('id', businessId)
-              .limit(1),
-        );
+      // Fallback path without `users` table access: infer context from owned business.
+      final businessByOwnerRows = List<Map<String, dynamic>>.from(
+        await client
+            .from('businesses')
+            .select('id, name')
+            .eq('owner_id', current.id)
+            .order('created_at', ascending: false)
+            .limit(1),
+      );
 
-        if (businessByIdRows.isNotEmpty) {
-          businessRow = businessByIdRows.first;
-        }
-      }
-
-      if (businessRow == null && current != null) {
-        final businessByOwnerRows = List<Map<String, dynamic>>.from(
-          await client
-              .from('businesses')
-              .select('id, name')
-              .eq('owner_id', current.id)
-              .order('created_at', ascending: false)
-              .limit(1),
-        );
-
-        if (businessByOwnerRows.isNotEmpty) {
-          businessRow = businessByOwnerRows.first;
-          businessId ??= businessRow['id']?.toString();
-        }
-      }
-
-      // Fallback: derive role by matching business + email.
-      if (roleId == null &&
-          businessId != null &&
-          (currentEmail ?? '').isNotEmpty) {
-        final roleByBusinessRows = List<Map<String, dynamic>>.from(
-          await client
-              .from('users')
-              .select('role_id')
-              .eq('business_id', businessId)
-              .eq('email', currentEmail!)
-              .limit(1),
-        );
-
-        if (roleByBusinessRows.isNotEmpty) {
-          roleId = roleByBusinessRows.first['role_id']?.toString();
-        }
+      if (businessByOwnerRows.isNotEmpty) {
+        businessRow = businessByOwnerRows.first;
+        businessId = businessRow['id']?.toString();
       }
 
       // Final fallback: owner is typically Super Admin for created business.
-      if (roleId == null && businessId != null) {
+      if (businessId != null) {
         final superAdminRoleRows = List<Map<String, dynamic>>.from(
           await client
               .from('roles')
@@ -239,6 +205,72 @@ class AuthRemoteDs {
 
       final businessName = businessRow?['name']?.toString();
 
+      // Fetch role name if we have roleId
+      String? roleName;
+      if (roleId != null) {
+        try {
+          final roleRows = List<Map<String, dynamic>>.from(
+            await client.from('roles').select('name').eq('id', roleId).limit(1),
+          );
+          if (roleRows.isNotEmpty) {
+            roleName = roleRows.first['name']?.toString();
+          }
+        } catch (_) {
+          // Role label is optional; never fail the whole business context fetch.
+          roleName = null;
+        }
+      }
+
+      // Fetch first active branch for the business (default branch)
+      String? branchId;
+      String? branchName;
+      if (businessId != null) {
+        try {
+          final branchRows = List<Map<String, dynamic>>.from(
+            await client
+                .from('branches')
+                .select('id, name')
+                .eq('business_id', businessId)
+                .eq('is_active', true)
+                .order('id', ascending: true)
+                .limit(1),
+          );
+          if (branchRows.isNotEmpty) {
+            branchId = branchRows.first['id']?.toString();
+            branchName = branchRows.first['name']?.toString();
+          } else {
+            // Self-heal for older setups where the first branch was never created.
+            final createdBranch = Map<String, dynamic>.from(
+              await client
+                  .from('branches')
+                  .insert({
+                    'id': const Uuid().v4(),
+                    'business_id': businessId,
+                    'name': 'Main Branch',
+                    'is_active': true,
+                  })
+                  .select('id, name')
+                  .single(),
+            );
+
+            branchId = createdBranch['id']?.toString();
+            branchName = createdBranch['name']?.toString();
+
+            // Best-effort: keep users.branch_id in sync with default branch.
+            if ((branchId ?? '').isNotEmpty) {
+              await client
+                  .from('users')
+                  .update({'branch_id': branchId})
+                  .eq('id', current.id);
+            }
+          }
+        } catch (_) {
+          // Branch is optional, continue without it
+          branchId = null;
+          branchName = null;
+        }
+      }
+
       if (businessId == null && roleId == null && businessName == null) {
         return null;
       }
@@ -246,7 +278,10 @@ class AuthRemoteDs {
       return {
         'business_id': businessId,
         'role_id': roleId,
+        'role_name': roleName,
         'business_name': businessName,
+        'branch_id': branchId,
+        'branch_name': branchName,
         'full_name': fullName,
       };
     } catch (_) {

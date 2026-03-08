@@ -11,6 +11,7 @@ import 'package:pos/core/ui/status/status_type.dart';
 
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
+import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/business/domain/entities/business_template.dart';
 import 'package:pos/features/business/presentation/bloc/business_bloc.dart';
 import 'package:pos/features/business/presentation/bloc/business_event.dart';
@@ -42,6 +43,38 @@ class _BusinessProfilePageState extends State<BusinessProfilePage> {
     _nameController.dispose();
     _branchNameController.dispose();
     super.dispose();
+  }
+
+  bool _hasText(String? value) {
+    return value != null && value.trim().isNotEmpty;
+  }
+
+  Future<void> _navigateToHomeWhenBusinessContextReady() async {
+    final authBloc = context.read<AuthBloc>();
+
+    // Wait until auth state contains the freshly created business context.
+    for (var attempt = 0; attempt < 12; attempt++) {
+      final authState = authBloc.state;
+      if (authState is AuthAuthenticated) {
+        final hasBusiness = _hasText(authState.user.businessId);
+        final hasRole =
+            _hasText(authState.user.roleId) ||
+            _hasText(authState.user.roleName);
+
+        if (hasBusiness && hasRole) {
+          if (!mounted) return;
+          context.go(AppRoutes.home);
+          return;
+        }
+      }
+
+      authBloc.add(AuthStarted());
+      await Future<void>.delayed(const Duration(milliseconds: 350));
+    }
+
+    // Fallback navigation; router guard will still protect inconsistent state.
+    if (!mounted) return;
+    context.go(AppRoutes.home);
   }
 
   void _onSubmit() {
@@ -84,11 +117,7 @@ class _BusinessProfilePageState extends State<BusinessProfilePage> {
             message: 'Business profile created successfully!',
           );
 
-          // Give auth context refresh a brief moment before opening home.
-          Future<void>.delayed(const Duration(milliseconds: 350), () {
-            if (!context.mounted) return;
-            context.go(AppRoutes.home);
-          });
+          _navigateToHomeWhenBusinessContextReady();
           return;
         }
 

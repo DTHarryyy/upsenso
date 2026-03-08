@@ -138,6 +138,62 @@ class BusinessRemoteDs {
     return response != null ? Map<String, dynamic>.from(response) : null;
   }
 
+  /// Create a new branch
+  Future<Map<String, dynamic>> createBranch({
+    required String id,
+    required String businessId,
+    required String name,
+    String? address,
+    String? phone,
+  }) async {
+    final response = await client
+        .from('branches')
+        .insert({
+          'id': id,
+          'business_id': businessId,
+          'name': name,
+          'address': address,
+          'phone': phone,
+          'is_active': true,
+        })
+        .select()
+        .single();
+
+    return Map<String, dynamic>.from(response);
+  }
+
+  /// Best-effort link of the signed-up user to their default branch.
+  /// Retries briefly because user row creation can lag behind business creation.
+  Future<bool> assignUserBranch({
+    required String userId,
+    required String branchId,
+  }) async {
+    for (var attempt = 0; attempt < 8; attempt++) {
+      try {
+        final updatedRows = List<Map<String, dynamic>>.from(
+          await client
+              .from('users')
+              .update({'branch_id': branchId})
+              .eq('id', userId)
+              .select('id')
+              .limit(1),
+        );
+
+        if (updatedRows.isNotEmpty) {
+          return true;
+        }
+      } catch (_) {
+        return false;
+      }
+
+      if (attempt < 7) {
+        await Future<void>.delayed(const Duration(milliseconds: 350));
+      }
+    }
+
+    return false;
+  }
+
   /// Verify user was created by trigger
   Future<List<Map<String, dynamic>>> getUserByBusinessId(
     String businessId,
