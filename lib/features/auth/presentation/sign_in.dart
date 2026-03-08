@@ -185,7 +185,9 @@ class _SignInState extends State<SignIn> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           GestureDetector(
-                            onTap: () {},
+                            onTap: () {
+                              context.push(AppRoutes.forgotPassword);
+                            },
                             child: Text(
                               AppStrings.forgotPassword,
                               style: TextStyle(color: AppColors.brand),
