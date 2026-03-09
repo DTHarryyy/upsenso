@@ -1,7 +1,7 @@
 class Validators {
   Validators._();
 
-  // ---------- Basic ----------
+  // basic
   static String? required(String? v, {String fieldName = "This field"}) {
     final value = v?.trim() ?? "";
     if (value.isEmpty) return "$fieldName is required.";
@@ -34,20 +34,19 @@ class Validators {
     return null;
   }
 
-  // ---------- Email ----------
-  // Simple and reliable email regex for apps
+  // email 
   static final RegExp _email = RegExp(
     r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$',
   );
 
   static String? email(String? v) {
     final value = v?.trim() ?? "";
-    if (value.isEmpty) return null; // use required() if needed
+    if (value.isEmpty) return null; 
     if (!_email.hasMatch(value)) return "Enter a valid email address.";
     return null;
   }
 
-  // ---------- Strong Password ----------
+  // strong password ngani
   // Rules:
   // - min 8
   // - 1 uppercase
@@ -57,10 +56,7 @@ class Validators {
   static final RegExp _hasUpper = RegExp(r'[A-Z]');
   static final RegExp _hasLower = RegExp(r'[a-z]');
   static final RegExp _hasDigit = RegExp(r'\d');
-
-  //special characters: !@#$%^&*(),.?":{}|<>_-+=/
   static final RegExp _hasSpecial = RegExp(r'[!@#$%^&*(),.?":{}|<>_\-+=/]');
-
   static String? strongPassword(String? v, {int min = 8}) {
     final value = v ?? "";
     if (value.isEmpty) return null;
@@ -76,12 +72,12 @@ class Validators {
 
   static String? confirmPassword(String? v, String originalPassword) {
     final value = v ?? "";
-    if (value.isEmpty) return null; // use required() if needed
+    if (value.isEmpty) return null;
     if (value != originalPassword) return "Passwords do not match.";
     return null;
   }
 
-  // ---------- Numbers / Digits only ----------
+  // Numbers / Digits only 
   static final RegExp _digitsOnly = RegExp(r'^\d+$');
 
   static String? digitsOnly(String? v, {String fieldName = "This field"}) {
@@ -93,7 +89,7 @@ class Validators {
     return null;
   }
 
-  // ---------- Amount (2 decimals max) ----------
+  // Amount (2 decimals max) 
   static final RegExp _amount = RegExp(r'^\d+(\.\d{1,2})?$');
 
   static String? amount(String? v, {String fieldName = "Amount"}) {
@@ -118,7 +114,7 @@ class Validators {
     return null;
   }
 
-  // ---------- Phone (basic) ----------
+  // Phone (basic) 
   static final RegExp _phone = RegExp(r'^\+?\d{10,15}$');
 
   static String? phone(String? v) {
@@ -128,7 +124,7 @@ class Validators {
     return null;
   }
 
-  // ---------- Combine multiple validators ----------
+  //  Combine multiple validators
   static String? combine(
     String? value,
     List<String? Function(String?)> validators,

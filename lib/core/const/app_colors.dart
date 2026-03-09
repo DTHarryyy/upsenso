@@ -53,7 +53,7 @@ class AppColors {
 
   static const Color info = Color(0xFF3B82F6);
   static const Color infoSoft = Color(0xFFDBEAFE);
-
+  static const Color red = Color.fromARGB(255, 238, 37, 37);
   // ─────────────────────────────────────────────
   // POS / Finance semantics
   // ─────────────────────────────────────────────
