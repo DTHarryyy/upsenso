@@ -39,23 +39,21 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   @override
   void initState() {
     super.initState();
-    debugPrint('🏠 MainNavigationPage: initState called');
     _connectivityService = sl<ConnectivityService>();
     _setupConnectivityListener();
   }
 
   void _setupConnectivityListener() {
     _connectivityService.onConnectivityChanged.listen((isConnected) {
-      if (mounted) {
+      if (mounted && _isOnline != isConnected) {
         setState(() {
           _isOnline = isConnected;
         });
       }
     });
 
-    // Get initial connectivity status
     _connectivityService.isConnected.then((isConnected) {
-      if (mounted) {
+      if (mounted && _isOnline != isConnected) {
         setState(() {
           _isOnline = isConnected;
         });
@@ -84,18 +82,9 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('🏠 MainNavigationPage: build called');
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, authState) {
-        debugPrint(
-          '🏠 MainNavigationPage: AuthState is ${authState.runtimeType}',
-        );
-
-        // Safety: Show loading if AuthBloc is not ready yet
         if (authState is! AuthAuthenticated) {
-          debugPrint(
-            '⚠️ MainNavigationPage: AuthState not ready, showing loading',
-          );
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
@@ -152,7 +141,6 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                 businessName: businessName,
                 isOnline: _isOnline,
                 onNotificationTapped: () => _onNavTap(3),
-                onProfileTapped: () => _onNavTap(4),
                 onMenuTapped: null,
                 showThemeToggle: false,
               ),
