@@ -5,6 +5,9 @@ class BranchState extends Equatable {
   /// Currently selected branch name
   final String? selectedBranch;
 
+  /// Currently selected branch ID
+  final String? selectedBranchId;
+
   /// List of available branches for the user
   final List<String> availableBranches;
 
@@ -19,6 +22,7 @@ class BranchState extends Equatable {
 
   const BranchState({
     this.selectedBranch,
+    this.selectedBranchId,
     this.availableBranches = const [],
     this.canSwitchBranches = false,
     this.isLoading = false,
@@ -33,6 +37,7 @@ class BranchState extends Equatable {
 
   BranchState copyWith({
     String? selectedBranch,
+    String? selectedBranchId,
     List<String>? availableBranches,
     bool? canSwitchBranches,
     bool? isLoading,
@@ -40,6 +45,7 @@ class BranchState extends Equatable {
   }) {
     return BranchState(
       selectedBranch: selectedBranch ?? this.selectedBranch,
+      selectedBranchId: selectedBranchId ?? this.selectedBranchId,
       availableBranches: availableBranches ?? this.availableBranches,
       canSwitchBranches: canSwitchBranches ?? this.canSwitchBranches,
       isLoading: isLoading ?? this.isLoading,
@@ -50,6 +56,7 @@ class BranchState extends Equatable {
   @override
   List<Object?> get props => [
     selectedBranch,
+    selectedBranchId,
     availableBranches,
     canSwitchBranches,
     isLoading,

@@ -52,20 +52,43 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     return value != null && value.trim().isNotEmpty;
   }
 
+  bool _hasRoleContext(AppUser user) {
+    return _hasText(user.roleId) || _hasText(user.roleName);
+  }
+
+  bool _hasCompleteContext(AppUser? user) {
+    if (user == null) return false;
+    return _hasText(user.businessId) && _hasRoleContext(user);
+  }
+
+  bool _sameContext(AppUser a, AppUser b) {
+    return a.id == b.id &&
+        a.businessId == b.businessId &&
+        a.roleId == b.roleId &&
+        a.roleName == b.roleName &&
+        a.businessName == b.businessName &&
+        a.branchId == b.branchId &&
+        a.branchName == b.branchName;
+  }
+
   Future<AppUser?> _getUserContextWithRetry(String userId) async {
-    // Check connectivity first
+    // If we already have a complete cached context, avoid extra remote calls.
+    final current = getCurrentUser();
+    if (current != null &&
+        current.id == userId &&
+        _hasCompleteContext(current)) {
+      return current;
+    }
+
     final isOnline = await connectivityService.isConnected;
 
-    // If offline, fetch cached data immediately (repository handles offline fallback)
     if (!isOnline) {
       final cachedUser = await getUserBusinessContext(userId);
       return cachedUser;
     }
 
-    // Online: retry logic for trigger-created rows
     AppUser? latest;
-    for (var attempt = 0; attempt < 5; attempt++) {
-      // Reduced from 8 to 5
+    for (var attempt = 0; attempt < 2; attempt++) {
       final userWithContext = await getUserBusinessContext(userId);
       latest = userWithContext;
 
@@ -75,20 +98,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             _hasText(userWithContext.roleId) ||
             _hasText(userWithContext.roleName);
 
-        // No business means user still needs setup; return immediately.
         if (!hasBusiness) {
           return userWithContext;
         }
 
-        // Business + role is the fully hydrated context we need.
         if (hasRole) {
           return userWithContext;
         }
       }
 
-      if (attempt < 4) {
-        // Reduced delays
-        await Future<void>.delayed(const Duration(milliseconds: 300));
+      if (attempt < 1) {
+        await Future<void>.delayed(const Duration(milliseconds: 200));
       }
     }
 
@@ -134,25 +154,30 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _onStarted(AuthStarted event, Emitter<AuthState> emit) async {
     final user = getCurrentUser();
     if (user != null) {
-      // Immediately emit with cached user so router doesn't block
       debugPrint(
-        '👤 AuthBloc: Emitting cached user (${user.businessId != null ? "with" : "without"} business)',
+        'AuthBloc: Emitting cached user (${user.businessId != null ? "with" : "without"} business)',
       );
       emit(AuthAuthenticated(user));
 
-      // Fetch updated context in background (non-blocking, fire-and-forget)
-      unawaited(
-        _getUserContextWithRetry(user.id)
-            .then((updatedUser) {
-              if (updatedUser != null && !isClosed) {
-                debugPrint('🔄 AuthBloc: Updating with fresh user context');
-                add(AuthUserContextUpdated(updatedUser));
-              }
-            })
-            .catchError((e) {
-              debugPrint('⚠️ AuthBloc: Error fetching updated context: $e');
-            }),
-      );
+      // Skip background refresh when cached context is already complete.
+      if (!_hasCompleteContext(user)) {
+        unawaited(
+          _getUserContextWithRetry(user.id)
+              .then((updatedUser) {
+                if (updatedUser != null && !isClosed) {
+                  debugPrint('🔄 AuthBloc: Updating with fresh user context');
+                  add(AuthUserContextUpdated(updatedUser));
+                }
+              })
+              .catchError((e) {
+                debugPrint('AuthBloc: Error fetching updated context: $e');
+              }),
+        );
+      } else {
+        debugPrint(
+          ' AuthBloc: Skipping refresh, cached context already complete',
+        );
+      }
     } else {
       emit(AuthUnauthenticated());
     }
@@ -162,6 +187,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthUserContextUpdated event,
     Emitter<AuthState> emit,
   ) async {
+    final currentState = state;
+    if (currentState is AuthAuthenticated &&
+        _sameContext(currentState.user, event.user)) {
+      return;
+    }
     emit(AuthAuthenticated(event.user));
   }
 
@@ -169,7 +199,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(const AuthLoading(type: AuthLoadingType.email));
     try {
       final user = await signIn(e.email, e.password);
-      // Fetch user business context
       final userWithContext = await _getUserContextWithRetry(user.id);
       emit(
         userWithContext != null
@@ -189,7 +218,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(const AuthLoading(type: AuthLoadingType.google));
     try {
       await signInWithGoogle();
-      // OAuth opens in browser/webview - show in-progress state until user returns
       emit(const AuthOAuthInProgress('google'));
     } catch (err) {
       emit(AuthError(_errorMessage(err)));
@@ -204,7 +232,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(const AuthLoading(type: AuthLoadingType.facebook));
     try {
       await signInWithFacebook();
-      // OAuth opens in browser/webview - show in-progress state until user returns
       emit(const AuthOAuthInProgress('facebook'));
     } catch (err) {
       emit(AuthError(_errorMessage(err)));
@@ -218,7 +245,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(const AuthLoading(type: AuthLoadingType.signUp));
     try {
-      // Check if email already exists
       final emailExists = await checkEmailExists(e.email);
       if (emailExists) {
         throw 'This email is already registered. Try signing in instead.';
@@ -260,7 +286,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       _pendingSignUpEmail = null;
       _pendingSignUpPassword = null;
 
-      // Fetch user business context
       final userWithContext = await _getUserContextWithRetry(user.id);
       emit(
         userWithContext != null
@@ -304,7 +329,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     if (!event.isLoggedIn) {
-      // Keep offline session usable if local cache still has user context.
       final cachedUser = getCurrentUser();
       if (cachedUser != null) {
         emit(AuthAuthenticated(cachedUser));
@@ -318,6 +342,26 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final user = getCurrentUser();
     if (user == null) {
       emit(AuthUnauthenticated());
+      return;
+    }
+
+    final currentState = state;
+    if (currentState is AuthAuthenticated && currentState.user.id == user.id) {
+      // Ignore noisy auth stream events when nothing meaningful changed.
+      if (_sameContext(currentState.user, user)) {
+        return;
+      }
+
+      // Keep richer state if incoming auth user has less context during network issues.
+      if (_hasCompleteContext(currentState.user) &&
+          !_hasCompleteContext(user)) {
+        return;
+      }
+    }
+
+    // Avoid extra network fetches when current user already has complete context.
+    if (_hasCompleteContext(user)) {
+      emit(AuthAuthenticated(user));
       return;
     }
 

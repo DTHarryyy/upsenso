@@ -143,13 +143,9 @@ class BusinessRepositoryImpl implements BusinessRepository {
           name: branchName,
         );
 
-        // Best-effort: persist default branch linkage on user's profile.
-        // Fails silently if permission denied or user row doesn't exist yet.
-        try {
-          await remote.assignUserBranch(userId: ownerId, branchId: branchId);
-        } catch (_) {
-          // Branch linkage is optional; fallback path will auto-create branch on context load.
-        }
+        // NOTE: Business owner is Super Admin and should NOT be assigned to any specific branch.
+        // Super Admin can access and manage all branches.
+        // Only non-Super Admin roles (cashier, admin, etc.) should be assigned to specific branches.
 
         // Update local business record with server response and mark as synced
         final serverBusiness = BusinessModel.fromJson(serverData);

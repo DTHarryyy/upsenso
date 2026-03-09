@@ -241,7 +241,7 @@ class AuthRepositoryImpl implements AuthRepository {
       final userData = await remote
           .getUserBusinessContext(userId)
           .timeout(
-            const Duration(seconds: 8),
+            const Duration(seconds: 2),
             onTimeout: () {
               debugPrint(
                 '⚠️ getUserBusinessContext timeout - using cached data',
