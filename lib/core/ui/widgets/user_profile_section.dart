@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 
@@ -21,7 +23,7 @@ class UserProfileSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isMobile = !Breakpoints.isTablet(context);
-    Future<void> _showLogoutDialog(BuildContext context) async {
+    Future<void> showLogoutDialog(BuildContext context) async {
       final shouldLogout = await showDialog<bool>(
         context: context,
         builder: (dialogContext) {
@@ -69,7 +71,7 @@ class UserProfileSection extends StatelessWidget {
                 break;
 
               case _UserProfileMenuAction.logout:
-                _showLogoutDialog(context);
+                showLogoutDialog(context);
                 break;
             }
           },

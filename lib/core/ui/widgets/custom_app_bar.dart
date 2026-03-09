@@ -1,61 +1,31 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pos/core/branch/branch_cubit.dart';
+import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/breakpoint.dart';
+import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/ui/widgets/user_profile_section.dart';
 
 class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
-  /// List of available branches for the dropdown
   final List<String> branches;
-
-  /// Currently selected branch
   final String selectedBranch;
-
-  /// Callback when branch is selected
   final ValueChanged<String>? onBranchChanged;
-
-  /// Whether the app is online or not
   final bool isOnline;
-
-  /// Number of pending syncs
   final int pendingSyncCount;
-
-  /// User's full name
   final String userName;
-
-  /// User's role/title
   final String userRole;
-
-  /// User's email (optional for profile popup)
   final String? userEmail;
-
-  /// User's unique ID (optional for profile popup)
   final String? userId;
-
-  /// User's business name (optional for profile popup)
   final String? businessName;
-
-  /// User's avatar URL or initials
   final String? userAvatar;
-
-  /// Number of unread notifications
   final int notificationCount;
-
-  /// Callback when notification bell is tapped
   final VoidCallback? onNotificationTapped;
-
-  /// Callback when user profile is tapped
-  final VoidCallback? onProfileTapped;
-
-  /// Callback when leading menu button is tapped on mobile
   final VoidCallback? onMenuTapped;
-
-  /// Callback when dark mode button is tapped
   final VoidCallback? onThemeToggleTapped;
-
-  /// Controls whether dark mode button is visible
   final bool showThemeToggle;
-
-  /// Current theme state for dark mode icon
   final bool isDarkMode;
 
   const CustomAppBar({
@@ -73,7 +43,6 @@ class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
     this.userAvatar,
     this.notificationCount = 0,
     this.onNotificationTapped,
-    this.onProfileTapped,
     this.onMenuTapped,
     this.onThemeToggleTapped,
     this.showThemeToggle = true,
@@ -88,20 +57,9 @@ class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
 }
 
 class _CustomAppBarState extends State<CustomAppBar> {
-  late String _selectedBranch;
-
   @override
   void initState() {
     super.initState();
-    _selectedBranch = widget.selectedBranch;
-  }
-
-  @override
-  void didUpdateWidget(CustomAppBar oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.selectedBranch != widget.selectedBranch) {
-      _selectedBranch = widget.selectedBranch;
-    }
   }
 
   @override
@@ -146,7 +104,6 @@ class _CustomAppBarState extends State<CustomAppBar> {
 
               if (isMobile) const SizedBox(width: 8),
 
-              // ┌─ CENTER: Branch and status
               Expanded(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.start,
@@ -196,7 +153,6 @@ class _CustomAppBarState extends State<CustomAppBar> {
                   ),
                 ),
 
-              // ┌─ RIGHT: Theme, Notifications & Profile
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -220,7 +176,6 @@ class _CustomAppBarState extends State<CustomAppBar> {
                       ),
                     ),
 
-                  // Notification Bell
                   Stack(
                     children: [
                       Material(
@@ -239,7 +194,6 @@ class _CustomAppBarState extends State<CustomAppBar> {
                           ),
                         ),
                       ),
-                      // Badge
                       if (widget.notificationCount > 0)
                         Positioned(
                           right: 4,
@@ -256,7 +210,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
                                 widget.notificationCount > 9
                                     ? '9+'
                                     : widget.notificationCount.toString(),
-                                style: GoogleFonts.outfit(
+                                style: getOutfitStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
                                   color: AppColors.textInverse,
@@ -269,12 +223,10 @@ class _CustomAppBarState extends State<CustomAppBar> {
                   ),
                   SizedBox(width: isMobile ? 4 : 12),
 
-                  // User Profile
-                  _UserProfileSection(
+                  UserProfileSection(
                     userName: widget.userName,
                     userRole: widget.userRole,
                     userAvatar: widget.userAvatar,
-                    onProfileTapped: widget.onProfileTapped,
                   ),
                 ],
               ),
@@ -286,100 +238,131 @@ class _CustomAppBarState extends State<CustomAppBar> {
   }
 
   Widget _buildBranchDropdown() {
-    return DropdownButton<String>(
-      value: _selectedBranch,
-      onChanged: (String? newValue) {
-        if (newValue != null) {
-          setState(() {
-            _selectedBranch = newValue;
-          });
-          widget.onBranchChanged?.call(newValue);
-        }
-      },
-      underline: const SizedBox.shrink(),
-      icon: Icon(Icons.unfold_more, size: 18, color: AppColors.textSecondary),
-      items: widget.branches.map<DropdownMenuItem<String>>((String branch) {
-        return DropdownMenuItem<String>(
-          value: branch,
-          child: Text(
-            branch,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.outfit(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
-        );
-      }).toList(),
-      style: GoogleFonts.outfit(fontSize: 14, color: AppColors.textPrimary),
-    );
-  }
+    return BlocBuilder<BranchCubit, BranchState>(
+      builder: (context, branchState) {
+        final selectedBranch =
+            branchState.selectedBranch ?? widget.selectedBranch;
+        final canSwitch = branchState.canSwitchBranches;
+        // Use branches from BranchCubit state, fallback to widget props
+        final branches = branchState.availableBranches.isNotEmpty
+            ? branchState.availableBranches
+            : widget.branches;
 
-  Widget _buildCompactBranchSelector() {
-    return Container(
-      height: 38,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderSoft),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          isExpanded: true,
-          value: _selectedBranch,
-          onChanged: (String? newValue) {
-            if (newValue != null) {
-              setState(() {
-                _selectedBranch = newValue;
-              });
-              widget.onBranchChanged?.call(newValue);
-            }
-          },
+        return DropdownButton<String>(
+          value: selectedBranch,
+          onChanged: widget.onBranchChanged != null && canSwitch
+              ? (String? newValue) {
+                  if (newValue != null) {
+                    unawaited(
+                      context.read<BranchCubit>().selectBranch(newValue),
+                    );
+                    widget.onBranchChanged?.call(newValue);
+                  }
+                }
+              : null,
+          underline: const SizedBox.shrink(),
           icon: Icon(
-            Icons.expand_more,
-            size: 16,
+            Icons.unfold_more,
+            size: 18,
             color: AppColors.textSecondary,
           ),
-          selectedItemBuilder: (context) {
-            return widget.branches.map((branch) {
-              return Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  branch,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.outfit(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              );
-            }).toList();
-          },
-          items: widget.branches.map<DropdownMenuItem<String>>((String branch) {
+          items: branches.map<DropdownMenuItem<String>>((String branch) {
             return DropdownMenuItem<String>(
               value: branch,
               child: Text(
                 branch,
-                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.outfit(
-                  fontSize: 13,
+                style: getOutfitStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
                   color: AppColors.textPrimary,
                 ),
               ),
             );
           }).toList(),
-        ),
-      ),
+          style: getOutfitStyle(fontSize: 14, color: AppColors.textPrimary),
+        );
+      },
+    );
+  }
+
+  Widget _buildCompactBranchSelector() {
+    return BlocBuilder<BranchCubit, BranchState>(
+      builder: (context, branchState) {
+        final selectedBranch =
+            branchState.selectedBranch ?? widget.selectedBranch;
+        final canSwitch = branchState.canSwitchBranches;
+        // Use branches from BranchCubit state, fallback to widget props
+        final branches = branchState.availableBranches.isNotEmpty
+            ? branchState.availableBranches
+            : widget.branches;
+
+        return Container(
+          height: 38,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceAlt,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.borderSoft),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              isExpanded: true,
+              value: selectedBranch,
+              onChanged: widget.onBranchChanged != null && canSwitch
+                  ? (String? newValue) {
+                      if (newValue != null) {
+                        unawaited(
+                          context.read<BranchCubit>().selectBranch(newValue),
+                        );
+                        widget.onBranchChanged?.call(newValue);
+                      }
+                    }
+                  : null,
+              icon: Icon(
+                Icons.expand_more,
+                size: 16,
+                color: AppColors.textSecondary,
+              ),
+              selectedItemBuilder: (context) {
+                return branches.map((branch) {
+                  return Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      selectedBranch,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: getOutfitStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  );
+                }).toList();
+              },
+              items: branches.map<DropdownMenuItem<String>>((String branch) {
+                return DropdownMenuItem<String>(
+                  value: branch,
+                  child: Text(
+                    branch,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: getOutfitStyle(
+                      fontSize: 13,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        );
+      },
     );
   }
 }
 
-/// Status indicator widget for displaying online/offline and sync status
 class _StatusIndicator extends StatelessWidget {
   final bool isOnline;
   final String label;
@@ -397,14 +380,12 @@ class _StatusIndicator extends StatelessWidget {
         ? AppColors.syncing
         : (isOnline ? AppColors.success : AppColors.offline);
 
-    // Check if mobile (screen width < 600)
     final isMobile = Breakpoints.isTablet(context) == false;
     final showLabel = label.isNotEmpty;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Animated indicator dot
         if (isSyncing)
           SizedBox(
             width: 10,
@@ -434,13 +415,12 @@ class _StatusIndicator extends StatelessWidget {
             ),
           ),
 
-        // Label - hide on mobile if online, show otherwise
         if (showLabel && (!isMobile || !isOnline))
           Padding(
             padding: const EdgeInsets.only(left: 8),
             child: Text(
               label,
-              style: GoogleFonts.outfit(
+              style: getOutfitStyle(
                 fontSize: isMobile ? 12 : 13,
                 fontWeight: FontWeight.w500,
                 color: statusColor,
@@ -449,115 +429,5 @@ class _StatusIndicator extends StatelessWidget {
           ),
       ],
     );
-  }
-}
-
-/// User profile section - responsive (avatar only on mobile, full on tablet+)
-class _UserProfileSection extends StatelessWidget {
-  final String userName;
-  final String userRole;
-  final String? userAvatar;
-  final VoidCallback? onProfileTapped;
-
-  const _UserProfileSection({
-    required this.userName,
-    required this.userRole,
-    this.userAvatar,
-    this.onProfileTapped,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isMobile = !Breakpoints.isTablet(context);
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onProfileTapped,
-        borderRadius: BorderRadius.circular(8),
-        splashColor: AppColors.brand.withAlpha(30),
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: isMobile ? 4 : 8,
-            vertical: 6,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Avatar - Always visible
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: AppColors.brandSoft,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.brand, width: 1.5),
-                ),
-                child: userAvatar != null && userAvatar!.startsWith('http')
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(18),
-                        child: Image.network(userAvatar!, fit: BoxFit.cover),
-                      )
-                    : Center(
-                        child: Text(
-                          _getInitials(userName),
-                          style: GoogleFonts.outfit(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.brand,
-                          ),
-                        ),
-                      ),
-              ),
-
-              // User Info & Arrow - Hidden on mobile
-              if (!isMobile) ...[
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      userName,
-                      style: GoogleFonts.outfit(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    Text(
-                      userRole,
-                      style: GoogleFonts.outfit(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 4),
-                Icon(
-                  Icons.chevron_right,
-                  size: 18,
-                  color: AppColors.textSecondary,
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Generate initials from user name
-  String _getInitials(String name) {
-    final parts = name.trim().split(' ');
-    if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    }
-
-    if (parts.isEmpty || parts.first.isEmpty) return 'U';
-    final first = parts.first;
-    final len = first.length > 1 ? 2 : 1;
-    return first.substring(0, len).toUpperCase();
   }
 }
