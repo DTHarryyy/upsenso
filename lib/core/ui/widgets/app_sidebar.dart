@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/const/font_utils.dart';
 
 enum AppSidebarItem { inventory, profile }
 
@@ -43,7 +43,7 @@ class AppSidebar extends StatelessWidget {
                         userName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.outfit(
+                        style: getOutfitStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary,
@@ -54,7 +54,7 @@ class AppSidebar extends StatelessWidget {
                         userRole,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.outfit(
+                        style: getOutfitStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
                         ),
@@ -119,7 +119,7 @@ class _SidebarAvatar extends StatelessWidget {
       child: Center(
         child: Text(
           _getInitials(userName),
-          style: GoogleFonts.outfit(
+          style: getOutfitStyle(
             fontSize: 12,
             fontWeight: FontWeight.bold,
             color: AppColors.brand,
@@ -177,7 +177,7 @@ class _SidebarNavTile extends StatelessWidget {
           leading: Icon(icon, color: resolvedIconColor),
           title: Text(
             label,
-            style: GoogleFonts.outfit(
+            style: getOutfitStyle(
               fontSize: 14,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               color: resolvedLabelColor,
