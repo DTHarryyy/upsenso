@@ -24,7 +24,7 @@ class AppRouter {
     initialLocation: AppRoutes.onboarding,
 
     redirect: (context, state) async {
-      debugPrint('🧭 Router redirect - location: ${state.matchedLocation}');
+      debugPrint('Router redirect - location: ${state.matchedLocation}');
       final location = state.matchedLocation;
 
       final goingToOnboarding = location == AppRoutes.onboarding;
@@ -73,7 +73,7 @@ class AppRouter {
           currentUser.businessId!.trim().isNotEmpty;
 
       debugPrint(
-        '🔍 Router check - hasBusiness from cache: $hasBusiness, businessId: ${currentUser.businessId}',
+        'Router check - hasBusiness from cache: $hasBusiness, businessId: ${currentUser.businessId}',
       );
 
       if (!hasBusiness && !goingToBusinessProfile && !isPasswordResetRoute) {
@@ -94,21 +94,21 @@ class AppRouter {
           if (userWithContext != null && userWithContext.businessId != null) {
             hasBusiness = true;
             debugPrint(
-              '✅ Business context loaded: ${userWithContext.businessId}',
+              'Business context loaded: ${userWithContext.businessId}',
             );
           }
         } catch (e) {
-          debugPrint('⚠️ Error fetching business context: $e');
+          debugPrint('Error fetching business context: $e');
         }
       }
 
       if (!hasBusiness && !goingToBusinessProfile && !isPasswordResetRoute) {
-        debugPrint('🔄 Redirecting to business setup');
+        debugPrint('Redirecting to business setup');
         return AppRoutes.businessProfile;
       }
 
       if (hasBusiness && (goingToOnboarding || isPublicAuthRoute)) {
-        debugPrint('🏠 Redirecting to home');
+        debugPrint('Redirecting to home');
         return AppRoutes.home;
       }
 

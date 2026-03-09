@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/const/font_utils.dart';
 
 ThemeData buildLightAppTheme() {
-  final baseTextTheme = GoogleFonts.outfitTextTheme();
+  final baseTextTheme = getOutfitTextTheme();
 
   return ThemeData(
     useMaterial3: true,
 
-    // 🔥 Material 3 color generation
     colorScheme: ColorScheme.fromSeed(
       seedColor: AppColors.brand,
       brightness: Brightness.light,
     ),
 
-    // 🔤 Global font
     textTheme: baseTextTheme.apply(
       bodyColor: AppColors.textPrimary,
       displayColor: AppColors.textPrimary,
@@ -24,12 +22,11 @@ ThemeData buildLightAppTheme() {
     cardColor: AppColors.surface,
     dividerColor: AppColors.divider,
 
-    // AppBar
     appBarTheme: AppBarTheme(
       centerTitle: true,
       backgroundColor: AppColors.surface,
       elevation: 0,
-      titleTextStyle: GoogleFonts.outfit(
+      titleTextStyle: getOutfitStyle(
         fontSize: 18,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
@@ -37,17 +34,15 @@ ThemeData buildLightAppTheme() {
       iconTheme: const IconThemeData(color: AppColors.textPrimary),
     ),
 
-    // Buttons
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: AppColors.brand,
         foregroundColor: AppColors.textInverse,
-        textStyle: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+        textStyle: getOutfitStyle(fontWeight: FontWeight.w600),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     ),
 
-    // Inputs
     inputDecorationTheme: InputDecorationTheme(
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
@@ -74,7 +69,7 @@ ThemeData buildLightAppTheme() {
 }
 
 ThemeData buildDarkAppTheme() {
-  final baseTextTheme = GoogleFonts.outfitTextTheme();
+  final baseTextTheme = getOutfitTextTheme();
 
   return ThemeData(
     useMaterial3: true,
