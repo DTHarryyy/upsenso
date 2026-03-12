@@ -1832,7 +1832,7 @@ class $BranchesTableTable extends BranchesTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  static const VerificationMeta _nameMeta =  VerificationMeta('name');
   @override
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
     'name',
@@ -1841,7 +1841,7 @@ class $BranchesTableTable extends BranchesTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _addressMeta = const VerificationMeta(
+  static const VerificationMeta _addressMeta =  VerificationMeta(
     'address',
   );
   @override
@@ -1852,7 +1852,7 @@ class $BranchesTableTable extends BranchesTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _phoneMeta = const VerificationMeta('phone');
+  static const VerificationMeta _phoneMeta = VerificationMeta('phone');
   @override
   late final GeneratedColumn<String> phone = GeneratedColumn<String>(
     'phone',
@@ -1861,7 +1861,7 @@ class $BranchesTableTable extends BranchesTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+  static const VerificationMeta _isActiveMeta = VerificationMeta(
     'isActive',
   );
   @override
@@ -1876,7 +1876,7 @@ class $BranchesTableTable extends BranchesTable
     ),
     defaultValue: const Constant(true),
   );
-  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+  static const VerificationMeta _syncStatusMeta = VerificationMeta(
     'syncStatus',
   );
   @override
@@ -1888,7 +1888,7 @@ class $BranchesTableTable extends BranchesTable
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
-  static const VerificationMeta _lastSyncAttemptMeta = const VerificationMeta(
+  static const VerificationMeta _lastSyncAttemptMeta =  VerificationMeta(
     'lastSyncAttempt',
   );
   @override
@@ -1900,7 +1900,7 @@ class $BranchesTableTable extends BranchesTable
         type: DriftSqlType.dateTime,
         requiredDuringInsert: false,
       );
-  static const VerificationMeta _syncErrorMeta = const VerificationMeta(
+  static const VerificationMeta _syncErrorMeta =  VerificationMeta(
     'syncError',
   );
   @override
@@ -1911,7 +1911,7 @@ class $BranchesTableTable extends BranchesTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _localUpdatedAtMeta = const VerificationMeta(
+  static const VerificationMeta _localUpdatedAtMeta =  VerificationMeta(
     'localUpdatedAt',
   );
   @override
@@ -2223,24 +2223,24 @@ class BranchesTableData extends DataClass
   );
   BranchesTableData copyWithCompanion(BranchesTableCompanion data) {
     return BranchesTableData(
-      id: data.id.present ? data.id.value : this.id,
+      id: data.id.present ? data.id.value : id,
       businessId: data.businessId.present
           ? data.businessId.value
-          : this.businessId,
-      name: data.name.present ? data.name.value : this.name,
-      address: data.address.present ? data.address.value : this.address,
-      phone: data.phone.present ? data.phone.value : this.phone,
-      isActive: data.isActive.present ? data.isActive.value : this.isActive,
+          : businessId,
+      name: data.name.present ? data.name.value : name,
+      address: data.address.present ? data.address.value : address,
+      phone: data.phone.present ? data.phone.value : phone,
+      isActive: data.isActive.present ? data.isActive.value : isActive,
       syncStatus: data.syncStatus.present
           ? data.syncStatus.value
-          : this.syncStatus,
+          : syncStatus,
       lastSyncAttempt: data.lastSyncAttempt.present
           ? data.lastSyncAttempt.value
-          : this.lastSyncAttempt,
-      syncError: data.syncError.present ? data.syncError.value : this.syncError,
+          : lastSyncAttempt,
+      syncError: data.syncError.present ? data.syncError.value : syncError,
       localUpdatedAt: data.localUpdatedAt.present
           ? data.localUpdatedAt.value
-          : this.localUpdatedAt,
+          : localUpdatedAt,
     );
   }
 
@@ -2278,16 +2278,16 @@ class BranchesTableData extends DataClass
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is BranchesTableData &&
-          other.id == this.id &&
-          other.businessId == this.businessId &&
-          other.name == this.name &&
-          other.address == this.address &&
-          other.phone == this.phone &&
-          other.isActive == this.isActive &&
-          other.syncStatus == this.syncStatus &&
-          other.lastSyncAttempt == this.lastSyncAttempt &&
-          other.syncError == this.syncError &&
-          other.localUpdatedAt == this.localUpdatedAt);
+          other.id == id &&
+          other.businessId == businessId &&
+          other.name == name &&
+          other.address == address &&
+          other.phone == phone &&
+          other.isActive == isActive &&
+          other.syncStatus == syncStatus &&
+          other.lastSyncAttempt == lastSyncAttempt &&
+          other.syncError == syncError &&
+          other.localUpdatedAt == localUpdatedAt);
 }
 
 class BranchesTableCompanion extends UpdateCompanion<BranchesTableData> {
@@ -2344,17 +2344,17 @@ class BranchesTableCompanion extends UpdateCompanion<BranchesTableData> {
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (businessId != null) 'business_id': businessId,
-      if (name != null) 'name': name,
-      if (address != null) 'address': address,
-      if (phone != null) 'phone': phone,
-      if (isActive != null) 'is_active': isActive,
-      if (syncStatus != null) 'sync_status': syncStatus,
-      if (lastSyncAttempt != null) 'last_sync_attempt': lastSyncAttempt,
-      if (syncError != null) 'sync_error': syncError,
-      if (localUpdatedAt != null) 'local_updated_at': localUpdatedAt,
-      if (rowid != null) 'rowid': rowid,
+      'id': ?id,
+      'business_id': ?businessId,
+      'name': ?name,
+      'address': ?address,
+      'phone': ?phone,
+      'is_active': ?isActive,
+      'sync_status': ?syncStatus,
+      'last_sync_attempt': ?lastSyncAttempt,
+      'sync_error': ?syncError,
+      'local_updated_at': ?localUpdatedAt,
+      'rowid': ?rowid,
     });
   }
 
