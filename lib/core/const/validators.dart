@@ -1,7 +1,6 @@
 class Validators {
   Validators._();
 
-  // basic
   static String? required(String? v, {String fieldName = "This field"}) {
     final value = v?.trim() ?? "";
     if (value.isEmpty) return "$fieldName is required.";
@@ -34,7 +33,6 @@ class Validators {
     return null;
   }
 
-  // email 
   static final RegExp _email = RegExp(
     r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$',
   );

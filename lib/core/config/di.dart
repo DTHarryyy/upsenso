@@ -39,16 +39,13 @@ import 'package:pos/features/business/presentation/bloc/business_bloc.dart';
 final sl = GetIt.instance;
 
 Future<void> initDI() async {
-  // ─────────────────────────────────────────────
-  // Core / External
-  // ─────────────────────────────────────────────
   sl.registerLazySingleton<SupabaseClient>(() => Supabase.instance.client);
 
   // SharedPreferences for local caching with timeout
   final prefs = await SharedPreferences.getInstance().timeout(
     const Duration(seconds: 5),
     onTimeout: () {
-      debugPrint('⚠️ SharedPreferences timeout - using fallback');
+      debugPrint('SharedPreferences timeout - using fallback');
       throw Exception('SharedPreferences initialization timeout');
     },
   );
@@ -61,10 +58,8 @@ Future<void> initDI() async {
   final oauthRedirectUrl =
       dotenv.env['SUPABASE_OAUTH_REDIRECT_URL'] ?? 'posauth://login-callback/';
 
-  // Database (Drift - local storage)
   sl.registerLazySingleton<AppDatabase>(() => AppDatabase());
 
-  // DAOs
   sl.registerLazySingleton<AuthContextDao>(
     () => AuthContextDao(sl<AppDatabase>()),
   );
@@ -76,22 +71,12 @@ Future<void> initDI() async {
   );
   sl.registerLazySingleton<BranchesDao>(() => BranchesDao(sl<AppDatabase>()));
 
-  // Connectivity
   sl.registerLazySingleton<ConnectivityService>(() => ConnectivityService());
 
-  // ─────────────────────────────────────────────
-  // Branch Selection
-  // ─────────────────────────────────────────────
   sl.registerFactory(() => BranchCubit());
 
-  // ─────────────────────────────────────────────
-  // Auth Feature
-  // ─────────────────────────────────────────────
-
-  // Data sources
   sl.registerLazySingleton(() => AuthRemoteDs(sl<SupabaseClient>()));
 
-  // Repos
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(
       sl<AuthRemoteDs>(),
@@ -100,7 +85,6 @@ Future<void> initDI() async {
     ),
   );
 
-  // Usecases
   sl.registerLazySingleton(() => GetCurrentUser(sl<AuthRepository>()));
   sl.registerLazySingleton(() => GetUserBusinessContext(sl<AuthRepository>()));
   sl.registerLazySingleton(() => ObserveAuthState(sl<AuthRepository>()));
@@ -116,7 +100,6 @@ Future<void> initDI() async {
   sl.registerLazySingleton(() => ResetPassword(sl<AuthRepository>()));
   sl.registerLazySingleton(() => SignOut(sl<AuthRepository>()));
 
-  // Bloc
   sl.registerFactory(
     () => AuthBloc(
       getCurrentUser: sl(),
@@ -136,14 +119,8 @@ Future<void> initDI() async {
     ),
   );
 
-  // ─────────────────────────────────────────────
-  // Business Feature
-  // ─────────────────────────────────────────────
-
-  // Data sources
   sl.registerLazySingleton(() => BusinessRemoteDs(sl<SupabaseClient>()));
 
-  // Repos (offline-first)
   sl.registerLazySingleton<BusinessRepository>(
     () => BusinessRepositoryImpl(
       remote: sl<BusinessRemoteDs>(),
@@ -155,7 +132,6 @@ Future<void> initDI() async {
     ),
   );
 
-  // Bloc
   sl.registerFactory(
     () => BusinessBloc(
       businessRepository: sl<BusinessRepository>(),
@@ -163,9 +139,6 @@ Future<void> initDI() async {
     ),
   );
 
-  // ─────────────────────────────────────────────
-  // Sync Service
-  // ─────────────────────────────────────────────
   sl.registerLazySingleton<SyncService>(
     () => SyncService(
       businessesDao: sl<BusinessesDao>(),
@@ -174,10 +147,7 @@ Future<void> initDI() async {
     )..init(),
   );
 
-  // ─────────────────────────────────────────────
-  // Initialize cached user context from Drift
-  // ─────────────────────────────────────────────
-  // This ensures businessId is available immediately on startup
+  // Ensures businessId is available immediately on startup
   final authRepo = sl<AuthRepository>() as AuthRepositoryImpl;
   await authRepo.initializeCachedUser();
 }

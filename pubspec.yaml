@@ -97,7 +97,6 @@ flutter:
   assets:
      - .env
      - assets/images/
-     - assets/logo/
      - assets/icons/
      - assets/lotties/
      - assets/svg/

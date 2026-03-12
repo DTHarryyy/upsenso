@@ -1,15 +1,14 @@
-// GENERATED CODE - DO NOT MODIFY BY HAND
+
 
 part of 'app_database.dart';
 
-// ignore_for_file: type=lint
 class $AuthContextTableTable extends AuthContextTable
     with TableInfo<$AuthContextTableTable, AuthContextTableData> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $AuthContextTableTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  static const VerificationMeta _userIdMeta =  VerificationMeta('userId');
   @override
   late final GeneratedColumn<String> userId = GeneratedColumn<String>(
     'user_id',
@@ -18,7 +17,7 @@ class $AuthContextTableTable extends AuthContextTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _emailMeta = const VerificationMeta('email');
+  static const VerificationMeta _emailMeta =  VerificationMeta('email');
   @override
   late final GeneratedColumn<String> email = GeneratedColumn<String>(
     'email',
@@ -27,7 +26,7 @@ class $AuthContextTableTable extends AuthContextTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _fullNameMeta = const VerificationMeta(
+  static const VerificationMeta _fullNameMeta =  VerificationMeta(
     'fullName',
   );
   @override
@@ -38,7 +37,7 @@ class $AuthContextTableTable extends AuthContextTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+  static const VerificationMeta _businessIdMeta =  VerificationMeta(
     'businessId',
   );
   @override
@@ -49,7 +48,7 @@ class $AuthContextTableTable extends AuthContextTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _roleIdMeta = const VerificationMeta('roleId');
+  static const VerificationMeta _roleIdMeta =  VerificationMeta('roleId');
   @override
   late final GeneratedColumn<String> roleId = GeneratedColumn<String>(
     'role_id',
@@ -58,7 +57,7 @@ class $AuthContextTableTable extends AuthContextTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _roleNameMeta = const VerificationMeta(
+  static const VerificationMeta _roleNameMeta =  VerificationMeta(
     'roleName',
   );
   @override
@@ -69,7 +68,7 @@ class $AuthContextTableTable extends AuthContextTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _businessNameMeta = const VerificationMeta(
+  static const VerificationMeta _businessNameMeta =  VerificationMeta(
     'businessName',
   );
   @override
@@ -80,7 +79,7 @@ class $AuthContextTableTable extends AuthContextTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+  static const VerificationMeta _branchIdMeta =  VerificationMeta(
     'branchId',
   );
   @override
@@ -91,7 +90,7 @@ class $AuthContextTableTable extends AuthContextTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _branchNameMeta = const VerificationMeta(
+  static const VerificationMeta _branchNameMeta =  VerificationMeta(
     'branchName',
   );
   @override
@@ -102,7 +101,7 @@ class $AuthContextTableTable extends AuthContextTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _localUpdatedAtMeta = const VerificationMeta(
+  static const VerificationMeta _localUpdatedAtMeta =  VerificationMeta(
     'localUpdatedAt',
   );
   @override
@@ -268,34 +267,15 @@ class $AuthContextTableTable extends AuthContextTable
 
 class AuthContextTableData extends DataClass
     implements Insertable<AuthContextTableData> {
-  /// User's Supabase Auth UID (primary key for single current user)
   final String userId;
-
-  /// User's email address
   final String? email;
-
-  /// User's full name
   final String? fullName;
-
-  /// Associated business ID (from database trigger context)
   final String? businessId;
-
-  /// User's role ID in the business
   final String? roleId;
-
-  /// User's role name (e.g., "Super Admin", "Manager")
   final String? roleName;
-
-  /// Associated business name
   final String? businessName;
-
-  /// User's default/primary branch ID
   final String? branchId;
-
-  /// User's default/primary branch name
   final String? branchName;
-
-  /// Last time this context was updated locally
   final DateTime localUpdatedAt;
   const AuthContextTableData({
     required this.userId,
@@ -432,24 +412,24 @@ class AuthContextTableData extends DataClass
   );
   AuthContextTableData copyWithCompanion(AuthContextTableCompanion data) {
     return AuthContextTableData(
-      userId: data.userId.present ? data.userId.value : this.userId,
-      email: data.email.present ? data.email.value : this.email,
-      fullName: data.fullName.present ? data.fullName.value : this.fullName,
+      userId: data.userId.present ? data.userId.value : userId,
+      email: data.email.present ? data.email.value : email,
+      fullName: data.fullName.present ? data.fullName.value : fullName,
       businessId: data.businessId.present
           ? data.businessId.value
-          : this.businessId,
-      roleId: data.roleId.present ? data.roleId.value : this.roleId,
-      roleName: data.roleName.present ? data.roleName.value : this.roleName,
+          : businessId,
+      roleId: data.roleId.present ? data.roleId.value : roleId,
+      roleName: data.roleName.present ? data.roleName.value : roleName,
       businessName: data.businessName.present
           ? data.businessName.value
-          : this.businessName,
-      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+          : businessName,
+      branchId: data.branchId.present ? data.branchId.value : branchId,
       branchName: data.branchName.present
           ? data.branchName.value
-          : this.branchName,
+          : branchName,
       localUpdatedAt: data.localUpdatedAt.present
           ? data.localUpdatedAt.value
-          : this.localUpdatedAt,
+          : localUpdatedAt,
     );
   }
 
@@ -487,16 +467,16 @@ class AuthContextTableData extends DataClass
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is AuthContextTableData &&
-          other.userId == this.userId &&
-          other.email == this.email &&
-          other.fullName == this.fullName &&
-          other.businessId == this.businessId &&
-          other.roleId == this.roleId &&
-          other.roleName == this.roleName &&
-          other.businessName == this.businessName &&
-          other.branchId == this.branchId &&
-          other.branchName == this.branchName &&
-          other.localUpdatedAt == this.localUpdatedAt);
+          other.userId == userId &&
+          other.email == email &&
+          other.fullName == fullName &&
+          other.businessId == businessId &&
+          other.roleId == roleId &&
+          other.roleName == roleName &&
+          other.businessName == businessName &&
+          other.branchId == branchId &&
+          other.branchName == branchName &&
+          other.localUpdatedAt == localUpdatedAt);
 }
 
 class AuthContextTableCompanion extends UpdateCompanion<AuthContextTableData> {
@@ -551,17 +531,17 @@ class AuthContextTableCompanion extends UpdateCompanion<AuthContextTableData> {
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
-      if (userId != null) 'user_id': userId,
-      if (email != null) 'email': email,
-      if (fullName != null) 'full_name': fullName,
-      if (businessId != null) 'business_id': businessId,
-      if (roleId != null) 'role_id': roleId,
-      if (roleName != null) 'role_name': roleName,
-      if (businessName != null) 'business_name': businessName,
-      if (branchId != null) 'branch_id': branchId,
-      if (branchName != null) 'branch_name': branchName,
-      if (localUpdatedAt != null) 'local_updated_at': localUpdatedAt,
-      if (rowid != null) 'rowid': rowid,
+      'user_id': ?userId,
+      'email': ?email,
+      'full_name': ?fullName,
+      'business_id': ?businessId,
+      'role_id': ?roleId,
+      'role_name': ?roleName,
+      'business_name': ?businessName,
+      'branch_id': ?branchId,
+      'branch_name': ?branchName,
+      'local_updated_at': ?localUpdatedAt,
+      'rowid': ?rowid
     });
   }
 
@@ -657,7 +637,7 @@ class $BusinessTemplatesTableTable extends BusinessTemplatesTable
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $BusinessTemplatesTableTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  static const VerificationMeta _idMeta =  VerificationMeta('id');
   @override
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
     'id',
@@ -666,7 +646,7 @@ class $BusinessTemplatesTableTable extends BusinessTemplatesTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  static const VerificationMeta _nameMeta =  VerificationMeta('name');
   @override
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
     'name',
@@ -675,7 +655,7 @@ class $BusinessTemplatesTableTable extends BusinessTemplatesTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _defaultModulesMeta = const VerificationMeta(
+  static const VerificationMeta _defaultModulesMeta =  VerificationMeta(
     'defaultModules',
   );
   @override
@@ -686,7 +666,7 @@ class $BusinessTemplatesTableTable extends BusinessTemplatesTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _defaultRolesMeta = const VerificationMeta(
+  static const VerificationMeta _defaultRolesMeta =  VerificationMeta(
     'defaultRoles',
   );
   @override
@@ -698,7 +678,7 @@ class $BusinessTemplatesTableTable extends BusinessTemplatesTable
     requiredDuringInsert: true,
   );
   static const VerificationMeta _defaultPermissionsMeta =
-      const VerificationMeta('defaultPermissions');
+       VerificationMeta('defaultPermissions');
   @override
   late final GeneratedColumn<String> defaultPermissions =
       GeneratedColumn<String>(
@@ -708,7 +688,7 @@ class $BusinessTemplatesTableTable extends BusinessTemplatesTable
         type: DriftSqlType.string,
         requiredDuringInsert: true,
       );
-  static const VerificationMeta _defaultTaxRateMeta = const VerificationMeta(
+  static const VerificationMeta _defaultTaxRateMeta =  VerificationMeta(
     'defaultTaxRate',
   );
   @override
@@ -719,7 +699,7 @@ class $BusinessTemplatesTableTable extends BusinessTemplatesTable
     type: DriftSqlType.double,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+  static const VerificationMeta _createdAtMeta =  VerificationMeta(
     'createdAt',
   );
   @override
@@ -730,7 +710,7 @@ class $BusinessTemplatesTableTable extends BusinessTemplatesTable
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _localUpdatedAtMeta = const VerificationMeta(
+  static const VerificationMeta _localUpdatedAtMeta =  VerificationMeta(
     'localUpdatedAt',
   );
   @override
@@ -1002,24 +982,24 @@ class BusinessTemplatesTableData extends DataClass
     BusinessTemplatesTableCompanion data,
   ) {
     return BusinessTemplatesTableData(
-      id: data.id.present ? data.id.value : this.id,
-      name: data.name.present ? data.name.value : this.name,
+      id: data.id.present ? data.id.value : id,
+      name: data.name.present ? data.name.value : name,
       defaultModules: data.defaultModules.present
           ? data.defaultModules.value
-          : this.defaultModules,
+          : defaultModules,
       defaultRoles: data.defaultRoles.present
           ? data.defaultRoles.value
-          : this.defaultRoles,
+          : defaultRoles,
       defaultPermissions: data.defaultPermissions.present
           ? data.defaultPermissions.value
-          : this.defaultPermissions,
+          : defaultPermissions,
       defaultTaxRate: data.defaultTaxRate.present
           ? data.defaultTaxRate.value
-          : this.defaultTaxRate,
-      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+          : defaultTaxRate,
+      createdAt: data.createdAt.present ? data.createdAt.value : createdAt,
       localUpdatedAt: data.localUpdatedAt.present
           ? data.localUpdatedAt.value
-          : this.localUpdatedAt,
+          : localUpdatedAt,
     );
   }
 
@@ -1053,14 +1033,14 @@ class BusinessTemplatesTableData extends DataClass
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is BusinessTemplatesTableData &&
-          other.id == this.id &&
-          other.name == this.name &&
-          other.defaultModules == this.defaultModules &&
-          other.defaultRoles == this.defaultRoles &&
-          other.defaultPermissions == this.defaultPermissions &&
-          other.defaultTaxRate == this.defaultTaxRate &&
-          other.createdAt == this.createdAt &&
-          other.localUpdatedAt == this.localUpdatedAt);
+          other.id == id &&
+          other.name == name &&
+          other.defaultModules == defaultModules &&
+          other.defaultRoles == defaultRoles &&
+          other.defaultPermissions == defaultPermissions &&
+          other.defaultTaxRate == defaultTaxRate &&
+          other.createdAt == createdAt &&
+          other.localUpdatedAt == localUpdatedAt);
 }
 
 class BusinessTemplatesTableCompanion
@@ -1112,15 +1092,15 @@ class BusinessTemplatesTableCompanion
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (name != null) 'name': name,
-      if (defaultModules != null) 'default_modules': defaultModules,
-      if (defaultRoles != null) 'default_roles': defaultRoles,
-      if (defaultPermissions != null) 'default_permissions': defaultPermissions,
-      if (defaultTaxRate != null) 'default_tax_rate': defaultTaxRate,
-      if (createdAt != null) 'created_at': createdAt,
-      if (localUpdatedAt != null) 'local_updated_at': localUpdatedAt,
-      if (rowid != null) 'rowid': rowid,
+      'id': ?id,
+      'name': ?name,
+      'default_modules': ?defaultModules,
+      'default_roles': ?defaultRoles,
+      'default_permissions': ?defaultPermissions,
+      'default_tax_rate': ?defaultTaxRate,
+      'created_at': ?createdAt,
+      'local_updated_at': ?localUpdatedAt,
+      'rowid': ?rowid,
     });
   }
 
@@ -1204,7 +1184,7 @@ class $BusinessesTableTable extends BusinessesTable
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $BusinessesTableTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  static const VerificationMeta _idMeta =  VerificationMeta('id');
   @override
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
     'id',
@@ -1213,7 +1193,7 @@ class $BusinessesTableTable extends BusinessesTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  static const VerificationMeta _nameMeta =  VerificationMeta('name');
   @override
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
     'name',
@@ -1222,7 +1202,7 @@ class $BusinessesTableTable extends BusinessesTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _ownerIdMeta = const VerificationMeta(
+  static const VerificationMeta _ownerIdMeta =  VerificationMeta(
     'ownerId',
   );
   @override
@@ -1233,7 +1213,7 @@ class $BusinessesTableTable extends BusinessesTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _templateIdMeta = const VerificationMeta(
+  static const VerificationMeta _templateIdMeta =  VerificationMeta(
     'templateId',
   );
   @override
@@ -1244,7 +1224,7 @@ class $BusinessesTableTable extends BusinessesTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+  static const VerificationMeta _createdAtMeta =  VerificationMeta(
     'createdAt',
   );
   @override
@@ -1255,7 +1235,7 @@ class $BusinessesTableTable extends BusinessesTable
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+  static const VerificationMeta _isActiveMeta =  VerificationMeta(
     'isActive',
   );
   @override
@@ -1270,7 +1250,7 @@ class $BusinessesTableTable extends BusinessesTable
     ),
     defaultValue: const Constant(true),
   );
-  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+  static const VerificationMeta _syncStatusMeta =  VerificationMeta(
     'syncStatus',
   );
   @override
@@ -1282,7 +1262,7 @@ class $BusinessesTableTable extends BusinessesTable
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
-  static const VerificationMeta _lastSyncAttemptMeta = const VerificationMeta(
+  static const VerificationMeta _lastSyncAttemptMeta =  VerificationMeta(
     'lastSyncAttempt',
   );
   @override
@@ -1294,7 +1274,7 @@ class $BusinessesTableTable extends BusinessesTable
         type: DriftSqlType.dateTime,
         requiredDuringInsert: false,
       );
-  static const VerificationMeta _syncErrorMeta = const VerificationMeta(
+  static const VerificationMeta _syncErrorMeta =  VerificationMeta(
     'syncError',
   );
   @override
@@ -1305,7 +1285,7 @@ class $BusinessesTableTable extends BusinessesTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _localUpdatedAtMeta = const VerificationMeta(
+  static const VerificationMeta _localUpdatedAtMeta =  VerificationMeta(
     'localUpdatedAt',
   );
   @override
@@ -1603,24 +1583,24 @@ class BusinessesTableData extends DataClass
   );
   BusinessesTableData copyWithCompanion(BusinessesTableCompanion data) {
     return BusinessesTableData(
-      id: data.id.present ? data.id.value : this.id,
-      name: data.name.present ? data.name.value : this.name,
-      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
+      id: data.id.present ? data.id.value : id,
+      name: data.name.present ? data.name.value : name,
+      ownerId: data.ownerId.present ? data.ownerId.value : ownerId,
       templateId: data.templateId.present
           ? data.templateId.value
-          : this.templateId,
-      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
-      isActive: data.isActive.present ? data.isActive.value : this.isActive,
+          : templateId,
+      createdAt: data.createdAt.present ? data.createdAt.value : createdAt,
+      isActive: data.isActive.present ? data.isActive.value : isActive,
       syncStatus: data.syncStatus.present
           ? data.syncStatus.value
-          : this.syncStatus,
+          : syncStatus,
       lastSyncAttempt: data.lastSyncAttempt.present
           ? data.lastSyncAttempt.value
-          : this.lastSyncAttempt,
-      syncError: data.syncError.present ? data.syncError.value : this.syncError,
+          : lastSyncAttempt,
+      syncError: data.syncError.present ? data.syncError.value : syncError,
       localUpdatedAt: data.localUpdatedAt.present
           ? data.localUpdatedAt.value
-          : this.localUpdatedAt,
+          : localUpdatedAt,
     );
   }
 
@@ -1658,16 +1638,16 @@ class BusinessesTableData extends DataClass
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is BusinessesTableData &&
-          other.id == this.id &&
-          other.name == this.name &&
-          other.ownerId == this.ownerId &&
-          other.templateId == this.templateId &&
-          other.createdAt == this.createdAt &&
-          other.isActive == this.isActive &&
-          other.syncStatus == this.syncStatus &&
-          other.lastSyncAttempt == this.lastSyncAttempt &&
-          other.syncError == this.syncError &&
-          other.localUpdatedAt == this.localUpdatedAt);
+          other.id == id &&
+          other.name == name &&
+          other.ownerId == ownerId &&
+          other.templateId == templateId &&
+          other.createdAt == createdAt &&
+          other.isActive == isActive &&
+          other.syncStatus == syncStatus &&
+          other.lastSyncAttempt == lastSyncAttempt &&
+          other.syncError == syncError &&
+          other.localUpdatedAt == localUpdatedAt);
 }
 
 class BusinessesTableCompanion extends UpdateCompanion<BusinessesTableData> {
@@ -1726,17 +1706,17 @@ class BusinessesTableCompanion extends UpdateCompanion<BusinessesTableData> {
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (name != null) 'name': name,
-      if (ownerId != null) 'owner_id': ownerId,
-      if (templateId != null) 'template_id': templateId,
-      if (createdAt != null) 'created_at': createdAt,
-      if (isActive != null) 'is_active': isActive,
-      if (syncStatus != null) 'sync_status': syncStatus,
-      if (lastSyncAttempt != null) 'last_sync_attempt': lastSyncAttempt,
-      if (syncError != null) 'sync_error': syncError,
-      if (localUpdatedAt != null) 'local_updated_at': localUpdatedAt,
-      if (rowid != null) 'rowid': rowid,
+      'id': ?id,
+      'name': ?name,
+      'owner_id': ?ownerId,
+      'template_id': ?templateId,
+      'created_at': ?createdAt,
+      'is_active': ?isActive,
+      'sync_status': ?syncStatus,
+      'last_sync_attempt': ?lastSyncAttempt,
+      'sync_error': ?syncError,
+      'local_updated_at': ?localUpdatedAt,
+      'rowid': ?rowid,
     });
   }
 
@@ -1832,7 +1812,7 @@ class $BranchesTableTable extends BranchesTable
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $BranchesTableTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  static const VerificationMeta _idMeta = VerificationMeta('id');
   @override
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
     'id',
@@ -1841,7 +1821,7 @@ class $BranchesTableTable extends BranchesTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+  static const VerificationMeta _businessIdMeta = VerificationMeta(
     'businessId',
   );
   @override

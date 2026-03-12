@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pos/core/branch/branch_state.dart';
@@ -53,7 +54,7 @@ class BranchCubit extends Cubit<BranchState> {
         await prefs.setString(_selectedBranchIdKey, branchId);
       }
     } catch (e) {
-      print('[BranchCubit] Error saving selection: $e');
+      debugPrint('[BranchCubit] Error saving selection: $e');
     }
   }
 
@@ -88,7 +89,7 @@ class BranchCubit extends Cubit<BranchState> {
 
       return options;
     } catch (e) {
-      print('[BranchCubit] Error loading cached options: $e');
+      debugPrint('[BranchCubit] Error loading cached options: $e');
       return const [];
     }
   }
@@ -101,7 +102,7 @@ class BranchCubit extends Cubit<BranchState> {
           .toList(growable: false);
       await prefs.setString(_cachedBranchOptionsKey, jsonEncode(payload));
     } catch (e) {
-      print('[BranchCubit] Error saving cached options: $e');
+      debugPrint('[BranchCubit] Error saving cached options: $e');
     }
   }
 
@@ -111,7 +112,7 @@ class BranchCubit extends Cubit<BranchState> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_cachedCanSwitchKey, canSwitch);
     } catch (e) {
-      print('[BranchCubit] Error saving canSwitch: $e');
+      debugPrint('[BranchCubit] Error saving canSwitch: $e');
     }
   }
 
@@ -122,7 +123,7 @@ class BranchCubit extends Cubit<BranchState> {
       final cached = prefs.getBool(_cachedCanSwitchKey);
       return cached;
     } catch (e) {
-      print('[BranchCubit] Error loading cached canSwitch: $e');
+      debugPrint('[BranchCubit] Error loading cached canSwitch: $e');
       return null;
     }
   }

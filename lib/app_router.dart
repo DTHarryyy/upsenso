@@ -78,15 +78,11 @@ class AppRouter {
 
       if (!hasBusiness && !goingToBusinessProfile && !isPasswordResetRoute) {
         try {
-          debugPrint('💾 Fetching business context from database...');
           final userWithContext = await authRepository
               .getUserBusinessContext(currentUser.id)
               .timeout(
                 const Duration(milliseconds: 800),
                 onTimeout: () {
-                  debugPrint(
-                    '⏱️ Business context fetch timeout - using cached data',
-                  );
                   return null;
                 },
               );

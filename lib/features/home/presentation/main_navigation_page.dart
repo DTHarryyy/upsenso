@@ -14,6 +14,7 @@ import 'package:pos/features/inventory/inventory.dart';
 import 'package:pos/features/auth/domain/entities/app_user.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
+import 'package:pos/features/products/products_page.dart';
 
 class MainNavigationPage extends StatefulWidget {
   const MainNavigationPage({super.key});
@@ -30,7 +31,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
 
   final List<Widget> _pages = [
     const DashboardPage(),
-    const Inventory(),
+    const ProductsPage(),
     const PosTerminalPage(),
     const AlertPage(),
     const MorePage(),

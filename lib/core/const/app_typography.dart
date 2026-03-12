@@ -21,7 +21,6 @@ class ResponsiveTypography {
     }
   }
 
-  /// Enterprise trick: allow accessibility scaling, but cap it for tight POS UI.
   static TextScaler safeScaler(
     BuildContext context, {
     double min = 1.0,
