@@ -33,7 +33,7 @@ class BranchCubit extends Cubit<BranchState> {
       final selectedId = prefs.getString(_selectedBranchIdKey);
       return _CachedBranchSelection(name: selectedName, id: selectedId);
     } catch (e) {
-      print('[BranchCubit] Error loading cached selection: $e');
+      debugPrint('[BranchCubit] Error loading cached selection: $e');
       return const _CachedBranchSelection();
     }
   }

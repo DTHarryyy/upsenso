@@ -10,7 +10,6 @@ import 'package:pos/features/dashboard/presentation/dashboard_page.dart';
 import 'package:pos/features/alert/presentation/alert_page.dart';
 import 'package:pos/features/pos/presentation/pos_terminal_page.dart';
 import 'package:pos/features/more/presentation/more_page.dart';
-import 'package:pos/features/inventory/inventory.dart';
 import 'package:pos/features/auth/domain/entities/app_user.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
