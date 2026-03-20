@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Softwares/jdk-17.0.18+8/**)",
+      "Bash(flutter config:*)",
+      "Bash(flutter doctor:*)",
+      "Read(//c/Softwares/**)",
+      "Bash(\"C:/Softwares/jdk-17.0.18+8/bin/java\" -version)",
+      "Bash(\"/c/Users/boxde/flutter/bin/flutter\" config:*)",
+      "Read(//c/Users/boxde/.gradle/**)"
+    ]
+  }
+}

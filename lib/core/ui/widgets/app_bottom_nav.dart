@@ -40,7 +40,7 @@ class AppBottomNav extends StatelessWidget {
               _buildNavItem(
                 icon: Icons.inventory_2_rounded,
                 activeIcon: Icons.inventory_2_rounded,
-                label: 'Items',
+                label: 'Products',
                 index: 1,
               ),
               // Center POS button
