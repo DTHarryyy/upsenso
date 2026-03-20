@@ -33,6 +33,12 @@ class AuthContextTable extends Table {
   /// User's default/primary branch name
   TextColumn get branchName => text().nullable()();
 
+  /// Business template ID (cached to avoid repeated DB lookups)
+  TextColumn get businessTemplateId => text().nullable()();
+
+  /// Business template name / category label (e.g. "Restaurant", "Coffee Shop")
+  TextColumn get businessTemplateName => text().nullable()();
+
   /// Last time this context was updated locally
   DateTimeColumn get localUpdatedAt =>
       dateTime().withDefault(currentDateAndTime)();

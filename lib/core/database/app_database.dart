@@ -9,10 +9,12 @@ import 'package:pos/core/database/tables/auth_context_table.dart';
 import 'package:pos/core/database/tables/business_templates_table.dart';
 import 'package:pos/core/database/tables/businesses_table.dart';
 import 'package:pos/core/database/tables/branches_table.dart';
+import 'package:pos/core/database/tables/categories_table.dart';
 import 'package:pos/core/database/daos/auth_context_dao.dart';
 import 'package:pos/core/database/daos/business_templates_dao.dart';
 import 'package:pos/core/database/daos/businesses_dao.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
+import 'package:pos/core/database/daos/categories_dao.dart';
 
 part 'app_database.g.dart';
 
@@ -22,15 +24,16 @@ part 'app_database.g.dart';
     BusinessTemplatesTable,
     BusinessesTable,
     BranchesTable,
+    CategoriesTable,
   ],
-  daos: [AuthContextDao, BusinessTemplatesDao, BusinessesDao, BranchesDao],
+  daos: [AuthContextDao, BusinessTemplatesDao, BusinessesDao, BranchesDao, CategoriesDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 5; // bumped to 7 after codegen
 
   @override
   MigrationStrategy get migration {
@@ -52,6 +55,7 @@ class AppDatabase extends _$AppDatabase {
           await m.addColumn(authContextTable, authContextTable.branchId);
           await m.addColumn(authContextTable, authContextTable.branchName);
         }
+        // from < 6 and from < 7 migrations added after codegen
       },
     );
   }

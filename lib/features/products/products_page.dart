@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/database/daos/categories_dao.dart';
+import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/products/widgets/product_grid.dart';
 
 class ProductsPage extends StatefulWidget {
@@ -11,14 +16,7 @@ class ProductsPage extends StatefulWidget {
 }
 
 class _ProductsPageState extends State<ProductsPage> {
-  final List<String> categories = [
-    'All',
-    'Rice',
-    'Beverages',
-    'Salads',
-    'Soup',
-    'Pizza',
-  ];
+  final _categoriesDao = sl<CategoriesDao>();
 
   final List<Map<String, String>> products = [
     {
@@ -39,6 +37,11 @@ class _ProductsPageState extends State<ProductsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final authState = context.watch<AuthBloc>().state;
+    final businessId = authState is AuthAuthenticated
+        ? authState.user.businessId
+        : null;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -48,45 +51,61 @@ class _ProductsPageState extends State<ProductsPage> {
         centerTitle: true,
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ProductSearchBar(
-                categories: categories,
-                selectedCategory: selectedCategory,
-                selectedBrand: selectedBrand,
-                onCategoryChanged: (value) {
-                  if (value != null) {
-                    setState(() => selectedCategory = value);
-                  }
-                },
-                onBrandChanged: (value) {
-                  if (value != null) {
-                    setState(() => selectedBrand = value);
-                  }
-                },
-                onSearchChanged: (value) {
-                  setState(() => searchQuery = value);
-                },
+        child: StreamBuilder<List<CategoriesTableData>>(
+          stream: businessId != null
+              ? _categoriesDao.watchByBusinessId(businessId)
+              : const Stream.empty(),
+          builder: (context, snapshot) {
+            final dbCategories = snapshot.data ?? [];
+            final categories = [
+              'All',
+              ...dbCategories
+                  // ignore: avoid_dynamic_calls
+                  .map((c) => (c as dynamic).name?.toString() ?? '')
+                  .where((s) => s.isNotEmpty),
+            ];
+            // Reset selection if current category no longer exists
+            if (!categories.contains(selectedCategory)) {
+              selectedCategory = 'All';
+            }
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ProductSearchBar(
+                    categories: categories,
+                    selectedCategory: selectedCategory,
+                    selectedBrand: selectedBrand,
+                    onCategoryChanged: (value) {
+                      if (value != null) setState(() => selectedCategory = value);
+                    },
+                    onBrandChanged: (value) {
+                      if (value != null) setState(() => selectedBrand = value);
+                    },
+                    onSearchChanged: (value) {
+                      setState(() => searchQuery = value);
+                    },
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  ProductCategoryChips(
+                    categories: categories,
+                    selectedCategory: selectedCategory,
+                    onCategorySelected: (cat) {
+                      setState(() => selectedCategory = cat);
+                    },
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  Expanded(child: ProductGrid(products: products)),
+                ],
               ),
-
-              const SizedBox(height: 12),
-
-              ProductCategoryChips(
-                categories: categories,
-                selectedCategory: selectedCategory,
-                onCategorySelected: (cat) {
-                  setState(() => selectedCategory = cat);
-                },
-              ),
-
-              const SizedBox(height: 16),
-
-              Expanded(child: ProductGrid(products: products)),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );

@@ -8,6 +8,8 @@ class AppUser {
   final String? businessName;
   final String? branchId;
   final String? branchName;
+  final String? businessTemplateId;
+  final String? businessTemplateName;
 
   const AppUser({
     required this.id,
@@ -19,5 +21,7 @@ class AppUser {
     this.businessName,
     this.branchId,
     this.branchName,
+    this.businessTemplateId,
+    this.businessTemplateName,
   });
 }

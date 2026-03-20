@@ -165,6 +165,8 @@ class AuthRemoteDs {
         'branch_id': row['branch_id']?.toString(),
         'branch_name': row['branch_name']?.toString(),
         'full_name': fullName,
+        'template_id': row['template_id']?.toString(),
+        'template_name': row['template_name']?.toString(),
       };
 
       return result;
@@ -198,7 +200,7 @@ class AuthRemoteDs {
       final businessByOwnerRows = List<Map<String, dynamic>>.from(
         await client
             .from('businesses')
-            .select('id, name')
+            .select('id, name, template_id')
             .eq('owner_id', current.id)
             .order('created_at', ascending: false)
             .limit(1),
@@ -226,6 +228,26 @@ class AuthRemoteDs {
       }
 
       final businessName = businessRow?['name']?.toString();
+      final templateId = businessRow?['template_id']?.toString();
+
+      // Fetch template name (business category) if we have a templateId
+      String? templateName;
+      if (templateId != null) {
+        try {
+          final templateRows = List<Map<String, dynamic>>.from(
+            await client
+                .from('business_templates')
+                .select('name')
+                .eq('id', templateId)
+                .limit(1),
+          );
+          if (templateRows.isNotEmpty) {
+            templateName = templateRows.first['name']?.toString();
+          }
+        } catch (_) {
+          // Template name is optional; never fail the whole context fetch.
+        }
+      }
 
       // Fetch role name if we have roleId
       String? roleName;
@@ -311,6 +333,8 @@ class AuthRemoteDs {
         'branch_id': branchId,
         'branch_name': branchName,
         'full_name': fullName,
+        'template_id': templateId,
+        'template_name': templateName,
       };
     } catch (_) {
       return null;

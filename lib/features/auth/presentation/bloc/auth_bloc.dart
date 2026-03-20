@@ -68,7 +68,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         a.roleName == b.roleName &&
         a.businessName == b.businessName &&
         a.branchId == b.branchId &&
-        a.branchName == b.branchName;
+        a.branchName == b.branchName &&
+        a.businessTemplateName == b.businessTemplateName;
   }
 
   Future<AppUser?> _getUserContextWithRetry(String userId) async {

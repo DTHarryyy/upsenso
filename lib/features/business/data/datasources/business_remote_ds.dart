@@ -162,6 +162,21 @@ class BusinessRemoteDs {
     return Map<String, dynamic>.from(response);
   }
 
+  /// Upload a single category to Supabase
+  Future<void> createCategory({
+    required String id,
+    required String businessId,
+    required String name,
+    required int sortOrder,
+  }) async {
+    await client.from('categories').insert({
+      'id': id,
+      'business_id': businessId,
+      'name': name,
+      'sort_order': sortOrder,
+    });
+  }
+
   /// Fetch all active branches for a business (used by Super Admin branch picker)
   Future<List<Map<String, dynamic>>> getActiveBranchesByBusiness(
     String businessId,

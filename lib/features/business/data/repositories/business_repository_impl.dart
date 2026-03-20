@@ -2,6 +2,8 @@ import 'package:uuid/uuid.dart';
 import 'package:pos/core/database/daos/business_templates_dao.dart';
 import 'package:pos/core/database/daos/businesses_dao.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
+import 'package:pos/core/database/daos/categories_dao.dart';
+import 'package:pos/core/seeding/default_categories.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_status.dart';
 import 'package:pos/features/auth/domain/repositories/auth_repository.dart';
@@ -25,6 +27,7 @@ class BusinessRepositoryImpl implements BusinessRepository {
   final BusinessesDao businessesDao;
   final BusinessTemplatesDao templatesDao;
   final BranchesDao branchesDao;
+  final CategoriesDao categoriesDao;
   final ConnectivityService connectivity;
   final AuthRepository authRepository;
 
@@ -33,6 +36,7 @@ class BusinessRepositoryImpl implements BusinessRepository {
     required this.businessesDao,
     required this.templatesDao,
     required this.branchesDao,
+    required this.categoriesDao,
     required this.connectivity,
     required this.authRepository,
   });
@@ -124,7 +128,14 @@ class BusinessRepositoryImpl implements BusinessRepository {
     await businessesDao.insertBusiness(business);
     await branchesDao.insertBranch(branch);
 
-    // 5. Try to sync to server if online
+    // 5. Seed default categories locally (offline-first, sync happens later)
+    final template = await templatesDao.getTemplateById(templateId);
+    await categoriesDao.insertDefaults(
+      businessId: businessId,
+      categories: DefaultCategories.forTemplate(template?.name ?? ''),
+    );
+
+    // 6. Try to sync to server if online
     final online = await connectivity.isConnected;
     if (online) {
       try {

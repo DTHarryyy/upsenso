@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/businesses_dao.dart';
+import 'package:pos/core/database/daos/categories_dao.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_status.dart';
 import 'package:pos/features/business/data/datasources/business_remote_ds.dart';
@@ -9,6 +10,7 @@ import 'package:pos/features/business/data/models/business_model.dart';
 /// Service to handle synchronization between local Drift DB and Supabase
 class SyncService {
   final BusinessesDao _businessesDao;
+  final CategoriesDao _categoriesDao;
   final BusinessRemoteDs _businessRemoteDs;
   final ConnectivityService _connectivityService;
 
@@ -17,9 +19,11 @@ class SyncService {
 
   SyncService({
     required BusinessesDao businessesDao,
+    required CategoriesDao categoriesDao,
     required BusinessRemoteDs businessRemoteDs,
     required ConnectivityService connectivityService,
   }) : _businessesDao = businessesDao,
+       _categoriesDao = categoriesDao,
        _businessRemoteDs = businessRemoteDs,
        _connectivityService = connectivityService;
 
@@ -55,11 +59,62 @@ class SyncService {
     _isSyncing = true;
 
     try {
-      final result = await _syncBusinesses();
-      return result;
+      final businessResult = await _syncBusinesses();
+      final categoryResult = await _syncCategories();
+
+      final totalSynced = businessResult.syncedCount + categoryResult.syncedCount;
+      final totalFailed = businessResult.failedCount + categoryResult.failedCount;
+
+      return SyncResult(
+        success: businessResult.success && categoryResult.success,
+        message: '${businessResult.message}; ${categoryResult.message}',
+        syncedCount: totalSynced,
+        failedCount: totalFailed,
+        errors: [...businessResult.errors, ...categoryResult.errors],
+      );
     } finally {
       _isSyncing = false;
     }
+  }
+
+  /// Sync pending category records to Supabase
+  Future<SyncResult> _syncCategories() async {
+    final pending = await _categoriesDao.getPendingSync();
+    int synced = 0;
+    int failed = 0;
+    final errors = <String>[];
+
+    for (final record in pending) {
+      try {
+        await _businessRemoteDs.createCategory(
+          id: record.id,
+          businessId: record.businessId,
+          name: record.name,
+          sortOrder: record.sortOrder,
+        );
+        await _categoriesDao.updateSyncStatus(
+          id: record.id,
+          status: SyncStatus.synced,
+        );
+        synced++;
+      } catch (e) {
+        failed++;
+        errors.add('Category ${record.name}: ${e.toString()}');
+        await _categoriesDao.updateSyncStatus(
+          id: record.id,
+          status: SyncStatus.failed,
+          error: e.toString(),
+        );
+      }
+    }
+
+    return SyncResult(
+      success: failed == 0,
+      message: 'Categories: synced $synced, failed $failed',
+      syncedCount: synced,
+      failedCount: failed,
+      errors: errors,
+    );
   }
 
   /// Sync business records

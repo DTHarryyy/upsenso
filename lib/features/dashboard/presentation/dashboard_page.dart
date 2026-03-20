@@ -105,6 +105,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   items: [
                     _InfoItem('Business ID', user.businessId ?? 'N/A'),
                     _InfoItem('Business Name', user.businessName ?? 'N/A'),
+                    _InfoItem('Category', user.businessTemplateName ?? 'N/A'),
                     _InfoItem('Role ID', user.roleId ?? 'N/A'),
                     _InfoItem('Role Name', user.roleName ?? 'N/A'),
                   ],

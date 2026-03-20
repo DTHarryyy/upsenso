@@ -73,6 +73,8 @@ class AuthRepositoryImpl implements AuthRepository {
         businessName: _cachedUserInMemory!.businessName,
         branchId: _cachedUserInMemory!.branchId,
         branchName: _cachedUserInMemory!.branchName,
+        businessTemplateId: _cachedUserInMemory!.businessTemplateId,
+        businessTemplateName: _cachedUserInMemory!.businessTemplateName,
       );
     }
 
@@ -288,6 +290,12 @@ class AuthRepositoryImpl implements AuthRepository {
         branchName:
             _normalizeNullableString(userData['branch_name']) ??
             baseUser?.branchName,
+        businessTemplateId:
+            _normalizeNullableString(userData['template_id']) ??
+            baseUser?.businessTemplateId,
+        businessTemplateName:
+            _normalizeNullableString(userData['template_name']) ??
+            baseUser?.businessTemplateName,
       );
 
       // Cache the user context for offline use
@@ -319,6 +327,8 @@ class AuthRepositoryImpl implements AuthRepository {
       businessName: user.businessName,
       branchId: user.branchId,
       branchName: user.branchName,
+      businessTemplateId: user.businessTemplateId,
+      businessTemplateName: user.businessTemplateName,
     );
 
     // Persist to Drift for app restart recovery
@@ -332,6 +342,8 @@ class AuthRepositoryImpl implements AuthRepository {
       businessName: user.businessName,
       branchId: user.branchId,
       branchName: user.branchName,
+      businessTemplateId: user.businessTemplateId,
+      businessTemplateName: user.businessTemplateName,
     );
   }
 

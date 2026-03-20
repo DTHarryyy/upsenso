@@ -35,6 +35,8 @@ class AuthContextDao extends DatabaseAccessor<AppDatabase>
     String? businessName,
     String? branchId,
     String? branchName,
+    String? businessTemplateId,
+    String? businessTemplateName,
   }) async {
     await into(authContextTable).insertOnConflictUpdate(
       AuthContextTableCompanion(
@@ -47,6 +49,8 @@ class AuthContextDao extends DatabaseAccessor<AppDatabase>
         businessName: Value(businessName),
         branchId: Value(branchId),
         branchName: Value(branchName),
+        businessTemplateId: Value(businessTemplateId),
+        businessTemplateName: Value(businessTemplateName),
         localUpdatedAt: Value(DateTime.now()),
       ),
     );
@@ -76,6 +80,8 @@ class AuthContextDao extends DatabaseAccessor<AppDatabase>
       businessName: data.businessName,
       branchId: data.branchId,
       branchName: data.branchName,
+      businessTemplateId: data.businessTemplateId,
+      businessTemplateName: data.businessTemplateName,
     );
   }
 }

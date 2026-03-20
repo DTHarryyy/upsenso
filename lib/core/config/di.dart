@@ -9,6 +9,7 @@ import 'package:pos/core/database/daos/auth_context_dao.dart';
 import 'package:pos/core/database/daos/business_templates_dao.dart';
 import 'package:pos/core/database/daos/businesses_dao.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
+import 'package:pos/core/database/daos/categories_dao.dart';
 import 'package:pos/core/theme/theme_controller.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_service.dart';
@@ -70,6 +71,7 @@ Future<void> initDI() async {
     () => BusinessesDao(sl<AppDatabase>()),
   );
   sl.registerLazySingleton<BranchesDao>(() => BranchesDao(sl<AppDatabase>()));
+  sl.registerLazySingleton<CategoriesDao>(() => CategoriesDao(sl<AppDatabase>()));
 
   sl.registerLazySingleton<ConnectivityService>(() => ConnectivityService());
 
@@ -127,6 +129,7 @@ Future<void> initDI() async {
       businessesDao: sl<BusinessesDao>(),
       templatesDao: sl<BusinessTemplatesDao>(),
       branchesDao: sl<BranchesDao>(),
+      categoriesDao: sl<CategoriesDao>(),
       connectivity: sl<ConnectivityService>(),
       authRepository: sl<AuthRepository>(),
     ),
@@ -142,6 +145,7 @@ Future<void> initDI() async {
   sl.registerLazySingleton<SyncService>(
     () => SyncService(
       businessesDao: sl<BusinessesDao>(),
+      categoriesDao: sl<CategoriesDao>(),
       businessRemoteDs: sl<BusinessRemoteDs>(),
       connectivityService: sl<ConnectivityService>(),
     )..init(),
