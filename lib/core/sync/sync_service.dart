@@ -2,16 +2,22 @@ import 'dart:async';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/businesses_dao.dart';
 import 'package:pos/core/database/daos/categories_dao.dart';
+import 'package:pos/core/database/daos/products_dao.dart';
+import 'package:pos/core/database/daos/product_variants_dao.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_status.dart';
 import 'package:pos/features/business/data/datasources/business_remote_ds.dart';
 import 'package:pos/features/business/data/models/business_model.dart';
+import 'package:pos/features/products/data/datasources/products_remote_ds.dart';
 
 /// Service to handle synchronization between local Drift DB and Supabase
 class SyncService {
   final BusinessesDao _businessesDao;
   final CategoriesDao _categoriesDao;
+  final ProductsDao _productsDao;
+  final ProductVariantsDao _productVariantsDao;
   final BusinessRemoteDs _businessRemoteDs;
+  final ProductsRemoteDs _productsRemoteDs;
   final ConnectivityService _connectivityService;
 
   StreamSubscription<bool>? _connectivitySubscription;
@@ -20,11 +26,17 @@ class SyncService {
   SyncService({
     required BusinessesDao businessesDao,
     required CategoriesDao categoriesDao,
+    required ProductsDao productsDao,
+    required ProductVariantsDao productVariantsDao,
     required BusinessRemoteDs businessRemoteDs,
+    required ProductsRemoteDs productsRemoteDs,
     required ConnectivityService connectivityService,
   }) : _businessesDao = businessesDao,
        _categoriesDao = categoriesDao,
+       _productsDao = productsDao,
+       _productVariantsDao = productVariantsDao,
        _businessRemoteDs = businessRemoteDs,
+       _productsRemoteDs = productsRemoteDs,
        _connectivityService = connectivityService;
 
   /// Initialize sync service and listen for connectivity changes
@@ -61,16 +73,33 @@ class SyncService {
     try {
       final businessResult = await _syncBusinesses();
       final categoryResult = await _syncCategories();
+      final productResult = await _syncProducts();
+      final variantResult = await _syncProductVariants();
 
-      final totalSynced = businessResult.syncedCount + categoryResult.syncedCount;
-      final totalFailed = businessResult.failedCount + categoryResult.failedCount;
+      final int totalSynced = businessResult.syncedCount +
+          categoryResult.syncedCount +
+          productResult.syncedCount +
+          variantResult.syncedCount;
+      final int totalFailed = businessResult.failedCount +
+          categoryResult.failedCount +
+          productResult.failedCount +
+          variantResult.failedCount;
 
       return SyncResult(
-        success: businessResult.success && categoryResult.success,
-        message: '${businessResult.message}; ${categoryResult.message}',
+        success: businessResult.success &&
+            categoryResult.success &&
+            productResult.success &&
+            variantResult.success,
+        message:
+            '${businessResult.message}; ${categoryResult.message}; ${productResult.message}; ${variantResult.message}',
         syncedCount: totalSynced,
         failedCount: totalFailed,
-        errors: [...businessResult.errors, ...categoryResult.errors],
+        errors: [
+          ...businessResult.errors,
+          ...categoryResult.errors,
+          ...productResult.errors,
+          ...variantResult.errors,
+        ],
       );
     } finally {
       _isSyncing = false;
@@ -117,6 +146,96 @@ class SyncService {
     );
   }
 
+  /// Sync pending product records to Supabase
+  Future<SyncResult> _syncProducts() async {
+    final pending = await _productsDao.getPendingSync();
+    int synced = 0;
+    int failed = 0;
+    final errors = <String>[];
+
+    for (final record in pending) {
+      try {
+        await _productsRemoteDs.createProduct(
+          id: record.id,
+          businessId: record.businessId,
+          categoryId: record.categoryId,
+          name: record.name,
+          sku: record.sku,
+          barcode: record.barcode,
+          hasVariants: record.hasVariants,
+          isActive: record.isActive,
+        );
+        await _productsDao.updateSyncStatus(
+          id: record.id,
+          status: SyncStatus.synced,
+        );
+        synced++;
+      } catch (e) {
+        failed++;
+        errors.add('Product ${record.name}: ${e.toString()}');
+        await _productsDao.updateSyncStatus(
+          id: record.id,
+          status: SyncStatus.failed,
+          error: e.toString(),
+        );
+      }
+    }
+
+    return SyncResult(
+      success: failed == 0,
+      message: 'Products: synced $synced, failed $failed',
+      syncedCount: synced,
+      failedCount: failed,
+      errors: errors,
+    );
+  }
+
+  /// Sync pending product variant records to Supabase
+  Future<SyncResult> _syncProductVariants() async {
+    final pending = await _productVariantsDao.getPendingSync();
+    int synced = 0;
+    int failed = 0;
+    final errors = <String>[];
+
+    for (final record in pending) {
+      try {
+        await _productsRemoteDs.createProductVariant(
+          id: record.id,
+          productId: record.productId,
+          businessId: record.businessId,
+          name: record.name,
+          price: record.price,
+          costPrice: record.costPrice,
+          stock: record.stock,
+          sku: record.sku,
+          barcode: record.barcode,
+          isActive: record.isActive,
+        );
+        await _productVariantsDao.updateSyncStatus(
+          id: record.id,
+          status: SyncStatus.synced,
+        );
+        synced++;
+      } catch (e) {
+        failed++;
+        errors.add('Variant ${record.name}: ${e.toString()}');
+        await _productVariantsDao.updateSyncStatus(
+          id: record.id,
+          status: SyncStatus.failed,
+          error: e.toString(),
+        );
+      }
+    }
+
+    return SyncResult(
+      success: failed == 0,
+      message: 'Variants: synced $synced, failed $failed',
+      syncedCount: synced,
+      failedCount: failed,
+      errors: errors,
+    );
+  }
+
   /// Sync business records
   Future<SyncResult> _syncBusinesses() async {
     final pendingRecords = await _businessesDao.getPendingSync();
@@ -145,14 +264,11 @@ class SyncService {
             break;
 
           case SyncStatus.failed:
-            // Retry based on original intended action
-            // i try ngani ulit mag re upload
             await _handlePendingUpload(record);
             synced++;
             break;
 
           case SyncStatus.synced:
-            // Shouldn't be in pending list
             break;
         }
       } catch (e) {
@@ -176,15 +292,12 @@ class SyncService {
   }
 
   Future<void> _handlePendingUpload(BusinessesTableData record) async {
-    // Upload to Supabase
     await _businessRemoteDs.createBusiness(
       id: record.id,
       name: record.name,
       ownerId: record.ownerId,
       templateId: record.templateId,
     );
-
-    // Mark as synced
     await _businessesDao.updateSyncStatus(
       id: record.id,
       status: SyncStatus.synced,
@@ -192,10 +305,6 @@ class SyncService {
   }
 
   Future<void> _handlePendingUpdate(BusinessesTableData record) async {
-    // Update in Supabase (you'll need to add this method to remote ds)
-    // For now, we'll just mark as synced
-    // await _businessRemoteDs.updateBusiness(record.id, ...);
-
     await _businessesDao.updateSyncStatus(
       id: record.id,
       status: SyncStatus.synced,
@@ -203,14 +312,10 @@ class SyncService {
   }
 
   Future<void> _handlePendingDelete(BusinessesTableData record) async {
-    // Delete from Supabase (you'll need to add this method to remote ds)
-    // await _businessRemoteDs.deleteBusiness(record.id);
-
-    // Hard delete locally after successful server deletion
     await _businessesDao.hardDelete(record.id);
   }
 
-  /// Pull latest data from server and update local DB sa drift
+  /// Pull latest data from server and update local DB
   Future<void> pullFromServer(String ownerId) async {
     final online = await isOnline;
     if (!online) return;

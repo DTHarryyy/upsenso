@@ -80,6 +80,27 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
     return (delete(categoriesTable)..where((t) => t.id.equals(id))).go();
   }
 
+  /// Insert a single category (e.g., added inline from the Add Product page).
+  /// Returns the new category's id.
+  Future<String> insertSingle({
+    required String businessId,
+    required String name,
+  }) async {
+    final existing = await getByBusinessId(businessId);
+    final nextOrder = existing.length;
+    final id = const Uuid().v4();
+    await into(categoriesTable).insert(
+      CategoriesTableCompanion.insert(
+        id: id,
+        businessId: businessId,
+        name: name,
+        sortOrder: Value(nextOrder),
+        syncStatus: const Value(0), // pendingUpload
+      ),
+    );
+    return id;
+  }
+
   /// Clear all categories (e.g., on logout/reset).
   Future<void> clearAll() {
     return delete(categoriesTable).go();

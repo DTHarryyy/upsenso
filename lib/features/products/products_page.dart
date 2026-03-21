@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
@@ -7,6 +8,7 @@ import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/categories_dao.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
+import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/features/products/widgets/product_grid.dart';
 
 class ProductsPage extends StatefulWidget {
@@ -99,7 +101,13 @@ class _ProductsPageState extends State<ProductsPage> {
 
                   const SizedBox(height: 16),
 
-                  Expanded(child: ProductGrid(products: products)),
+                  Expanded(
+                    child: ProductGrid(
+                      products: products,
+                      onAddProduct: () =>
+                          context.push(AppRoutes.addProduct),
+                    ),
+                  ),
                 ],
               ),
             );

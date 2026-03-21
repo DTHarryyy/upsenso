@@ -14,6 +14,7 @@ import 'package:pos/features/auth/presentation/reset_password_page.dart';
 import 'package:pos/features/business/presentation/bloc/business_bloc.dart';
 import 'package:pos/features/business/presentation/business_profile_page.dart';
 import 'package:pos/features/home/presentation/main_navigation_page.dart';
+import 'package:pos/features/products/pages/add_products.dart';
 import 'package:pos/features/profile/presentation/profile_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -157,6 +158,10 @@ class AppRouter {
           create: (_) => sl<BusinessBloc>(),
           child: const BusinessProfilePage(),
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.addProduct,
+        builder: (context, _) => const AddProductsPage(),
       ),
     ],
   );

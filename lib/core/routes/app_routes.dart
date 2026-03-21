@@ -11,6 +11,9 @@ class AppRoutes {
       '/reset-password-verification';
   static const String resetPassword = '/reset-password';
 
+  // Product routes
+  static const String addProduct = '/home/add-product';
+
   // Navigation pages
   static const String dashboard = '/dashboard';
   static const String posTerminal = '/pos-terminal';

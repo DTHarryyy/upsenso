@@ -6,7 +6,10 @@
       "Bash(\"/c/Softwares/flutter/bin/flutter\" pub:*)",
       "Bash(\"/c/Softwares/flutter/bin/flutter\" analyze:*)",
       "Bash(grep -v \"^$\")",
-      "Bash(/c/Softwares/flutter/bin/flutter analyze:*)"
+      "Bash(/c/Softwares/flutter/bin/flutter analyze:*)",
+      "Bash(/c/Softwares/flutter/bin/flutter pub:*)",
+      "Bash(cmd.exe /c \"flutter analyze lib/core/widgets/ lib/features/products/pages/add_products.dart 2>&1\")",
+      "Bash(powershell -Command \"cd ''c:/DEVELOPMENT PROJECTS/Flutter Projects/pos''; flutter analyze lib/core/widgets/ lib/features/products/pages/add_products.dart 2>&1\")"
     ]
   }
 }

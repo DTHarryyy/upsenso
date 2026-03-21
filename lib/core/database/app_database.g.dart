@@ -3115,6 +3115,1552 @@ class CategoriesTableCompanion extends UpdateCompanion<CategoriesTableData> {
   }
 }
 
+class $ProductsTableTable extends ProductsTable
+    with TableInfo<$ProductsTableTable, ProductsTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ProductsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _categoryIdMeta = const VerificationMeta(
+    'categoryId',
+  );
+  @override
+  late final GeneratedColumn<String> categoryId = GeneratedColumn<String>(
+    'category_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _skuMeta = const VerificationMeta('sku');
+  @override
+  late final GeneratedColumn<String> sku = GeneratedColumn<String>(
+    'sku',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _barcodeMeta = const VerificationMeta(
+    'barcode',
+  );
+  @override
+  late final GeneratedColumn<String> barcode = GeneratedColumn<String>(
+    'barcode',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _hasVariantsMeta = const VerificationMeta(
+    'hasVariants',
+  );
+  @override
+  late final GeneratedColumn<bool> hasVariants = GeneratedColumn<bool>(
+    'has_variants',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("has_variants" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+    'isActive',
+  );
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+    'is_active',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_active" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+    'syncStatus',
+  );
+  @override
+  late final GeneratedColumn<int> syncStatus = GeneratedColumn<int>(
+    'sync_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastSyncAttemptMeta = const VerificationMeta(
+    'lastSyncAttempt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastSyncAttempt =
+      GeneratedColumn<DateTime>(
+        'last_sync_attempt',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _syncErrorMeta = const VerificationMeta(
+    'syncError',
+  );
+  @override
+  late final GeneratedColumn<String> syncError = GeneratedColumn<String>(
+    'sync_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _localUpdatedAtMeta = const VerificationMeta(
+    'localUpdatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> localUpdatedAt =
+      GeneratedColumn<DateTime>(
+        'local_updated_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+        defaultValue: currentDateAndTime,
+      );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    businessId,
+    categoryId,
+    name,
+    sku,
+    barcode,
+    hasVariants,
+    isActive,
+    syncStatus,
+    lastSyncAttempt,
+    syncError,
+    localUpdatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'products';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ProductsTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('category_id')) {
+      context.handle(
+        _categoryIdMeta,
+        categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
+      );
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('sku')) {
+      context.handle(
+        _skuMeta,
+        sku.isAcceptableOrUnknown(data['sku']!, _skuMeta),
+      );
+    }
+    if (data.containsKey('barcode')) {
+      context.handle(
+        _barcodeMeta,
+        barcode.isAcceptableOrUnknown(data['barcode']!, _barcodeMeta),
+      );
+    }
+    if (data.containsKey('has_variants')) {
+      context.handle(
+        _hasVariantsMeta,
+        hasVariants.isAcceptableOrUnknown(
+          data['has_variants']!,
+          _hasVariantsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_active')) {
+      context.handle(
+        _isActiveMeta,
+        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
+      );
+    }
+    if (data.containsKey('sync_status')) {
+      context.handle(
+        _syncStatusMeta,
+        syncStatus.isAcceptableOrUnknown(data['sync_status']!, _syncStatusMeta),
+      );
+    }
+    if (data.containsKey('last_sync_attempt')) {
+      context.handle(
+        _lastSyncAttemptMeta,
+        lastSyncAttempt.isAcceptableOrUnknown(
+          data['last_sync_attempt']!,
+          _lastSyncAttemptMeta,
+        ),
+      );
+    }
+    if (data.containsKey('sync_error')) {
+      context.handle(
+        _syncErrorMeta,
+        syncError.isAcceptableOrUnknown(data['sync_error']!, _syncErrorMeta),
+      );
+    }
+    if (data.containsKey('local_updated_at')) {
+      context.handle(
+        _localUpdatedAtMeta,
+        localUpdatedAt.isAcceptableOrUnknown(
+          data['local_updated_at']!,
+          _localUpdatedAtMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ProductsTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ProductsTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      categoryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category_id'],
+      ),
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      sku: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sku'],
+      ),
+      barcode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}barcode'],
+      ),
+      hasVariants: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}has_variants'],
+      )!,
+      isActive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_active'],
+      )!,
+      syncStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sync_status'],
+      )!,
+      lastSyncAttempt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_sync_attempt'],
+      ),
+      syncError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_error'],
+      ),
+      localUpdatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}local_updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ProductsTableTable createAlias(String alias) {
+    return $ProductsTableTable(attachedDatabase, alias);
+  }
+}
+
+class ProductsTableData extends DataClass
+    implements Insertable<ProductsTableData> {
+  final String id;
+  final String businessId;
+  final String? categoryId;
+  final String name;
+  final String? sku;
+  final String? barcode;
+  final bool hasVariants;
+  final bool isActive;
+
+  /// 0=pendingUpload, 1=pendingUpdate, 2=pendingDelete, 3=synced, 4=failed
+  final int syncStatus;
+  final DateTime? lastSyncAttempt;
+  final String? syncError;
+  final DateTime localUpdatedAt;
+  const ProductsTableData({
+    required this.id,
+    required this.businessId,
+    this.categoryId,
+    required this.name,
+    this.sku,
+    this.barcode,
+    required this.hasVariants,
+    required this.isActive,
+    required this.syncStatus,
+    this.lastSyncAttempt,
+    this.syncError,
+    required this.localUpdatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['business_id'] = Variable<String>(businessId);
+    if (!nullToAbsent || categoryId != null) {
+      map['category_id'] = Variable<String>(categoryId);
+    }
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || sku != null) {
+      map['sku'] = Variable<String>(sku);
+    }
+    if (!nullToAbsent || barcode != null) {
+      map['barcode'] = Variable<String>(barcode);
+    }
+    map['has_variants'] = Variable<bool>(hasVariants);
+    map['is_active'] = Variable<bool>(isActive);
+    map['sync_status'] = Variable<int>(syncStatus);
+    if (!nullToAbsent || lastSyncAttempt != null) {
+      map['last_sync_attempt'] = Variable<DateTime>(lastSyncAttempt);
+    }
+    if (!nullToAbsent || syncError != null) {
+      map['sync_error'] = Variable<String>(syncError);
+    }
+    map['local_updated_at'] = Variable<DateTime>(localUpdatedAt);
+    return map;
+  }
+
+  ProductsTableCompanion toCompanion(bool nullToAbsent) {
+    return ProductsTableCompanion(
+      id: Value(id),
+      businessId: Value(businessId),
+      categoryId: categoryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(categoryId),
+      name: Value(name),
+      sku: sku == null && nullToAbsent ? const Value.absent() : Value(sku),
+      barcode: barcode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(barcode),
+      hasVariants: Value(hasVariants),
+      isActive: Value(isActive),
+      syncStatus: Value(syncStatus),
+      lastSyncAttempt: lastSyncAttempt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSyncAttempt),
+      syncError: syncError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncError),
+      localUpdatedAt: Value(localUpdatedAt),
+    );
+  }
+
+  factory ProductsTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ProductsTableData(
+      id: serializer.fromJson<String>(json['id']),
+      businessId: serializer.fromJson<String>(json['businessId']),
+      categoryId: serializer.fromJson<String?>(json['categoryId']),
+      name: serializer.fromJson<String>(json['name']),
+      sku: serializer.fromJson<String?>(json['sku']),
+      barcode: serializer.fromJson<String?>(json['barcode']),
+      hasVariants: serializer.fromJson<bool>(json['hasVariants']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
+      syncStatus: serializer.fromJson<int>(json['syncStatus']),
+      lastSyncAttempt: serializer.fromJson<DateTime?>(json['lastSyncAttempt']),
+      syncError: serializer.fromJson<String?>(json['syncError']),
+      localUpdatedAt: serializer.fromJson<DateTime>(json['localUpdatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'businessId': serializer.toJson<String>(businessId),
+      'categoryId': serializer.toJson<String?>(categoryId),
+      'name': serializer.toJson<String>(name),
+      'sku': serializer.toJson<String?>(sku),
+      'barcode': serializer.toJson<String?>(barcode),
+      'hasVariants': serializer.toJson<bool>(hasVariants),
+      'isActive': serializer.toJson<bool>(isActive),
+      'syncStatus': serializer.toJson<int>(syncStatus),
+      'lastSyncAttempt': serializer.toJson<DateTime?>(lastSyncAttempt),
+      'syncError': serializer.toJson<String?>(syncError),
+      'localUpdatedAt': serializer.toJson<DateTime>(localUpdatedAt),
+    };
+  }
+
+  ProductsTableData copyWith({
+    String? id,
+    String? businessId,
+    Value<String?> categoryId = const Value.absent(),
+    String? name,
+    Value<String?> sku = const Value.absent(),
+    Value<String?> barcode = const Value.absent(),
+    bool? hasVariants,
+    bool? isActive,
+    int? syncStatus,
+    Value<DateTime?> lastSyncAttempt = const Value.absent(),
+    Value<String?> syncError = const Value.absent(),
+    DateTime? localUpdatedAt,
+  }) => ProductsTableData(
+    id: id ?? this.id,
+    businessId: businessId ?? this.businessId,
+    categoryId: categoryId.present ? categoryId.value : this.categoryId,
+    name: name ?? this.name,
+    sku: sku.present ? sku.value : this.sku,
+    barcode: barcode.present ? barcode.value : this.barcode,
+    hasVariants: hasVariants ?? this.hasVariants,
+    isActive: isActive ?? this.isActive,
+    syncStatus: syncStatus ?? this.syncStatus,
+    lastSyncAttempt: lastSyncAttempt.present
+        ? lastSyncAttempt.value
+        : this.lastSyncAttempt,
+    syncError: syncError.present ? syncError.value : this.syncError,
+    localUpdatedAt: localUpdatedAt ?? this.localUpdatedAt,
+  );
+  ProductsTableData copyWithCompanion(ProductsTableCompanion data) {
+    return ProductsTableData(
+      id: data.id.present ? data.id.value : this.id,
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      categoryId: data.categoryId.present
+          ? data.categoryId.value
+          : this.categoryId,
+      name: data.name.present ? data.name.value : this.name,
+      sku: data.sku.present ? data.sku.value : this.sku,
+      barcode: data.barcode.present ? data.barcode.value : this.barcode,
+      hasVariants: data.hasVariants.present
+          ? data.hasVariants.value
+          : this.hasVariants,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      syncStatus: data.syncStatus.present
+          ? data.syncStatus.value
+          : this.syncStatus,
+      lastSyncAttempt: data.lastSyncAttempt.present
+          ? data.lastSyncAttempt.value
+          : this.lastSyncAttempt,
+      syncError: data.syncError.present ? data.syncError.value : this.syncError,
+      localUpdatedAt: data.localUpdatedAt.present
+          ? data.localUpdatedAt.value
+          : this.localUpdatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProductsTableData(')
+          ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('name: $name, ')
+          ..write('sku: $sku, ')
+          ..write('barcode: $barcode, ')
+          ..write('hasVariants: $hasVariants, ')
+          ..write('isActive: $isActive, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncAttempt: $lastSyncAttempt, ')
+          ..write('syncError: $syncError, ')
+          ..write('localUpdatedAt: $localUpdatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    businessId,
+    categoryId,
+    name,
+    sku,
+    barcode,
+    hasVariants,
+    isActive,
+    syncStatus,
+    lastSyncAttempt,
+    syncError,
+    localUpdatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ProductsTableData &&
+          other.id == this.id &&
+          other.businessId == this.businessId &&
+          other.categoryId == this.categoryId &&
+          other.name == this.name &&
+          other.sku == this.sku &&
+          other.barcode == this.barcode &&
+          other.hasVariants == this.hasVariants &&
+          other.isActive == this.isActive &&
+          other.syncStatus == this.syncStatus &&
+          other.lastSyncAttempt == this.lastSyncAttempt &&
+          other.syncError == this.syncError &&
+          other.localUpdatedAt == this.localUpdatedAt);
+}
+
+class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
+  final Value<String> id;
+  final Value<String> businessId;
+  final Value<String?> categoryId;
+  final Value<String> name;
+  final Value<String?> sku;
+  final Value<String?> barcode;
+  final Value<bool> hasVariants;
+  final Value<bool> isActive;
+  final Value<int> syncStatus;
+  final Value<DateTime?> lastSyncAttempt;
+  final Value<String?> syncError;
+  final Value<DateTime> localUpdatedAt;
+  final Value<int> rowid;
+  const ProductsTableCompanion({
+    this.id = const Value.absent(),
+    this.businessId = const Value.absent(),
+    this.categoryId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.sku = const Value.absent(),
+    this.barcode = const Value.absent(),
+    this.hasVariants = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.lastSyncAttempt = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.localUpdatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ProductsTableCompanion.insert({
+    required String id,
+    required String businessId,
+    this.categoryId = const Value.absent(),
+    required String name,
+    this.sku = const Value.absent(),
+    this.barcode = const Value.absent(),
+    this.hasVariants = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.lastSyncAttempt = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.localUpdatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       businessId = Value(businessId),
+       name = Value(name);
+  static Insertable<ProductsTableData> custom({
+    Expression<String>? id,
+    Expression<String>? businessId,
+    Expression<String>? categoryId,
+    Expression<String>? name,
+    Expression<String>? sku,
+    Expression<String>? barcode,
+    Expression<bool>? hasVariants,
+    Expression<bool>? isActive,
+    Expression<int>? syncStatus,
+    Expression<DateTime>? lastSyncAttempt,
+    Expression<String>? syncError,
+    Expression<DateTime>? localUpdatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (businessId != null) 'business_id': businessId,
+      if (categoryId != null) 'category_id': categoryId,
+      if (name != null) 'name': name,
+      if (sku != null) 'sku': sku,
+      if (barcode != null) 'barcode': barcode,
+      if (hasVariants != null) 'has_variants': hasVariants,
+      if (isActive != null) 'is_active': isActive,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (lastSyncAttempt != null) 'last_sync_attempt': lastSyncAttempt,
+      if (syncError != null) 'sync_error': syncError,
+      if (localUpdatedAt != null) 'local_updated_at': localUpdatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ProductsTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? businessId,
+    Value<String?>? categoryId,
+    Value<String>? name,
+    Value<String?>? sku,
+    Value<String?>? barcode,
+    Value<bool>? hasVariants,
+    Value<bool>? isActive,
+    Value<int>? syncStatus,
+    Value<DateTime?>? lastSyncAttempt,
+    Value<String?>? syncError,
+    Value<DateTime>? localUpdatedAt,
+    Value<int>? rowid,
+  }) {
+    return ProductsTableCompanion(
+      id: id ?? this.id,
+      businessId: businessId ?? this.businessId,
+      categoryId: categoryId ?? this.categoryId,
+      name: name ?? this.name,
+      sku: sku ?? this.sku,
+      barcode: barcode ?? this.barcode,
+      hasVariants: hasVariants ?? this.hasVariants,
+      isActive: isActive ?? this.isActive,
+      syncStatus: syncStatus ?? this.syncStatus,
+      lastSyncAttempt: lastSyncAttempt ?? this.lastSyncAttempt,
+      syncError: syncError ?? this.syncError,
+      localUpdatedAt: localUpdatedAt ?? this.localUpdatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (categoryId.present) {
+      map['category_id'] = Variable<String>(categoryId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (sku.present) {
+      map['sku'] = Variable<String>(sku.value);
+    }
+    if (barcode.present) {
+      map['barcode'] = Variable<String>(barcode.value);
+    }
+    if (hasVariants.present) {
+      map['has_variants'] = Variable<bool>(hasVariants.value);
+    }
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<int>(syncStatus.value);
+    }
+    if (lastSyncAttempt.present) {
+      map['last_sync_attempt'] = Variable<DateTime>(lastSyncAttempt.value);
+    }
+    if (syncError.present) {
+      map['sync_error'] = Variable<String>(syncError.value);
+    }
+    if (localUpdatedAt.present) {
+      map['local_updated_at'] = Variable<DateTime>(localUpdatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProductsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('name: $name, ')
+          ..write('sku: $sku, ')
+          ..write('barcode: $barcode, ')
+          ..write('hasVariants: $hasVariants, ')
+          ..write('isActive: $isActive, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncAttempt: $lastSyncAttempt, ')
+          ..write('syncError: $syncError, ')
+          ..write('localUpdatedAt: $localUpdatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ProductVariantsTableTable extends ProductVariantsTable
+    with TableInfo<$ProductVariantsTableTable, ProductVariantsTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ProductVariantsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _productIdMeta = const VerificationMeta(
+    'productId',
+  );
+  @override
+  late final GeneratedColumn<String> productId = GeneratedColumn<String>(
+    'product_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _priceMeta = const VerificationMeta('price');
+  @override
+  late final GeneratedColumn<double> price = GeneratedColumn<double>(
+    'price',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0.0),
+  );
+  static const VerificationMeta _costPriceMeta = const VerificationMeta(
+    'costPrice',
+  );
+  @override
+  late final GeneratedColumn<double> costPrice = GeneratedColumn<double>(
+    'cost_price',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _stockMeta = const VerificationMeta('stock');
+  @override
+  late final GeneratedColumn<int> stock = GeneratedColumn<int>(
+    'stock',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _skuMeta = const VerificationMeta('sku');
+  @override
+  late final GeneratedColumn<String> sku = GeneratedColumn<String>(
+    'sku',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _barcodeMeta = const VerificationMeta(
+    'barcode',
+  );
+  @override
+  late final GeneratedColumn<String> barcode = GeneratedColumn<String>(
+    'barcode',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+    'isActive',
+  );
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+    'is_active',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_active" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+    'syncStatus',
+  );
+  @override
+  late final GeneratedColumn<int> syncStatus = GeneratedColumn<int>(
+    'sync_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastSyncAttemptMeta = const VerificationMeta(
+    'lastSyncAttempt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastSyncAttempt =
+      GeneratedColumn<DateTime>(
+        'last_sync_attempt',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _syncErrorMeta = const VerificationMeta(
+    'syncError',
+  );
+  @override
+  late final GeneratedColumn<String> syncError = GeneratedColumn<String>(
+    'sync_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _localUpdatedAtMeta = const VerificationMeta(
+    'localUpdatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> localUpdatedAt =
+      GeneratedColumn<DateTime>(
+        'local_updated_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+        defaultValue: currentDateAndTime,
+      );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    productId,
+    businessId,
+    name,
+    price,
+    costPrice,
+    stock,
+    sku,
+    barcode,
+    isActive,
+    syncStatus,
+    lastSyncAttempt,
+    syncError,
+    localUpdatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'product_variants';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ProductVariantsTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('product_id')) {
+      context.handle(
+        _productIdMeta,
+        productId.isAcceptableOrUnknown(data['product_id']!, _productIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_productIdMeta);
+    }
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('price')) {
+      context.handle(
+        _priceMeta,
+        price.isAcceptableOrUnknown(data['price']!, _priceMeta),
+      );
+    }
+    if (data.containsKey('cost_price')) {
+      context.handle(
+        _costPriceMeta,
+        costPrice.isAcceptableOrUnknown(data['cost_price']!, _costPriceMeta),
+      );
+    }
+    if (data.containsKey('stock')) {
+      context.handle(
+        _stockMeta,
+        stock.isAcceptableOrUnknown(data['stock']!, _stockMeta),
+      );
+    }
+    if (data.containsKey('sku')) {
+      context.handle(
+        _skuMeta,
+        sku.isAcceptableOrUnknown(data['sku']!, _skuMeta),
+      );
+    }
+    if (data.containsKey('barcode')) {
+      context.handle(
+        _barcodeMeta,
+        barcode.isAcceptableOrUnknown(data['barcode']!, _barcodeMeta),
+      );
+    }
+    if (data.containsKey('is_active')) {
+      context.handle(
+        _isActiveMeta,
+        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
+      );
+    }
+    if (data.containsKey('sync_status')) {
+      context.handle(
+        _syncStatusMeta,
+        syncStatus.isAcceptableOrUnknown(data['sync_status']!, _syncStatusMeta),
+      );
+    }
+    if (data.containsKey('last_sync_attempt')) {
+      context.handle(
+        _lastSyncAttemptMeta,
+        lastSyncAttempt.isAcceptableOrUnknown(
+          data['last_sync_attempt']!,
+          _lastSyncAttemptMeta,
+        ),
+      );
+    }
+    if (data.containsKey('sync_error')) {
+      context.handle(
+        _syncErrorMeta,
+        syncError.isAcceptableOrUnknown(data['sync_error']!, _syncErrorMeta),
+      );
+    }
+    if (data.containsKey('local_updated_at')) {
+      context.handle(
+        _localUpdatedAtMeta,
+        localUpdatedAt.isAcceptableOrUnknown(
+          data['local_updated_at']!,
+          _localUpdatedAtMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ProductVariantsTableData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ProductVariantsTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      productId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}product_id'],
+      )!,
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      price: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}price'],
+      )!,
+      costPrice: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}cost_price'],
+      ),
+      stock: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}stock'],
+      )!,
+      sku: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sku'],
+      ),
+      barcode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}barcode'],
+      ),
+      isActive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_active'],
+      )!,
+      syncStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sync_status'],
+      )!,
+      lastSyncAttempt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_sync_attempt'],
+      ),
+      syncError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_error'],
+      ),
+      localUpdatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}local_updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ProductVariantsTableTable createAlias(String alias) {
+    return $ProductVariantsTableTable(attachedDatabase, alias);
+  }
+}
+
+class ProductVariantsTableData extends DataClass
+    implements Insertable<ProductVariantsTableData> {
+  final String id;
+  final String productId;
+  final String businessId;
+
+  /// Variant label: "Default" for simple products, "Small"/"Large"/etc. for variants.
+  final String name;
+  final double price;
+  final double? costPrice;
+  final int stock;
+  final String? sku;
+  final String? barcode;
+  final bool isActive;
+
+  /// 0=pendingUpload, 1=pendingUpdate, 2=pendingDelete, 3=synced, 4=failed
+  final int syncStatus;
+  final DateTime? lastSyncAttempt;
+  final String? syncError;
+  final DateTime localUpdatedAt;
+  const ProductVariantsTableData({
+    required this.id,
+    required this.productId,
+    required this.businessId,
+    required this.name,
+    required this.price,
+    this.costPrice,
+    required this.stock,
+    this.sku,
+    this.barcode,
+    required this.isActive,
+    required this.syncStatus,
+    this.lastSyncAttempt,
+    this.syncError,
+    required this.localUpdatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['product_id'] = Variable<String>(productId);
+    map['business_id'] = Variable<String>(businessId);
+    map['name'] = Variable<String>(name);
+    map['price'] = Variable<double>(price);
+    if (!nullToAbsent || costPrice != null) {
+      map['cost_price'] = Variable<double>(costPrice);
+    }
+    map['stock'] = Variable<int>(stock);
+    if (!nullToAbsent || sku != null) {
+      map['sku'] = Variable<String>(sku);
+    }
+    if (!nullToAbsent || barcode != null) {
+      map['barcode'] = Variable<String>(barcode);
+    }
+    map['is_active'] = Variable<bool>(isActive);
+    map['sync_status'] = Variable<int>(syncStatus);
+    if (!nullToAbsent || lastSyncAttempt != null) {
+      map['last_sync_attempt'] = Variable<DateTime>(lastSyncAttempt);
+    }
+    if (!nullToAbsent || syncError != null) {
+      map['sync_error'] = Variable<String>(syncError);
+    }
+    map['local_updated_at'] = Variable<DateTime>(localUpdatedAt);
+    return map;
+  }
+
+  ProductVariantsTableCompanion toCompanion(bool nullToAbsent) {
+    return ProductVariantsTableCompanion(
+      id: Value(id),
+      productId: Value(productId),
+      businessId: Value(businessId),
+      name: Value(name),
+      price: Value(price),
+      costPrice: costPrice == null && nullToAbsent
+          ? const Value.absent()
+          : Value(costPrice),
+      stock: Value(stock),
+      sku: sku == null && nullToAbsent ? const Value.absent() : Value(sku),
+      barcode: barcode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(barcode),
+      isActive: Value(isActive),
+      syncStatus: Value(syncStatus),
+      lastSyncAttempt: lastSyncAttempt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSyncAttempt),
+      syncError: syncError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncError),
+      localUpdatedAt: Value(localUpdatedAt),
+    );
+  }
+
+  factory ProductVariantsTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ProductVariantsTableData(
+      id: serializer.fromJson<String>(json['id']),
+      productId: serializer.fromJson<String>(json['productId']),
+      businessId: serializer.fromJson<String>(json['businessId']),
+      name: serializer.fromJson<String>(json['name']),
+      price: serializer.fromJson<double>(json['price']),
+      costPrice: serializer.fromJson<double?>(json['costPrice']),
+      stock: serializer.fromJson<int>(json['stock']),
+      sku: serializer.fromJson<String?>(json['sku']),
+      barcode: serializer.fromJson<String?>(json['barcode']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
+      syncStatus: serializer.fromJson<int>(json['syncStatus']),
+      lastSyncAttempt: serializer.fromJson<DateTime?>(json['lastSyncAttempt']),
+      syncError: serializer.fromJson<String?>(json['syncError']),
+      localUpdatedAt: serializer.fromJson<DateTime>(json['localUpdatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'productId': serializer.toJson<String>(productId),
+      'businessId': serializer.toJson<String>(businessId),
+      'name': serializer.toJson<String>(name),
+      'price': serializer.toJson<double>(price),
+      'costPrice': serializer.toJson<double?>(costPrice),
+      'stock': serializer.toJson<int>(stock),
+      'sku': serializer.toJson<String?>(sku),
+      'barcode': serializer.toJson<String?>(barcode),
+      'isActive': serializer.toJson<bool>(isActive),
+      'syncStatus': serializer.toJson<int>(syncStatus),
+      'lastSyncAttempt': serializer.toJson<DateTime?>(lastSyncAttempt),
+      'syncError': serializer.toJson<String?>(syncError),
+      'localUpdatedAt': serializer.toJson<DateTime>(localUpdatedAt),
+    };
+  }
+
+  ProductVariantsTableData copyWith({
+    String? id,
+    String? productId,
+    String? businessId,
+    String? name,
+    double? price,
+    Value<double?> costPrice = const Value.absent(),
+    int? stock,
+    Value<String?> sku = const Value.absent(),
+    Value<String?> barcode = const Value.absent(),
+    bool? isActive,
+    int? syncStatus,
+    Value<DateTime?> lastSyncAttempt = const Value.absent(),
+    Value<String?> syncError = const Value.absent(),
+    DateTime? localUpdatedAt,
+  }) => ProductVariantsTableData(
+    id: id ?? this.id,
+    productId: productId ?? this.productId,
+    businessId: businessId ?? this.businessId,
+    name: name ?? this.name,
+    price: price ?? this.price,
+    costPrice: costPrice.present ? costPrice.value : this.costPrice,
+    stock: stock ?? this.stock,
+    sku: sku.present ? sku.value : this.sku,
+    barcode: barcode.present ? barcode.value : this.barcode,
+    isActive: isActive ?? this.isActive,
+    syncStatus: syncStatus ?? this.syncStatus,
+    lastSyncAttempt: lastSyncAttempt.present
+        ? lastSyncAttempt.value
+        : this.lastSyncAttempt,
+    syncError: syncError.present ? syncError.value : this.syncError,
+    localUpdatedAt: localUpdatedAt ?? this.localUpdatedAt,
+  );
+  ProductVariantsTableData copyWithCompanion(
+    ProductVariantsTableCompanion data,
+  ) {
+    return ProductVariantsTableData(
+      id: data.id.present ? data.id.value : this.id,
+      productId: data.productId.present ? data.productId.value : this.productId,
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      name: data.name.present ? data.name.value : this.name,
+      price: data.price.present ? data.price.value : this.price,
+      costPrice: data.costPrice.present ? data.costPrice.value : this.costPrice,
+      stock: data.stock.present ? data.stock.value : this.stock,
+      sku: data.sku.present ? data.sku.value : this.sku,
+      barcode: data.barcode.present ? data.barcode.value : this.barcode,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      syncStatus: data.syncStatus.present
+          ? data.syncStatus.value
+          : this.syncStatus,
+      lastSyncAttempt: data.lastSyncAttempt.present
+          ? data.lastSyncAttempt.value
+          : this.lastSyncAttempt,
+      syncError: data.syncError.present ? data.syncError.value : this.syncError,
+      localUpdatedAt: data.localUpdatedAt.present
+          ? data.localUpdatedAt.value
+          : this.localUpdatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProductVariantsTableData(')
+          ..write('id: $id, ')
+          ..write('productId: $productId, ')
+          ..write('businessId: $businessId, ')
+          ..write('name: $name, ')
+          ..write('price: $price, ')
+          ..write('costPrice: $costPrice, ')
+          ..write('stock: $stock, ')
+          ..write('sku: $sku, ')
+          ..write('barcode: $barcode, ')
+          ..write('isActive: $isActive, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncAttempt: $lastSyncAttempt, ')
+          ..write('syncError: $syncError, ')
+          ..write('localUpdatedAt: $localUpdatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    productId,
+    businessId,
+    name,
+    price,
+    costPrice,
+    stock,
+    sku,
+    barcode,
+    isActive,
+    syncStatus,
+    lastSyncAttempt,
+    syncError,
+    localUpdatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ProductVariantsTableData &&
+          other.id == this.id &&
+          other.productId == this.productId &&
+          other.businessId == this.businessId &&
+          other.name == this.name &&
+          other.price == this.price &&
+          other.costPrice == this.costPrice &&
+          other.stock == this.stock &&
+          other.sku == this.sku &&
+          other.barcode == this.barcode &&
+          other.isActive == this.isActive &&
+          other.syncStatus == this.syncStatus &&
+          other.lastSyncAttempt == this.lastSyncAttempt &&
+          other.syncError == this.syncError &&
+          other.localUpdatedAt == this.localUpdatedAt);
+}
+
+class ProductVariantsTableCompanion
+    extends UpdateCompanion<ProductVariantsTableData> {
+  final Value<String> id;
+  final Value<String> productId;
+  final Value<String> businessId;
+  final Value<String> name;
+  final Value<double> price;
+  final Value<double?> costPrice;
+  final Value<int> stock;
+  final Value<String?> sku;
+  final Value<String?> barcode;
+  final Value<bool> isActive;
+  final Value<int> syncStatus;
+  final Value<DateTime?> lastSyncAttempt;
+  final Value<String?> syncError;
+  final Value<DateTime> localUpdatedAt;
+  final Value<int> rowid;
+  const ProductVariantsTableCompanion({
+    this.id = const Value.absent(),
+    this.productId = const Value.absent(),
+    this.businessId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.price = const Value.absent(),
+    this.costPrice = const Value.absent(),
+    this.stock = const Value.absent(),
+    this.sku = const Value.absent(),
+    this.barcode = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.lastSyncAttempt = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.localUpdatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ProductVariantsTableCompanion.insert({
+    required String id,
+    required String productId,
+    required String businessId,
+    required String name,
+    this.price = const Value.absent(),
+    this.costPrice = const Value.absent(),
+    this.stock = const Value.absent(),
+    this.sku = const Value.absent(),
+    this.barcode = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.lastSyncAttempt = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.localUpdatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       productId = Value(productId),
+       businessId = Value(businessId),
+       name = Value(name);
+  static Insertable<ProductVariantsTableData> custom({
+    Expression<String>? id,
+    Expression<String>? productId,
+    Expression<String>? businessId,
+    Expression<String>? name,
+    Expression<double>? price,
+    Expression<double>? costPrice,
+    Expression<int>? stock,
+    Expression<String>? sku,
+    Expression<String>? barcode,
+    Expression<bool>? isActive,
+    Expression<int>? syncStatus,
+    Expression<DateTime>? lastSyncAttempt,
+    Expression<String>? syncError,
+    Expression<DateTime>? localUpdatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (productId != null) 'product_id': productId,
+      if (businessId != null) 'business_id': businessId,
+      if (name != null) 'name': name,
+      if (price != null) 'price': price,
+      if (costPrice != null) 'cost_price': costPrice,
+      if (stock != null) 'stock': stock,
+      if (sku != null) 'sku': sku,
+      if (barcode != null) 'barcode': barcode,
+      if (isActive != null) 'is_active': isActive,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (lastSyncAttempt != null) 'last_sync_attempt': lastSyncAttempt,
+      if (syncError != null) 'sync_error': syncError,
+      if (localUpdatedAt != null) 'local_updated_at': localUpdatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ProductVariantsTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? productId,
+    Value<String>? businessId,
+    Value<String>? name,
+    Value<double>? price,
+    Value<double?>? costPrice,
+    Value<int>? stock,
+    Value<String?>? sku,
+    Value<String?>? barcode,
+    Value<bool>? isActive,
+    Value<int>? syncStatus,
+    Value<DateTime?>? lastSyncAttempt,
+    Value<String?>? syncError,
+    Value<DateTime>? localUpdatedAt,
+    Value<int>? rowid,
+  }) {
+    return ProductVariantsTableCompanion(
+      id: id ?? this.id,
+      productId: productId ?? this.productId,
+      businessId: businessId ?? this.businessId,
+      name: name ?? this.name,
+      price: price ?? this.price,
+      costPrice: costPrice ?? this.costPrice,
+      stock: stock ?? this.stock,
+      sku: sku ?? this.sku,
+      barcode: barcode ?? this.barcode,
+      isActive: isActive ?? this.isActive,
+      syncStatus: syncStatus ?? this.syncStatus,
+      lastSyncAttempt: lastSyncAttempt ?? this.lastSyncAttempt,
+      syncError: syncError ?? this.syncError,
+      localUpdatedAt: localUpdatedAt ?? this.localUpdatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (productId.present) {
+      map['product_id'] = Variable<String>(productId.value);
+    }
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (price.present) {
+      map['price'] = Variable<double>(price.value);
+    }
+    if (costPrice.present) {
+      map['cost_price'] = Variable<double>(costPrice.value);
+    }
+    if (stock.present) {
+      map['stock'] = Variable<int>(stock.value);
+    }
+    if (sku.present) {
+      map['sku'] = Variable<String>(sku.value);
+    }
+    if (barcode.present) {
+      map['barcode'] = Variable<String>(barcode.value);
+    }
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<int>(syncStatus.value);
+    }
+    if (lastSyncAttempt.present) {
+      map['last_sync_attempt'] = Variable<DateTime>(lastSyncAttempt.value);
+    }
+    if (syncError.present) {
+      map['sync_error'] = Variable<String>(syncError.value);
+    }
+    if (localUpdatedAt.present) {
+      map['local_updated_at'] = Variable<DateTime>(localUpdatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProductVariantsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('productId: $productId, ')
+          ..write('businessId: $businessId, ')
+          ..write('name: $name, ')
+          ..write('price: $price, ')
+          ..write('costPrice: $costPrice, ')
+          ..write('stock: $stock, ')
+          ..write('sku: $sku, ')
+          ..write('barcode: $barcode, ')
+          ..write('isActive: $isActive, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncAttempt: $lastSyncAttempt, ')
+          ..write('syncError: $syncError, ')
+          ..write('localUpdatedAt: $localUpdatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3130,6 +4676,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CategoriesTableTable categoriesTable = $CategoriesTableTable(
     this,
   );
+  late final $ProductsTableTable productsTable = $ProductsTableTable(this);
+  late final $ProductVariantsTableTable productVariantsTable =
+      $ProductVariantsTableTable(this);
   late final AuthContextDao authContextDao = AuthContextDao(
     this as AppDatabase,
   );
@@ -3139,6 +4688,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final BusinessesDao businessesDao = BusinessesDao(this as AppDatabase);
   late final BranchesDao branchesDao = BranchesDao(this as AppDatabase);
   late final CategoriesDao categoriesDao = CategoriesDao(this as AppDatabase);
+  late final ProductsDao productsDao = ProductsDao(this as AppDatabase);
+  late final ProductVariantsDao productVariantsDao = ProductVariantsDao(
+    this as AppDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3149,6 +4702,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     businessesTable,
     branchesTable,
     categoriesTable,
+    productsTable,
+    productVariantsTable,
   ];
 }
 
@@ -4688,6 +6243,750 @@ typedef $$CategoriesTableTableProcessedTableManager =
       CategoriesTableData,
       PrefetchHooks Function()
     >;
+typedef $$ProductsTableTableCreateCompanionBuilder =
+    ProductsTableCompanion Function({
+      required String id,
+      required String businessId,
+      Value<String?> categoryId,
+      required String name,
+      Value<String?> sku,
+      Value<String?> barcode,
+      Value<bool> hasVariants,
+      Value<bool> isActive,
+      Value<int> syncStatus,
+      Value<DateTime?> lastSyncAttempt,
+      Value<String?> syncError,
+      Value<DateTime> localUpdatedAt,
+      Value<int> rowid,
+    });
+typedef $$ProductsTableTableUpdateCompanionBuilder =
+    ProductsTableCompanion Function({
+      Value<String> id,
+      Value<String> businessId,
+      Value<String?> categoryId,
+      Value<String> name,
+      Value<String?> sku,
+      Value<String?> barcode,
+      Value<bool> hasVariants,
+      Value<bool> isActive,
+      Value<int> syncStatus,
+      Value<DateTime?> lastSyncAttempt,
+      Value<String?> syncError,
+      Value<DateTime> localUpdatedAt,
+      Value<int> rowid,
+    });
+
+class $$ProductsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $ProductsTableTable> {
+  $$ProductsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get categoryId => $composableBuilder(
+    column: $table.categoryId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sku => $composableBuilder(
+    column: $table.sku,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get barcode => $composableBuilder(
+    column: $table.barcode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get hasVariants => $composableBuilder(
+    column: $table.hasVariants,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get localUpdatedAt => $composableBuilder(
+    column: $table.localUpdatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ProductsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $ProductsTableTable> {
+  $$ProductsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get categoryId => $composableBuilder(
+    column: $table.categoryId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sku => $composableBuilder(
+    column: $table.sku,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get barcode => $composableBuilder(
+    column: $table.barcode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get hasVariants => $composableBuilder(
+    column: $table.hasVariants,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get localUpdatedAt => $composableBuilder(
+    column: $table.localUpdatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ProductsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ProductsTableTable> {
+  $$ProductsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get categoryId => $composableBuilder(
+    column: $table.categoryId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get sku =>
+      $composableBuilder(column: $table.sku, builder: (column) => column);
+
+  GeneratedColumn<String> get barcode =>
+      $composableBuilder(column: $table.barcode, builder: (column) => column);
+
+  GeneratedColumn<bool> get hasVariants => $composableBuilder(
+    column: $table.hasVariants,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get syncError =>
+      $composableBuilder(column: $table.syncError, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get localUpdatedAt => $composableBuilder(
+    column: $table.localUpdatedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$ProductsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ProductsTableTable,
+          ProductsTableData,
+          $$ProductsTableTableFilterComposer,
+          $$ProductsTableTableOrderingComposer,
+          $$ProductsTableTableAnnotationComposer,
+          $$ProductsTableTableCreateCompanionBuilder,
+          $$ProductsTableTableUpdateCompanionBuilder,
+          (
+            ProductsTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $ProductsTableTable,
+              ProductsTableData
+            >,
+          ),
+          ProductsTableData,
+          PrefetchHooks Function()
+        > {
+  $$ProductsTableTableTableManager(_$AppDatabase db, $ProductsTableTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ProductsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ProductsTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ProductsTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> businessId = const Value.absent(),
+                Value<String?> categoryId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> sku = const Value.absent(),
+                Value<String?> barcode = const Value.absent(),
+                Value<bool> hasVariants = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<int> syncStatus = const Value.absent(),
+                Value<DateTime?> lastSyncAttempt = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<DateTime> localUpdatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ProductsTableCompanion(
+                id: id,
+                businessId: businessId,
+                categoryId: categoryId,
+                name: name,
+                sku: sku,
+                barcode: barcode,
+                hasVariants: hasVariants,
+                isActive: isActive,
+                syncStatus: syncStatus,
+                lastSyncAttempt: lastSyncAttempt,
+                syncError: syncError,
+                localUpdatedAt: localUpdatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String businessId,
+                Value<String?> categoryId = const Value.absent(),
+                required String name,
+                Value<String?> sku = const Value.absent(),
+                Value<String?> barcode = const Value.absent(),
+                Value<bool> hasVariants = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<int> syncStatus = const Value.absent(),
+                Value<DateTime?> lastSyncAttempt = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<DateTime> localUpdatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ProductsTableCompanion.insert(
+                id: id,
+                businessId: businessId,
+                categoryId: categoryId,
+                name: name,
+                sku: sku,
+                barcode: barcode,
+                hasVariants: hasVariants,
+                isActive: isActive,
+                syncStatus: syncStatus,
+                lastSyncAttempt: lastSyncAttempt,
+                syncError: syncError,
+                localUpdatedAt: localUpdatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ProductsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ProductsTableTable,
+      ProductsTableData,
+      $$ProductsTableTableFilterComposer,
+      $$ProductsTableTableOrderingComposer,
+      $$ProductsTableTableAnnotationComposer,
+      $$ProductsTableTableCreateCompanionBuilder,
+      $$ProductsTableTableUpdateCompanionBuilder,
+      (
+        ProductsTableData,
+        BaseReferences<_$AppDatabase, $ProductsTableTable, ProductsTableData>,
+      ),
+      ProductsTableData,
+      PrefetchHooks Function()
+    >;
+typedef $$ProductVariantsTableTableCreateCompanionBuilder =
+    ProductVariantsTableCompanion Function({
+      required String id,
+      required String productId,
+      required String businessId,
+      required String name,
+      Value<double> price,
+      Value<double?> costPrice,
+      Value<int> stock,
+      Value<String?> sku,
+      Value<String?> barcode,
+      Value<bool> isActive,
+      Value<int> syncStatus,
+      Value<DateTime?> lastSyncAttempt,
+      Value<String?> syncError,
+      Value<DateTime> localUpdatedAt,
+      Value<int> rowid,
+    });
+typedef $$ProductVariantsTableTableUpdateCompanionBuilder =
+    ProductVariantsTableCompanion Function({
+      Value<String> id,
+      Value<String> productId,
+      Value<String> businessId,
+      Value<String> name,
+      Value<double> price,
+      Value<double?> costPrice,
+      Value<int> stock,
+      Value<String?> sku,
+      Value<String?> barcode,
+      Value<bool> isActive,
+      Value<int> syncStatus,
+      Value<DateTime?> lastSyncAttempt,
+      Value<String?> syncError,
+      Value<DateTime> localUpdatedAt,
+      Value<int> rowid,
+    });
+
+class $$ProductVariantsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $ProductVariantsTableTable> {
+  $$ProductVariantsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get productId => $composableBuilder(
+    column: $table.productId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get price => $composableBuilder(
+    column: $table.price,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get costPrice => $composableBuilder(
+    column: $table.costPrice,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get stock => $composableBuilder(
+    column: $table.stock,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sku => $composableBuilder(
+    column: $table.sku,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get barcode => $composableBuilder(
+    column: $table.barcode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get localUpdatedAt => $composableBuilder(
+    column: $table.localUpdatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ProductVariantsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $ProductVariantsTableTable> {
+  $$ProductVariantsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get productId => $composableBuilder(
+    column: $table.productId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get price => $composableBuilder(
+    column: $table.price,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get costPrice => $composableBuilder(
+    column: $table.costPrice,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get stock => $composableBuilder(
+    column: $table.stock,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sku => $composableBuilder(
+    column: $table.sku,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get barcode => $composableBuilder(
+    column: $table.barcode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get localUpdatedAt => $composableBuilder(
+    column: $table.localUpdatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ProductVariantsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ProductVariantsTableTable> {
+  $$ProductVariantsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get productId =>
+      $composableBuilder(column: $table.productId, builder: (column) => column);
+
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<double> get price =>
+      $composableBuilder(column: $table.price, builder: (column) => column);
+
+  GeneratedColumn<double> get costPrice =>
+      $composableBuilder(column: $table.costPrice, builder: (column) => column);
+
+  GeneratedColumn<int> get stock =>
+      $composableBuilder(column: $table.stock, builder: (column) => column);
+
+  GeneratedColumn<String> get sku =>
+      $composableBuilder(column: $table.sku, builder: (column) => column);
+
+  GeneratedColumn<String> get barcode =>
+      $composableBuilder(column: $table.barcode, builder: (column) => column);
+
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get syncError =>
+      $composableBuilder(column: $table.syncError, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get localUpdatedAt => $composableBuilder(
+    column: $table.localUpdatedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$ProductVariantsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ProductVariantsTableTable,
+          ProductVariantsTableData,
+          $$ProductVariantsTableTableFilterComposer,
+          $$ProductVariantsTableTableOrderingComposer,
+          $$ProductVariantsTableTableAnnotationComposer,
+          $$ProductVariantsTableTableCreateCompanionBuilder,
+          $$ProductVariantsTableTableUpdateCompanionBuilder,
+          (
+            ProductVariantsTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $ProductVariantsTableTable,
+              ProductVariantsTableData
+            >,
+          ),
+          ProductVariantsTableData,
+          PrefetchHooks Function()
+        > {
+  $$ProductVariantsTableTableTableManager(
+    _$AppDatabase db,
+    $ProductVariantsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ProductVariantsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ProductVariantsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$ProductVariantsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> productId = const Value.absent(),
+                Value<String> businessId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<double> price = const Value.absent(),
+                Value<double?> costPrice = const Value.absent(),
+                Value<int> stock = const Value.absent(),
+                Value<String?> sku = const Value.absent(),
+                Value<String?> barcode = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<int> syncStatus = const Value.absent(),
+                Value<DateTime?> lastSyncAttempt = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<DateTime> localUpdatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ProductVariantsTableCompanion(
+                id: id,
+                productId: productId,
+                businessId: businessId,
+                name: name,
+                price: price,
+                costPrice: costPrice,
+                stock: stock,
+                sku: sku,
+                barcode: barcode,
+                isActive: isActive,
+                syncStatus: syncStatus,
+                lastSyncAttempt: lastSyncAttempt,
+                syncError: syncError,
+                localUpdatedAt: localUpdatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String productId,
+                required String businessId,
+                required String name,
+                Value<double> price = const Value.absent(),
+                Value<double?> costPrice = const Value.absent(),
+                Value<int> stock = const Value.absent(),
+                Value<String?> sku = const Value.absent(),
+                Value<String?> barcode = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<int> syncStatus = const Value.absent(),
+                Value<DateTime?> lastSyncAttempt = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<DateTime> localUpdatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ProductVariantsTableCompanion.insert(
+                id: id,
+                productId: productId,
+                businessId: businessId,
+                name: name,
+                price: price,
+                costPrice: costPrice,
+                stock: stock,
+                sku: sku,
+                barcode: barcode,
+                isActive: isActive,
+                syncStatus: syncStatus,
+                lastSyncAttempt: lastSyncAttempt,
+                syncError: syncError,
+                localUpdatedAt: localUpdatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ProductVariantsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ProductVariantsTableTable,
+      ProductVariantsTableData,
+      $$ProductVariantsTableTableFilterComposer,
+      $$ProductVariantsTableTableOrderingComposer,
+      $$ProductVariantsTableTableAnnotationComposer,
+      $$ProductVariantsTableTableCreateCompanionBuilder,
+      $$ProductVariantsTableTableUpdateCompanionBuilder,
+      (
+        ProductVariantsTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $ProductVariantsTableTable,
+          ProductVariantsTableData
+        >,
+      ),
+      ProductVariantsTableData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4705,4 +7004,8 @@ class $AppDatabaseManager {
       $$BranchesTableTableTableManager(_db, _db.branchesTable);
   $$CategoriesTableTableTableManager get categoriesTable =>
       $$CategoriesTableTableTableManager(_db, _db.categoriesTable);
+  $$ProductsTableTableTableManager get productsTable =>
+      $$ProductsTableTableTableManager(_db, _db.productsTable);
+  $$ProductVariantsTableTableTableManager get productVariantsTable =>
+      $$ProductVariantsTableTableTableManager(_db, _db.productVariantsTable);
 }

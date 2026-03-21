@@ -10,11 +10,15 @@ import 'package:pos/core/database/tables/business_templates_table.dart';
 import 'package:pos/core/database/tables/businesses_table.dart';
 import 'package:pos/core/database/tables/branches_table.dart';
 import 'package:pos/core/database/tables/categories_table.dart';
+import 'package:pos/core/database/tables/products_table.dart';
+import 'package:pos/core/database/tables/product_variants_table.dart';
 import 'package:pos/core/database/daos/auth_context_dao.dart';
 import 'package:pos/core/database/daos/business_templates_dao.dart';
 import 'package:pos/core/database/daos/businesses_dao.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/core/database/daos/categories_dao.dart';
+import 'package:pos/core/database/daos/products_dao.dart';
+import 'package:pos/core/database/daos/product_variants_dao.dart';
 
 part 'app_database.g.dart';
 
@@ -25,15 +29,24 @@ part 'app_database.g.dart';
     BusinessesTable,
     BranchesTable,
     CategoriesTable,
+    ProductsTable,
+    ProductVariantsTable,
   ],
-  daos: [AuthContextDao, BusinessTemplatesDao, BusinessesDao, BranchesDao, CategoriesDao],
+  daos: [
+    AuthContextDao,
+    BusinessTemplatesDao,
+    BusinessesDao,
+    BranchesDao,
+    CategoriesDao,
+    ProductsDao,
+    ProductVariantsDao,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
-
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration {
@@ -56,21 +69,25 @@ class AppDatabase extends _$AppDatabase {
           await m.addColumn(authContextTable, authContextTable.branchName);
         }
         if (from < 6) {
-          await m.addColumn(authContextTable, authContextTable.businessTemplateId);
-          await m.addColumn(authContextTable, authContextTable.businessTemplateName);
+          await m.addColumn(
+            authContextTable,
+            authContextTable.businessTemplateId,
+          );
+          await m.addColumn(
+            authContextTable,
+            authContextTable.businessTemplateName,
+          );
         }
         if (from < 7) {
           await m.createTable(categoriesTable);
         }
+        if (from < 8) {
+          await m.createTable(productsTable);
+          await m.createTable(productVariantsTable);
+        }
       },
     );
   }
-
-
-  
-
-
-
 }
 
 LazyDatabase _openConnection() {
