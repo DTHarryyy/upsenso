@@ -16,6 +16,7 @@ enum AuthLoadingType {
   signUp,
   verifyCode,
   passwordReset,
+  signOut,
 }
 
 class AuthLoading extends AuthState {

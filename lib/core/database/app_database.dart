@@ -33,7 +33,7 @@ class AppDatabase extends _$AppDatabase {
 
 
   @override
-  int get schemaVersion => 5; // bumped to 7 after codegen
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration {
@@ -55,7 +55,13 @@ class AppDatabase extends _$AppDatabase {
           await m.addColumn(authContextTable, authContextTable.branchId);
           await m.addColumn(authContextTable, authContextTable.branchName);
         }
-        // from < 6 and from < 7 migrations added after codegen
+        if (from < 6) {
+          await m.addColumn(authContextTable, authContextTable.businessTemplateId);
+          await m.addColumn(authContextTable, authContextTable.businessTemplateName);
+        }
+        if (from < 7) {
+          await m.createTable(categoriesTable);
+        }
       },
     );
   }

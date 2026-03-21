@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/categories_dao.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
@@ -59,10 +60,7 @@ class _ProductsPageState extends State<ProductsPage> {
             final dbCategories = snapshot.data ?? [];
             final categories = [
               'All',
-              ...dbCategories
-                  // ignore: avoid_dynamic_calls
-                  .map((c) => (c as dynamic).name?.toString() ?? '')
-                  .where((s) => s.isNotEmpty),
+              ...dbCategories.map((c) => c.name),
             ];
             // Reset selection if current category no longer exists
             if (!categories.contains(selectedCategory)) {

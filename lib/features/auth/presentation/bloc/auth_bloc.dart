@@ -313,6 +313,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onLogout(AuthLogoutRequested e, Emitter<AuthState> emit) async {
+    emit(const AuthLoading(type: AuthLoadingType.signOut));
     try {
       await signOut();
       _pendingSignUpEmail = null;
@@ -330,12 +331,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     if (!event.isLoggedIn) {
-      final cachedUser = getCurrentUser();
-      if (cachedUser != null) {
-        emit(AuthAuthenticated(cachedUser));
-        return;
-      }
-
+      // Supabase session ended (intentional logout or expiry) — always log out.
+      // In-memory cache is only for cold-start offline scenarios, not for
+      // keeping sessions alive after a SIGNED_OUT event.
       emit(AuthUnauthenticated());
       return;
     }

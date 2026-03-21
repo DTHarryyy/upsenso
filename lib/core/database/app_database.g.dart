@@ -1,14 +1,15 @@
-
+// GENERATED CODE - DO NOT MODIFY BY HAND
 
 part of 'app_database.dart';
 
+// ignore_for_file: type=lint
 class $AuthContextTableTable extends AuthContextTable
     with TableInfo<$AuthContextTableTable, AuthContextTableData> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $AuthContextTableTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _userIdMeta =  VerificationMeta('userId');
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
   @override
   late final GeneratedColumn<String> userId = GeneratedColumn<String>(
     'user_id',
@@ -17,7 +18,7 @@ class $AuthContextTableTable extends AuthContextTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _emailMeta =  VerificationMeta('email');
+  static const VerificationMeta _emailMeta = const VerificationMeta('email');
   @override
   late final GeneratedColumn<String> email = GeneratedColumn<String>(
     'email',
@@ -26,7 +27,7 @@ class $AuthContextTableTable extends AuthContextTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _fullNameMeta =  VerificationMeta(
+  static const VerificationMeta _fullNameMeta = const VerificationMeta(
     'fullName',
   );
   @override
@@ -37,7 +38,7 @@ class $AuthContextTableTable extends AuthContextTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _businessIdMeta =  VerificationMeta(
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
     'businessId',
   );
   @override
@@ -48,7 +49,7 @@ class $AuthContextTableTable extends AuthContextTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _roleIdMeta =  VerificationMeta('roleId');
+  static const VerificationMeta _roleIdMeta = const VerificationMeta('roleId');
   @override
   late final GeneratedColumn<String> roleId = GeneratedColumn<String>(
     'role_id',
@@ -57,7 +58,7 @@ class $AuthContextTableTable extends AuthContextTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _roleNameMeta =  VerificationMeta(
+  static const VerificationMeta _roleNameMeta = const VerificationMeta(
     'roleName',
   );
   @override
@@ -68,7 +69,7 @@ class $AuthContextTableTable extends AuthContextTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _businessNameMeta =  VerificationMeta(
+  static const VerificationMeta _businessNameMeta = const VerificationMeta(
     'businessName',
   );
   @override
@@ -79,7 +80,7 @@ class $AuthContextTableTable extends AuthContextTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _branchIdMeta =  VerificationMeta(
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
     'branchId',
   );
   @override
@@ -90,7 +91,7 @@ class $AuthContextTableTable extends AuthContextTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _branchNameMeta =  VerificationMeta(
+  static const VerificationMeta _branchNameMeta = const VerificationMeta(
     'branchName',
   );
   @override
@@ -101,7 +102,29 @@ class $AuthContextTableTable extends AuthContextTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _localUpdatedAtMeta =  VerificationMeta(
+  static const VerificationMeta _businessTemplateIdMeta =
+      const VerificationMeta('businessTemplateId');
+  @override
+  late final GeneratedColumn<String> businessTemplateId =
+      GeneratedColumn<String>(
+        'business_template_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _businessTemplateNameMeta =
+      const VerificationMeta('businessTemplateName');
+  @override
+  late final GeneratedColumn<String> businessTemplateName =
+      GeneratedColumn<String>(
+        'business_template_name',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _localUpdatedAtMeta = const VerificationMeta(
     'localUpdatedAt',
   );
   @override
@@ -125,6 +148,8 @@ class $AuthContextTableTable extends AuthContextTable
     businessName,
     branchId,
     branchName,
+    businessTemplateId,
+    businessTemplateName,
     localUpdatedAt,
   ];
   @override
@@ -198,6 +223,24 @@ class $AuthContextTableTable extends AuthContextTable
         branchName.isAcceptableOrUnknown(data['branch_name']!, _branchNameMeta),
       );
     }
+    if (data.containsKey('business_template_id')) {
+      context.handle(
+        _businessTemplateIdMeta,
+        businessTemplateId.isAcceptableOrUnknown(
+          data['business_template_id']!,
+          _businessTemplateIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('business_template_name')) {
+      context.handle(
+        _businessTemplateNameMeta,
+        businessTemplateName.isAcceptableOrUnknown(
+          data['business_template_name']!,
+          _businessTemplateNameMeta,
+        ),
+      );
+    }
     if (data.containsKey('local_updated_at')) {
       context.handle(
         _localUpdatedAtMeta,
@@ -252,6 +295,14 @@ class $AuthContextTableTable extends AuthContextTable
         DriftSqlType.string,
         data['${effectivePrefix}branch_name'],
       ),
+      businessTemplateId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_template_id'],
+      ),
+      businessTemplateName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_template_name'],
+      ),
       localUpdatedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}local_updated_at'],
@@ -267,15 +318,40 @@ class $AuthContextTableTable extends AuthContextTable
 
 class AuthContextTableData extends DataClass
     implements Insertable<AuthContextTableData> {
+  /// User's Supabase Auth UID (primary key for single current user)
   final String userId;
+
+  /// User's email address
   final String? email;
+
+  /// User's full name
   final String? fullName;
+
+  /// Associated business ID (from database trigger context)
   final String? businessId;
+
+  /// User's role ID in the business
   final String? roleId;
+
+  /// User's role name (e.g., "Super Admin", "Manager")
   final String? roleName;
+
+  /// Associated business name
   final String? businessName;
+
+  /// User's default/primary branch ID
   final String? branchId;
+
+  /// User's default/primary branch name
   final String? branchName;
+
+  /// Business template ID (cached to avoid repeated DB lookups)
+  final String? businessTemplateId;
+
+  /// Business template name / category label (e.g. "Restaurant", "Coffee Shop")
+  final String? businessTemplateName;
+
+  /// Last time this context was updated locally
   final DateTime localUpdatedAt;
   const AuthContextTableData({
     required this.userId,
@@ -287,6 +363,8 @@ class AuthContextTableData extends DataClass
     this.businessName,
     this.branchId,
     this.branchName,
+    this.businessTemplateId,
+    this.businessTemplateName,
     required this.localUpdatedAt,
   });
   @override
@@ -316,6 +394,12 @@ class AuthContextTableData extends DataClass
     }
     if (!nullToAbsent || branchName != null) {
       map['branch_name'] = Variable<String>(branchName);
+    }
+    if (!nullToAbsent || businessTemplateId != null) {
+      map['business_template_id'] = Variable<String>(businessTemplateId);
+    }
+    if (!nullToAbsent || businessTemplateName != null) {
+      map['business_template_name'] = Variable<String>(businessTemplateName);
     }
     map['local_updated_at'] = Variable<DateTime>(localUpdatedAt);
     return map;
@@ -348,6 +432,12 @@ class AuthContextTableData extends DataClass
       branchName: branchName == null && nullToAbsent
           ? const Value.absent()
           : Value(branchName),
+      businessTemplateId: businessTemplateId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(businessTemplateId),
+      businessTemplateName: businessTemplateName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(businessTemplateName),
       localUpdatedAt: Value(localUpdatedAt),
     );
   }
@@ -367,6 +457,12 @@ class AuthContextTableData extends DataClass
       businessName: serializer.fromJson<String?>(json['businessName']),
       branchId: serializer.fromJson<String?>(json['branchId']),
       branchName: serializer.fromJson<String?>(json['branchName']),
+      businessTemplateId: serializer.fromJson<String?>(
+        json['businessTemplateId'],
+      ),
+      businessTemplateName: serializer.fromJson<String?>(
+        json['businessTemplateName'],
+      ),
       localUpdatedAt: serializer.fromJson<DateTime>(json['localUpdatedAt']),
     );
   }
@@ -383,6 +479,8 @@ class AuthContextTableData extends DataClass
       'businessName': serializer.toJson<String?>(businessName),
       'branchId': serializer.toJson<String?>(branchId),
       'branchName': serializer.toJson<String?>(branchName),
+      'businessTemplateId': serializer.toJson<String?>(businessTemplateId),
+      'businessTemplateName': serializer.toJson<String?>(businessTemplateName),
       'localUpdatedAt': serializer.toJson<DateTime>(localUpdatedAt),
     };
   }
@@ -397,6 +495,8 @@ class AuthContextTableData extends DataClass
     Value<String?> businessName = const Value.absent(),
     Value<String?> branchId = const Value.absent(),
     Value<String?> branchName = const Value.absent(),
+    Value<String?> businessTemplateId = const Value.absent(),
+    Value<String?> businessTemplateName = const Value.absent(),
     DateTime? localUpdatedAt,
   }) => AuthContextTableData(
     userId: userId ?? this.userId,
@@ -408,28 +508,40 @@ class AuthContextTableData extends DataClass
     businessName: businessName.present ? businessName.value : this.businessName,
     branchId: branchId.present ? branchId.value : this.branchId,
     branchName: branchName.present ? branchName.value : this.branchName,
+    businessTemplateId: businessTemplateId.present
+        ? businessTemplateId.value
+        : this.businessTemplateId,
+    businessTemplateName: businessTemplateName.present
+        ? businessTemplateName.value
+        : this.businessTemplateName,
     localUpdatedAt: localUpdatedAt ?? this.localUpdatedAt,
   );
   AuthContextTableData copyWithCompanion(AuthContextTableCompanion data) {
     return AuthContextTableData(
-      userId: data.userId.present ? data.userId.value : userId,
-      email: data.email.present ? data.email.value : email,
-      fullName: data.fullName.present ? data.fullName.value : fullName,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      email: data.email.present ? data.email.value : this.email,
+      fullName: data.fullName.present ? data.fullName.value : this.fullName,
       businessId: data.businessId.present
           ? data.businessId.value
-          : businessId,
-      roleId: data.roleId.present ? data.roleId.value : roleId,
-      roleName: data.roleName.present ? data.roleName.value : roleName,
+          : this.businessId,
+      roleId: data.roleId.present ? data.roleId.value : this.roleId,
+      roleName: data.roleName.present ? data.roleName.value : this.roleName,
       businessName: data.businessName.present
           ? data.businessName.value
-          : businessName,
-      branchId: data.branchId.present ? data.branchId.value : branchId,
+          : this.businessName,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
       branchName: data.branchName.present
           ? data.branchName.value
-          : branchName,
+          : this.branchName,
+      businessTemplateId: data.businessTemplateId.present
+          ? data.businessTemplateId.value
+          : this.businessTemplateId,
+      businessTemplateName: data.businessTemplateName.present
+          ? data.businessTemplateName.value
+          : this.businessTemplateName,
       localUpdatedAt: data.localUpdatedAt.present
           ? data.localUpdatedAt.value
-          : localUpdatedAt,
+          : this.localUpdatedAt,
     );
   }
 
@@ -445,6 +557,8 @@ class AuthContextTableData extends DataClass
           ..write('businessName: $businessName, ')
           ..write('branchId: $branchId, ')
           ..write('branchName: $branchName, ')
+          ..write('businessTemplateId: $businessTemplateId, ')
+          ..write('businessTemplateName: $businessTemplateName, ')
           ..write('localUpdatedAt: $localUpdatedAt')
           ..write(')'))
         .toString();
@@ -461,22 +575,26 @@ class AuthContextTableData extends DataClass
     businessName,
     branchId,
     branchName,
+    businessTemplateId,
+    businessTemplateName,
     localUpdatedAt,
   );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is AuthContextTableData &&
-          other.userId == userId &&
-          other.email == email &&
-          other.fullName == fullName &&
-          other.businessId == businessId &&
-          other.roleId == roleId &&
-          other.roleName == roleName &&
-          other.businessName == businessName &&
-          other.branchId == branchId &&
-          other.branchName == branchName &&
-          other.localUpdatedAt == localUpdatedAt);
+          other.userId == this.userId &&
+          other.email == this.email &&
+          other.fullName == this.fullName &&
+          other.businessId == this.businessId &&
+          other.roleId == this.roleId &&
+          other.roleName == this.roleName &&
+          other.businessName == this.businessName &&
+          other.branchId == this.branchId &&
+          other.branchName == this.branchName &&
+          other.businessTemplateId == this.businessTemplateId &&
+          other.businessTemplateName == this.businessTemplateName &&
+          other.localUpdatedAt == this.localUpdatedAt);
 }
 
 class AuthContextTableCompanion extends UpdateCompanion<AuthContextTableData> {
@@ -489,6 +607,8 @@ class AuthContextTableCompanion extends UpdateCompanion<AuthContextTableData> {
   final Value<String?> businessName;
   final Value<String?> branchId;
   final Value<String?> branchName;
+  final Value<String?> businessTemplateId;
+  final Value<String?> businessTemplateName;
   final Value<DateTime> localUpdatedAt;
   final Value<int> rowid;
   const AuthContextTableCompanion({
@@ -501,6 +621,8 @@ class AuthContextTableCompanion extends UpdateCompanion<AuthContextTableData> {
     this.businessName = const Value.absent(),
     this.branchId = const Value.absent(),
     this.branchName = const Value.absent(),
+    this.businessTemplateId = const Value.absent(),
+    this.businessTemplateName = const Value.absent(),
     this.localUpdatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -514,6 +636,8 @@ class AuthContextTableCompanion extends UpdateCompanion<AuthContextTableData> {
     this.businessName = const Value.absent(),
     this.branchId = const Value.absent(),
     this.branchName = const Value.absent(),
+    this.businessTemplateId = const Value.absent(),
+    this.businessTemplateName = const Value.absent(),
     this.localUpdatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : userId = Value(userId);
@@ -527,21 +651,27 @@ class AuthContextTableCompanion extends UpdateCompanion<AuthContextTableData> {
     Expression<String>? businessName,
     Expression<String>? branchId,
     Expression<String>? branchName,
+    Expression<String>? businessTemplateId,
+    Expression<String>? businessTemplateName,
     Expression<DateTime>? localUpdatedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
-      'user_id': ?userId,
-      'email': ?email,
-      'full_name': ?fullName,
-      'business_id': ?businessId,
-      'role_id': ?roleId,
-      'role_name': ?roleName,
-      'business_name': ?businessName,
-      'branch_id': ?branchId,
-      'branch_name': ?branchName,
-      'local_updated_at': ?localUpdatedAt,
-      'rowid': ?rowid
+      if (userId != null) 'user_id': userId,
+      if (email != null) 'email': email,
+      if (fullName != null) 'full_name': fullName,
+      if (businessId != null) 'business_id': businessId,
+      if (roleId != null) 'role_id': roleId,
+      if (roleName != null) 'role_name': roleName,
+      if (businessName != null) 'business_name': businessName,
+      if (branchId != null) 'branch_id': branchId,
+      if (branchName != null) 'branch_name': branchName,
+      if (businessTemplateId != null)
+        'business_template_id': businessTemplateId,
+      if (businessTemplateName != null)
+        'business_template_name': businessTemplateName,
+      if (localUpdatedAt != null) 'local_updated_at': localUpdatedAt,
+      if (rowid != null) 'rowid': rowid,
     });
   }
 
@@ -555,6 +685,8 @@ class AuthContextTableCompanion extends UpdateCompanion<AuthContextTableData> {
     Value<String?>? businessName,
     Value<String?>? branchId,
     Value<String?>? branchName,
+    Value<String?>? businessTemplateId,
+    Value<String?>? businessTemplateName,
     Value<DateTime>? localUpdatedAt,
     Value<int>? rowid,
   }) {
@@ -568,6 +700,8 @@ class AuthContextTableCompanion extends UpdateCompanion<AuthContextTableData> {
       businessName: businessName ?? this.businessName,
       branchId: branchId ?? this.branchId,
       branchName: branchName ?? this.branchName,
+      businessTemplateId: businessTemplateId ?? this.businessTemplateId,
+      businessTemplateName: businessTemplateName ?? this.businessTemplateName,
       localUpdatedAt: localUpdatedAt ?? this.localUpdatedAt,
       rowid: rowid ?? this.rowid,
     );
@@ -603,6 +737,14 @@ class AuthContextTableCompanion extends UpdateCompanion<AuthContextTableData> {
     if (branchName.present) {
       map['branch_name'] = Variable<String>(branchName.value);
     }
+    if (businessTemplateId.present) {
+      map['business_template_id'] = Variable<String>(businessTemplateId.value);
+    }
+    if (businessTemplateName.present) {
+      map['business_template_name'] = Variable<String>(
+        businessTemplateName.value,
+      );
+    }
     if (localUpdatedAt.present) {
       map['local_updated_at'] = Variable<DateTime>(localUpdatedAt.value);
     }
@@ -624,6 +766,8 @@ class AuthContextTableCompanion extends UpdateCompanion<AuthContextTableData> {
           ..write('businessName: $businessName, ')
           ..write('branchId: $branchId, ')
           ..write('branchName: $branchName, ')
+          ..write('businessTemplateId: $businessTemplateId, ')
+          ..write('businessTemplateName: $businessTemplateName, ')
           ..write('localUpdatedAt: $localUpdatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -637,7 +781,7 @@ class $BusinessTemplatesTableTable extends BusinessTemplatesTable
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $BusinessTemplatesTableTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta =  VerificationMeta('id');
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
     'id',
@@ -646,7 +790,7 @@ class $BusinessTemplatesTableTable extends BusinessTemplatesTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _nameMeta =  VerificationMeta('name');
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
     'name',
@@ -655,7 +799,7 @@ class $BusinessTemplatesTableTable extends BusinessTemplatesTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _defaultModulesMeta =  VerificationMeta(
+  static const VerificationMeta _defaultModulesMeta = const VerificationMeta(
     'defaultModules',
   );
   @override
@@ -666,7 +810,7 @@ class $BusinessTemplatesTableTable extends BusinessTemplatesTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _defaultRolesMeta =  VerificationMeta(
+  static const VerificationMeta _defaultRolesMeta = const VerificationMeta(
     'defaultRoles',
   );
   @override
@@ -678,7 +822,7 @@ class $BusinessTemplatesTableTable extends BusinessTemplatesTable
     requiredDuringInsert: true,
   );
   static const VerificationMeta _defaultPermissionsMeta =
-       VerificationMeta('defaultPermissions');
+      const VerificationMeta('defaultPermissions');
   @override
   late final GeneratedColumn<String> defaultPermissions =
       GeneratedColumn<String>(
@@ -688,7 +832,7 @@ class $BusinessTemplatesTableTable extends BusinessTemplatesTable
         type: DriftSqlType.string,
         requiredDuringInsert: true,
       );
-  static const VerificationMeta _defaultTaxRateMeta =  VerificationMeta(
+  static const VerificationMeta _defaultTaxRateMeta = const VerificationMeta(
     'defaultTaxRate',
   );
   @override
@@ -699,7 +843,7 @@ class $BusinessTemplatesTableTable extends BusinessTemplatesTable
     type: DriftSqlType.double,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _createdAtMeta =  VerificationMeta(
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
   @override
@@ -710,7 +854,7 @@ class $BusinessTemplatesTableTable extends BusinessTemplatesTable
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _localUpdatedAtMeta =  VerificationMeta(
+  static const VerificationMeta _localUpdatedAtMeta = const VerificationMeta(
     'localUpdatedAt',
   );
   @override
@@ -982,24 +1126,24 @@ class BusinessTemplatesTableData extends DataClass
     BusinessTemplatesTableCompanion data,
   ) {
     return BusinessTemplatesTableData(
-      id: data.id.present ? data.id.value : id,
-      name: data.name.present ? data.name.value : name,
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
       defaultModules: data.defaultModules.present
           ? data.defaultModules.value
-          : defaultModules,
+          : this.defaultModules,
       defaultRoles: data.defaultRoles.present
           ? data.defaultRoles.value
-          : defaultRoles,
+          : this.defaultRoles,
       defaultPermissions: data.defaultPermissions.present
           ? data.defaultPermissions.value
-          : defaultPermissions,
+          : this.defaultPermissions,
       defaultTaxRate: data.defaultTaxRate.present
           ? data.defaultTaxRate.value
-          : defaultTaxRate,
-      createdAt: data.createdAt.present ? data.createdAt.value : createdAt,
+          : this.defaultTaxRate,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       localUpdatedAt: data.localUpdatedAt.present
           ? data.localUpdatedAt.value
-          : localUpdatedAt,
+          : this.localUpdatedAt,
     );
   }
 
@@ -1033,14 +1177,14 @@ class BusinessTemplatesTableData extends DataClass
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is BusinessTemplatesTableData &&
-          other.id == id &&
-          other.name == name &&
-          other.defaultModules == defaultModules &&
-          other.defaultRoles == defaultRoles &&
-          other.defaultPermissions == defaultPermissions &&
-          other.defaultTaxRate == defaultTaxRate &&
-          other.createdAt == createdAt &&
-          other.localUpdatedAt == localUpdatedAt);
+          other.id == this.id &&
+          other.name == this.name &&
+          other.defaultModules == this.defaultModules &&
+          other.defaultRoles == this.defaultRoles &&
+          other.defaultPermissions == this.defaultPermissions &&
+          other.defaultTaxRate == this.defaultTaxRate &&
+          other.createdAt == this.createdAt &&
+          other.localUpdatedAt == this.localUpdatedAt);
 }
 
 class BusinessTemplatesTableCompanion
@@ -1092,15 +1236,15 @@ class BusinessTemplatesTableCompanion
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
-      'id': ?id,
-      'name': ?name,
-      'default_modules': ?defaultModules,
-      'default_roles': ?defaultRoles,
-      'default_permissions': ?defaultPermissions,
-      'default_tax_rate': ?defaultTaxRate,
-      'created_at': ?createdAt,
-      'local_updated_at': ?localUpdatedAt,
-      'rowid': ?rowid,
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (defaultModules != null) 'default_modules': defaultModules,
+      if (defaultRoles != null) 'default_roles': defaultRoles,
+      if (defaultPermissions != null) 'default_permissions': defaultPermissions,
+      if (defaultTaxRate != null) 'default_tax_rate': defaultTaxRate,
+      if (createdAt != null) 'created_at': createdAt,
+      if (localUpdatedAt != null) 'local_updated_at': localUpdatedAt,
+      if (rowid != null) 'rowid': rowid,
     });
   }
 
@@ -1184,7 +1328,7 @@ class $BusinessesTableTable extends BusinessesTable
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $BusinessesTableTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta =  VerificationMeta('id');
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
     'id',
@@ -1193,7 +1337,7 @@ class $BusinessesTableTable extends BusinessesTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _nameMeta =  VerificationMeta('name');
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
     'name',
@@ -1202,7 +1346,7 @@ class $BusinessesTableTable extends BusinessesTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _ownerIdMeta =  VerificationMeta(
+  static const VerificationMeta _ownerIdMeta = const VerificationMeta(
     'ownerId',
   );
   @override
@@ -1213,7 +1357,7 @@ class $BusinessesTableTable extends BusinessesTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _templateIdMeta =  VerificationMeta(
+  static const VerificationMeta _templateIdMeta = const VerificationMeta(
     'templateId',
   );
   @override
@@ -1224,7 +1368,7 @@ class $BusinessesTableTable extends BusinessesTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _createdAtMeta =  VerificationMeta(
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
   @override
@@ -1235,7 +1379,7 @@ class $BusinessesTableTable extends BusinessesTable
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _isActiveMeta =  VerificationMeta(
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
     'isActive',
   );
   @override
@@ -1250,7 +1394,7 @@ class $BusinessesTableTable extends BusinessesTable
     ),
     defaultValue: const Constant(true),
   );
-  static const VerificationMeta _syncStatusMeta =  VerificationMeta(
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
     'syncStatus',
   );
   @override
@@ -1262,7 +1406,7 @@ class $BusinessesTableTable extends BusinessesTable
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
-  static const VerificationMeta _lastSyncAttemptMeta =  VerificationMeta(
+  static const VerificationMeta _lastSyncAttemptMeta = const VerificationMeta(
     'lastSyncAttempt',
   );
   @override
@@ -1274,7 +1418,7 @@ class $BusinessesTableTable extends BusinessesTable
         type: DriftSqlType.dateTime,
         requiredDuringInsert: false,
       );
-  static const VerificationMeta _syncErrorMeta =  VerificationMeta(
+  static const VerificationMeta _syncErrorMeta = const VerificationMeta(
     'syncError',
   );
   @override
@@ -1285,7 +1429,7 @@ class $BusinessesTableTable extends BusinessesTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _localUpdatedAtMeta =  VerificationMeta(
+  static const VerificationMeta _localUpdatedAtMeta = const VerificationMeta(
     'localUpdatedAt',
   );
   @override
@@ -1583,24 +1727,24 @@ class BusinessesTableData extends DataClass
   );
   BusinessesTableData copyWithCompanion(BusinessesTableCompanion data) {
     return BusinessesTableData(
-      id: data.id.present ? data.id.value : id,
-      name: data.name.present ? data.name.value : name,
-      ownerId: data.ownerId.present ? data.ownerId.value : ownerId,
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
       templateId: data.templateId.present
           ? data.templateId.value
-          : templateId,
-      createdAt: data.createdAt.present ? data.createdAt.value : createdAt,
-      isActive: data.isActive.present ? data.isActive.value : isActive,
+          : this.templateId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
       syncStatus: data.syncStatus.present
           ? data.syncStatus.value
-          : syncStatus,
+          : this.syncStatus,
       lastSyncAttempt: data.lastSyncAttempt.present
           ? data.lastSyncAttempt.value
-          : lastSyncAttempt,
-      syncError: data.syncError.present ? data.syncError.value : syncError,
+          : this.lastSyncAttempt,
+      syncError: data.syncError.present ? data.syncError.value : this.syncError,
       localUpdatedAt: data.localUpdatedAt.present
           ? data.localUpdatedAt.value
-          : localUpdatedAt,
+          : this.localUpdatedAt,
     );
   }
 
@@ -1638,16 +1782,16 @@ class BusinessesTableData extends DataClass
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is BusinessesTableData &&
-          other.id == id &&
-          other.name == name &&
-          other.ownerId == ownerId &&
-          other.templateId == templateId &&
-          other.createdAt == createdAt &&
-          other.isActive == isActive &&
-          other.syncStatus == syncStatus &&
-          other.lastSyncAttempt == lastSyncAttempt &&
-          other.syncError == syncError &&
-          other.localUpdatedAt == localUpdatedAt);
+          other.id == this.id &&
+          other.name == this.name &&
+          other.ownerId == this.ownerId &&
+          other.templateId == this.templateId &&
+          other.createdAt == this.createdAt &&
+          other.isActive == this.isActive &&
+          other.syncStatus == this.syncStatus &&
+          other.lastSyncAttempt == this.lastSyncAttempt &&
+          other.syncError == this.syncError &&
+          other.localUpdatedAt == this.localUpdatedAt);
 }
 
 class BusinessesTableCompanion extends UpdateCompanion<BusinessesTableData> {
@@ -1706,17 +1850,17 @@ class BusinessesTableCompanion extends UpdateCompanion<BusinessesTableData> {
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
-      'id': ?id,
-      'name': ?name,
-      'owner_id': ?ownerId,
-      'template_id': ?templateId,
-      'created_at': ?createdAt,
-      'is_active': ?isActive,
-      'sync_status': ?syncStatus,
-      'last_sync_attempt': ?lastSyncAttempt,
-      'sync_error': ?syncError,
-      'local_updated_at': ?localUpdatedAt,
-      'rowid': ?rowid,
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (ownerId != null) 'owner_id': ownerId,
+      if (templateId != null) 'template_id': templateId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (isActive != null) 'is_active': isActive,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (lastSyncAttempt != null) 'last_sync_attempt': lastSyncAttempt,
+      if (syncError != null) 'sync_error': syncError,
+      if (localUpdatedAt != null) 'local_updated_at': localUpdatedAt,
+      if (rowid != null) 'rowid': rowid,
     });
   }
 
@@ -1812,7 +1956,7 @@ class $BranchesTableTable extends BranchesTable
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $BranchesTableTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = VerificationMeta('id');
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
     'id',
@@ -1821,7 +1965,7 @@ class $BranchesTableTable extends BranchesTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _businessIdMeta = VerificationMeta(
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
     'businessId',
   );
   @override
@@ -1832,7 +1976,7 @@ class $BranchesTableTable extends BranchesTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _nameMeta =  VerificationMeta('name');
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
     'name',
@@ -1841,7 +1985,7 @@ class $BranchesTableTable extends BranchesTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _addressMeta =  VerificationMeta(
+  static const VerificationMeta _addressMeta = const VerificationMeta(
     'address',
   );
   @override
@@ -1852,7 +1996,7 @@ class $BranchesTableTable extends BranchesTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _phoneMeta = VerificationMeta('phone');
+  static const VerificationMeta _phoneMeta = const VerificationMeta('phone');
   @override
   late final GeneratedColumn<String> phone = GeneratedColumn<String>(
     'phone',
@@ -1861,7 +2005,7 @@ class $BranchesTableTable extends BranchesTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _isActiveMeta = VerificationMeta(
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
     'isActive',
   );
   @override
@@ -1876,7 +2020,7 @@ class $BranchesTableTable extends BranchesTable
     ),
     defaultValue: const Constant(true),
   );
-  static const VerificationMeta _syncStatusMeta = VerificationMeta(
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
     'syncStatus',
   );
   @override
@@ -1888,7 +2032,7 @@ class $BranchesTableTable extends BranchesTable
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
-  static const VerificationMeta _lastSyncAttemptMeta =  VerificationMeta(
+  static const VerificationMeta _lastSyncAttemptMeta = const VerificationMeta(
     'lastSyncAttempt',
   );
   @override
@@ -1900,7 +2044,7 @@ class $BranchesTableTable extends BranchesTable
         type: DriftSqlType.dateTime,
         requiredDuringInsert: false,
       );
-  static const VerificationMeta _syncErrorMeta =  VerificationMeta(
+  static const VerificationMeta _syncErrorMeta = const VerificationMeta(
     'syncError',
   );
   @override
@@ -1911,7 +2055,7 @@ class $BranchesTableTable extends BranchesTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _localUpdatedAtMeta =  VerificationMeta(
+  static const VerificationMeta _localUpdatedAtMeta = const VerificationMeta(
     'localUpdatedAt',
   );
   @override
@@ -2223,24 +2367,24 @@ class BranchesTableData extends DataClass
   );
   BranchesTableData copyWithCompanion(BranchesTableCompanion data) {
     return BranchesTableData(
-      id: data.id.present ? data.id.value : id,
+      id: data.id.present ? data.id.value : this.id,
       businessId: data.businessId.present
           ? data.businessId.value
-          : businessId,
-      name: data.name.present ? data.name.value : name,
-      address: data.address.present ? data.address.value : address,
-      phone: data.phone.present ? data.phone.value : phone,
-      isActive: data.isActive.present ? data.isActive.value : isActive,
+          : this.businessId,
+      name: data.name.present ? data.name.value : this.name,
+      address: data.address.present ? data.address.value : this.address,
+      phone: data.phone.present ? data.phone.value : this.phone,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
       syncStatus: data.syncStatus.present
           ? data.syncStatus.value
-          : syncStatus,
+          : this.syncStatus,
       lastSyncAttempt: data.lastSyncAttempt.present
           ? data.lastSyncAttempt.value
-          : lastSyncAttempt,
-      syncError: data.syncError.present ? data.syncError.value : syncError,
+          : this.lastSyncAttempt,
+      syncError: data.syncError.present ? data.syncError.value : this.syncError,
       localUpdatedAt: data.localUpdatedAt.present
           ? data.localUpdatedAt.value
-          : localUpdatedAt,
+          : this.localUpdatedAt,
     );
   }
 
@@ -2278,16 +2422,16 @@ class BranchesTableData extends DataClass
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is BranchesTableData &&
-          other.id == id &&
-          other.businessId == businessId &&
-          other.name == name &&
-          other.address == address &&
-          other.phone == phone &&
-          other.isActive == isActive &&
-          other.syncStatus == syncStatus &&
-          other.lastSyncAttempt == lastSyncAttempt &&
-          other.syncError == syncError &&
-          other.localUpdatedAt == localUpdatedAt);
+          other.id == this.id &&
+          other.businessId == this.businessId &&
+          other.name == this.name &&
+          other.address == this.address &&
+          other.phone == this.phone &&
+          other.isActive == this.isActive &&
+          other.syncStatus == this.syncStatus &&
+          other.lastSyncAttempt == this.lastSyncAttempt &&
+          other.syncError == this.syncError &&
+          other.localUpdatedAt == this.localUpdatedAt);
 }
 
 class BranchesTableCompanion extends UpdateCompanion<BranchesTableData> {
@@ -2344,17 +2488,17 @@ class BranchesTableCompanion extends UpdateCompanion<BranchesTableData> {
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
-      'id': ?id,
-      'business_id': ?businessId,
-      'name': ?name,
-      'address': ?address,
-      'phone': ?phone,
-      'is_active': ?isActive,
-      'sync_status': ?syncStatus,
-      'last_sync_attempt': ?lastSyncAttempt,
-      'sync_error': ?syncError,
-      'local_updated_at': ?localUpdatedAt,
-      'rowid': ?rowid,
+      if (id != null) 'id': id,
+      if (businessId != null) 'business_id': businessId,
+      if (name != null) 'name': name,
+      if (address != null) 'address': address,
+      if (phone != null) 'phone': phone,
+      if (isActive != null) 'is_active': isActive,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (lastSyncAttempt != null) 'last_sync_attempt': lastSyncAttempt,
+      if (syncError != null) 'sync_error': syncError,
+      if (localUpdatedAt != null) 'local_updated_at': localUpdatedAt,
+      if (rowid != null) 'rowid': rowid,
     });
   }
 
@@ -2444,6 +2588,533 @@ class BranchesTableCompanion extends UpdateCompanion<BranchesTableData> {
   }
 }
 
+class $CategoriesTableTable extends CategoriesTable
+    with TableInfo<$CategoriesTableTable, CategoriesTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CategoriesTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+    'syncStatus',
+  );
+  @override
+  late final GeneratedColumn<int> syncStatus = GeneratedColumn<int>(
+    'sync_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastSyncAttemptMeta = const VerificationMeta(
+    'lastSyncAttempt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastSyncAttempt =
+      GeneratedColumn<DateTime>(
+        'last_sync_attempt',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _syncErrorMeta = const VerificationMeta(
+    'syncError',
+  );
+  @override
+  late final GeneratedColumn<String> syncError = GeneratedColumn<String>(
+    'sync_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _localUpdatedAtMeta = const VerificationMeta(
+    'localUpdatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> localUpdatedAt =
+      GeneratedColumn<DateTime>(
+        'local_updated_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+        defaultValue: currentDateAndTime,
+      );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    businessId,
+    name,
+    sortOrder,
+    syncStatus,
+    lastSyncAttempt,
+    syncError,
+    localUpdatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'categories';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CategoriesTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    if (data.containsKey('sync_status')) {
+      context.handle(
+        _syncStatusMeta,
+        syncStatus.isAcceptableOrUnknown(data['sync_status']!, _syncStatusMeta),
+      );
+    }
+    if (data.containsKey('last_sync_attempt')) {
+      context.handle(
+        _lastSyncAttemptMeta,
+        lastSyncAttempt.isAcceptableOrUnknown(
+          data['last_sync_attempt']!,
+          _lastSyncAttemptMeta,
+        ),
+      );
+    }
+    if (data.containsKey('sync_error')) {
+      context.handle(
+        _syncErrorMeta,
+        syncError.isAcceptableOrUnknown(data['sync_error']!, _syncErrorMeta),
+      );
+    }
+    if (data.containsKey('local_updated_at')) {
+      context.handle(
+        _localUpdatedAtMeta,
+        localUpdatedAt.isAcceptableOrUnknown(
+          data['local_updated_at']!,
+          _localUpdatedAtMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CategoriesTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CategoriesTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      syncStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sync_status'],
+      )!,
+      lastSyncAttempt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_sync_attempt'],
+      ),
+      syncError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_error'],
+      ),
+      localUpdatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}local_updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CategoriesTableTable createAlias(String alias) {
+    return $CategoriesTableTable(attachedDatabase, alias);
+  }
+}
+
+class CategoriesTableData extends DataClass
+    implements Insertable<CategoriesTableData> {
+  final String id;
+  final String businessId;
+  final String name;
+  final int sortOrder;
+
+  /// 0=pendingUpload, 1=pendingUpdate, 2=pendingDelete, 3=synced, 4=failed
+  final int syncStatus;
+  final DateTime? lastSyncAttempt;
+  final String? syncError;
+  final DateTime localUpdatedAt;
+  const CategoriesTableData({
+    required this.id,
+    required this.businessId,
+    required this.name,
+    required this.sortOrder,
+    required this.syncStatus,
+    this.lastSyncAttempt,
+    this.syncError,
+    required this.localUpdatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['business_id'] = Variable<String>(businessId);
+    map['name'] = Variable<String>(name);
+    map['sort_order'] = Variable<int>(sortOrder);
+    map['sync_status'] = Variable<int>(syncStatus);
+    if (!nullToAbsent || lastSyncAttempt != null) {
+      map['last_sync_attempt'] = Variable<DateTime>(lastSyncAttempt);
+    }
+    if (!nullToAbsent || syncError != null) {
+      map['sync_error'] = Variable<String>(syncError);
+    }
+    map['local_updated_at'] = Variable<DateTime>(localUpdatedAt);
+    return map;
+  }
+
+  CategoriesTableCompanion toCompanion(bool nullToAbsent) {
+    return CategoriesTableCompanion(
+      id: Value(id),
+      businessId: Value(businessId),
+      name: Value(name),
+      sortOrder: Value(sortOrder),
+      syncStatus: Value(syncStatus),
+      lastSyncAttempt: lastSyncAttempt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSyncAttempt),
+      syncError: syncError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncError),
+      localUpdatedAt: Value(localUpdatedAt),
+    );
+  }
+
+  factory CategoriesTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CategoriesTableData(
+      id: serializer.fromJson<String>(json['id']),
+      businessId: serializer.fromJson<String>(json['businessId']),
+      name: serializer.fromJson<String>(json['name']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      syncStatus: serializer.fromJson<int>(json['syncStatus']),
+      lastSyncAttempt: serializer.fromJson<DateTime?>(json['lastSyncAttempt']),
+      syncError: serializer.fromJson<String?>(json['syncError']),
+      localUpdatedAt: serializer.fromJson<DateTime>(json['localUpdatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'businessId': serializer.toJson<String>(businessId),
+      'name': serializer.toJson<String>(name),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+      'syncStatus': serializer.toJson<int>(syncStatus),
+      'lastSyncAttempt': serializer.toJson<DateTime?>(lastSyncAttempt),
+      'syncError': serializer.toJson<String?>(syncError),
+      'localUpdatedAt': serializer.toJson<DateTime>(localUpdatedAt),
+    };
+  }
+
+  CategoriesTableData copyWith({
+    String? id,
+    String? businessId,
+    String? name,
+    int? sortOrder,
+    int? syncStatus,
+    Value<DateTime?> lastSyncAttempt = const Value.absent(),
+    Value<String?> syncError = const Value.absent(),
+    DateTime? localUpdatedAt,
+  }) => CategoriesTableData(
+    id: id ?? this.id,
+    businessId: businessId ?? this.businessId,
+    name: name ?? this.name,
+    sortOrder: sortOrder ?? this.sortOrder,
+    syncStatus: syncStatus ?? this.syncStatus,
+    lastSyncAttempt: lastSyncAttempt.present
+        ? lastSyncAttempt.value
+        : this.lastSyncAttempt,
+    syncError: syncError.present ? syncError.value : this.syncError,
+    localUpdatedAt: localUpdatedAt ?? this.localUpdatedAt,
+  );
+  CategoriesTableData copyWithCompanion(CategoriesTableCompanion data) {
+    return CategoriesTableData(
+      id: data.id.present ? data.id.value : this.id,
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      name: data.name.present ? data.name.value : this.name,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      syncStatus: data.syncStatus.present
+          ? data.syncStatus.value
+          : this.syncStatus,
+      lastSyncAttempt: data.lastSyncAttempt.present
+          ? data.lastSyncAttempt.value
+          : this.lastSyncAttempt,
+      syncError: data.syncError.present ? data.syncError.value : this.syncError,
+      localUpdatedAt: data.localUpdatedAt.present
+          ? data.localUpdatedAt.value
+          : this.localUpdatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CategoriesTableData(')
+          ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
+          ..write('name: $name, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncAttempt: $lastSyncAttempt, ')
+          ..write('syncError: $syncError, ')
+          ..write('localUpdatedAt: $localUpdatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    businessId,
+    name,
+    sortOrder,
+    syncStatus,
+    lastSyncAttempt,
+    syncError,
+    localUpdatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CategoriesTableData &&
+          other.id == this.id &&
+          other.businessId == this.businessId &&
+          other.name == this.name &&
+          other.sortOrder == this.sortOrder &&
+          other.syncStatus == this.syncStatus &&
+          other.lastSyncAttempt == this.lastSyncAttempt &&
+          other.syncError == this.syncError &&
+          other.localUpdatedAt == this.localUpdatedAt);
+}
+
+class CategoriesTableCompanion extends UpdateCompanion<CategoriesTableData> {
+  final Value<String> id;
+  final Value<String> businessId;
+  final Value<String> name;
+  final Value<int> sortOrder;
+  final Value<int> syncStatus;
+  final Value<DateTime?> lastSyncAttempt;
+  final Value<String?> syncError;
+  final Value<DateTime> localUpdatedAt;
+  final Value<int> rowid;
+  const CategoriesTableCompanion({
+    this.id = const Value.absent(),
+    this.businessId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.lastSyncAttempt = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.localUpdatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CategoriesTableCompanion.insert({
+    required String id,
+    required String businessId,
+    required String name,
+    this.sortOrder = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.lastSyncAttempt = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.localUpdatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       businessId = Value(businessId),
+       name = Value(name);
+  static Insertable<CategoriesTableData> custom({
+    Expression<String>? id,
+    Expression<String>? businessId,
+    Expression<String>? name,
+    Expression<int>? sortOrder,
+    Expression<int>? syncStatus,
+    Expression<DateTime>? lastSyncAttempt,
+    Expression<String>? syncError,
+    Expression<DateTime>? localUpdatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (businessId != null) 'business_id': businessId,
+      if (name != null) 'name': name,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (lastSyncAttempt != null) 'last_sync_attempt': lastSyncAttempt,
+      if (syncError != null) 'sync_error': syncError,
+      if (localUpdatedAt != null) 'local_updated_at': localUpdatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CategoriesTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? businessId,
+    Value<String>? name,
+    Value<int>? sortOrder,
+    Value<int>? syncStatus,
+    Value<DateTime?>? lastSyncAttempt,
+    Value<String?>? syncError,
+    Value<DateTime>? localUpdatedAt,
+    Value<int>? rowid,
+  }) {
+    return CategoriesTableCompanion(
+      id: id ?? this.id,
+      businessId: businessId ?? this.businessId,
+      name: name ?? this.name,
+      sortOrder: sortOrder ?? this.sortOrder,
+      syncStatus: syncStatus ?? this.syncStatus,
+      lastSyncAttempt: lastSyncAttempt ?? this.lastSyncAttempt,
+      syncError: syncError ?? this.syncError,
+      localUpdatedAt: localUpdatedAt ?? this.localUpdatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<int>(syncStatus.value);
+    }
+    if (lastSyncAttempt.present) {
+      map['last_sync_attempt'] = Variable<DateTime>(lastSyncAttempt.value);
+    }
+    if (syncError.present) {
+      map['sync_error'] = Variable<String>(syncError.value);
+    }
+    if (localUpdatedAt.present) {
+      map['local_updated_at'] = Variable<DateTime>(localUpdatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CategoriesTableCompanion(')
+          ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
+          ..write('name: $name, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncAttempt: $lastSyncAttempt, ')
+          ..write('syncError: $syncError, ')
+          ..write('localUpdatedAt: $localUpdatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2456,6 +3127,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $BranchesTableTable branchesTable = $BranchesTableTable(this);
+  late final $CategoriesTableTable categoriesTable = $CategoriesTableTable(
+    this,
+  );
   late final AuthContextDao authContextDao = AuthContextDao(
     this as AppDatabase,
   );
@@ -2464,6 +3138,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final BusinessesDao businessesDao = BusinessesDao(this as AppDatabase);
   late final BranchesDao branchesDao = BranchesDao(this as AppDatabase);
+  late final CategoriesDao categoriesDao = CategoriesDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2473,6 +3148,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     businessTemplatesTable,
     businessesTable,
     branchesTable,
+    categoriesTable,
   ];
 }
 
@@ -2487,6 +3163,8 @@ typedef $$AuthContextTableTableCreateCompanionBuilder =
       Value<String?> businessName,
       Value<String?> branchId,
       Value<String?> branchName,
+      Value<String?> businessTemplateId,
+      Value<String?> businessTemplateName,
       Value<DateTime> localUpdatedAt,
       Value<int> rowid,
     });
@@ -2501,6 +3179,8 @@ typedef $$AuthContextTableTableUpdateCompanionBuilder =
       Value<String?> businessName,
       Value<String?> branchId,
       Value<String?> branchName,
+      Value<String?> businessTemplateId,
+      Value<String?> businessTemplateName,
       Value<DateTime> localUpdatedAt,
       Value<int> rowid,
     });
@@ -2556,6 +3236,16 @@ class $$AuthContextTableTableFilterComposer
 
   ColumnFilters<String> get branchName => $composableBuilder(
     column: $table.branchName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessTemplateId => $composableBuilder(
+    column: $table.businessTemplateId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessTemplateName => $composableBuilder(
+    column: $table.businessTemplateName,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2619,6 +3309,16 @@ class $$AuthContextTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get businessTemplateId => $composableBuilder(
+    column: $table.businessTemplateId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessTemplateName => $composableBuilder(
+    column: $table.businessTemplateName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get localUpdatedAt => $composableBuilder(
     column: $table.localUpdatedAt,
     builder: (column) => ColumnOrderings(column),
@@ -2664,6 +3364,16 @@ class $$AuthContextTableTableAnnotationComposer
 
   GeneratedColumn<String> get branchName => $composableBuilder(
     column: $table.branchName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get businessTemplateId => $composableBuilder(
+    column: $table.businessTemplateId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get businessTemplateName => $composableBuilder(
+    column: $table.businessTemplateName,
     builder: (column) => column,
   );
 
@@ -2719,6 +3429,8 @@ class $$AuthContextTableTableTableManager
                 Value<String?> businessName = const Value.absent(),
                 Value<String?> branchId = const Value.absent(),
                 Value<String?> branchName = const Value.absent(),
+                Value<String?> businessTemplateId = const Value.absent(),
+                Value<String?> businessTemplateName = const Value.absent(),
                 Value<DateTime> localUpdatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => AuthContextTableCompanion(
@@ -2731,6 +3443,8 @@ class $$AuthContextTableTableTableManager
                 businessName: businessName,
                 branchId: branchId,
                 branchName: branchName,
+                businessTemplateId: businessTemplateId,
+                businessTemplateName: businessTemplateName,
                 localUpdatedAt: localUpdatedAt,
                 rowid: rowid,
               ),
@@ -2745,6 +3459,8 @@ class $$AuthContextTableTableTableManager
                 Value<String?> businessName = const Value.absent(),
                 Value<String?> branchId = const Value.absent(),
                 Value<String?> branchName = const Value.absent(),
+                Value<String?> businessTemplateId = const Value.absent(),
+                Value<String?> businessTemplateName = const Value.absent(),
                 Value<DateTime> localUpdatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => AuthContextTableCompanion.insert(
@@ -2757,6 +3473,8 @@ class $$AuthContextTableTableTableManager
                 businessName: businessName,
                 branchId: branchId,
                 branchName: branchName,
+                businessTemplateId: businessTemplateId,
+                businessTemplateName: businessTemplateName,
                 localUpdatedAt: localUpdatedAt,
                 rowid: rowid,
               ),
@@ -3695,6 +4413,281 @@ typedef $$BranchesTableTableProcessedTableManager =
       BranchesTableData,
       PrefetchHooks Function()
     >;
+typedef $$CategoriesTableTableCreateCompanionBuilder =
+    CategoriesTableCompanion Function({
+      required String id,
+      required String businessId,
+      required String name,
+      Value<int> sortOrder,
+      Value<int> syncStatus,
+      Value<DateTime?> lastSyncAttempt,
+      Value<String?> syncError,
+      Value<DateTime> localUpdatedAt,
+      Value<int> rowid,
+    });
+typedef $$CategoriesTableTableUpdateCompanionBuilder =
+    CategoriesTableCompanion Function({
+      Value<String> id,
+      Value<String> businessId,
+      Value<String> name,
+      Value<int> sortOrder,
+      Value<int> syncStatus,
+      Value<DateTime?> lastSyncAttempt,
+      Value<String?> syncError,
+      Value<DateTime> localUpdatedAt,
+      Value<int> rowid,
+    });
+
+class $$CategoriesTableTableFilterComposer
+    extends Composer<_$AppDatabase, $CategoriesTableTable> {
+  $$CategoriesTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get localUpdatedAt => $composableBuilder(
+    column: $table.localUpdatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CategoriesTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $CategoriesTableTable> {
+  $$CategoriesTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get localUpdatedAt => $composableBuilder(
+    column: $table.localUpdatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CategoriesTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CategoriesTableTable> {
+  $$CategoriesTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get syncError =>
+      $composableBuilder(column: $table.syncError, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get localUpdatedAt => $composableBuilder(
+    column: $table.localUpdatedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$CategoriesTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CategoriesTableTable,
+          CategoriesTableData,
+          $$CategoriesTableTableFilterComposer,
+          $$CategoriesTableTableOrderingComposer,
+          $$CategoriesTableTableAnnotationComposer,
+          $$CategoriesTableTableCreateCompanionBuilder,
+          $$CategoriesTableTableUpdateCompanionBuilder,
+          (
+            CategoriesTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $CategoriesTableTable,
+              CategoriesTableData
+            >,
+          ),
+          CategoriesTableData,
+          PrefetchHooks Function()
+        > {
+  $$CategoriesTableTableTableManager(
+    _$AppDatabase db,
+    $CategoriesTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CategoriesTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CategoriesTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CategoriesTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> businessId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<int> syncStatus = const Value.absent(),
+                Value<DateTime?> lastSyncAttempt = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<DateTime> localUpdatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CategoriesTableCompanion(
+                id: id,
+                businessId: businessId,
+                name: name,
+                sortOrder: sortOrder,
+                syncStatus: syncStatus,
+                lastSyncAttempt: lastSyncAttempt,
+                syncError: syncError,
+                localUpdatedAt: localUpdatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String businessId,
+                required String name,
+                Value<int> sortOrder = const Value.absent(),
+                Value<int> syncStatus = const Value.absent(),
+                Value<DateTime?> lastSyncAttempt = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<DateTime> localUpdatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CategoriesTableCompanion.insert(
+                id: id,
+                businessId: businessId,
+                name: name,
+                sortOrder: sortOrder,
+                syncStatus: syncStatus,
+                lastSyncAttempt: lastSyncAttempt,
+                syncError: syncError,
+                localUpdatedAt: localUpdatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CategoriesTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CategoriesTableTable,
+      CategoriesTableData,
+      $$CategoriesTableTableFilterComposer,
+      $$CategoriesTableTableOrderingComposer,
+      $$CategoriesTableTableAnnotationComposer,
+      $$CategoriesTableTableCreateCompanionBuilder,
+      $$CategoriesTableTableUpdateCompanionBuilder,
+      (
+        CategoriesTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $CategoriesTableTable,
+          CategoriesTableData
+        >,
+      ),
+      CategoriesTableData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3710,4 +4703,6 @@ class $AppDatabaseManager {
       $$BusinessesTableTableTableManager(_db, _db.businessesTable);
   $$BranchesTableTableTableManager get branchesTable =>
       $$BranchesTableTableTableManager(_db, _db.branchesTable);
+  $$CategoriesTableTableTableManager get categoriesTable =>
+      $$CategoriesTableTableTableManager(_db, _db.categoriesTable);
 }

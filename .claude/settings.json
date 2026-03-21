@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(flutter pub:*)"
+      "Bash(flutter pub:*)",
+      "Bash(echo \"PATH=$PATH\")",
+      "Bash(\"/c/Softwares/flutter/bin/flutter\" pub:*)",
+      "Bash(\"/c/Softwares/flutter/bin/flutter\" analyze:*)",
+      "Bash(grep -v \"^$\")",
+      "Bash(/c/Softwares/flutter/bin/flutter analyze:*)"
     ]
   }
 }
