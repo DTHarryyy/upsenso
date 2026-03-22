@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -58,11 +59,6 @@ class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
 
 class _CustomAppBarState extends State<CustomAppBar> {
   @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final isMobile = !Breakpoints.isTablet(context);
 
@@ -82,6 +78,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
           ),
           child: Row(
             children: [
+              // Left: hamburger (mobile) or branch dropdown (desktop)
               if (isMobile)
                 Material(
                   color: Colors.transparent,
@@ -104,6 +101,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
 
               if (isMobile) const SizedBox(width: 8),
 
+              // Center: branch selector (mobile) or status pills (desktop)
               Expanded(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.start,
@@ -113,46 +111,68 @@ class _CustomAppBarState extends State<CustomAppBar> {
                         child: Align(
                           alignment: Alignment.centerLeft,
                           child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 170),
+                            constraints: const BoxConstraints(maxWidth: 150),
                             child: _buildCompactBranchSelector(),
                           ),
                         ),
                       )
                     else ...[
-                      _StatusIndicator(
-                        isOnline: widget.isOnline,
+                      _StatusPill(
+                        color: widget.isOnline
+                            ? AppColors.synced
+                            : AppColors.offline,
+                        icon: widget.isOnline
+                            ? Icons.wifi_rounded
+                            : Icons.wifi_off_rounded,
                         label: widget.isOnline ? 'Online' : 'Offline',
                       ),
-                      const SizedBox(width: 16),
-                      if (widget.pendingSyncCount > 0)
-                        _StatusIndicator(
-                          isOnline: true,
-                          label: 'Syncing...',
-                          isSyncing: true,
-                        )
-                      else if (widget.isOnline)
-                        _StatusIndicator(
-                          isOnline: true,
-                          label: 'Synced',
-                          isSyncing: false,
+                      const SizedBox(width: 8),
+                      if (widget.isOnline)
+                        _StatusPill(
+                          color: widget.pendingSyncCount > 0
+                              ? AppColors.syncing
+                              : AppColors.synced,
+                          icon: widget.pendingSyncCount > 0
+                              ? Icons.sync_rounded
+                              : Icons.cloud_done_rounded,
+                          label: widget.pendingSyncCount > 0
+                              ? 'Syncing...'
+                              : 'Synced',
+                          isSyncing: widget.pendingSyncCount > 0,
                         ),
                     ],
                   ],
                 ),
               ),
 
-              if (isMobile && (!widget.isOnline || widget.pendingSyncCount > 0))
-                Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: _StatusIndicator(
-                    isOnline: widget.isOnline,
-                    label: widget.pendingSyncCount > 0
-                        ? 'Syncing...'
-                        : (widget.isOnline ? 'Online' : 'Offline'),
-                    isSyncing: widget.pendingSyncCount > 0,
-                  ),
+              // Mobile: compact status badges (always visible)
+              if (isMobile) ...[
+                _StatusPill(
+                  color: widget.isOnline ? AppColors.synced : AppColors.offline,
+                  icon: widget.isOnline
+                      ? Icons.wifi_rounded
+                      : Icons.wifi_off_rounded,
+                  label: widget.isOnline ? 'Online' : 'Offline',
+                  compact: true,
                 ),
+                const SizedBox(width: 4),
+                if (widget.isOnline) ...[
+                  _StatusPill(
+                    color: widget.pendingSyncCount > 0
+                        ? AppColors.syncing
+                        : AppColors.synced,
+                    icon: widget.pendingSyncCount > 0
+                        ? Icons.sync_rounded
+                        : Icons.cloud_done_rounded,
+                    label: widget.pendingSyncCount > 0 ? 'Syncing' : 'Synced',
+                    isSyncing: widget.pendingSyncCount > 0,
+                    compact: true,
+                  ),
+                  const SizedBox(width: 4),
+                ],
+              ],
 
+              // Right: theme toggle + notifications + avatar
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -243,7 +263,6 @@ class _CustomAppBarState extends State<CustomAppBar> {
         final selectedBranch =
             branchState.selectedBranch ?? widget.selectedBranch;
         final canSwitch = branchState.canSwitchBranches;
-        // Use branches from BranchCubit state, fallback to widget props
         final branches = branchState.availableBranches.isNotEmpty
             ? branchState.availableBranches
             : widget.branches;
@@ -292,7 +311,6 @@ class _CustomAppBarState extends State<CustomAppBar> {
         final selectedBranch =
             branchState.selectedBranch ?? widget.selectedBranch;
         final canSwitch = branchState.canSwitchBranches;
-        // Use branches from BranchCubit state, fallback to widget props
         final branches = branchState.availableBranches.isNotEmpty
             ? branchState.availableBranches
             : widget.branches;
@@ -363,71 +381,119 @@ class _CustomAppBarState extends State<CustomAppBar> {
   }
 }
 
-class _StatusIndicator extends StatelessWidget {
-  final bool isOnline;
+// ---------------------------------------------------------------------------
+// Status Pill — used for both connectivity and sync states
+// ---------------------------------------------------------------------------
+
+class _StatusPill extends StatefulWidget {
+  final Color color;
+  final IconData icon;
   final String label;
   final bool isSyncing;
 
-  const _StatusIndicator({
-    required this.isOnline,
+  /// compact = icon-only circle (used on mobile)
+  final bool compact;
+
+  const _StatusPill({
+    required this.color,
+    required this.icon,
     required this.label,
     this.isSyncing = false,
+    this.compact = false,
   });
 
   @override
+  State<_StatusPill> createState() => _StatusPillState();
+}
+
+class _StatusPillState extends State<_StatusPill>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _spin;
+
+  @override
+  void initState() {
+    super.initState();
+    _spin = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    if (widget.isSyncing) _spin.repeat();
+  }
+
+  @override
+  void didUpdateWidget(_StatusPill old) {
+    super.didUpdateWidget(old);
+    if (widget.isSyncing && !_spin.isAnimating) {
+      _spin.repeat();
+    } else if (!widget.isSyncing && _spin.isAnimating) {
+      _spin.stop();
+      _spin.reset();
+    }
+  }
+
+  @override
+  void dispose() {
+    _spin.dispose();
+    super.dispose();
+  }
+
+  Widget _icon(double size) {
+    final icon = Icon(widget.icon, size: size, color: widget.color);
+    if (!widget.isSyncing) return icon;
+    return AnimatedBuilder(
+      animation: _spin,
+      builder: (_, child) =>
+          Transform.rotate(angle: _spin.value * 2 * math.pi, child: child),
+      child: icon,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final statusColor = isSyncing
-        ? AppColors.syncing
-        : (isOnline ? AppColors.success : AppColors.offline);
+    final bg = widget.color.withAlpha(20);
+    final border = widget.color.withAlpha(45);
 
-    final isMobile = Breakpoints.isTablet(context) == false;
-    final showLabel = label.isNotEmpty;
+    // ── Compact (mobile): icon-only circle with tooltip ──────────────────────
+    if (widget.compact) {
+      return Tooltip(
+        message: widget.label,
+        preferBelow: true,
+        child: Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: bg,
+            shape: BoxShape.circle,
+            border: Border.all(color: border, width: 1),
+          ),
+          child: Center(child: _icon(14)),
+        ),
+      );
+    }
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (isSyncing)
-          SizedBox(
-            width: 10,
-            height: 10,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 600),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: statusColor.withValues(alpha: 0.7),
-                boxShadow: [
-                  BoxShadow(
-                    color: statusColor.withValues(alpha: 0.5),
-                    blurRadius: 6,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-            ),
-          )
-        else
-          Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: statusColor,
+    // ── Full (desktop): rounded pill with icon + label ────────────────────────
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: border, width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _icon(13),
+          const SizedBox(width: 5),
+          Text(
+            widget.label,
+            style: getOutfitStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: widget.color,
             ),
           ),
-
-        if (showLabel && (!isMobile || !isOnline))
-          Padding(
-            padding: const EdgeInsets.only(left: 8),
-            child: Text(
-              label,
-              style: getOutfitStyle(
-                fontSize: isMobile ? 12 : 13,
-                fontWeight: FontWeight.w500,
-                color: statusColor,
-              ),
-            ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }

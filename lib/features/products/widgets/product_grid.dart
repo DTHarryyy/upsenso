@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
+import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/features/products/widgets/product_card.dart';
 
 class ProductGrid extends StatelessWidget {
   final List<(ProductsTableData, List<ProductVariantsTableData>)> items;
   final VoidCallback? onAddProduct;
-
+  
   const ProductGrid({super.key, required this.items, this.onAddProduct});
 
   @override
   Widget build(BuildContext context) {
+    final int breakPoint = Breakpoints.isDesktop(context) ? 5 :
+                       Breakpoints.isTablet(context) ? 4 : 3;
     return GridView.builder(
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: breakPoint,
         mainAxisSpacing: 2,
         crossAxisSpacing: 2,
         childAspectRatio: 0.72,
