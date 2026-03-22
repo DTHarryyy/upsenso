@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
+import 'package:pos/core/database/app_database.dart';
 import 'package:pos/features/products/widgets/product_card.dart';
 
 class ProductGrid extends StatelessWidget {
-  final List<Map<String, String>> products;
+  final List<(ProductsTableData, List<ProductVariantsTableData>)> items;
   final VoidCallback? onAddProduct;
 
-  const ProductGrid({super.key, required this.products, this.onAddProduct});
+  const ProductGrid({super.key, required this.items, this.onAddProduct});
 
   @override
   Widget build(BuildContext context) {
@@ -16,18 +17,18 @@ class ProductGrid extends StatelessWidget {
         crossAxisCount: 3,
         mainAxisSpacing: 2,
         crossAxisSpacing: 2,
-        childAspectRatio: 0.75,
+        childAspectRatio: 0.72,
       ),
-      itemCount: products.length + 1,
+      itemCount: items.length + 1,
       itemBuilder: (context, index) {
         if (index == 0) return ProductAdd(onTap: onAddProduct);
-        return ProductCard(product: products[index - 1]);
+        final (product, variants) = items[index - 1];
+        return ProductCard(product: product, variants: variants);
       },
       padding: EdgeInsets.zero,
     );
   }
 }
-
 
 class ProductAdd extends StatelessWidget {
   final VoidCallback? onTap;
@@ -88,4 +89,3 @@ class ProductAdd extends StatelessWidget {
     );
   }
 }
-
