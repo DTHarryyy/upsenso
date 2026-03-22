@@ -39,6 +39,15 @@ class ProductsDao extends DatabaseAccessor<AppDatabase>
         .get();
   }
 
+  /// Reactive count of records that need syncing.
+  Stream<int> watchPendingSyncCount() {
+    final countExp = productsTable.id.count();
+    final query = selectOnly(productsTable)
+      ..addColumns([countExp])
+      ..where(productsTable.syncStatus.isIn([0, 1, 4]));
+    return query.watchSingle().map((row) => row.read(countExp) ?? 0);
+  }
+
   /// Records with pending sync: pendingUpload (0), pendingUpdate (1), failed (4).
   Future<List<ProductsTableData>> getPendingSync() {
     return (select(productsTable)
@@ -57,6 +66,31 @@ class ProductsDao extends DatabaseAccessor<AppDatabase>
         syncStatus: Value(status.toInt()),
         lastSyncAttempt: Value(DateTime.now()),
         syncError: Value(error),
+      ),
+    );
+  }
+
+  /// Hard-delete a product (after successful server deletion).
+  Future<void> hardDelete(String id) {
+    return (delete(productsTable)..where((t) => t.id.equals(id))).go();
+  }
+
+  /// Upsert a product row pulled from Supabase (marks as synced).
+  Future<void> upsertFromServer(Map<String, dynamic> row) {
+    return into(productsTable).insertOnConflictUpdate(
+      ProductsTableCompanion.insert(
+        id: row['id'] as String,
+        businessId: row['business_id'] as String,
+        categoryId: Value(row['category_id'] as String?),
+        name: row['name'] as String,
+        sku: Value(row['sku'] as String?),
+        barcode: Value(row['barcode'] as String?),
+        tax: Value((row['tax'] as num?)?.toDouble()),
+        sellBy: Value((row['sell_by'] as String?) ?? 'unit'),
+        hasVariants: Value((row['has_variants'] as bool?) ?? false),
+        isActive: Value((row['is_active'] as bool?) ?? true),
+        syncStatus: const Value(3), // synced
+        lastSyncAttempt: Value(DateTime.now()),
       ),
     );
   }

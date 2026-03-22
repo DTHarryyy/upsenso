@@ -55,6 +55,15 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
         .watch();
   }
 
+  /// Reactive count of records that need syncing.
+  Stream<int> watchPendingSyncCount() {
+    final countExp = productVariantsTable.id.count();
+    final query = selectOnly(productVariantsTable)
+      ..addColumns([countExp])
+      ..where(productVariantsTable.syncStatus.isIn([0, 1, 4]));
+    return query.watchSingle().map((row) => row.read(countExp) ?? 0);
+  }
+
   /// Records with pending sync: pendingUpload (0), pendingUpdate (1), failed (4).
   Future<List<ProductVariantsTableData>> getPendingSync() {
     return (select(productVariantsTable)
@@ -73,6 +82,34 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
         syncStatus: Value(status.toInt()),
         lastSyncAttempt: Value(DateTime.now()),
         syncError: Value(error),
+      ),
+    );
+  }
+
+  /// Hard-delete a variant (after successful server deletion).
+  Future<void> hardDelete(String id) {
+    return (delete(productVariantsTable)..where((t) => t.id.equals(id))).go();
+  }
+
+  /// Upsert a variant row pulled from Supabase (marks as synced).
+  Future<void> upsertFromServer(Map<String, dynamic> row) {
+    return into(productVariantsTable).insertOnConflictUpdate(
+      ProductVariantsTableCompanion.insert(
+        id: row['id'] as String,
+        productId: row['product_id'] as String,
+        businessId: row['business_id'] as String,
+        name: row['name'] as String,
+        price: Value((row['price'] as num?)?.toDouble() ?? 0.0),
+        costPrice: Value((row['cost_price'] as num?)?.toDouble()),
+        retailPrice: Value((row['retail_price'] as num?)?.toDouble()),
+        stock: Value((row['stock'] as int?) ?? 0),
+        sku: Value(row['sku'] as String?),
+        barcode: Value(row['barcode'] as String?),
+        trackExpiry: Value((row['track_expiry'] as bool?) ?? false),
+        expiryDate: Value(row['expiry_date'] as String?),
+        isActive: Value((row['is_active'] as bool?) ?? true),
+        syncStatus: const Value(3), // synced
+        lastSyncAttempt: Value(DateTime.now()),
       ),
     );
   }

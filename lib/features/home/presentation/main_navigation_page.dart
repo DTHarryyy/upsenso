@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
+import 'package:pos/core/sync/sync_service.dart';
 import 'package:pos/core/ui/widgets/app_bottom_nav.dart';
 import 'package:pos/core/ui/widgets/custom_app_bar.dart';
 import 'package:pos/features/dashboard/presentation/dashboard_page.dart';
@@ -26,7 +29,9 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   int _currentIndex = 0;
   String? _lastUserContextKey;
   bool _isOnline = true;
+  int _pendingSyncCount = 0;
   late final ConnectivityService _connectivityService;
+  StreamSubscription<int>? _syncCountSub;
 
   final List<Widget> _pages = [
     const DashboardPage(),
@@ -41,6 +46,17 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
     super.initState();
     _connectivityService = sl<ConnectivityService>();
     _setupConnectivityListener();
+    _syncCountSub = sl<SyncService>().watchTotalPendingSyncCount().listen((count) {
+      if (mounted && _pendingSyncCount != count) {
+        setState(() => _pendingSyncCount = count);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _syncCountSub?.cancel();
+    super.dispose();
   }
 
   void _setupConnectivityListener() {
@@ -140,6 +156,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                 userId: userId,
                 businessName: businessName,
                 isOnline: _isOnline,
+                pendingSyncCount: _pendingSyncCount,
                 onNotificationTapped: () => _onNavTap(3),
                 onMenuTapped: null,
                 showThemeToggle: false,

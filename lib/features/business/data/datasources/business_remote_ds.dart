@@ -162,19 +162,48 @@ class BusinessRemoteDs {
     return Map<String, dynamic>.from(response);
   }
 
-  /// Upload a single category to Supabase
+  /// Upsert a single category to Supabase (safe for re-sync).
   Future<void> createCategory({
     required String id,
     required String businessId,
     required String name,
     required int sortOrder,
   }) async {
-    await client.from('categories').insert({
+    await client.from('categories').upsert({
       'id': id,
       'business_id': businessId,
       'name': name,
       'sort_order': sortOrder,
     });
+  }
+
+  /// Update an existing category on Supabase.
+  Future<void> updateCategory({
+    required String id,
+    required String name,
+    required int sortOrder,
+  }) async {
+    await client.from('categories').update({
+      'name': name,
+      'sort_order': sortOrder,
+    }).eq('id', id);
+  }
+
+  /// Delete a category from Supabase.
+  Future<void> deleteCategory(String id) async {
+    await client.from('categories').delete().eq('id', id);
+  }
+
+  /// Fetch all categories for a business (for pull sync).
+  Future<List<Map<String, dynamic>>> getCategoriesByBusiness(
+    String businessId,
+  ) async {
+    final response = await client
+        .from('categories')
+        .select()
+        .eq('business_id', businessId)
+        .order('sort_order');
+    return List<Map<String, dynamic>>.from(response);
   }
 
   /// Fetch all active branches for a business (used by Super Admin branch picker)

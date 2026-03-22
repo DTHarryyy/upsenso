@@ -53,6 +53,15 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
         .watch();
   }
 
+  /// Reactive count of records that need syncing.
+  Stream<int> watchPendingSyncCount() {
+    final countExp = categoriesTable.id.count();
+    final query = selectOnly(categoriesTable)
+      ..addColumns([countExp])
+      ..where(categoriesTable.syncStatus.isIn([0, 1, 4]));
+    return query.watchSingle().map((row) => row.read(countExp) ?? 0);
+  }
+
   /// Records pending upload, update, or retry.
   Future<List<CategoriesTableData>> getPendingSync() {
     return (select(categoriesTable)
@@ -99,6 +108,20 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
       ),
     );
     return id;
+  }
+
+  /// Upsert a category row pulled from Supabase (marks as synced).
+  Future<void> upsertFromServer(Map<String, dynamic> row) {
+    return into(categoriesTable).insertOnConflictUpdate(
+      CategoriesTableCompanion.insert(
+        id: row['id'] as String,
+        businessId: row['business_id'] as String,
+        name: row['name'] as String,
+        sortOrder: Value((row['sort_order'] as int?) ?? 0),
+        syncStatus: const Value(3), // synced
+        lastSyncAttempt: Value(DateTime.now()),
+      ),
+    );
   }
 
   /// Clear all categories (e.g., on logout/reset).
