@@ -48,6 +48,13 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
         .get();
   }
 
+  /// Reactive stream of all variants for a business (used in products listing).
+  Stream<List<ProductVariantsTableData>> watchByBusinessId(String businessId) {
+    return (select(productVariantsTable)
+          ..where((t) => t.businessId.equals(businessId)))
+        .watch();
+  }
+
   /// Records with pending sync: pendingUpload (0), pendingUpdate (1), failed (4).
   Future<List<ProductVariantsTableData>> getPendingSync() {
     return (select(productVariantsTable)

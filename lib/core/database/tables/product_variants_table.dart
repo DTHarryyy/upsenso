@@ -16,9 +16,15 @@ class ProductVariantsTable extends Table {
 
   RealColumn get price => real().withDefault(const Constant(0.0))();
   RealColumn get costPrice => real().nullable()();
+  /// Suggested retail price / SRP. Optional on all product types.
+  RealColumn get retailPrice => real().nullable()();
   IntColumn get stock => integer().withDefault(const Constant(0))();
   TextColumn get sku => text().nullable()();
   TextColumn get barcode => text().nullable()();
+  RealColumn get stockDecimal => real().nullable()(); // used when sellBy == 'fraction'
+  BoolColumn get trackExpiry =>
+      boolean().withDefault(const Constant(false))();
+  TextColumn get expiryDate => text().nullable()(); // ISO 8601 date string
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
 
   /// 0=pendingUpload, 1=pendingUpdate, 2=pendingDelete, 3=synced, 4=failed

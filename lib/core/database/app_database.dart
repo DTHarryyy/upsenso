@@ -46,7 +46,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration {
@@ -84,6 +84,30 @@ class AppDatabase extends _$AppDatabase {
         if (from < 8) {
           await m.createTable(productsTable);
           await m.createTable(productVariantsTable);
+        }
+        if (from < 9) {
+          await customStatement(
+            'ALTER TABLE products ADD COLUMN tax REAL',
+          );
+          await customStatement(
+            'ALTER TABLE product_variants ADD COLUMN track_expiry INTEGER NOT NULL DEFAULT 0',
+          );
+          await customStatement(
+            'ALTER TABLE product_variants ADD COLUMN expiry_date TEXT',
+          );
+        }
+        if (from < 10) {
+          await customStatement(
+            "ALTER TABLE products ADD COLUMN sell_by TEXT NOT NULL DEFAULT 'unit'",
+          );
+          await customStatement(
+            'ALTER TABLE product_variants ADD COLUMN stock_decimal REAL',
+          );
+        }
+        if (from < 11) {
+          await customStatement(
+            'ALTER TABLE product_variants ADD COLUMN retail_price REAL',
+          );
         }
       },
     );

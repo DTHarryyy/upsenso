@@ -9,7 +9,10 @@
       "Bash(/c/Softwares/flutter/bin/flutter analyze:*)",
       "Bash(/c/Softwares/flutter/bin/flutter pub:*)",
       "Bash(cmd.exe /c \"flutter analyze lib/core/widgets/ lib/features/products/pages/add_products.dart 2>&1\")",
-      "Bash(powershell -Command \"cd ''c:/DEVELOPMENT PROJECTS/Flutter Projects/pos''; flutter analyze lib/core/widgets/ lib/features/products/pages/add_products.dart 2>&1\")"
+      "Bash(powershell -Command \"cd ''c:/DEVELOPMENT PROJECTS/Flutter Projects/pos''; flutter analyze lib/core/widgets/ lib/features/products/pages/add_products.dart 2>&1\")",
+      "Bash(powershell -Command \"Test-Path ''C:\\\\Softwares\\\\jdk-17.0.18+8''\")",
+      "Bash(powershell -Command \"Get-ChildItem ''C:\\\\Softwares\\\\'' | Where-Object { $_Name -like ''jdk*'' } | Select-Object Name\")",
+      "Bash(powershell -Command \"Get-ChildItem ''C:\\\\Softwares\\\\'' | Select-Object -ExpandProperty Name\")"
     ]
   }
 }

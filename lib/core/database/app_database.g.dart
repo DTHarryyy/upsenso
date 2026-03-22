@@ -3181,6 +3181,25 @@ class $ProductsTableTable extends ProductsTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _taxMeta = const VerificationMeta('tax');
+  @override
+  late final GeneratedColumn<double> tax = GeneratedColumn<double>(
+    'tax',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sellByMeta = const VerificationMeta('sellBy');
+  @override
+  late final GeneratedColumn<String> sellBy = GeneratedColumn<String>(
+    'sell_by',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('unit'),
+  );
   static const VerificationMeta _hasVariantsMeta = const VerificationMeta(
     'hasVariants',
   );
@@ -3267,6 +3286,8 @@ class $ProductsTableTable extends ProductsTable
     name,
     sku,
     barcode,
+    tax,
+    sellBy,
     hasVariants,
     isActive,
     syncStatus,
@@ -3323,6 +3344,18 @@ class $ProductsTableTable extends ProductsTable
       context.handle(
         _barcodeMeta,
         barcode.isAcceptableOrUnknown(data['barcode']!, _barcodeMeta),
+      );
+    }
+    if (data.containsKey('tax')) {
+      context.handle(
+        _taxMeta,
+        tax.isAcceptableOrUnknown(data['tax']!, _taxMeta),
+      );
+    }
+    if (data.containsKey('sell_by')) {
+      context.handle(
+        _sellByMeta,
+        sellBy.isAcceptableOrUnknown(data['sell_by']!, _sellByMeta),
       );
     }
     if (data.containsKey('has_variants')) {
@@ -3403,6 +3436,14 @@ class $ProductsTableTable extends ProductsTable
         DriftSqlType.string,
         data['${effectivePrefix}barcode'],
       ),
+      tax: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}tax'],
+      ),
+      sellBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sell_by'],
+      )!,
       hasVariants: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}has_variants'],
@@ -3444,6 +3485,8 @@ class ProductsTableData extends DataClass
   final String name;
   final String? sku;
   final String? barcode;
+  final double? tax;
+  final String sellBy;
   final bool hasVariants;
   final bool isActive;
 
@@ -3459,6 +3502,8 @@ class ProductsTableData extends DataClass
     required this.name,
     this.sku,
     this.barcode,
+    this.tax,
+    required this.sellBy,
     required this.hasVariants,
     required this.isActive,
     required this.syncStatus,
@@ -3481,6 +3526,10 @@ class ProductsTableData extends DataClass
     if (!nullToAbsent || barcode != null) {
       map['barcode'] = Variable<String>(barcode);
     }
+    if (!nullToAbsent || tax != null) {
+      map['tax'] = Variable<double>(tax);
+    }
+    map['sell_by'] = Variable<String>(sellBy);
     map['has_variants'] = Variable<bool>(hasVariants);
     map['is_active'] = Variable<bool>(isActive);
     map['sync_status'] = Variable<int>(syncStatus);
@@ -3506,6 +3555,8 @@ class ProductsTableData extends DataClass
       barcode: barcode == null && nullToAbsent
           ? const Value.absent()
           : Value(barcode),
+      tax: tax == null && nullToAbsent ? const Value.absent() : Value(tax),
+      sellBy: Value(sellBy),
       hasVariants: Value(hasVariants),
       isActive: Value(isActive),
       syncStatus: Value(syncStatus),
@@ -3531,6 +3582,8 @@ class ProductsTableData extends DataClass
       name: serializer.fromJson<String>(json['name']),
       sku: serializer.fromJson<String?>(json['sku']),
       barcode: serializer.fromJson<String?>(json['barcode']),
+      tax: serializer.fromJson<double?>(json['tax']),
+      sellBy: serializer.fromJson<String>(json['sellBy']),
       hasVariants: serializer.fromJson<bool>(json['hasVariants']),
       isActive: serializer.fromJson<bool>(json['isActive']),
       syncStatus: serializer.fromJson<int>(json['syncStatus']),
@@ -3549,6 +3602,8 @@ class ProductsTableData extends DataClass
       'name': serializer.toJson<String>(name),
       'sku': serializer.toJson<String?>(sku),
       'barcode': serializer.toJson<String?>(barcode),
+      'tax': serializer.toJson<double?>(tax),
+      'sellBy': serializer.toJson<String>(sellBy),
       'hasVariants': serializer.toJson<bool>(hasVariants),
       'isActive': serializer.toJson<bool>(isActive),
       'syncStatus': serializer.toJson<int>(syncStatus),
@@ -3565,6 +3620,8 @@ class ProductsTableData extends DataClass
     String? name,
     Value<String?> sku = const Value.absent(),
     Value<String?> barcode = const Value.absent(),
+    Value<double?> tax = const Value.absent(),
+    String? sellBy,
     bool? hasVariants,
     bool? isActive,
     int? syncStatus,
@@ -3578,6 +3635,8 @@ class ProductsTableData extends DataClass
     name: name ?? this.name,
     sku: sku.present ? sku.value : this.sku,
     barcode: barcode.present ? barcode.value : this.barcode,
+    tax: tax.present ? tax.value : this.tax,
+    sellBy: sellBy ?? this.sellBy,
     hasVariants: hasVariants ?? this.hasVariants,
     isActive: isActive ?? this.isActive,
     syncStatus: syncStatus ?? this.syncStatus,
@@ -3599,6 +3658,8 @@ class ProductsTableData extends DataClass
       name: data.name.present ? data.name.value : this.name,
       sku: data.sku.present ? data.sku.value : this.sku,
       barcode: data.barcode.present ? data.barcode.value : this.barcode,
+      tax: data.tax.present ? data.tax.value : this.tax,
+      sellBy: data.sellBy.present ? data.sellBy.value : this.sellBy,
       hasVariants: data.hasVariants.present
           ? data.hasVariants.value
           : this.hasVariants,
@@ -3625,6 +3686,8 @@ class ProductsTableData extends DataClass
           ..write('name: $name, ')
           ..write('sku: $sku, ')
           ..write('barcode: $barcode, ')
+          ..write('tax: $tax, ')
+          ..write('sellBy: $sellBy, ')
           ..write('hasVariants: $hasVariants, ')
           ..write('isActive: $isActive, ')
           ..write('syncStatus: $syncStatus, ')
@@ -3643,6 +3706,8 @@ class ProductsTableData extends DataClass
     name,
     sku,
     barcode,
+    tax,
+    sellBy,
     hasVariants,
     isActive,
     syncStatus,
@@ -3660,6 +3725,8 @@ class ProductsTableData extends DataClass
           other.name == this.name &&
           other.sku == this.sku &&
           other.barcode == this.barcode &&
+          other.tax == this.tax &&
+          other.sellBy == this.sellBy &&
           other.hasVariants == this.hasVariants &&
           other.isActive == this.isActive &&
           other.syncStatus == this.syncStatus &&
@@ -3675,6 +3742,8 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
   final Value<String> name;
   final Value<String?> sku;
   final Value<String?> barcode;
+  final Value<double?> tax;
+  final Value<String> sellBy;
   final Value<bool> hasVariants;
   final Value<bool> isActive;
   final Value<int> syncStatus;
@@ -3689,6 +3758,8 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
     this.name = const Value.absent(),
     this.sku = const Value.absent(),
     this.barcode = const Value.absent(),
+    this.tax = const Value.absent(),
+    this.sellBy = const Value.absent(),
     this.hasVariants = const Value.absent(),
     this.isActive = const Value.absent(),
     this.syncStatus = const Value.absent(),
@@ -3704,6 +3775,8 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
     required String name,
     this.sku = const Value.absent(),
     this.barcode = const Value.absent(),
+    this.tax = const Value.absent(),
+    this.sellBy = const Value.absent(),
     this.hasVariants = const Value.absent(),
     this.isActive = const Value.absent(),
     this.syncStatus = const Value.absent(),
@@ -3721,6 +3794,8 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
     Expression<String>? name,
     Expression<String>? sku,
     Expression<String>? barcode,
+    Expression<double>? tax,
+    Expression<String>? sellBy,
     Expression<bool>? hasVariants,
     Expression<bool>? isActive,
     Expression<int>? syncStatus,
@@ -3736,6 +3811,8 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
       if (name != null) 'name': name,
       if (sku != null) 'sku': sku,
       if (barcode != null) 'barcode': barcode,
+      if (tax != null) 'tax': tax,
+      if (sellBy != null) 'sell_by': sellBy,
       if (hasVariants != null) 'has_variants': hasVariants,
       if (isActive != null) 'is_active': isActive,
       if (syncStatus != null) 'sync_status': syncStatus,
@@ -3753,6 +3830,8 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
     Value<String>? name,
     Value<String?>? sku,
     Value<String?>? barcode,
+    Value<double?>? tax,
+    Value<String>? sellBy,
     Value<bool>? hasVariants,
     Value<bool>? isActive,
     Value<int>? syncStatus,
@@ -3768,6 +3847,8 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
       name: name ?? this.name,
       sku: sku ?? this.sku,
       barcode: barcode ?? this.barcode,
+      tax: tax ?? this.tax,
+      sellBy: sellBy ?? this.sellBy,
       hasVariants: hasVariants ?? this.hasVariants,
       isActive: isActive ?? this.isActive,
       syncStatus: syncStatus ?? this.syncStatus,
@@ -3798,6 +3879,12 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
     }
     if (barcode.present) {
       map['barcode'] = Variable<String>(barcode.value);
+    }
+    if (tax.present) {
+      map['tax'] = Variable<double>(tax.value);
+    }
+    if (sellBy.present) {
+      map['sell_by'] = Variable<String>(sellBy.value);
     }
     if (hasVariants.present) {
       map['has_variants'] = Variable<bool>(hasVariants.value);
@@ -3832,6 +3919,8 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
           ..write('name: $name, ')
           ..write('sku: $sku, ')
           ..write('barcode: $barcode, ')
+          ..write('tax: $tax, ')
+          ..write('sellBy: $sellBy, ')
           ..write('hasVariants: $hasVariants, ')
           ..write('isActive: $isActive, ')
           ..write('syncStatus: $syncStatus, ')
@@ -3911,6 +4000,17 @@ class $ProductVariantsTableTable extends ProductVariantsTable
     type: DriftSqlType.double,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _retailPriceMeta = const VerificationMeta(
+    'retailPrice',
+  );
+  @override
+  late final GeneratedColumn<double> retailPrice = GeneratedColumn<double>(
+    'retail_price',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _stockMeta = const VerificationMeta('stock');
   @override
   late final GeneratedColumn<int> stock = GeneratedColumn<int>(
@@ -3936,6 +4036,43 @@ class $ProductVariantsTableTable extends ProductVariantsTable
   @override
   late final GeneratedColumn<String> barcode = GeneratedColumn<String>(
     'barcode',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _stockDecimalMeta = const VerificationMeta(
+    'stockDecimal',
+  );
+  @override
+  late final GeneratedColumn<double> stockDecimal = GeneratedColumn<double>(
+    'stock_decimal',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _trackExpiryMeta = const VerificationMeta(
+    'trackExpiry',
+  );
+  @override
+  late final GeneratedColumn<bool> trackExpiry = GeneratedColumn<bool>(
+    'track_expiry',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("track_expiry" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _expiryDateMeta = const VerificationMeta(
+    'expiryDate',
+  );
+  @override
+  late final GeneratedColumn<String> expiryDate = GeneratedColumn<String>(
+    'expiry_date',
     aliasedName,
     true,
     type: DriftSqlType.string,
@@ -4012,9 +4149,13 @@ class $ProductVariantsTableTable extends ProductVariantsTable
     name,
     price,
     costPrice,
+    retailPrice,
     stock,
     sku,
     barcode,
+    stockDecimal,
+    trackExpiry,
+    expiryDate,
     isActive,
     syncStatus,
     lastSyncAttempt,
@@ -4074,6 +4215,15 @@ class $ProductVariantsTableTable extends ProductVariantsTable
         costPrice.isAcceptableOrUnknown(data['cost_price']!, _costPriceMeta),
       );
     }
+    if (data.containsKey('retail_price')) {
+      context.handle(
+        _retailPriceMeta,
+        retailPrice.isAcceptableOrUnknown(
+          data['retail_price']!,
+          _retailPriceMeta,
+        ),
+      );
+    }
     if (data.containsKey('stock')) {
       context.handle(
         _stockMeta,
@@ -4090,6 +4240,30 @@ class $ProductVariantsTableTable extends ProductVariantsTable
       context.handle(
         _barcodeMeta,
         barcode.isAcceptableOrUnknown(data['barcode']!, _barcodeMeta),
+      );
+    }
+    if (data.containsKey('stock_decimal')) {
+      context.handle(
+        _stockDecimalMeta,
+        stockDecimal.isAcceptableOrUnknown(
+          data['stock_decimal']!,
+          _stockDecimalMeta,
+        ),
+      );
+    }
+    if (data.containsKey('track_expiry')) {
+      context.handle(
+        _trackExpiryMeta,
+        trackExpiry.isAcceptableOrUnknown(
+          data['track_expiry']!,
+          _trackExpiryMeta,
+        ),
+      );
+    }
+    if (data.containsKey('expiry_date')) {
+      context.handle(
+        _expiryDateMeta,
+        expiryDate.isAcceptableOrUnknown(data['expiry_date']!, _expiryDateMeta),
       );
     }
     if (data.containsKey('is_active')) {
@@ -4164,6 +4338,10 @@ class $ProductVariantsTableTable extends ProductVariantsTable
         DriftSqlType.double,
         data['${effectivePrefix}cost_price'],
       ),
+      retailPrice: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}retail_price'],
+      ),
       stock: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}stock'],
@@ -4175,6 +4353,18 @@ class $ProductVariantsTableTable extends ProductVariantsTable
       barcode: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}barcode'],
+      ),
+      stockDecimal: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}stock_decimal'],
+      ),
+      trackExpiry: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}track_expiry'],
+      )!,
+      expiryDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}expiry_date'],
       ),
       isActive: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
@@ -4215,9 +4405,15 @@ class ProductVariantsTableData extends DataClass
   final String name;
   final double price;
   final double? costPrice;
+
+  /// Suggested retail price / SRP. Optional on all product types.
+  final double? retailPrice;
   final int stock;
   final String? sku;
   final String? barcode;
+  final double? stockDecimal;
+  final bool trackExpiry;
+  final String? expiryDate;
   final bool isActive;
 
   /// 0=pendingUpload, 1=pendingUpdate, 2=pendingDelete, 3=synced, 4=failed
@@ -4232,9 +4428,13 @@ class ProductVariantsTableData extends DataClass
     required this.name,
     required this.price,
     this.costPrice,
+    this.retailPrice,
     required this.stock,
     this.sku,
     this.barcode,
+    this.stockDecimal,
+    required this.trackExpiry,
+    this.expiryDate,
     required this.isActive,
     required this.syncStatus,
     this.lastSyncAttempt,
@@ -4252,12 +4452,22 @@ class ProductVariantsTableData extends DataClass
     if (!nullToAbsent || costPrice != null) {
       map['cost_price'] = Variable<double>(costPrice);
     }
+    if (!nullToAbsent || retailPrice != null) {
+      map['retail_price'] = Variable<double>(retailPrice);
+    }
     map['stock'] = Variable<int>(stock);
     if (!nullToAbsent || sku != null) {
       map['sku'] = Variable<String>(sku);
     }
     if (!nullToAbsent || barcode != null) {
       map['barcode'] = Variable<String>(barcode);
+    }
+    if (!nullToAbsent || stockDecimal != null) {
+      map['stock_decimal'] = Variable<double>(stockDecimal);
+    }
+    map['track_expiry'] = Variable<bool>(trackExpiry);
+    if (!nullToAbsent || expiryDate != null) {
+      map['expiry_date'] = Variable<String>(expiryDate);
     }
     map['is_active'] = Variable<bool>(isActive);
     map['sync_status'] = Variable<int>(syncStatus);
@@ -4281,11 +4491,21 @@ class ProductVariantsTableData extends DataClass
       costPrice: costPrice == null && nullToAbsent
           ? const Value.absent()
           : Value(costPrice),
+      retailPrice: retailPrice == null && nullToAbsent
+          ? const Value.absent()
+          : Value(retailPrice),
       stock: Value(stock),
       sku: sku == null && nullToAbsent ? const Value.absent() : Value(sku),
       barcode: barcode == null && nullToAbsent
           ? const Value.absent()
           : Value(barcode),
+      stockDecimal: stockDecimal == null && nullToAbsent
+          ? const Value.absent()
+          : Value(stockDecimal),
+      trackExpiry: Value(trackExpiry),
+      expiryDate: expiryDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(expiryDate),
       isActive: Value(isActive),
       syncStatus: Value(syncStatus),
       lastSyncAttempt: lastSyncAttempt == null && nullToAbsent
@@ -4310,9 +4530,13 @@ class ProductVariantsTableData extends DataClass
       name: serializer.fromJson<String>(json['name']),
       price: serializer.fromJson<double>(json['price']),
       costPrice: serializer.fromJson<double?>(json['costPrice']),
+      retailPrice: serializer.fromJson<double?>(json['retailPrice']),
       stock: serializer.fromJson<int>(json['stock']),
       sku: serializer.fromJson<String?>(json['sku']),
       barcode: serializer.fromJson<String?>(json['barcode']),
+      stockDecimal: serializer.fromJson<double?>(json['stockDecimal']),
+      trackExpiry: serializer.fromJson<bool>(json['trackExpiry']),
+      expiryDate: serializer.fromJson<String?>(json['expiryDate']),
       isActive: serializer.fromJson<bool>(json['isActive']),
       syncStatus: serializer.fromJson<int>(json['syncStatus']),
       lastSyncAttempt: serializer.fromJson<DateTime?>(json['lastSyncAttempt']),
@@ -4330,9 +4554,13 @@ class ProductVariantsTableData extends DataClass
       'name': serializer.toJson<String>(name),
       'price': serializer.toJson<double>(price),
       'costPrice': serializer.toJson<double?>(costPrice),
+      'retailPrice': serializer.toJson<double?>(retailPrice),
       'stock': serializer.toJson<int>(stock),
       'sku': serializer.toJson<String?>(sku),
       'barcode': serializer.toJson<String?>(barcode),
+      'stockDecimal': serializer.toJson<double?>(stockDecimal),
+      'trackExpiry': serializer.toJson<bool>(trackExpiry),
+      'expiryDate': serializer.toJson<String?>(expiryDate),
       'isActive': serializer.toJson<bool>(isActive),
       'syncStatus': serializer.toJson<int>(syncStatus),
       'lastSyncAttempt': serializer.toJson<DateTime?>(lastSyncAttempt),
@@ -4348,9 +4576,13 @@ class ProductVariantsTableData extends DataClass
     String? name,
     double? price,
     Value<double?> costPrice = const Value.absent(),
+    Value<double?> retailPrice = const Value.absent(),
     int? stock,
     Value<String?> sku = const Value.absent(),
     Value<String?> barcode = const Value.absent(),
+    Value<double?> stockDecimal = const Value.absent(),
+    bool? trackExpiry,
+    Value<String?> expiryDate = const Value.absent(),
     bool? isActive,
     int? syncStatus,
     Value<DateTime?> lastSyncAttempt = const Value.absent(),
@@ -4363,9 +4595,13 @@ class ProductVariantsTableData extends DataClass
     name: name ?? this.name,
     price: price ?? this.price,
     costPrice: costPrice.present ? costPrice.value : this.costPrice,
+    retailPrice: retailPrice.present ? retailPrice.value : this.retailPrice,
     stock: stock ?? this.stock,
     sku: sku.present ? sku.value : this.sku,
     barcode: barcode.present ? barcode.value : this.barcode,
+    stockDecimal: stockDecimal.present ? stockDecimal.value : this.stockDecimal,
+    trackExpiry: trackExpiry ?? this.trackExpiry,
+    expiryDate: expiryDate.present ? expiryDate.value : this.expiryDate,
     isActive: isActive ?? this.isActive,
     syncStatus: syncStatus ?? this.syncStatus,
     lastSyncAttempt: lastSyncAttempt.present
@@ -4386,9 +4622,21 @@ class ProductVariantsTableData extends DataClass
       name: data.name.present ? data.name.value : this.name,
       price: data.price.present ? data.price.value : this.price,
       costPrice: data.costPrice.present ? data.costPrice.value : this.costPrice,
+      retailPrice: data.retailPrice.present
+          ? data.retailPrice.value
+          : this.retailPrice,
       stock: data.stock.present ? data.stock.value : this.stock,
       sku: data.sku.present ? data.sku.value : this.sku,
       barcode: data.barcode.present ? data.barcode.value : this.barcode,
+      stockDecimal: data.stockDecimal.present
+          ? data.stockDecimal.value
+          : this.stockDecimal,
+      trackExpiry: data.trackExpiry.present
+          ? data.trackExpiry.value
+          : this.trackExpiry,
+      expiryDate: data.expiryDate.present
+          ? data.expiryDate.value
+          : this.expiryDate,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
       syncStatus: data.syncStatus.present
           ? data.syncStatus.value
@@ -4412,9 +4660,13 @@ class ProductVariantsTableData extends DataClass
           ..write('name: $name, ')
           ..write('price: $price, ')
           ..write('costPrice: $costPrice, ')
+          ..write('retailPrice: $retailPrice, ')
           ..write('stock: $stock, ')
           ..write('sku: $sku, ')
           ..write('barcode: $barcode, ')
+          ..write('stockDecimal: $stockDecimal, ')
+          ..write('trackExpiry: $trackExpiry, ')
+          ..write('expiryDate: $expiryDate, ')
           ..write('isActive: $isActive, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('lastSyncAttempt: $lastSyncAttempt, ')
@@ -4432,9 +4684,13 @@ class ProductVariantsTableData extends DataClass
     name,
     price,
     costPrice,
+    retailPrice,
     stock,
     sku,
     barcode,
+    stockDecimal,
+    trackExpiry,
+    expiryDate,
     isActive,
     syncStatus,
     lastSyncAttempt,
@@ -4451,9 +4707,13 @@ class ProductVariantsTableData extends DataClass
           other.name == this.name &&
           other.price == this.price &&
           other.costPrice == this.costPrice &&
+          other.retailPrice == this.retailPrice &&
           other.stock == this.stock &&
           other.sku == this.sku &&
           other.barcode == this.barcode &&
+          other.stockDecimal == this.stockDecimal &&
+          other.trackExpiry == this.trackExpiry &&
+          other.expiryDate == this.expiryDate &&
           other.isActive == this.isActive &&
           other.syncStatus == this.syncStatus &&
           other.lastSyncAttempt == this.lastSyncAttempt &&
@@ -4469,9 +4729,13 @@ class ProductVariantsTableCompanion
   final Value<String> name;
   final Value<double> price;
   final Value<double?> costPrice;
+  final Value<double?> retailPrice;
   final Value<int> stock;
   final Value<String?> sku;
   final Value<String?> barcode;
+  final Value<double?> stockDecimal;
+  final Value<bool> trackExpiry;
+  final Value<String?> expiryDate;
   final Value<bool> isActive;
   final Value<int> syncStatus;
   final Value<DateTime?> lastSyncAttempt;
@@ -4485,9 +4749,13 @@ class ProductVariantsTableCompanion
     this.name = const Value.absent(),
     this.price = const Value.absent(),
     this.costPrice = const Value.absent(),
+    this.retailPrice = const Value.absent(),
     this.stock = const Value.absent(),
     this.sku = const Value.absent(),
     this.barcode = const Value.absent(),
+    this.stockDecimal = const Value.absent(),
+    this.trackExpiry = const Value.absent(),
+    this.expiryDate = const Value.absent(),
     this.isActive = const Value.absent(),
     this.syncStatus = const Value.absent(),
     this.lastSyncAttempt = const Value.absent(),
@@ -4502,9 +4770,13 @@ class ProductVariantsTableCompanion
     required String name,
     this.price = const Value.absent(),
     this.costPrice = const Value.absent(),
+    this.retailPrice = const Value.absent(),
     this.stock = const Value.absent(),
     this.sku = const Value.absent(),
     this.barcode = const Value.absent(),
+    this.stockDecimal = const Value.absent(),
+    this.trackExpiry = const Value.absent(),
+    this.expiryDate = const Value.absent(),
     this.isActive = const Value.absent(),
     this.syncStatus = const Value.absent(),
     this.lastSyncAttempt = const Value.absent(),
@@ -4522,9 +4794,13 @@ class ProductVariantsTableCompanion
     Expression<String>? name,
     Expression<double>? price,
     Expression<double>? costPrice,
+    Expression<double>? retailPrice,
     Expression<int>? stock,
     Expression<String>? sku,
     Expression<String>? barcode,
+    Expression<double>? stockDecimal,
+    Expression<bool>? trackExpiry,
+    Expression<String>? expiryDate,
     Expression<bool>? isActive,
     Expression<int>? syncStatus,
     Expression<DateTime>? lastSyncAttempt,
@@ -4539,9 +4815,13 @@ class ProductVariantsTableCompanion
       if (name != null) 'name': name,
       if (price != null) 'price': price,
       if (costPrice != null) 'cost_price': costPrice,
+      if (retailPrice != null) 'retail_price': retailPrice,
       if (stock != null) 'stock': stock,
       if (sku != null) 'sku': sku,
       if (barcode != null) 'barcode': barcode,
+      if (stockDecimal != null) 'stock_decimal': stockDecimal,
+      if (trackExpiry != null) 'track_expiry': trackExpiry,
+      if (expiryDate != null) 'expiry_date': expiryDate,
       if (isActive != null) 'is_active': isActive,
       if (syncStatus != null) 'sync_status': syncStatus,
       if (lastSyncAttempt != null) 'last_sync_attempt': lastSyncAttempt,
@@ -4558,9 +4838,13 @@ class ProductVariantsTableCompanion
     Value<String>? name,
     Value<double>? price,
     Value<double?>? costPrice,
+    Value<double?>? retailPrice,
     Value<int>? stock,
     Value<String?>? sku,
     Value<String?>? barcode,
+    Value<double?>? stockDecimal,
+    Value<bool>? trackExpiry,
+    Value<String?>? expiryDate,
     Value<bool>? isActive,
     Value<int>? syncStatus,
     Value<DateTime?>? lastSyncAttempt,
@@ -4575,9 +4859,13 @@ class ProductVariantsTableCompanion
       name: name ?? this.name,
       price: price ?? this.price,
       costPrice: costPrice ?? this.costPrice,
+      retailPrice: retailPrice ?? this.retailPrice,
       stock: stock ?? this.stock,
       sku: sku ?? this.sku,
       barcode: barcode ?? this.barcode,
+      stockDecimal: stockDecimal ?? this.stockDecimal,
+      trackExpiry: trackExpiry ?? this.trackExpiry,
+      expiryDate: expiryDate ?? this.expiryDate,
       isActive: isActive ?? this.isActive,
       syncStatus: syncStatus ?? this.syncStatus,
       lastSyncAttempt: lastSyncAttempt ?? this.lastSyncAttempt,
@@ -4608,6 +4896,9 @@ class ProductVariantsTableCompanion
     if (costPrice.present) {
       map['cost_price'] = Variable<double>(costPrice.value);
     }
+    if (retailPrice.present) {
+      map['retail_price'] = Variable<double>(retailPrice.value);
+    }
     if (stock.present) {
       map['stock'] = Variable<int>(stock.value);
     }
@@ -4616,6 +4907,15 @@ class ProductVariantsTableCompanion
     }
     if (barcode.present) {
       map['barcode'] = Variable<String>(barcode.value);
+    }
+    if (stockDecimal.present) {
+      map['stock_decimal'] = Variable<double>(stockDecimal.value);
+    }
+    if (trackExpiry.present) {
+      map['track_expiry'] = Variable<bool>(trackExpiry.value);
+    }
+    if (expiryDate.present) {
+      map['expiry_date'] = Variable<String>(expiryDate.value);
     }
     if (isActive.present) {
       map['is_active'] = Variable<bool>(isActive.value);
@@ -4647,9 +4947,13 @@ class ProductVariantsTableCompanion
           ..write('name: $name, ')
           ..write('price: $price, ')
           ..write('costPrice: $costPrice, ')
+          ..write('retailPrice: $retailPrice, ')
           ..write('stock: $stock, ')
           ..write('sku: $sku, ')
           ..write('barcode: $barcode, ')
+          ..write('stockDecimal: $stockDecimal, ')
+          ..write('trackExpiry: $trackExpiry, ')
+          ..write('expiryDate: $expiryDate, ')
           ..write('isActive: $isActive, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('lastSyncAttempt: $lastSyncAttempt, ')
@@ -6251,6 +6555,8 @@ typedef $$ProductsTableTableCreateCompanionBuilder =
       required String name,
       Value<String?> sku,
       Value<String?> barcode,
+      Value<double?> tax,
+      Value<String> sellBy,
       Value<bool> hasVariants,
       Value<bool> isActive,
       Value<int> syncStatus,
@@ -6267,6 +6573,8 @@ typedef $$ProductsTableTableUpdateCompanionBuilder =
       Value<String> name,
       Value<String?> sku,
       Value<String?> barcode,
+      Value<double?> tax,
+      Value<String> sellBy,
       Value<bool> hasVariants,
       Value<bool> isActive,
       Value<int> syncStatus,
@@ -6312,6 +6620,16 @@ class $$ProductsTableTableFilterComposer
 
   ColumnFilters<String> get barcode => $composableBuilder(
     column: $table.barcode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get tax => $composableBuilder(
+    column: $table.tax,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sellBy => $composableBuilder(
+    column: $table.sellBy,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6385,6 +6703,16 @@ class $$ProductsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get tax => $composableBuilder(
+    column: $table.tax,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sellBy => $composableBuilder(
+    column: $table.sellBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get hasVariants => $composableBuilder(
     column: $table.hasVariants,
     builder: (column) => ColumnOrderings(column),
@@ -6446,6 +6774,12 @@ class $$ProductsTableTableAnnotationComposer
 
   GeneratedColumn<String> get barcode =>
       $composableBuilder(column: $table.barcode, builder: (column) => column);
+
+  GeneratedColumn<double> get tax =>
+      $composableBuilder(column: $table.tax, builder: (column) => column);
+
+  GeneratedColumn<String> get sellBy =>
+      $composableBuilder(column: $table.sellBy, builder: (column) => column);
 
   GeneratedColumn<bool> get hasVariants => $composableBuilder(
     column: $table.hasVariants,
@@ -6515,6 +6849,8 @@ class $$ProductsTableTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<String?> sku = const Value.absent(),
                 Value<String?> barcode = const Value.absent(),
+                Value<double?> tax = const Value.absent(),
+                Value<String> sellBy = const Value.absent(),
                 Value<bool> hasVariants = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<int> syncStatus = const Value.absent(),
@@ -6529,6 +6865,8 @@ class $$ProductsTableTableTableManager
                 name: name,
                 sku: sku,
                 barcode: barcode,
+                tax: tax,
+                sellBy: sellBy,
                 hasVariants: hasVariants,
                 isActive: isActive,
                 syncStatus: syncStatus,
@@ -6545,6 +6883,8 @@ class $$ProductsTableTableTableManager
                 required String name,
                 Value<String?> sku = const Value.absent(),
                 Value<String?> barcode = const Value.absent(),
+                Value<double?> tax = const Value.absent(),
+                Value<String> sellBy = const Value.absent(),
                 Value<bool> hasVariants = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<int> syncStatus = const Value.absent(),
@@ -6559,6 +6899,8 @@ class $$ProductsTableTableTableManager
                 name: name,
                 sku: sku,
                 barcode: barcode,
+                tax: tax,
+                sellBy: sellBy,
                 hasVariants: hasVariants,
                 isActive: isActive,
                 syncStatus: syncStatus,
@@ -6600,9 +6942,13 @@ typedef $$ProductVariantsTableTableCreateCompanionBuilder =
       required String name,
       Value<double> price,
       Value<double?> costPrice,
+      Value<double?> retailPrice,
       Value<int> stock,
       Value<String?> sku,
       Value<String?> barcode,
+      Value<double?> stockDecimal,
+      Value<bool> trackExpiry,
+      Value<String?> expiryDate,
       Value<bool> isActive,
       Value<int> syncStatus,
       Value<DateTime?> lastSyncAttempt,
@@ -6618,9 +6964,13 @@ typedef $$ProductVariantsTableTableUpdateCompanionBuilder =
       Value<String> name,
       Value<double> price,
       Value<double?> costPrice,
+      Value<double?> retailPrice,
       Value<int> stock,
       Value<String?> sku,
       Value<String?> barcode,
+      Value<double?> stockDecimal,
+      Value<bool> trackExpiry,
+      Value<String?> expiryDate,
       Value<bool> isActive,
       Value<int> syncStatus,
       Value<DateTime?> lastSyncAttempt,
@@ -6668,6 +7018,11 @@ class $$ProductVariantsTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<double> get retailPrice => $composableBuilder(
+    column: $table.retailPrice,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<int> get stock => $composableBuilder(
     column: $table.stock,
     builder: (column) => ColumnFilters(column),
@@ -6680,6 +7035,21 @@ class $$ProductVariantsTableTableFilterComposer
 
   ColumnFilters<String> get barcode => $composableBuilder(
     column: $table.barcode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get stockDecimal => $composableBuilder(
+    column: $table.stockDecimal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get trackExpiry => $composableBuilder(
+    column: $table.trackExpiry,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get expiryDate => $composableBuilder(
+    column: $table.expiryDate,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6748,6 +7118,11 @@ class $$ProductVariantsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get retailPrice => $composableBuilder(
+    column: $table.retailPrice,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get stock => $composableBuilder(
     column: $table.stock,
     builder: (column) => ColumnOrderings(column),
@@ -6760,6 +7135,21 @@ class $$ProductVariantsTableTableOrderingComposer
 
   ColumnOrderings<String> get barcode => $composableBuilder(
     column: $table.barcode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get stockDecimal => $composableBuilder(
+    column: $table.stockDecimal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get trackExpiry => $composableBuilder(
+    column: $table.trackExpiry,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get expiryDate => $composableBuilder(
+    column: $table.expiryDate,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -6818,6 +7208,11 @@ class $$ProductVariantsTableTableAnnotationComposer
   GeneratedColumn<double> get costPrice =>
       $composableBuilder(column: $table.costPrice, builder: (column) => column);
 
+  GeneratedColumn<double> get retailPrice => $composableBuilder(
+    column: $table.retailPrice,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get stock =>
       $composableBuilder(column: $table.stock, builder: (column) => column);
 
@@ -6826,6 +7221,21 @@ class $$ProductVariantsTableTableAnnotationComposer
 
   GeneratedColumn<String> get barcode =>
       $composableBuilder(column: $table.barcode, builder: (column) => column);
+
+  GeneratedColumn<double> get stockDecimal => $composableBuilder(
+    column: $table.stockDecimal,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get trackExpiry => $composableBuilder(
+    column: $table.trackExpiry,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get expiryDate => $composableBuilder(
+    column: $table.expiryDate,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<bool> get isActive =>
       $composableBuilder(column: $table.isActive, builder: (column) => column);
@@ -6898,9 +7308,13 @@ class $$ProductVariantsTableTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<double> price = const Value.absent(),
                 Value<double?> costPrice = const Value.absent(),
+                Value<double?> retailPrice = const Value.absent(),
                 Value<int> stock = const Value.absent(),
                 Value<String?> sku = const Value.absent(),
                 Value<String?> barcode = const Value.absent(),
+                Value<double?> stockDecimal = const Value.absent(),
+                Value<bool> trackExpiry = const Value.absent(),
+                Value<String?> expiryDate = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<int> syncStatus = const Value.absent(),
                 Value<DateTime?> lastSyncAttempt = const Value.absent(),
@@ -6914,9 +7328,13 @@ class $$ProductVariantsTableTableTableManager
                 name: name,
                 price: price,
                 costPrice: costPrice,
+                retailPrice: retailPrice,
                 stock: stock,
                 sku: sku,
                 barcode: barcode,
+                stockDecimal: stockDecimal,
+                trackExpiry: trackExpiry,
+                expiryDate: expiryDate,
                 isActive: isActive,
                 syncStatus: syncStatus,
                 lastSyncAttempt: lastSyncAttempt,
@@ -6932,9 +7350,13 @@ class $$ProductVariantsTableTableTableManager
                 required String name,
                 Value<double> price = const Value.absent(),
                 Value<double?> costPrice = const Value.absent(),
+                Value<double?> retailPrice = const Value.absent(),
                 Value<int> stock = const Value.absent(),
                 Value<String?> sku = const Value.absent(),
                 Value<String?> barcode = const Value.absent(),
+                Value<double?> stockDecimal = const Value.absent(),
+                Value<bool> trackExpiry = const Value.absent(),
+                Value<String?> expiryDate = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<int> syncStatus = const Value.absent(),
                 Value<DateTime?> lastSyncAttempt = const Value.absent(),
@@ -6948,9 +7370,13 @@ class $$ProductVariantsTableTableTableManager
                 name: name,
                 price: price,
                 costPrice: costPrice,
+                retailPrice: retailPrice,
                 stock: stock,
                 sku: sku,
                 barcode: barcode,
+                stockDecimal: stockDecimal,
+                trackExpiry: trackExpiry,
+                expiryDate: expiryDate,
                 isActive: isActive,
                 syncStatus: syncStatus,
                 lastSyncAttempt: lastSyncAttempt,

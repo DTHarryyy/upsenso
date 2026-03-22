@@ -13,6 +13,10 @@ class ProductsTable extends Table {
   TextColumn get sku => text().nullable()();
   TextColumn get barcode => text().nullable()();
 
+  RealColumn get tax => real().nullable()(); // tax percentage, e.g. 12.0 for 12%
+  TextColumn get sellBy =>
+      text().withDefault(const Constant('unit'))(); // 'unit' | 'fraction'
+
   BoolColumn get hasVariants =>
       boolean().withDefault(const Constant(false))();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
