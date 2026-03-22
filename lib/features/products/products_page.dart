@@ -125,6 +125,26 @@ class _ProductsPageState extends State<ProductsPage> {
                                         items: items,
                                         onAddProduct: () => context
                                             .push(AppRoutes.addProduct),
+                                        onAddToCart: (product, variant, qty) {
+                                          final qtyLabel = product.sellBy ==
+                                                  'fraction'
+                                              ? qty.toStringAsFixed(1)
+                                              : qty.toInt().toString();
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                '${product.name} × $qtyLabel added',
+                                              ),
+                                              duration: const Duration(
+                                                seconds: 2,
+                                              ),
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                            ),
+                                          );
+                                        },
                                       ),
                           ),
                         ],

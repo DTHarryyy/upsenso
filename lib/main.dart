@@ -39,15 +39,11 @@ class _AppInitializerState extends State<AppInitializer> {
 
   Future<void> _initializeApp() async {
     try {
-      debugPrint(' main.dart: Starting bootstrap...');
       final app = await bootstrap();
-      debugPrint(' main.dart: Bootstrap completed, setting app widget');
       if (mounted) {
         setState(() => _app = app);
-        debugPrint(' main.dart: App widget set, should rebuild now');
       }
     } catch (e, _) {
-      debugPrint(' main.dart: Bootstrap error: $e');
       if (mounted) {
         setState(() => _error = e.toString());
       }
@@ -57,16 +53,11 @@ class _AppInitializerState extends State<AppInitializer> {
   @override
   Widget build(BuildContext context) {
     if (_error != null) {
-      debugPrint('main.dart: Showing error screen');
       return _ErrorScreen(error: _error!);
     }
-
     if (_app != null) {
-      debugPrint('main.dart: Rendering actual app widget');
       return _app!;
     }
-
-    debugPrint('main.dart: Showing splash screen');
     return const _SplashScreen();
   }
 }

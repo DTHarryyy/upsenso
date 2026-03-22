@@ -8,8 +8,18 @@ import 'package:pos/features/products/widgets/product_card.dart';
 class ProductGrid extends StatelessWidget {
   final List<(ProductsTableData, List<ProductVariantsTableData>)> items;
   final VoidCallback? onAddProduct;
-  
-  const ProductGrid({super.key, required this.items, this.onAddProduct});
+  final void Function(
+    ProductsTableData product,
+    ProductVariantsTableData variant,
+    double quantity,
+  )? onAddToCart;
+
+  const ProductGrid({
+    super.key,
+    required this.items,
+    this.onAddProduct,
+    this.onAddToCart,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -26,8 +36,15 @@ class ProductGrid extends StatelessWidget {
       itemBuilder: (context, index) {
         if (index == 0) return ProductAdd(onTap: onAddProduct);
         final (product, variants) = items[index - 1];
-        return ProductCard(product: product, variants: variants);
+        return ProductCard(
+          product: product,
+          variants: variants,
+          onAddToCart: onAddToCart != null
+              ? (variant, qty) => onAddToCart!(product, variant, qty)
+              : null,
+        );
       },
+      
       padding: EdgeInsets.zero,
     );
   }
