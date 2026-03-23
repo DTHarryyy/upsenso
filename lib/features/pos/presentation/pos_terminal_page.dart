@@ -9,6 +9,8 @@ import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/database/daos/products_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
+import 'package:pos/core/ui/status/status_snack.dart';
+import 'package:pos/core/ui/status/status_type.dart';
 import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
@@ -246,8 +248,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
       }
     });
     final label = variant.isNotEmpty ? '$name · $variant' : name;
-    _showFeedback(label);
-    // Expand sheet if it is collapsed
+    _showFeedback("$label added to cart");
     if (_isCollapsed && _sheetController.isAttached) {
       _sheetController.animateTo(
         0.50,
@@ -259,33 +260,8 @@ class _PosTerminalPageState extends State<PosTerminalPage>
 
   void _showFeedback(String message, {bool isError = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(
-                isError
-                    ? Icons.error_outline_rounded
-                    : Icons.check_circle_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
-              const SizedBox(width: 8),
-              Expanded(child: Text(message)),
-            ],
-          ),
-          backgroundColor:
-              isError ? AppColors.error : AppColors.success,
-          behavior: SnackBarBehavior.floating,
-          duration: Duration(seconds: isError ? 3 : 1),
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      );
+      StatusSnack.show(context, type: StatusType.success, message: message);
+    
   }
 
   Future<void> _showAddProductDialog(String barcode) async {
