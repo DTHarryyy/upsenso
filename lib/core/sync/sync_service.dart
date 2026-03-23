@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:pos/core/database/app_database.dart';
+import 'package:pos/core/database/daos/auth_context_dao.dart';
 import 'package:pos/core/database/daos/businesses_dao.dart';
 import 'package:pos/core/database/daos/categories_dao.dart';
 import 'package:pos/core/database/daos/products_dao.dart';
@@ -12,6 +13,7 @@ import 'package:pos/features/products/data/datasources/products_remote_ds.dart';
 
 /// Service to handle synchronization between local Drift DB and Supabase
 class SyncService {
+  final AuthContextDao _authContextDao;
   final BusinessesDao _businessesDao;
   final CategoriesDao _categoriesDao;
   final ProductsDao _productsDao;
@@ -24,6 +26,7 @@ class SyncService {
   bool _isSyncing = false;
 
   SyncService({
+    required AuthContextDao authContextDao,
     required BusinessesDao businessesDao,
     required CategoriesDao categoriesDao,
     required ProductsDao productsDao,
@@ -31,13 +34,23 @@ class SyncService {
     required BusinessRemoteDs businessRemoteDs,
     required ProductsRemoteDs productsRemoteDs,
     required ConnectivityService connectivityService,
-  }) : _businessesDao = businessesDao,
+  }) : _authContextDao = authContextDao,
+       _businessesDao = businessesDao,
        _categoriesDao = categoriesDao,
        _productsDao = productsDao,
        _productVariantsDao = productVariantsDao,
        _businessRemoteDs = businessRemoteDs,
        _productsRemoteDs = productsRemoteDs,
        _connectivityService = connectivityService;
+
+  /// Returns [provided] if non-null, otherwise reads businessId from the
+  /// locally cached auth context. This allows connectivity-triggered syncs
+  /// (which don't know the businessId) to still run the pull phase.
+  Future<String?> _resolveBusinessId(String? provided) async {
+    if (provided != null) return provided;
+    final ctx = await _authContextDao.getAny();
+    return ctx?.businessId;
+  }
 
   /// Initialize sync service and listen for connectivity changes.
   /// On each reconnect: push pending local changes, then pull from server.
@@ -47,7 +60,7 @@ class SyncService {
       if (online) syncAll();
     });
 
-    // Also sync whenever connectivity is restored.
+    // sync whenever connectivity is restored.
     _connectivitySubscription = _connectivityService.onConnectivityChanged
         .listen((isConnected) {
           if (isConnected) {
@@ -56,16 +69,15 @@ class SyncService {
         });
   }
 
-  /// Dispose resources
   void dispose() {
     _connectivitySubscription?.cancel();
   }
 
-  /// Check if we're online
+  /// check kapag may internet connection
   Future<bool> get isOnline => _connectivityService.isConnected;
 
-  /// Reactive total count of all records pending sync (categories + products + variants).
-  /// Emits a new value whenever any local record changes sync status.
+  /// reactive total couns ng pending sync records across all tables, for showing in UI.
+  /// emits new value kapag may local change or sync status update in any of the tables.
   Stream<int> watchTotalPendingSyncCount() {
     int cat = 0, prod = 0, vars = 0;
     final controller = StreamController<int>.broadcast();
@@ -102,7 +114,7 @@ class SyncService {
     _isSyncing = true;
 
     try {
-      // ── Upload phase ────────────────────────────────────────────────────────
+      // upload na here  bag o i pull
       final businessResult = await _syncBusinesses();
       final categoryResult = await _syncCategories();
       final productResult = await _syncProducts();
@@ -117,13 +129,14 @@ class SyncService {
           productResult.failedCount +
           variantResult.failedCount;
 
-      // ── Pull phase (only if businessId is known) ────────────────────────────
+      // pull kapag may businessId (either provided or from auth context)
+      final effectiveBusinessId = await _resolveBusinessId(businessId);
       SyncResult pullResult = SyncResult(
         success: true,
         message: 'Pull skipped (no businessId)',
       );
-      if (businessId != null) {
-        pullResult = await pullFromServer(businessId);
+      if (effectiveBusinessId != null) {
+        pullResult = await pullFromServer(effectiveBusinessId);
       }
 
       return SyncResult(
@@ -149,7 +162,7 @@ class SyncService {
     }
   }
 
-  // ── UPLOAD: categories ─────────────────────────────────────────────────────
+  // i sync na yung categories
 
   Future<SyncResult> _syncCategories() async {
     final pending = await _categoriesDao.getPendingSync();
@@ -215,7 +228,7 @@ class SyncService {
     );
   }
 
-  // ── UPLOAD: products ───────────────────────────────────────────────────────
+  // i sync namn yung mga products
 
   Future<SyncResult> _syncProducts() async {
     final pending = await _productsDao.getPendingSync();
@@ -293,7 +306,7 @@ class SyncService {
     );
   }
 
-  // ── UPLOAD: product variants ───────────────────────────────────────────────
+  // sycn naman mga products variants
 
   Future<SyncResult> _syncProductVariants() async {
     final pending = await _productVariantsDao.getPendingSync();
@@ -377,7 +390,7 @@ class SyncService {
     );
   }
 
-  // ── UPLOAD: businesses ─────────────────────────────────────────────────────
+  // i sync na yung businesses, kahit isa lang dapat yun pero for consistency with other tables we still loop through pending records list
 
   Future<SyncResult> _syncBusinesses() async {
     final pendingRecords = await _businessesDao.getPendingSync();
@@ -450,11 +463,7 @@ class SyncService {
     await _businessesDao.hardDelete(record.id);
   }
 
-  // ── PULL: download from Supabase → local ───────────────────────────────────
-
-  /// Pull all categories, products, and variants for [businessId] from Supabase
-  /// and upsert them locally. Only runs when online.
-  /// Records pulled from server are marked syncStatus=synced (3).
+  // pull the data from sever kapag  bago ang device or may changes sa server that are not yet in local db, then update local db with server data. This ensures na kahit connectivity-triggered syncs on a new device still pull server data.
   Future<SyncResult> pullFromServer(String businessId) async {
     final online = await isOnline;
     if (!online) {
@@ -465,7 +474,6 @@ class SyncService {
     int failed = 0;
     final errors = <String>[];
 
-    // Pull categories
     try {
       final categories = await _businessRemoteDs.getCategoriesByBusiness(
         businessId,
@@ -479,7 +487,6 @@ class SyncService {
       errors.add('Pull categories: ${e.toString()}');
     }
 
-    // Pull products
     try {
       final products = await _productsRemoteDs.getProductsByBusiness(
         businessId,
@@ -493,7 +500,7 @@ class SyncService {
       errors.add('Pull products: ${e.toString()}');
     }
 
-    // Pull variants
+    // // pull ang variants
     try {
       final variants = await _productsRemoteDs.getVariantsByBusiness(
         businessId,
