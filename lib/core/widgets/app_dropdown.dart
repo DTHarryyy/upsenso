@@ -95,12 +95,17 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
   void _openOverlay() {
     final box = context.findRenderObject() as RenderBox;
     final size = box.size;
+    final globalPos = box.localToGlobal(Offset.zero);
+    final screenHeight = MediaQuery.of(context).size.height;
+    final spaceBelow = screenHeight - globalPos.dy - size.height;
+    final openUpward = spaceBelow < 264; // 260 max panel + 4 gap
 
     _overlay = OverlayEntry(
       builder: (overlayCtx) => _OverlayDropdown<T>(
         link: _layerLink,
         triggerWidth: size.width,
         triggerHeight: size.height,
+        openUpward: openUpward,
         items: widget.items,
         selectedValue: widget.value,
         addItemLabel: widget.addItemLabel,
@@ -209,6 +214,7 @@ class _OverlayDropdown<T> extends StatelessWidget {
   final LayerLink link;
   final double triggerWidth;
   final double triggerHeight;
+  final bool openUpward;
   final List<AppDropdownItem<T>> items;
   final T? selectedValue;
   final String? addItemLabel;
@@ -220,6 +226,7 @@ class _OverlayDropdown<T> extends StatelessWidget {
     required this.link,
     required this.triggerWidth,
     required this.triggerHeight,
+    required this.openUpward,
     required this.items,
     required this.selectedValue,
     required this.onSelected,
@@ -245,7 +252,11 @@ class _OverlayDropdown<T> extends StatelessWidget {
         CompositedTransformFollower(
           link: link,
           showWhenUnlinked: false,
-          offset: Offset(0, triggerHeight + 4),
+          targetAnchor:
+              openUpward ? Alignment.topLeft : Alignment.bottomLeft,
+          followerAnchor:
+              openUpward ? Alignment.bottomLeft : Alignment.topLeft,
+          offset: Offset(0, openUpward ? -4 : 4),
           child: SizedBox(
             width: triggerWidth,
             child: Material(
