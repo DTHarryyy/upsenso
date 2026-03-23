@@ -16,6 +16,7 @@ import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:pos/features/pos/data/models/cart_model.dart';
+import 'package:pos/features/pos/presentation/pages/checkout_payment_page.dart';
 
 class PosTerminalPage extends StatefulWidget {
   final bool isActive;
@@ -47,7 +48,6 @@ class _PosTerminalPageState extends State<PosTerminalPage>
   DateTime? _lastScanTime;
   String? _lastScannedCode;
   final List<CartItem> _cartItems = [];
-  String _paymentMethod = 'cash';
 
   @override
   void initState() {
@@ -92,7 +92,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
   }
 
   double get _subtotal => _cartItems.fold(0.0, (s, i) => s + i.total);
-  double get _tax => _subtotal * 0.12;
+  double get _tax => _cartItems.fold(0.0, (s, i) => s + i.taxAmount);
   double get _grandTotal => _subtotal + _tax;
 
   String _fmt(double v) => '₱${v.toStringAsFixed(2).replaceAllMapped(
@@ -145,6 +145,20 @@ class _PosTerminalPageState extends State<PosTerminalPage>
     }
   }
 
+  void _checkout() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CheckoutPaymentPage(
+          items: List.unmodifiable(_cartItems),
+          subtotal: _subtotal,
+          tax: _tax,
+          total: _grandTotal,
+          onPaymentConfirmed: () => setState(() => _cartItems.clear()),
+        ),
+      ),
+    );
+  }
+
   void _increment(int i) => setState(() => _cartItems[i].qty += 1);
   void _decrement(int i) {
     if (_cartItems[i].qty <= 1) {
@@ -192,6 +206,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
           name: productName,
           variant: showVariant ? variant.name : '',
           unitPrice: variant.price,
+          taxRate: product?.tax,
         );
         return;
       }
@@ -218,6 +233,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
           name: product.name,
           variant: '',
           unitPrice: v.price,
+          taxRate: product.tax,
         );
         return;
       }
@@ -233,6 +249,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
     required String name,
     required String variant,
     required double unitPrice,
+    double? taxRate,
   }) {
     setState(() {
       final idx = _cartItems.indexWhere((i) => i.variantId == variantId);
@@ -244,6 +261,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
           name: name,
           variant: variant,
           unitPrice: unitPrice,
+          taxRate: taxRate,
         ));
       }
     });
@@ -657,8 +675,10 @@ class _PosTerminalPageState extends State<PosTerminalPage>
           child: Column(
             children: [
               _summaryRow('Subtotal', _fmt(_subtotal)),
-              const SizedBox(height: 4),
-              _summaryRow('Tax (12%)', _fmt(_tax)),
+              if (_tax > 0) ...[
+                const SizedBox(height: 4),
+                _summaryRow('Tax', _fmt(_tax)),
+              ],
               const SizedBox(height: 10),
               const Divider(height: 1, color: AppColors.borderSoft),
               const SizedBox(height: 10),
@@ -667,41 +687,12 @@ class _PosTerminalPageState extends State<PosTerminalPage>
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-          child: AppDropdown<String>(
-            value: _paymentMethod,
-            items: const [
-              AppDropdownItem(
-                value: 'cash',
-                label: 'Cash',
-                icon: Icons.payments_outlined,
-              ),
-              AppDropdownItem(
-                value: 'card',
-                label: 'Card',
-                icon: Icons.credit_card_rounded,
-              ),
-              AppDropdownItem(
-                value: 'gcash',
-                label: 'GCash',
-                icon: Icons.phone_android_rounded,
-              ),
-              AppDropdownItem(
-                value: 'maya',
-                label: 'Maya',
-                icon: Icons.account_balance_wallet_outlined,
-              ),
-            ],
-            onChanged: (v) => setState(() => _paymentMethod = v ?? 'cash'),
-          ),
-        ),
-        Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
           child: AppFilledButton(
             label: _cartItems.isEmpty
                 ? 'Checkout'
                 : 'Checkout · ${_fmt(_grandTotal)}',
-            onPressed: _cartItems.isEmpty ? null : () {},
+            onPressed: _cartItems.isEmpty ? null : _checkout,
           ),
         ),
       ],

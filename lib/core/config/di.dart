@@ -12,6 +12,7 @@ import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/core/database/daos/categories_dao.dart';
 import 'package:pos/core/database/daos/products_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
+import 'package:pos/core/database/daos/transactions_dao.dart';
 import 'package:pos/core/theme/theme_controller.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_service.dart';
@@ -39,6 +40,7 @@ import 'package:pos/features/business/data/repositories/business_repository_impl
 import 'package:pos/features/business/domain/repositories/business_repository.dart';
 import 'package:pos/features/business/presentation/bloc/business_bloc.dart';
 import 'package:pos/features/products/data/datasources/products_remote_ds.dart';
+import 'package:pos/features/pos/data/datasources/transactions_remote_ds.dart';
 
 final sl = GetIt.instance;
 
@@ -79,6 +81,7 @@ Future<void> initDI() async {
   sl.registerLazySingleton<ProductVariantsDao>(
     () => ProductVariantsDao(sl<AppDatabase>()),
   );
+  sl.registerLazySingleton<TransactionsDao>(() => TransactionsDao(sl<AppDatabase>()));
 
   sl.registerLazySingleton<ConnectivityService>(() => ConnectivityService());
 
@@ -131,6 +134,7 @@ Future<void> initDI() async {
 
   sl.registerLazySingleton(() => BusinessRemoteDs(sl<SupabaseClient>()));
   sl.registerLazySingleton(() => ProductsRemoteDs(sl<SupabaseClient>()));
+  sl.registerLazySingleton(() => TransactionsRemoteDs(sl<SupabaseClient>()));
 
   sl.registerLazySingleton<BusinessRepository>(
     () => BusinessRepositoryImpl(
@@ -158,8 +162,10 @@ Future<void> initDI() async {
       categoriesDao: sl<CategoriesDao>(),
       productsDao: sl<ProductsDao>(),
       productVariantsDao: sl<ProductVariantsDao>(),
+      transactionsDao: sl<TransactionsDao>(),
       businessRemoteDs: sl<BusinessRemoteDs>(),
       productsRemoteDs: sl<ProductsRemoteDs>(),
+      transactionsRemoteDs: sl<TransactionsRemoteDs>(),
       connectivityService: sl<ConnectivityService>(),
     )..init(),
   );
