@@ -12,6 +12,8 @@ import 'package:pos/core/database/tables/branches_table.dart';
 import 'package:pos/core/database/tables/categories_table.dart';
 import 'package:pos/core/database/tables/products_table.dart';
 import 'package:pos/core/database/tables/product_variants_table.dart';
+import 'package:pos/core/database/tables/transactions_table.dart';
+import 'package:pos/core/database/tables/transaction_items_table.dart';
 import 'package:pos/core/database/daos/auth_context_dao.dart';
 import 'package:pos/core/database/daos/business_templates_dao.dart';
 import 'package:pos/core/database/daos/businesses_dao.dart';
@@ -19,6 +21,7 @@ import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/core/database/daos/categories_dao.dart';
 import 'package:pos/core/database/daos/products_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
+import 'package:pos/core/database/daos/transactions_dao.dart';
 
 part 'app_database.g.dart';
 
@@ -31,6 +34,8 @@ part 'app_database.g.dart';
     CategoriesTable,
     ProductsTable,
     ProductVariantsTable,
+    TransactionsTable,
+    TransactionItemsTable,
   ],
   daos: [
     AuthContextDao,
@@ -40,13 +45,14 @@ part 'app_database.g.dart';
     CategoriesDao,
     ProductsDao,
     ProductVariantsDao,
+    TransactionsDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration {
@@ -108,6 +114,10 @@ class AppDatabase extends _$AppDatabase {
           await customStatement(
             'ALTER TABLE product_variants ADD COLUMN retail_price REAL',
           );
+        }
+        if (from < 12) {
+          await m.createTable(transactionsTable);
+          await m.createTable(transactionItemsTable);
         }
       },
     );

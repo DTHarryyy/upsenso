@@ -5,11 +5,13 @@ import 'package:pos/core/database/daos/businesses_dao.dart';
 import 'package:pos/core/database/daos/categories_dao.dart';
 import 'package:pos/core/database/daos/products_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
+import 'package:pos/core/database/daos/transactions_dao.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_status.dart';
 import 'package:pos/features/business/data/datasources/business_remote_ds.dart';
 import 'package:pos/features/business/data/models/business_model.dart';
 import 'package:pos/features/products/data/datasources/products_remote_ds.dart';
+import 'package:pos/features/pos/data/datasources/transactions_remote_ds.dart';
 
 /// Service to handle synchronization between local Drift DB and Supabase
 class SyncService {
@@ -18,8 +20,10 @@ class SyncService {
   final CategoriesDao _categoriesDao;
   final ProductsDao _productsDao;
   final ProductVariantsDao _productVariantsDao;
+  final TransactionsDao _transactionsDao;
   final BusinessRemoteDs _businessRemoteDs;
   final ProductsRemoteDs _productsRemoteDs;
+  final TransactionsRemoteDs _transactionsRemoteDs;
   final ConnectivityService _connectivityService;
 
   StreamSubscription<bool>? _connectivitySubscription;
@@ -31,16 +35,20 @@ class SyncService {
     required CategoriesDao categoriesDao,
     required ProductsDao productsDao,
     required ProductVariantsDao productVariantsDao,
+    required TransactionsDao transactionsDao,
     required BusinessRemoteDs businessRemoteDs,
     required ProductsRemoteDs productsRemoteDs,
+    required TransactionsRemoteDs transactionsRemoteDs,
     required ConnectivityService connectivityService,
   }) : _authContextDao = authContextDao,
        _businessesDao = businessesDao,
        _categoriesDao = categoriesDao,
        _productsDao = productsDao,
        _productVariantsDao = productVariantsDao,
+       _transactionsDao = transactionsDao,
        _businessRemoteDs = businessRemoteDs,
        _productsRemoteDs = productsRemoteDs,
+       _transactionsRemoteDs = transactionsRemoteDs,
        _connectivityService = connectivityService;
 
   /// Returns [provided] if non-null, otherwise reads businessId from the
@@ -79,21 +87,23 @@ class SyncService {
   /// reactive total couns ng pending sync records across all tables, for showing in UI.
   /// emits new value kapag may local change or sync status update in any of the tables.
   Stream<int> watchTotalPendingSyncCount() {
-    int cat = 0, prod = 0, vars = 0;
+    int cat = 0, prod = 0, vars = 0, orders = 0;
     final controller = StreamController<int>.broadcast();
 
     void emit() {
-      if (!controller.isClosed) controller.add(cat + prod + vars);
+      if (!controller.isClosed) controller.add(cat + prod + vars + orders);
     }
 
     final s1 = _categoriesDao.watchPendingSyncCount().listen((n) { cat = n; emit(); });
     final s2 = _productsDao.watchPendingSyncCount().listen((n) { prod = n; emit(); });
     final s3 = _productVariantsDao.watchPendingSyncCount().listen((n) { vars = n; emit(); });
+    final s4 = _transactionsDao.watchPendingSyncCount().listen((n) { orders = n; emit(); });
 
     controller.onCancel = () {
       s1.cancel();
       s2.cancel();
       s3.cancel();
+      s4.cancel();
       controller.close();
     };
 
@@ -119,15 +129,18 @@ class SyncService {
       final categoryResult = await _syncCategories();
       final productResult = await _syncProducts();
       final variantResult = await _syncProductVariants();
+      final orderResult = await _syncTransactions();
 
       final int totalSynced = businessResult.syncedCount +
           categoryResult.syncedCount +
           productResult.syncedCount +
-          variantResult.syncedCount;
+          variantResult.syncedCount +
+          orderResult.syncedCount;
       final int totalFailed = businessResult.failedCount +
           categoryResult.failedCount +
           productResult.failedCount +
-          variantResult.failedCount;
+          variantResult.failedCount +
+          orderResult.failedCount;
 
       // pull kapag may businessId (either provided or from auth context)
       final effectiveBusinessId = await _resolveBusinessId(businessId);
@@ -384,6 +397,49 @@ class SyncService {
     return SyncResult(
       success: failed == 0,
       message: 'Variants: synced $synced, failed $failed',
+      syncedCount: synced,
+      failedCount: failed,
+      errors: errors,
+    );
+  }
+
+  // sync completed POS transactions — upload only (transactions are immutable)
+
+  Future<SyncResult> _syncTransactions() async {
+    final pending = await _transactionsDao.getPendingSync();
+    int synced = 0;
+    int failed = 0;
+    final errors = <String>[];
+
+    for (final tx in pending) {
+      try {
+        await _transactionsRemoteDs.createTransaction(
+          id: tx.id,
+          cashierId: tx.cashierId,
+          branchId: tx.branchId,
+          totalAmount: tx.totalAmount,
+          taxAmount: tx.taxAmount,
+          createdAt: tx.createdAt,
+        );
+        await _transactionsDao.updateSyncStatus(
+          id: tx.id,
+          status: SyncStatus.synced,
+        );
+        synced++;
+      } catch (e) {
+        failed++;
+        errors.add('Transaction ${tx.id}: ${e.toString()}');
+        await _transactionsDao.updateSyncStatus(
+          id: tx.id,
+          status: SyncStatus.failed,
+          error: e.toString(),
+        );
+      }
+    }
+
+    return SyncResult(
+      success: failed == 0,
+      message: 'Transactions: synced $synced, failed $failed',
       syncedCount: synced,
       failedCount: failed,
       errors: errors,
