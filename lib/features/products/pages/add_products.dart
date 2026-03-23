@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pos/core/const/validators.dart';
+import 'package:pos/core/ui/status/status_snack.dart';
+import 'package:pos/core/ui/status/status_type.dart';
+import 'package:pos/features/products/widgets/more_option_card.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:pos/core/config/di.dart';
@@ -17,27 +21,19 @@ import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 String _formatDate(DateTime d) =>
     '${d.day.toString().padLeft(2, '0')}/'
     '${d.month.toString().padLeft(2, '0')}/'
     '${d.year}';
 
-// ---------------------------------------------------------------------------
-// Enums
-// ---------------------------------------------------------------------------
+
 
 enum _FormMode { simple, advanced }
 
-// ---------------------------------------------------------------------------
-// Page
-// ---------------------------------------------------------------------------
-
+// page
 class AddProductsPage extends StatefulWidget {
-  const AddProductsPage({super.key});
+  final String? initialBarcode;
+  const AddProductsPage({super.key, this.initialBarcode});
 
   @override
   State<AddProductsPage> createState() => _AddProductsPageState();
@@ -49,30 +45,20 @@ class _AddProductsPageState extends State<AddProductsPage> {
   final _productsDao = sl<ProductsDao>();
   final _productVariantsDao = sl<ProductVariantsDao>();
 
-  // ── Shared / Simple-mode controllers ─────────────────────────────────────
+  //shared controller available sa both modes simple and advance
   final _nameController = TextEditingController();
-
-  // A single FocusNode shared between simple- and advanced-mode name fields.
-  // This prevents Flutter from destroying/recreating an internal FocusNode on
-  // every mode toggle, which is the root cause of the defunct-element crash.
   final _nameFocusNode = FocusNode();
 
-  // Simple-mode pricing (not shown in advanced mode)
   final _priceController = TextEditingController();
   final _costController = TextEditingController();
 
-  // ── More-Options controllers (advanced mode only) ─────────────────────────
+  // sa more optiosn controller 
   final _skuController = TextEditingController();
   final _taxController = TextEditingController();
-
-  // Expiry date is displayed via a controller (not initialValue + key) so we
-  // never force a TextFormField element to be disposed mid-build.
   final _expiryController = TextEditingController();
 
-  // Stock alert threshold
   final _stockAlertController = TextEditingController();
-
-  // Multiple barcodes / scan support
+  final _newCategoryController = TextEditingController();
   final List<TextEditingController> _barcodeControllers = [
     TextEditingController(),
   ];
@@ -83,22 +69,25 @@ class _AddProductsPageState extends State<AddProductsPage> {
   bool _trackExpiry = false;
   DateTime? _expiryDate;
   bool _stockAlertEnabled = false;
-  String _sellBy = 'unit'; // 'unit' | 'fraction'
+  String _sellBy = 'unit'; 
 
-  // ── Domain state ─────────────────────────────────────────────────────────
   List<CategoriesTableData> _categories = [];
   String? _selectedCategoryId;
   bool _saving = false;
 
-  // ── Variants (advanced mode only) ─────────────────────────────────────────
+  // varaints sa advance mode lang
   final List<_VariantForm> _variants = [_VariantForm()];
 
-  // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   @override
   void initState() {
     super.initState();
     _loadCategories();
+    if (widget.initialBarcode != null && widget.initialBarcode!.isNotEmpty) {
+      _mode = _FormMode.advanced;
+      _moreOptionsExpanded = true;
+      _barcodeControllers[0].text = widget.initialBarcode!;
+    }
   }
 
   @override
@@ -111,6 +100,7 @@ class _AddProductsPageState extends State<AddProductsPage> {
     _taxController.dispose();
     _expiryController.dispose();
     _stockAlertController.dispose();
+    _newCategoryController.dispose();
     for (final c in _barcodeControllers) {
       c.dispose();
     }
@@ -120,7 +110,7 @@ class _AddProductsPageState extends State<AddProductsPage> {
     super.dispose();
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
+  // helpers
 
   String? get _businessId {
     final s = context.read<AuthBloc>().state;
@@ -201,7 +191,8 @@ class _AddProductsPageState extends State<AddProductsPage> {
   Future<void> _showAddCategorySheet() async {
     final id = _businessId;
     if (id == null) return;
-    final controller = TextEditingController();
+    _newCategoryController.clear();
+    final saving = ValueNotifier<bool>(false);
 
     await showModalBottomSheet<void>(
       context: context,
@@ -242,37 +233,63 @@ class _AddProductsPageState extends State<AddProductsPage> {
               ),
               const SizedBox(height: 16),
               TextField(
-                controller: controller,
+                controller: _newCategoryController,
                 autofocus: true,
                 textCapitalization: TextCapitalization.words,
                 decoration: appInputDeco('e.g. Coffee & Tea, Clothing...'),
                 style: getOutfitStyle(color: AppColors.textPrimary),
               ),
               const SizedBox(height: 16),
-              AppFilledButton(
-                label: 'Save Category',
-                onPressed: () async {
-                  final name = controller.text.trim();
-                  if (name.isEmpty) return;
-                  final newId = await _categoriesDao.insertSingle(
-                    businessId: id,
-                    name: name,
-                  );
-                  if (sheetCtx.mounted) Navigator.of(sheetCtx).pop();
-                  await _loadCategories();
-                  if (mounted) setState(() => _selectedCategoryId = newId);
-                },
+              ValueListenableBuilder<bool>(
+                valueListenable: saving,
+                builder: (_, isSaving, _) => AppFilledButton(
+                  label: 'Save Category',
+                  loading: isSaving,
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          final name = _newCategoryController.text.trim();
+                          if (name.isEmpty) return;
+                          saving.value = true;
+                          // Phase 1: insert while sheet is open
+                          String? newId;
+                          try {
+                            newId = await _categoriesDao.insertSingle(
+                              businessId: id,
+                              name: name,
+                            );
+                          } catch (e) {
+                            saving.value = false;
+                            if (!sheetCtx.mounted) return;
+                            ScaffoldMessenger.of(sheetCtx).showSnackBar(
+                              SnackBar(
+                                content: Text('Failed to save: $e'),
+                                backgroundColor: AppColors.error,
+                              ),
+                            );
+                            return;
+                          }
+                          // Phase 2: close + update page state
+                          if (!sheetCtx.mounted) return;
+                          Navigator.of(sheetCtx).pop();
+                          await _loadCategories();
+                          if (mounted) {
+                            setState(() => _selectedCategoryId = newId!);
+                            StatusSnack.show(context, type: StatusType.success, message: 'Category saved successfully');
+                          }
+                        },
+                ),
               ),
             ],
           ),
         );
       },
     );
-
-    controller.dispose();
+    // _newCategoryController is a page field — disposed in dispose()
+    // saving has no listeners — GC handles it
   }
 
-  // ── Save ──────────────────────────────────────────────────────────────────
+  // saving na 
 
   Future<void> _saveProduct() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
@@ -313,7 +330,7 @@ class _AddProductsPageState extends State<AddProductsPage> {
       );
 
       if (isAdvanced) {
-        // Save all named variants
+        // Save all variants
         final companions = _variants.map((v) {
           final vPrice = double.tryParse(v.price.text) ?? 0.0;
           final vCost = v.cost.text.trim().isEmpty
@@ -346,7 +363,6 @@ class _AddProductsPageState extends State<AddProductsPage> {
         }).toList();
         await _productVariantsDao.insertVariants(companions);
       } else {
-        // Simple mode: one Default variant — stock not collected, retail price not shown
         final price = double.tryParse(_priceController.text) ?? 0.0;
         final cost = _costController.text.trim().isEmpty
             ? null
@@ -384,7 +400,7 @@ class _AddProductsPageState extends State<AddProductsPage> {
     }
   }
 
-  // ── Build ─────────────────────────────────────────────────────────────────
+  // eto na yung build
 
   @override
   Widget build(BuildContext context) {
@@ -429,10 +445,7 @@ class _AddProductsPageState extends State<AddProductsPage> {
       ),
       body: Column(
         children: [
-          // ── Mode Toggle ─────────────────────────────────────────────────
           _ModeToggle(mode: _mode, onChanged: _switchMode),
-
-          // ── Form ────────────────────────────────────────────────────────
           Expanded(
             child: Form(
               key: _formKey,
@@ -449,7 +462,7 @@ class _AddProductsPageState extends State<AddProductsPage> {
                     const SizedBox(height: 12),
                     _buildVariantsSection(),
                     const SizedBox(height: 12),
-                    _MoreOptionsCard(
+                    MoreOptionsCard(
                       expanded: _moreOptionsExpanded,
                       onToggle: () => setState(
                         () => _moreOptionsExpanded = !_moreOptionsExpanded,
@@ -498,19 +511,17 @@ class _AddProductsPageState extends State<AddProductsPage> {
     );
   }
 
-  // ── Section builders ──────────────────────────────────────────────────────
 
-  /// Simple mode — one card with all basic fields, no variants.
+  /// simple build
   Widget _buildSimpleSection() {
     return AppSectionCard(
       title: 'Basic Info',
       icon: Icons.info_outline_rounded,
       children: [
-        // ── Name ──────────────────────────────────────────────────────────
         const AppFieldLabel('Product Name *'),
         TextFormField(
           controller: _nameController,
-          focusNode: _nameFocusNode, // shared — no FocusNode churn on toggle
+          focusNode: _nameFocusNode, 
           autofocus: true,
           textCapitalization: TextCapitalization.words,
           textInputAction: TextInputAction.next,
@@ -522,13 +533,13 @@ class _AddProductsPageState extends State<AddProductsPage> {
         ),
         const SizedBox(height: 16),
 
-        // ── Category ──────────────────────────────────────────────────────
-        const AppFieldLabel('Category'),
+        const AppFieldLabel('Category *'),
         AppDropdown<String>(
           value: _selectedCategoryId,
           hint: 'Select category',
           addItemLabel: 'Add Category',
           onAddItem: _showAddCategorySheet,
+          validator: (v) => v == null ? 'Category is required' : null,
           items: _categories
               .map((c) => AppDropdownItem(value: c.id, label: c.name))
               .toList(),
@@ -536,7 +547,6 @@ class _AddProductsPageState extends State<AddProductsPage> {
         ),
         const SizedBox(height: 16),
 
-        // ── Sell By ───────────────────────────────────────────────────────
         const AppFieldLabel('Sell By'),
         AppDropdown<String>(
           value: _sellBy,
@@ -551,11 +561,9 @@ class _AddProductsPageState extends State<AddProductsPage> {
         ),
         const SizedBox(height: 16),
 
-        // ── Price · Cost — one compact row ────────────────────────────────
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Selling Price
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -575,13 +583,7 @@ class _AddProductsPageState extends State<AddProductsPage> {
                       color: AppColors.textPrimary,
                       fontWeight: FontWeight.w600,
                     ),
-                    validator: (v) {
-                      if (v == null || v.trim().isEmpty) {
-                        return 'Required';
-                      }
-                      if (double.tryParse(v) == null) return 'Invalid';
-                      return null;
-                    },
+                    validator: (v) => Validators.required(v, fieldName: "Price"),
                   ),
                 ],
               ),
@@ -613,7 +615,6 @@ class _AddProductsPageState extends State<AddProductsPage> {
     );
   }
 
-  /// Advanced — Basic Info card.
   Widget _buildBasicInfoSection() {
     return AppSectionCard(
       title: 'Basic Info',
@@ -622,7 +623,7 @@ class _AddProductsPageState extends State<AddProductsPage> {
         const AppFieldLabel('Product Name *'),
         TextFormField(
           controller: _nameController,
-          focusNode: _nameFocusNode, // same node — survives mode toggle
+          focusNode: _nameFocusNode, 
           textCapitalization: TextCapitalization.words,
           decoration: appInputDeco('e.g. Espresso, White Rice 5kg...'),
           style: getOutfitStyle(color: AppColors.textPrimary),
@@ -631,12 +632,13 @@ class _AddProductsPageState extends State<AddProductsPage> {
               : null,
         ),
         const SizedBox(height: 16),
-        const AppFieldLabel('Category'),
+        const AppFieldLabel('Category *'),
         AppDropdown<String>(
           value: _selectedCategoryId,
           hint: 'Select category',
           addItemLabel: 'Add Category',
           onAddItem: _showAddCategorySheet,
+          validator: (v) => v == null ? 'Category is required' : null,
           items: _categories
               .map((c) => AppDropdownItem(value: c.id, label: c.name))
               .toList(),
@@ -659,7 +661,6 @@ class _AddProductsPageState extends State<AddProductsPage> {
     );
   }
 
-  /// Advanced — Variants section.
   Widget _buildVariantsSection() {
     final isFraction = _sellBy == 'fraction';
 
@@ -792,333 +793,6 @@ class _ModeChip extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// More Options Card
-// ---------------------------------------------------------------------------
-
-class _MoreOptionsCard extends StatelessWidget {
-  final bool expanded;
-  final VoidCallback onToggle;
-  final List<TextEditingController> barcodeControllers;
-  final VoidCallback onAddBarcode;
-  final void Function(int) onRemoveBarcode;
-  final TextEditingController skuController;
-  final VoidCallback onAutoSku;
-  final TextEditingController taxController;
-  final bool trackExpiry;
-  final ValueChanged<bool> onTrackExpiryChanged;
-
-  /// Expiry date text controller — updated by the parent when a date is
-  /// picked. Avoids using [initialValue] + [key] which forces element
-  /// disposal mid-build and triggers the defunct-element lifecycle error.
-  final TextEditingController expiryController;
-  final VoidCallback onPickExpiryDate;
-
-  /// True when Track Expiry is on but no date is selected yet.
-  final bool expiryRequired;
-
-  final bool stockAlertEnabled;
-  final ValueChanged<bool> onStockAlertChanged;
-  final TextEditingController stockAlertController;
-
-  const _MoreOptionsCard({
-    required this.expanded,
-    required this.onToggle,
-    required this.barcodeControllers,
-    required this.onAddBarcode,
-    required this.onRemoveBarcode,
-    required this.skuController,
-    required this.onAutoSku,
-    required this.taxController,
-    required this.trackExpiry,
-    required this.onTrackExpiryChanged,
-    required this.expiryController,
-    required this.onPickExpiryDate,
-    required this.expiryRequired,
-    required this.stockAlertEnabled,
-    required this.onStockAlertChanged,
-    required this.stockAlertController,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.borderSoft),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // ── Header ────────────────────────────────────────────────────
-          GestureDetector(
-            onTap: onToggle,
-            behavior: HitTestBehavior.opaque,
-            child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.settings_outlined,
-                    size: 18,
-                    color: AppColors.textMuted,
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'More Options',
-                    style: getOutfitStyle(
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const Spacer(),
-                  AnimatedRotation(
-                    turns: expanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 200),
-                    child: const Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      color: AppColors.textMuted,
-                      size: 20,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // ── Body ──────────────────────────────────────────────────────
-          AnimatedSize(
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeInOut,
-            child: expanded
-                ? _buildBody(context)
-                : const SizedBox(width: double.infinity, height: 0),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBody(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Divider(height: 1, color: AppColors.borderSoft),
-          const SizedBox(height: 16),
-
-          // ── Barcode(s) ────────────────────────────────────────────────
-          const AppFieldLabel('Barcode(s)'),
-          ...barcodeControllers.asMap().entries.map((entry) {
-            final i = entry.key;
-            final ctrl = entry.value;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: ctrl,
-                      keyboardType: TextInputType.number,
-                      decoration: appInputDeco(
-                        i == 0
-                            ? 'Scan or type barcode'
-                            : 'Additional barcode',
-                      ).copyWith(
-                        prefixIcon: const Icon(
-                          Icons.qr_code_rounded,
-                          size: 18,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                      style: getOutfitStyle(color: AppColors.textPrimary),
-                    ),
-                  ),
-                  if (barcodeControllers.length > 1) ...[
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: () => onRemoveBarcode(i),
-                      child: const Icon(
-                        Icons.close_rounded,
-                        size: 20,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            );
-          }),
-          TextButton.icon(
-            onPressed: onAddBarcode,
-            icon: const Icon(Icons.add_rounded, size: 16),
-            label: Text(
-              'Add Barcode',
-              style: getOutfitStyle(
-                color: AppColors.brand,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
-            ),
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.brand,
-              padding: EdgeInsets.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // ── SKU ───────────────────────────────────────────────────────
-          const AppFieldLabel('SKU'),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: skuController,
-                  textCapitalization: TextCapitalization.characters,
-                  decoration: appInputDeco('e.g. CAFE-001'),
-                  style: getOutfitStyle(color: AppColors.textPrimary),
-                ),
-              ),
-              const SizedBox(width: 8),
-              TextButton(
-                onPressed: onAutoSku,
-                style:
-                    TextButton.styleFrom(foregroundColor: AppColors.brand),
-                child: Text(
-                  'Auto',
-                  style: getOutfitStyle(
-                    color: AppColors.brand,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // ── Tax ───────────────────────────────────────────────────────
-          const AppFieldLabel('Tax (%)'),
-          TextFormField(
-            controller: taxController,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-            ],
-            decoration: appInputDeco('0.00', prefixText: '% '),
-            style: getOutfitStyle(color: AppColors.textPrimary),
-            validator: (v) {
-              if (v != null && v.trim().isNotEmpty) {
-                final p = double.tryParse(v);
-                if (p == null) return 'Enter a valid percentage';
-                if (p < 0 || p > 100) return 'Must be between 0–100';
-              }
-              return null;
-            },
-          ),
-
-          const SizedBox(height: 16),
-
-          // ── Track Expiry ──────────────────────────────────────────────
-          AppLabeledSwitch(
-            label: 'Track Expiry',
-            subtitle: 'Enable for perishable or dated items',
-            value: trackExpiry,
-            onChanged: onTrackExpiryChanged,
-          ),
-
-          // Expiry Date — uses a controller, not initialValue + key, so
-          // the element is never forced to dispose when the date changes.
-          AnimatedSize(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
-            child: trackExpiry
-                ? Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const AppFieldLabel('Expiry Date'),
-                        TextFormField(
-                          controller: expiryController,
-                          readOnly: true,
-                          onTap: onPickExpiryDate,
-                          decoration: appInputDeco('dd/mm/yyyy').copyWith(
-                            suffixIcon: const Icon(
-                              Icons.calendar_today_rounded,
-                              size: 18,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
-                          style: getOutfitStyle(color: AppColors.textPrimary),
-                          validator: (_) => expiryRequired
-                              ? 'Please select an expiry date'
-                              : null,
-                        ),
-                      ],
-                    ),
-                  )
-                : const SizedBox(width: double.infinity, height: 0),
-          ),
-
-          const SizedBox(height: 16),
-
-          // ── Stock Alert ───────────────────────────────────────────────
-          AppLabeledSwitch(
-            label: 'Stock Alert',
-            subtitle: 'Get notified when stock falls below a threshold',
-            value: stockAlertEnabled,
-            onChanged: onStockAlertChanged,
-          ),
-
-          AnimatedSize(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
-            child: stockAlertEnabled
-                ? Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const AppFieldLabel('Alert When Stock Falls Below'),
-                        TextFormField(
-                          controller: stockAlertController,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                          ],
-                          decoration: appInputDeco('e.g. 5'),
-                          style: getOutfitStyle(color: AppColors.textPrimary),
-                          validator: (v) {
-                            if (stockAlertEnabled) {
-                              if (v == null || v.trim().isEmpty) {
-                                return 'Enter an alert threshold';
-                              }
-                              if (int.tryParse(v) == null) {
-                                return 'Enter a whole number';
-                              }
-                            }
-                            return null;
-                          },
-                        ),
-                      ],
-                    ),
-                  )
-                : const SizedBox(width: double.infinity, height: 0),
-          ),
-        ],
       ),
     );
   }
@@ -1329,7 +1003,7 @@ class _VariantCardState extends State<_VariantCard> {
           ),
           const SizedBox(height: 10),
 
-          // ── Track Inventory section ─────────────────────────────────────
+          // track Inventory section 
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(

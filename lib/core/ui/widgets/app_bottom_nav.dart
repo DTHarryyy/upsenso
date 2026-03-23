@@ -34,7 +34,7 @@ class AppBottomNav extends StatelessWidget {
               _buildNavItem(
                 icon: Icons.dashboard_rounded,
                 activeIcon: Icons.dashboard_rounded,
-                label: 'Home',
+                label: 'Dashboard',
                 index: 0,
               ),
               _buildNavItem(
@@ -81,7 +81,7 @@ class AppBottomNav extends StatelessWidget {
                 color: AppColors.brand,
               ),
               child: Icon(
-                Icons.point_of_sale_rounded,
+                Icons.qr_code_scanner_rounded,
                 color: AppColors.textInverse,
                 size: 28,
               ),

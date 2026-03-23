@@ -15,16 +15,14 @@ class AppDropdownItem<T> {
   });
 }
 
-/// A beautiful dropdown that opens a **floating overlay panel** directly below
-/// the trigger button — does not push surrounding content down.
-///
-/// Optionally renders an "+ Add [addItemLabel]" action row at the top of the
-/// list, separated by a divider from the selectable items.
+/// A dropdown that opens a floating overlay panel and integrates with [Form]
+/// validation via the [validator] parameter — works just like [TextFormField].
 ///
 /// ```dart
 /// AppDropdown<String>(
 ///   value: _selectedId,
 ///   hint: 'Select category',
+///   validator: (v) => v == null ? 'Required' : null,
 ///   addItemLabel: 'Add Category',
 ///   onAddItem: _showAddCategorySheet,
 ///   items: categories
@@ -33,12 +31,10 @@ class AppDropdownItem<T> {
 ///   onChanged: (v) => setState(() => _selectedId = v),
 /// )
 /// ```
-class AppDropdown<T> extends StatefulWidget {
-  final T? value;
+class AppDropdown<T> extends FormField<T> {
   final String? hint;
   final List<AppDropdownItem<T>> items;
   final ValueChanged<T?>? onChanged;
-  final String? errorText;
 
   /// Label for the inline "add new item" action shown at the top of the list.
   final String? addItemLabel;
@@ -46,39 +42,50 @@ class AppDropdown<T> extends StatefulWidget {
   /// Called when the user taps the "add new item" action row.
   final VoidCallback? onAddItem;
 
-  const AppDropdown({
+  AppDropdown({
     super.key,
-    this.value,
+    T? value,
     this.hint,
     required this.items,
     this.onChanged,
-    this.errorText,
     this.addItemLabel,
     this.onAddItem,
-  });
+    super.validator,
+    super.autovalidateMode = AutovalidateMode.disabled,
+  }) : super(
+          initialValue: value,
+          builder: (field) => (field as _AppDropdownState<T>)._buildWidget(),
+        );
 
   @override
-  State<AppDropdown<T>> createState() => _AppDropdownState<T>();
+  FormFieldState<T> createState() => _AppDropdownState<T>();
 }
 
-class _AppDropdownState<T> extends State<AppDropdown<T>> {
+class _AppDropdownState<T> extends FormFieldState<T> {
   final _layerLink = LayerLink();
   OverlayEntry? _overlay;
   bool _isOpen = false;
 
+  AppDropdown<T> get _w => widget as AppDropdown<T>;
+
   AppDropdownItem<T>? get _selected =>
-      widget.items.where((i) => i.value == widget.value).firstOrNull;
+      _w.items.where((i) => i.value == value).firstOrNull;
+
+  @override
+  void didUpdateWidget(covariant AppDropdown<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Keep FormField's internal value in sync when the parent rebuilds
+    // with a new value (e.g. after adding a new category).
+    if (oldWidget.initialValue != widget.initialValue) {
+      setValue(widget.initialValue);
+    }
+  }
 
   @override
   void dispose() {
     if (_overlay != null) {
       final entry = _overlay!;
       _overlay = null;
-      // Schedule removal after the current build/unmount cycle.
-      // Calling OverlayEntry.remove() directly from dispose() triggers
-      // Overlay.setState() while Flutter is still unmounting elements,
-      // which can schedule a rebuild on an already-defunct element and
-      // throw the '_lifecycleState != _ElementLifecycle.defunct' assertion.
       WidgetsBinding.instance.addPostFrameCallback((_) => entry.remove());
     }
     super.dispose();
@@ -98,7 +105,7 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
     final globalPos = box.localToGlobal(Offset.zero);
     final screenHeight = MediaQuery.of(context).size.height;
     final spaceBelow = screenHeight - globalPos.dy - size.height;
-    final openUpward = spaceBelow < 264; // 260 max panel + 4 gap
+    final openUpward = spaceBelow < 264;
 
     _overlay = OverlayEntry(
       builder: (overlayCtx) => _OverlayDropdown<T>(
@@ -106,18 +113,21 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
         triggerWidth: size.width,
         triggerHeight: size.height,
         openUpward: openUpward,
-        items: widget.items,
-        selectedValue: widget.value,
-        addItemLabel: widget.addItemLabel,
-        onAddItem: widget.onAddItem != null
+        items: _w.items,
+        selectedValue: value,
+        addItemLabel: _w.addItemLabel,
+        onAddItem: _w.onAddItem != null
             ? () {
                 _closeOverlay();
-                widget.onAddItem!();
+                WidgetsBinding.instance.addPostFrameCallback(
+                  (_) => _w.onAddItem?.call(),
+                );
               }
             : null,
         onSelected: (v) {
           _closeOverlay();
-          widget.onChanged?.call(v);
+          didChange(v);         // updates FormField value + triggers validation
+          _w.onChanged?.call(v);
         },
         onDismiss: _closeOverlay,
       ),
@@ -133,9 +143,9 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
     if (mounted) setState(() => _isOpen = false);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final hasError = widget.errorText != null;
+  Widget _buildWidget() {
+    final displayError = errorText; // from FormFieldState (validator result)
+    final hasError = displayError != null;
     final borderColor = hasError
         ? AppColors.error
         : _isOpen
@@ -167,7 +177,7 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
                   ],
                   Expanded(
                     child: Text(
-                      _selected?.label ?? widget.hint ?? '',
+                      _selected?.label ?? _w.hint ?? '',
                       style: getOutfitStyle(
                         color: _selected != null
                             ? AppColors.textPrimary
@@ -190,13 +200,12 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
           ),
         ),
 
-        // Error text
         if (hasError) ...[
           const SizedBox(height: 4),
           Padding(
             padding: const EdgeInsets.only(left: 12),
             child: Text(
-              widget.errorText!,
+              displayError,
               style: getOutfitStyle(color: AppColors.error, fontSize: 12),
             ),
           ),
@@ -205,6 +214,7 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
     );
   }
 }
+
 
 // ---------------------------------------------------------------------------
 // Overlay widget
@@ -400,6 +410,7 @@ class _AddItemRowState extends State<_AddItemRow> {
     );
   }
 }
+
 
 // ---------------------------------------------------------------------------
 // _DropdownOption
