@@ -95,6 +95,23 @@ class ProductsDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  /// Get a single product by its ID.
+  Future<ProductsTableData?> getById(String id) {
+    return (select(productsTable)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+  }
+
+  /// Find a product by barcode within a business (fallback for simple products
+  /// whose barcode is stored at product level rather than variant level).
+  Future<ProductsTableData?> getByBarcode(String barcode, String businessId) {
+    return (select(productsTable)
+          ..where(
+            (t) =>
+                t.barcode.equals(barcode) & t.businessId.equals(businessId),
+          ))
+        .getSingleOrNull();
+  }
+
   /// Clear all products (e.g., on logout).
   Future<void> clearAll() {
     return delete(productsTable).go();

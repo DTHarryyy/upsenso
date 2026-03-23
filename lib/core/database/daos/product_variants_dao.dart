@@ -114,6 +114,19 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  /// Find a single variant by barcode within a business.
+  Future<ProductVariantsTableData?> getByBarcode(
+    String barcode,
+    String businessId,
+  ) {
+    return (select(productVariantsTable)
+          ..where(
+            (t) =>
+                t.barcode.equals(barcode) & t.businessId.equals(businessId),
+          ))
+        .getSingleOrNull();
+  }
+
   /// Clear all variants (e.g., on logout).
   Future<void> clearAll() {
     return delete(productVariantsTable).go();
