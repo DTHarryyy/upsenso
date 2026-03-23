@@ -125,6 +125,7 @@ Future<void> initDI() async {
       resetPassword: sl(),
       signOut: sl(),
       connectivityService: sl(),
+      syncService: sl(),
     ),
   );
 
@@ -152,6 +153,7 @@ Future<void> initDI() async {
 
   sl.registerLazySingleton<SyncService>(
     () => SyncService(
+      authContextDao: sl<AuthContextDao>(),
       businessesDao: sl<BusinessesDao>(),
       categoriesDao: sl<CategoriesDao>(),
       productsDao: sl<ProductsDao>(),

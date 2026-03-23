@@ -161,7 +161,9 @@ class AppRouter {
       ),
       GoRoute(
         path: AppRoutes.addProduct,
-        builder: (context, _) => const AddProductsPage(),
+        builder: (context, state) => AddProductsPage(
+          initialBarcode: state.extra as String?,
+        ),
       ),
     ],
   );

@@ -19,13 +19,11 @@ class _AppBoostrapState extends State<AppBoostrap> {
   @override
   void initState() {
     super.initState();
-    debugPrint('🔧 AppBoostrap: initState called');
     _themeController = sl<ThemeController>();
   }
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('🔧 AppBoostrap: build called');
     return AnimatedBuilder(
       animation: _themeController,
       builder: (context, _) {

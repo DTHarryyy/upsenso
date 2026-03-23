@@ -27,19 +27,12 @@ class MainNavigationPage extends StatefulWidget {
 
 class _MainNavigationPageState extends State<MainNavigationPage> {
   int _currentIndex = 0;
+  int _previousIndex = 0;
   String? _lastUserContextKey;
   bool _isOnline = true;
   int _pendingSyncCount = 0;
   late final ConnectivityService _connectivityService;
   StreamSubscription<int>? _syncCountSub;
-
-  final List<Widget> _pages = [
-    const DashboardPage(),
-    const ProductsPage(),
-    const PosTerminalPage(),
-    const AlertPage(),
-    const MorePage(),
-  ];
 
   @override
   void initState() {
@@ -79,6 +72,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
 
   void _onNavTap(int index) {
     setState(() {
+      if (_currentIndex != index) _previousIndex = _currentIndex;
       _currentIndex = index;
     });
   }
@@ -141,31 +135,50 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                 : [branchName];
             final selectedBranch = branchState.selectedBranch ?? branchName;
 
+            final isPosTab = _currentIndex == 2;
             return Scaffold(
-              appBar: CustomAppBar(
-                branches: visibleBranches,
-                selectedBranch: selectedBranch,
-                onBranchChanged: branchState.canSwitchBranches
-                    ? (branch) {
-                        context.read<BranchCubit>().selectBranch(branch);
-                      }
-                    : null,
-                userName: userName,
-                userRole: userRole,
-                userEmail: userEmail,
-                userId: userId,
-                businessName: businessName,
-                isOnline: _isOnline,
-                pendingSyncCount: _pendingSyncCount,
-                onNotificationTapped: () => _onNavTap(3),
-                onMenuTapped: null,
-                showThemeToggle: false,
+              appBar: isPosTab
+                  ? null
+                  : CustomAppBar(
+                      branches: visibleBranches,
+                      selectedBranch: selectedBranch,
+                      onBranchChanged: branchState.canSwitchBranches
+                          ? (branch) {
+                              context
+                                  .read<BranchCubit>()
+                                  .selectBranch(branch);
+                            }
+                          : null,
+                      userName: userName,
+                      userRole: userRole,
+                      userEmail: userEmail,
+                      userId: userId,
+                      businessName: businessName,
+                      isOnline: _isOnline,
+                      pendingSyncCount: _pendingSyncCount,
+                      onNotificationTapped: () => _onNavTap(3),
+                      onMenuTapped: null,
+                      showThemeToggle: false,
+                    ),
+              body: IndexedStack(
+                index: _currentIndex,
+                children: [
+                  const DashboardPage(),
+                  const ProductsPage(),
+                  PosTerminalPage(
+                    isActive: _currentIndex == 2,
+                    onClose: () => _onNavTap(_previousIndex),
+                  ),
+                  const AlertPage(),
+                  const MorePage(),
+                ],
               ),
-              body: IndexedStack(index: _currentIndex, children: _pages),
-              bottomNavigationBar: AppBottomNav(
-                currentIndex: _currentIndex,
-                onTap: _onNavTap,
-              ),
+              bottomNavigationBar: isPosTab
+                  ? null
+                  : AppBottomNav(
+                      currentIndex: _currentIndex,
+                      onTap: _onNavTap,
+                    ),
             );
           },
         );

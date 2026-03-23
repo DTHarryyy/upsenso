@@ -56,5 +56,7 @@
 				</array>
 			</dict>
 		</array>
+		<key>NSCameraUsageDescription</key>
+		<string>Camera access is required to scan product barcodes at the POS terminal.</string>
 	</dict>
 </plist>
