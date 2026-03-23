@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/errors/supabase_error_mapper.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
+import 'package:pos/core/sync/sync_service.dart';
 import 'package:pos/features/auth/domain/entities/app_user.dart';
 
 import '../../domain/usecases/check_email_exists.dart';
@@ -37,6 +38,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final VerifyPasswordResetOtp verifyPasswordResetOtp;
   final ResetPassword resetPassword;
   final ConnectivityService connectivityService;
+  final SyncService? syncService;
 
   StreamSubscription? _sub;
   String? _pendingSignUpEmail;
@@ -46,6 +48,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   String _errorMessage(Object err) {
     if (err is String) return err;
     return SupabaseAuthErrorMapper.message(err);
+  }
+
+  /// Fire-and-forget pull sync after the user is authenticated.
+  /// Runs in the background so the UI is not blocked.
+  void _triggerPull(AppUser user) {
+    final id = user.businessId;
+    if (id == null || id.trim().isEmpty) return;
+    unawaited(syncService?.syncAll(businessId: id));
   }
 
   bool _hasText(String? value) {
@@ -131,6 +141,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required this.verifyPasswordResetOtp,
     required this.resetPassword,
     required this.connectivityService,
+    this.syncService,
   }) : super(AuthUnknown()) {
     on<AuthStarted>(_onStarted);
     on<AuthUserContextUpdated>(_onUserContextUpdated);
@@ -159,6 +170,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         'AuthBloc: Emitting cached user (${user.businessId != null ? "with" : "without"} business)',
       );
       emit(AuthAuthenticated(user));
+      _triggerPull(user);
 
       // Skip background refresh when cached context is already complete.
       if (!_hasCompleteContext(user)) {
@@ -201,11 +213,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final user = await signIn(e.email, e.password);
       final userWithContext = await _getUserContextWithRetry(user.id);
-      emit(
-        userWithContext != null
-            ? AuthAuthenticated(userWithContext)
-            : AuthAuthenticated(user),
-      );
+      final authed = userWithContext ?? user;
+      emit(AuthAuthenticated(authed));
+      _triggerPull(authed);
     } catch (err) {
       emit(AuthError(_errorMessage(err)));
       emit(AuthUnauthenticated());
@@ -288,11 +298,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       _pendingSignUpPassword = null;
 
       final userWithContext = await _getUserContextWithRetry(user.id);
-      emit(
-        userWithContext != null
-            ? AuthAuthenticated(userWithContext)
-            : AuthAuthenticated(user),
-      );
+      final authed = userWithContext ?? user;
+      emit(AuthAuthenticated(authed));
+      _triggerPull(authed);
     } catch (err) {
       emit(AuthError(_errorMessage(err)));
     }

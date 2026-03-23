@@ -63,6 +63,12 @@ class AuthContextDao extends DatabaseAccessor<AppDatabase>
     )..where((t) => t.userId.equals(userId))).go();
   }
 
+  /// Get the first cached auth context row, regardless of userId.
+  /// Used by SyncService to resolve businessId without knowing the userId.
+  Future<AuthContextTableData?> getAny() async {
+    return (select(authContextTable)..limit(1)).getSingleOrNull();
+  }
+
   /// Clear all cached auth contexts (e.g., on app reset)
   Future<void> clearAll() async {
     await delete(authContextTable).go();
