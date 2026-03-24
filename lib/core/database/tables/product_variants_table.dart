@@ -22,6 +22,8 @@ class ProductVariantsTable extends Table {
   TextColumn get sku => text().nullable()();
   TextColumn get barcode => text().nullable()();
   RealColumn get stockDecimal => real().nullable()(); // used when sellBy == 'fraction'
+  /// Optional threshold below which a low-stock alert should be triggered.
+  IntColumn get lowStockAlert => integer().nullable()();
   BoolColumn get trackExpiry =>
       boolean().withDefault(const Constant(false))();
   TextColumn get expiryDate => text().nullable()(); // ISO 8601 date string

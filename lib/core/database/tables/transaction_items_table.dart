@@ -1,7 +1,5 @@
 import 'package:drift/drift.dart';
 
-/// Local table for line-items belonging to a completed POS transaction.
-/// Stored locally only — no Supabase equivalent table exists.
 class TransactionItemsTable extends Table {
   @override
   String get tableName => 'transaction_items';
@@ -9,13 +7,13 @@ class TransactionItemsTable extends Table {
   TextColumn get id => text()();
   TextColumn get transactionId => text()();
   TextColumn get variantId => text()();
-  TextColumn get productName => text()(); // snapshot at sale time
-  TextColumn get variantName => text()(); // snapshot at sale time
+  TextColumn get productName => text()(); 
+  TextColumn get variantName => text()(); 
   RealColumn get unitPrice => real()();
-  RealColumn get taxRate => real().nullable()(); // e.g. 12.0 = 12%; null = no tax
+  RealColumn get taxRate => real().nullable()(); 
   RealColumn get qty => real()();
-  RealColumn get lineTotal => real()(); // unitPrice * qty
-  RealColumn get lineTax => real()(); // taxAmount
+  RealColumn get lineTotal => real()(); 
+  RealColumn get lineTax => real()(); 
 
   @override
   Set<Column> get primaryKey => {id};
