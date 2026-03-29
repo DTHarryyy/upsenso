@@ -191,7 +191,6 @@ class _PosTerminalPageState extends State<PosTerminalPage>
       final businessId = authState.user.businessId;
       if (businessId == null) return;
 
-      // 1. Try variant-level barcode first (most specific — has price & stock)
       final variant = await _variantsDao.getByBarcode(code, businessId);
       if (variant != null) {
         if (!variant.isActive) {
@@ -392,7 +391,6 @@ class _PosTerminalPageState extends State<PosTerminalPage>
     );
   }
 
-  // ── Tablet/Desktop layout ──────────────────────────────────────────────────
 
   Widget _buildTablet(BuildContext context) {
     final panelWidth = Breakpoints.isDesktop(context) ? 400.0 : 340.0;
@@ -436,9 +434,6 @@ class _PosTerminalPageState extends State<PosTerminalPage>
     );
   }
 
-  // ── Cart sheet wrapper (mobile) ────────────────────────────────────────────
-
-  // ── Cart sheet wrapper (mobile) ────────────────────────────────────────────
 
   Widget _buildCartSheet(ScrollController sc) {
     return ClipRRect(
@@ -485,7 +480,6 @@ class _PosTerminalPageState extends State<PosTerminalPage>
                       _cartItems.isNotEmpty && constraints.maxHeight >= 340;
                   return Column(
                     children: [
-                      // Drag handle — tap to toggle OR drag to resize
                       GestureDetector(
                         onTap: _tapDragHandle,
                         onVerticalDragUpdate: (details) {
