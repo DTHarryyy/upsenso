@@ -20,10 +20,13 @@ class ProductCartPage extends StatelessWidget {
     return ListenableBuilder(
       listenable: cartService,
       builder: (context, _) {
-        // Auto-pop when cart is emptied while on this page
+        // Auto-pop when cart is emptied — but only if this page is active
+        // (not buried behind the checkout page when payment clears the cart)
         if (cartService.isEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (context.mounted && Navigator.of(context).canPop()) {
+            if (context.mounted &&
+                Navigator.of(context).canPop() &&
+                (ModalRoute.of(context)?.isCurrent ?? false)) {
               Navigator.of(context).pop();
             }
           });

@@ -13,12 +13,14 @@ class ProductGrid extends StatelessWidget {
     ProductVariantsTableData variant,
     double quantity,
   )? onAddToCart;
+  final void Function(ProductsTableData product)? onEditProduct;
 
   const ProductGrid({
     super.key,
     required this.items,
     this.onAddProduct,
     this.onAddToCart,
+    this.onEditProduct,
   });
 
   @override
@@ -42,6 +44,7 @@ class ProductGrid extends StatelessWidget {
           onAddToCart: onAddToCart != null
               ? (variant, qty) => onAddToCart!(product, variant, qty)
               : null,
+          onEdit: onEditProduct != null ? () => onEditProduct!(product) : null,
         );
       },
       

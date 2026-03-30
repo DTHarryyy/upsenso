@@ -12,12 +12,14 @@ class ProductCard extends StatelessWidget {
   final List<ProductVariantsTableData> variants;
   final void Function(ProductVariantsTableData variant, double quantity)?
       onAddToCart;
+  final VoidCallback? onEdit;
 
   const ProductCard({
     super.key,
     required this.product,
     required this.variants,
     this.onAddToCart,
+    this.onEdit,
   });
 
   double? _minPrice() {
@@ -46,8 +48,8 @@ class ProductCard extends StatelessWidget {
   String _priceLabel() {
     final price = _minPrice();
     if (price == null) return '—';
-    if (product.hasVariants) return '\$${price.toStringAsFixed(2)}';
-    return '\$${price.toStringAsFixed(2)}';
+    if (product.hasVariants) return '₱${price.toStringAsFixed(2)}';
+    return '₱${price.toStringAsFixed(2)}';
   }
 
   @override
@@ -76,6 +78,7 @@ class ProductCard extends StatelessWidget {
                     product: product,
                     variants: variants,
                     onConfirm: onAddToCart,
+                    onEdit: onEdit,
                   ),
           child: Padding(
             padding: const EdgeInsets.all(8),

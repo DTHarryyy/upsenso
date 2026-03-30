@@ -43,6 +43,7 @@ import 'package:pos/features/business/presentation/bloc/business_bloc.dart';
 import 'package:pos/core/services/image_service.dart';
 import 'package:pos/features/products/data/datasources/products_remote_ds.dart';
 import 'package:pos/features/pos/data/datasources/transactions_remote_ds.dart';
+import 'package:pos/features/pos/domain/usecases/resolve_barcode_use_case.dart';
 
 final sl = GetIt.instance;
 
@@ -87,6 +88,12 @@ Future<void> initDI() async {
 
   sl.registerLazySingleton<CartService>(() => CartService());
   sl.registerLazySingleton<ImageService>(() => ImageService());
+  sl.registerLazySingleton<ResolveBarcodeUseCase>(
+    () => ResolveBarcodeUseCase(
+      variantsDao: sl<ProductVariantsDao>(),
+      productsDao: sl<ProductsDao>(),
+    ),
+  );
   sl.registerLazySingleton<ConnectivityService>(() => ConnectivityService());
 
   sl.registerFactory(() => BranchCubit());

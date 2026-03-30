@@ -11,6 +11,7 @@ import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/ui/status/status_snack.dart';
 import 'package:pos/core/ui/status/status_type.dart';
 import 'package:pos/core/widgets/widgets.dart';
+import 'package:pos/core/database/app_database.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/products/presentation/cubit/product_form_cubit.dart';
@@ -25,7 +26,9 @@ String _formatDate(DateTime d) =>
 
 class AddProductsPage extends StatelessWidget {
   final String? initialBarcode;
-  const AddProductsPage({super.key, this.initialBarcode});
+  final ProductsTableData? productToEdit;
+
+  const AddProductsPage({super.key, this.initialBarcode, this.productToEdit});
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +37,10 @@ class AddProductsPage extends StatelessWidget {
     return BlocProvider(
       create: (_) =>
           ProductFormCubit(businessId: authState.user.businessId ?? ''),
-      child: _AddProductsView(initialBarcode: initialBarcode),
+      child: _AddProductsView(
+        initialBarcode: initialBarcode,
+        productToEdit: productToEdit,
+      ),
     );
   }
 }
@@ -43,7 +49,9 @@ class AddProductsPage extends StatelessWidget {
 
 class _AddProductsView extends StatefulWidget {
   final String? initialBarcode;
-  const _AddProductsView({this.initialBarcode});
+  final ProductsTableData? productToEdit;
+
+  const _AddProductsView({this.initialBarcode, this.productToEdit});
 
   @override
   State<_AddProductsView> createState() => _AddProductsViewState();
@@ -90,18 +98,71 @@ class _AddProductsViewState extends State<_AddProductsView> {
   @override
   void initState() {
     super.initState();
-    if (widget.initialBarcode?.isNotEmpty == true) {
+    if (widget.productToEdit != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _initForEdit(widget.productToEdit!));
+    } else if (widget.initialBarcode?.isNotEmpty == true) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final cubit = context.read<ProductFormCubit>();
-        // Switch to advanced mode and enable variants so the per-variant
-        // barcode fields are visible and the assignment banner shows.
         cubit.switchMode(ProductFormMode.advanced);
         cubit.setHasVariants(true);
-        // Pre-assign the scanned barcode to the first variant.
         _variants[0].barcode.text = widget.initialBarcode!;
       });
     }
+  }
+
+  Future<void> _initForEdit(ProductsTableData product) async {
+    if (!mounted) return;
+    final cubit = context.read<ProductFormCubit>();
+
+    // Set cubit-managed state
+    cubit.initEditState(product);
+
+    // Pre-fill shared fields
+    _nameController.text = product.name;
+    setState(() => _sellBy = product.sellBy);
+
+    // Load existing variants
+    final variants = await cubit.loadVariants(product.id);
+    if (!mounted) return;
+
+    final hasStock = variants.any((v) => v.stock > 0 || (v.stockDecimal ?? 0) > 0);
+    if (hasStock) cubit.setTrackInventory(true);
+
+    if (product.hasVariants) {
+      // Advanced + variants: populate variant forms
+      _variants.clear();
+      for (final v in variants.where((v) => v.isActive)) {
+        final form = _VariantForm();
+        form.name.text = v.name == 'Default' ? '' : v.name;
+        form.price.text = v.price.toStringAsFixed(2);
+        if (v.costPrice != null) form.cost.text = v.costPrice!.toStringAsFixed(2);
+        form.stock.text = v.stock.toString();
+        if (v.lowStockAlert != null) form.lowStock.text = v.lowStockAlert.toString();
+        if (v.barcode != null) form.barcode.text = v.barcode!;
+        _variants.add(form);
+      }
+      if (_variants.isEmpty) _variants.add(_VariantForm());
+    } else {
+      // Simple or advanced no-variants
+      final v = variants.firstOrNull;
+      if (v != null) {
+        _simplePriceController.text = v.price.toStringAsFixed(2);
+        _sellingPriceController.text = v.price.toStringAsFixed(2);
+        if (v.costPrice != null) _costPriceController.text = v.costPrice!.toStringAsFixed(2);
+        if (v.barcode != null) {
+          _simpleBarcodeController.text = v.barcode!;
+          _barcodeControllers[0].text = v.barcode!;
+        }
+        if (v.stock > 0) _stockController.text = v.stock.toString();
+        if (v.lowStockAlert != null) _lowStockController.text = v.lowStockAlert.toString();
+      }
+    }
+
+    if (product.tax != null) _taxController.text = product.tax!.toString();
+    if (product.sku != null) _skuController.text = product.sku!;
+
+    setState(() {});
   }
 
   @override
@@ -260,50 +321,54 @@ class _AddProductsViewState extends State<_AddProductsView> {
     final state = cubit.state;
     final isAdvanced = state.mode == ProductFormMode.advanced;
 
-    cubit.save(
-      ProductFormData(
-        name: _nameController.text,
-        sellBy: _sellBy,
-        // Simple
-        simplePrice: !isAdvanced ? _simplePriceController.text : null,
-        simpleBarcode: !isAdvanced ? _simpleBarcodeController.text : null,
-        // Advanced no-variants
-        sellingPrice:
-            (isAdvanced && !state.hasVariants) ? _sellingPriceController.text : null,
-        retailPrice:
-            (isAdvanced && !state.hasVariants) ? _retailPriceController.text : null,
-        costPrice:
-            (isAdvanced && !state.hasVariants) ? _costPriceController.text : null,
-        taxPercent:
-            (isAdvanced && !state.hasVariants) ? _taxController.text : null,
-        stock: (isAdvanced && !state.hasVariants && state.trackInventory)
-            ? _stockController.text
-            : null,
-        lowStockAlert: (isAdvanced && !state.hasVariants && state.trackInventory)
-            ? _lowStockController.text
-            : null,
-        // Image
-        imagePath: state.imagePath,
-        // More options
-        barcodes: isAdvanced
-            ? _barcodeControllers.map((c) => c.text).toList()
-            : [],
-        sku: isAdvanced ? _skuController.text : null,
-        // Variants
-        variants: (isAdvanced && state.hasVariants)
-            ? _variants
-                .map((v) => VariantFormData(
-                      name: v.name.text,
-                      price: v.price.text,
-                      costPrice: v.cost.text,
-                      stock: v.stock.text,
-                      lowStockAlert: v.lowStock.text,
-                      barcode: v.barcode.text,
-                    ))
-                .toList()
-            : [],
-      ),
+    final formData = ProductFormData(
+      name: _nameController.text,
+      sellBy: _sellBy,
+      // Simple
+      simplePrice: !isAdvanced ? _simplePriceController.text : null,
+      simpleBarcode: !isAdvanced ? _simpleBarcodeController.text : null,
+      // Advanced no-variants
+      sellingPrice:
+          (isAdvanced && !state.hasVariants) ? _sellingPriceController.text : null,
+      retailPrice:
+          (isAdvanced && !state.hasVariants) ? _retailPriceController.text : null,
+      costPrice:
+          (isAdvanced && !state.hasVariants) ? _costPriceController.text : null,
+      taxPercent:
+          (isAdvanced && !state.hasVariants) ? _taxController.text : null,
+      stock: (isAdvanced && !state.hasVariants && state.trackInventory)
+          ? _stockController.text
+          : null,
+      lowStockAlert: (isAdvanced && !state.hasVariants && state.trackInventory)
+          ? _lowStockController.text
+          : null,
+      // Image
+      imagePath: state.imagePath,
+      // More options
+      barcodes: isAdvanced
+          ? _barcodeControllers.map((c) => c.text).toList()
+          : [],
+      sku: isAdvanced ? _skuController.text : null,
+      // Variants
+      variants: (isAdvanced && state.hasVariants)
+          ? _variants
+              .map((v) => VariantFormData(
+                    name: v.name.text,
+                    price: v.price.text,
+                    costPrice: v.cost.text,
+                    stock: v.stock.text,
+                    lowStockAlert: v.lowStock.text,
+                    barcode: v.barcode.text,
+                  ))
+              .toList()
+          : [],
     );
+
+    if (widget.productToEdit != null) {
+      cubit.update(widget.productToEdit!.id, formData);
+    } else {
+      cubit.save(formData);
+    }
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────
@@ -330,7 +395,10 @@ class _AddProductsViewState extends State<_AddProductsView> {
               elevation: 0,
               scrolledUnderElevation: 0,
               centerTitle: true,
-              title: Text('Add Product', style: AppTextStyles.title(context)),
+              title: Text(
+                widget.productToEdit != null ? 'Edit Product' : 'Add Product',
+                style: AppTextStyles.title(context),
+              ),
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
                 onPressed: () => context.pop(),
@@ -559,7 +627,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
         _SwitchRow(
           icon: Icons.tune_rounded,
           label: 'Has Variants',
-          subtitle: 'e.g. Size, Colour, Flavour',
+          subtitle: 'Each variant has its own price  (e.g. Small / Medium / Large)',
           value: state.hasVariants,
           onChanged: cubit.setHasVariants,
         ),
@@ -754,11 +822,38 @@ class _AddProductsViewState extends State<_AddProductsView> {
           const SizedBox(height: 10),
         ],
 
-        // Global Track Inventory (compact inline — no bordered container)
+        // Variants intro hint
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          margin: const EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceAlt,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.lightbulb_outline_rounded,
+                  size: 15, color: AppColors.textMuted),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Give each option a name, price, and optionally a barcode. '
+                  'Customers never see these — they\'re for your records.',
+                  style: getOutfitStyle(
+                      color: AppColors.textSecondary, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Global Track Inventory
         _SwitchRow(
           icon: Icons.inventory_2_outlined,
           label: 'Track Inventory',
-          subtitle: 'Show stock on all variants',
+          subtitle: 'Adds a stock field to every variant below',
           value: state.trackInventory,
           onChanged: cubit.setTrackInventory,
         ),

@@ -9,6 +9,7 @@ void showProductSelectionSheet(
   required ProductsTableData product,
   required List<ProductVariantsTableData> variants,
   void Function(ProductVariantsTableData variant, double quantity)? onConfirm,
+  VoidCallback? onEdit,
 }) {
   showModalBottomSheet(
     context: context,
@@ -19,6 +20,7 @@ void showProductSelectionSheet(
       product: product,
       variants: variants,
       onConfirm: onConfirm,
+      onEdit: onEdit,
     ),
   );
 }
@@ -29,11 +31,13 @@ class _ProductSelectionSheet extends StatefulWidget {
   final ProductsTableData product;
   final List<ProductVariantsTableData> variants;
   final void Function(ProductVariantsTableData, double)? onConfirm;
+  final VoidCallback? onEdit;
 
   const _ProductSelectionSheet({
     required this.product,
     required this.variants,
     this.onConfirm,
+    this.onEdit,
   });
 
   @override
@@ -141,7 +145,7 @@ class _ProductSelectionSheetState extends State<_ProductSelectionSheet> {
             ),
             child: AppFilledButton(
               label: _selected != null
-                  ? 'Add to Order · \$${totalPrice.toStringAsFixed(2)}'
+                  ? 'Add to Order · ₱${totalPrice.toStringAsFixed(2)}'
                   : hasVariants
                       ? 'Select a variant'
                       : 'Add to Order',
@@ -200,8 +204,8 @@ class _ProductSelectionSheetState extends State<_ProductSelectionSheet> {
                   if (minPrice != null)
                     Text(
                       widget.product.hasVariants
-                          ? 'From \$${minPrice.toStringAsFixed(2)}'
-                          : '\$${minPrice.toStringAsFixed(2)}',
+                          ? 'From ₱${minPrice.toStringAsFixed(2)}'
+                          : '₱${minPrice.toStringAsFixed(2)}',
                       style: getOutfitStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -237,6 +241,26 @@ class _ProductSelectionSheetState extends State<_ProductSelectionSheet> {
             ],
           ),
         ),
+        if (widget.onEdit != null) ...[
+          const SizedBox(width: 8),
+          IconButton(
+            onPressed: () {
+              Navigator.pop(context);
+              widget.onEdit!();
+            },
+            icon: const Icon(Icons.edit_outlined, size: 18),
+            color: AppColors.textSecondary,
+            tooltip: 'Edit product',
+            style: IconButton.styleFrom(
+              backgroundColor: AppColors.surfaceAlt,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              minimumSize: const Size(36, 36),
+              padding: EdgeInsets.zero,
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -372,6 +396,23 @@ class _ProductSelectionSheetState extends State<_ProductSelectionSheet> {
     bool isFraction,
   ) {
     if (variant == null) return (label: '—', color: AppColors.textMuted);
+
+    // Simple products: never block with "Out of stock" — cashier can still add
+    if (!widget.product.hasVariants) {
+      if (isFraction) {
+        final s = variant.stockDecimal ?? 0.0;
+        if (s <= 0) return (label: '—', color: AppColors.textMuted);
+        if (s <= 2.0) {
+          return (label: '${s.toStringAsFixed(1)} available', color: AppColors.lowStock);
+        }
+        return (label: '${s.toStringAsFixed(1)} available', color: AppColors.inStock);
+      }
+      final s = variant.stock;
+      if (s <= 0) return (label: '—', color: AppColors.textMuted);
+      if (s <= 5) return (label: '$s left', color: AppColors.lowStock);
+      return (label: '$s in stock', color: AppColors.inStock);
+    }
+
     if (isFraction) {
       final s = variant.stockDecimal ?? 0.0;
       if (s <= 0) return (label: 'Out of stock', color: AppColors.outOfStock);
@@ -499,7 +540,7 @@ class _VariantCard extends StatelessWidget {
 
                 // Price
                 Text(
-                  '\$${variant.price.toStringAsFixed(2)}',
+                  '₱${variant.price.toStringAsFixed(2)}',
                   style: getOutfitStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,

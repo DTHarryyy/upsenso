@@ -178,6 +178,11 @@ class _ProductsPageState extends State<ProductsPage> {
                                                     );
                                                   }
                                                 },
+                                                onEditProduct: (product) =>
+                                                    context.push(
+                                                  AppRoutes.editProduct,
+                                                  extra: product,
+                                                ),
                                               ),
                                   ),
                                 ],

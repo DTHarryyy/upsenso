@@ -70,6 +70,12 @@ class ProductsDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  /// Update an existing product's fields (marks as pendingUpdate for sync).
+  Future<void> updateProduct(String id, ProductsTableCompanion companion) {
+    return (update(productsTable)..where((t) => t.id.equals(id)))
+        .write(companion);
+  }
+
   /// Hard-delete a product (after successful server deletion).
   Future<void> hardDelete(String id) {
     return (delete(productsTable)..where((t) => t.id.equals(id))).go();

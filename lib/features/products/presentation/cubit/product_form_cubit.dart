@@ -83,6 +83,24 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     return '$prefix-$suffix';
   }
 
+  // ── Edit existing product ─────────────────────────────────────────────────
+
+  /// Initialise cubit state from an existing product (called when editing).
+  void initEditState(ProductsTableData product) {
+    emit(state.copyWith(
+      mode: product.hasVariants ? ProductFormMode.advanced : ProductFormMode.simple,
+      hasVariants: product.hasVariants,
+      selectedCategoryId: product.categoryId,
+      imagePath: product.imagePath,
+      trackInventory: false, // updated after loading variants
+    ));
+  }
+
+  /// Load the variants for a product (used to pre-fill the edit form).
+  Future<List<ProductVariantsTableData>> loadVariants(String productId) {
+    return _productVariantsDao.getByProductId(productId);
+  }
+
   // ── Add category ──────────────────────────────────────────────────────────
 
   Future<String> addCategory(String name) async {
@@ -93,6 +111,144 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     await _loadCategories();
     emit(state.copyWith(selectedCategoryId: newId));
     return newId;
+  }
+
+  // ── Update (edit mode) ────────────────────────────────────────────────────
+
+  Future<void> update(String productId, ProductFormData data) async {
+    emit(state.copyWith(isSaving: true, clearError: true));
+    try {
+      final isAdvanced = state.mode == ProductFormMode.advanced;
+      final isFraction = data.sellBy == 'fraction';
+      final hasVariants = isAdvanced && state.hasVariants;
+
+      final tax = (data.taxPercent?.trim().isNotEmpty == true)
+          ? double.tryParse(data.taxPercent!)
+          : null;
+
+      // Update product row
+      await _productsDao.updateProduct(
+        productId,
+        ProductsTableCompanion(
+          name: Value(data.name.trim()),
+          categoryId: Value(state.selectedCategoryId),
+          sku: Value(data.sku?.trim().isNotEmpty == true ? data.sku!.trim() : null),
+          hasVariants: Value(hasVariants),
+          tax: Value(tax),
+          sellBy: Value(data.sellBy),
+          imagePath: Value(data.imagePath),
+          syncStatus: const Value(1), // pendingUpdate
+        ),
+      );
+
+      // Delete all existing variants and re-insert from form data
+      await _productVariantsDao.deleteByProductId(productId);
+
+      final variantBarcode = data.barcodes
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .join(',');
+
+      if (hasVariants) {
+        final companions = data.variants.map((v) {
+          final vPrice = double.tryParse(v.price) ?? 0.0;
+          final vCost = (v.costPrice?.trim().isNotEmpty == true)
+              ? double.tryParse(v.costPrice!)
+              : null;
+          final vStockInt = (state.trackInventory && !isFraction)
+              ? (int.tryParse(v.stock ?? '') ?? 0)
+              : 0;
+          final vStockReal = (state.trackInventory && isFraction)
+              ? double.tryParse(v.stock ?? '')
+              : null;
+          final vLowAlert = (v.lowStockAlert?.trim().isNotEmpty == true)
+              ? int.tryParse(v.lowStockAlert!)
+              : null;
+          final vBarcode = (v.barcode?.trim().isNotEmpty == true)
+              ? v.barcode!.trim()
+              : null;
+          return ProductVariantsTableCompanion.insert(
+            id: const Uuid().v4(),
+            productId: productId,
+            businessId: businessId,
+            name: v.name.trim().isEmpty ? 'Default' : v.name.trim(),
+            price: Value(vPrice),
+            costPrice: Value(vCost),
+            retailPrice: const Value(null),
+            barcode: Value(vBarcode),
+            stock: Value(vStockInt),
+            stockDecimal: Value(vStockReal),
+            lowStockAlert: Value(vLowAlert),
+            trackExpiry: Value(state.trackExpiry),
+            expiryDate: Value(
+              state.trackExpiry ? state.expiryDate?.toIso8601String() : null,
+            ),
+          );
+        }).toList();
+        await _productVariantsDao.insertVariants(companions);
+      } else if (isAdvanced) {
+        final price = double.tryParse(data.sellingPrice ?? '') ?? 0.0;
+        final cost = (data.costPrice?.trim().isNotEmpty == true)
+            ? double.tryParse(data.costPrice!)
+            : null;
+        final retail = (data.retailPrice?.trim().isNotEmpty == true)
+            ? double.tryParse(data.retailPrice!)
+            : null;
+        final stockInt = (state.trackInventory && !isFraction)
+            ? (int.tryParse(data.stock ?? '') ?? 0)
+            : 0;
+        final stockReal = (state.trackInventory && isFraction)
+            ? double.tryParse(data.stock ?? '')
+            : null;
+        final lowAlert = (data.lowStockAlert?.trim().isNotEmpty == true)
+            ? int.tryParse(data.lowStockAlert!)
+            : null;
+        await _productVariantsDao.insertVariant(
+          ProductVariantsTableCompanion.insert(
+            id: const Uuid().v4(),
+            productId: productId,
+            businessId: businessId,
+            name: 'Default',
+            price: Value(price),
+            costPrice: Value(cost),
+            retailPrice: Value(retail),
+            barcode: Value(variantBarcode.isNotEmpty ? variantBarcode : null),
+            stock: Value(stockInt),
+            stockDecimal: Value(stockReal),
+            lowStockAlert: Value(lowAlert),
+            trackExpiry: Value(state.trackExpiry),
+            expiryDate: Value(
+              state.trackExpiry ? state.expiryDate?.toIso8601String() : null,
+            ),
+          ),
+        );
+      } else {
+        // Simple mode
+        final price = double.tryParse(data.simplePrice ?? '') ?? 0.0;
+        final simpleBarcode = data.simpleBarcode?.trim();
+        await _productVariantsDao.insertVariant(
+          ProductVariantsTableCompanion.insert(
+            id: const Uuid().v4(),
+            productId: productId,
+            businessId: businessId,
+            name: 'Default',
+            price: Value(price),
+            costPrice: const Value(null),
+            retailPrice: const Value(null),
+            stock: const Value(0),
+            stockDecimal: const Value(null),
+            lowStockAlert: const Value(null),
+            barcode: Value(simpleBarcode?.isNotEmpty == true ? simpleBarcode : null),
+            trackExpiry: const Value(false),
+            expiryDate: const Value(null),
+          ),
+        );
+      }
+
+      emit(state.copyWith(isSaving: false, isSuccess: true));
+    } catch (e) {
+      emit(state.copyWith(isSaving: false, error: e.toString()));
+    }
   }
 
   // ── Save ──────────────────────────────────────────────────────────────────

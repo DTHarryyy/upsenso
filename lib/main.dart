@@ -1,3 +1,6 @@
+import 'dart:ui';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pos/bootstrap.dart';
@@ -5,6 +8,21 @@ import 'package:pos/core/const/app_colors.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // ── Global error handlers (production safety) ────────────────────────────
+  FlutterError.onError = (FlutterErrorDetails details) {
+    // In debug, keep default red-screen behaviour. In release, log silently.
+    if (kDebugMode) {
+      FlutterError.presentError(details);
+    } else {
+      debugPrint('[Flutter Error] ${details.exception}\n${details.stack}');
+    }
+  };
+
+  PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+    debugPrint('[Unhandled Error] $error\n$stack');
+    return true; // mark as handled so the platform doesn't crash the app
+  };
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(

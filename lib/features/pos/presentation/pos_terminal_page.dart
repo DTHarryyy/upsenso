@@ -1,3 +1,4 @@
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -8,15 +9,14 @@ import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
-import 'package:pos/core/database/daos/products_dao.dart';
-import 'package:pos/core/database/daos/product_variants_dao.dart';
 import 'package:pos/core/ui/status/status_snack.dart';
 import 'package:pos/core/ui/status/status_type.dart';
+import 'package:pos/features/pos/domain/usecases/resolve_barcode_use_case.dart';
 import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:pos/features/pos/presentation/pages/checkout_payment_page.dart';
+import 'package:pos/features/products/checkout/product_checkout_page.dart';
 
 class PosTerminalPage extends StatefulWidget {
   final bool isActive;
@@ -37,11 +37,10 @@ class _PosTerminalPageState extends State<PosTerminalPage>
   final _scannerController = MobileScannerController();
   final _sheetController = DraggableScrollableController();
   final _tabletScrollController = ScrollController();
+  final _audioPlayer = AudioPlayer();
 
-  final _variantsDao = sl<ProductVariantsDao>();
-  final _productsDao = sl<ProductsDao>();
-
-  late final CartService _cartService;
+  final _resolveBarcode = sl<ResolveBarcodeUseCase>();
+  final _cartService = sl<CartService>();
 
   bool _permissionDenied = false;
   bool _torchEnabled = false;
@@ -53,18 +52,12 @@ class _PosTerminalPageState extends State<PosTerminalPage>
   @override
   void initState() {
     super.initState();
-    _cartService = sl<CartService>();
-    _cartService.addListener(_onCartChanged);
     WidgetsBinding.instance.addObserver(this);
     if (widget.isActive) {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _checkCameraPermission(),
       );
     }
-  }
-
-  void _onCartChanged() {
-    if (mounted) setState(() {});
   }
 
   @override
@@ -94,11 +87,11 @@ class _PosTerminalPageState extends State<PosTerminalPage>
 
   @override
   void dispose() {
-    _cartService.removeListener(_onCartChanged);
     WidgetsBinding.instance.removeObserver(this);
     _scannerController.dispose();
     _sheetController.dispose();
     _tabletScrollController.dispose();
+    _audioPlayer.dispose();
     super.dispose();
   }
 
@@ -161,7 +154,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
   void _checkout() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => CheckoutPaymentPage(
+        builder: (_) => ProductCheckoutPage(
           items: List.from(_cartService.items),
           subtotal: _subtotal,
           tax: _tax,
@@ -208,53 +201,36 @@ class _PosTerminalPageState extends State<PosTerminalPage>
       final businessId = authState.user.businessId;
       if (businessId == null) return;
 
-      final variant = await _variantsDao.getByBarcode(code, businessId);
-      if (variant != null) {
-        if (!variant.isActive) {
+      final result = await _resolveBarcode(code, businessId);
+      switch (result) {
+        case BarcodeResolved(
+          :final variantId,
+          :final productName,
+          :final variantLabel,
+          :final unitPrice,
+          :final taxRate,
+        ):
+          _addOrIncrement(
+            variantId: variantId,
+            name: productName,
+            variant: variantLabel,
+            unitPrice: unitPrice,
+            taxRate: taxRate,
+          );
+        case BarcodeInactive():
           _showFeedback('This variant is inactive', isError: true);
-          return;
-        }
-        final product = await _productsDao.getById(variant.productId);
-        final productName = product?.name ?? variant.name;
-        final showVariant = product?.hasVariants ?? false;
-        _addOrIncrement(
-          variantId: variant.id,
-          name: productName,
-          variant: showVariant ? variant.name : '',
-          unitPrice: variant.price,
-          taxRate: product?.tax,
-        );
-        return;
-      }
-
-      // Fallback: product-level barcode (simple products)
-      final product = await _productsDao.getByBarcode(code, businessId);
-      if (product != null) {
-        final variants = await _variantsDao.getByProductId(product.id);
-        final active = variants.where((v) => v.isActive).toList();
-        if (active.isEmpty) {
-          _showFeedback('${product.name}: no active variants', isError: true);
-          return;
-        }
-        if (active.length > 1) {
+        case BarcodeNoVariants(:final productName):
+          _showFeedback('$productName: no active variants', isError: true);
+        case BarcodeAmbiguous(:final productName):
           _showFeedback(
-            '${product.name}: scan a specific variant barcode',
+            '$productName: scan a specific variant barcode',
             isError: true,
           );
-          return;
-        }
-        final v = active.first;
-        _addOrIncrement(
-          variantId: v.id,
-          name: product.name,
-          variant: '',
-          unitPrice: v.price,
-          taxRate: product.tax,
-        );
-        return;
+        case BarcodeUnknown():
+          _showAddProductDialog(code);
       }
-
-      _showAddProductDialog(code);
+    } catch (_) {
+      _showFeedback('Scan error. Try again.', isError: true);
     } finally {
       _scanning = false;
     }
@@ -274,8 +250,9 @@ class _PosTerminalPageState extends State<PosTerminalPage>
       unitPrice: unitPrice,
       taxRate: taxRate,
     );
-    final label = variant.isNotEmpty ? '$name · $variant' : name;
-    _showFeedback('$label added to cart');
+    try {
+      _audioPlayer.play(AssetSource('sounds/barcodeScanned.mp3'));
+    } catch (_) {}
     if (_isCollapsed && _sheetController.isAttached) {
       try {
         _sheetController.animateTo(
@@ -464,7 +441,9 @@ class _PosTerminalPageState extends State<PosTerminalPage>
             ),
           ],
         ),
-        child: _isCollapsed
+        child: ListenableBuilder(
+          listenable: _cartService,
+          builder: (_, _) => _isCollapsed
             ? SingleChildScrollView(
                 controller: sc,
                 child: Column(
@@ -555,6 +534,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
                   );
                 },
               ),
+        ),
       ),
     );
   }

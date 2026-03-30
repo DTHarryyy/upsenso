@@ -86,6 +86,13 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  /// Delete all variants belonging to a product (used when editing a product).
+  Future<void> deleteByProductId(String productId) {
+    return (delete(productVariantsTable)
+          ..where((t) => t.productId.equals(productId)))
+        .go();
+  }
+
   /// Hard-delete a variant (after successful server deletion).
   Future<void> hardDelete(String id) {
     return (delete(productVariantsTable)..where((t) => t.id.equals(id))).go();

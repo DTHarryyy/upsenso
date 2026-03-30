@@ -13,6 +13,7 @@ class AppRoutes {
 
   // Product routes
   static const String addProduct = '/home/add-product';
+  static const String editProduct = '/home/edit-product';
 
   // Navigation pages
   static const String dashboard = '/dashboard';
