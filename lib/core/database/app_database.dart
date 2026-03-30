@@ -52,7 +52,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration {
@@ -92,37 +92,58 @@ class AppDatabase extends _$AppDatabase {
           await m.createTable(productVariantsTable);
         }
         if (from < 9) {
-          await customStatement(
-            'ALTER TABLE products ADD COLUMN tax REAL',
-          );
-          await customStatement(
-            'ALTER TABLE product_variants ADD COLUMN track_expiry INTEGER NOT NULL DEFAULT 0',
-          );
-          await customStatement(
-            'ALTER TABLE product_variants ADD COLUMN expiry_date TEXT',
-          );
+          try {
+            await customStatement(
+              'ALTER TABLE products ADD COLUMN tax REAL',
+            );
+          } catch (_) {}
+          try {
+            await customStatement(
+              'ALTER TABLE product_variants ADD COLUMN track_expiry INTEGER NOT NULL DEFAULT 0',
+            );
+          } catch (_) {}
+          try {
+            await customStatement(
+              'ALTER TABLE product_variants ADD COLUMN expiry_date TEXT',
+            );
+          } catch (_) {}
         }
         if (from < 10) {
-          await customStatement(
-            "ALTER TABLE products ADD COLUMN sell_by TEXT NOT NULL DEFAULT 'unit'",
-          );
-          await customStatement(
-            'ALTER TABLE product_variants ADD COLUMN stock_decimal REAL',
-          );
+          try {
+            await customStatement(
+              "ALTER TABLE products ADD COLUMN sell_by TEXT NOT NULL DEFAULT 'unit'",
+            );
+          } catch (_) {}
+          try {
+            await customStatement(
+              'ALTER TABLE product_variants ADD COLUMN stock_decimal REAL',
+            );
+          } catch (_) {}
         }
         if (from < 11) {
-          await customStatement(
-            'ALTER TABLE product_variants ADD COLUMN retail_price REAL',
-          );
+          try {
+            await customStatement(
+              'ALTER TABLE product_variants ADD COLUMN retail_price REAL',
+            );
+          } catch (_) {}
         }
         if (from < 12) {
           await m.createTable(transactionsTable);
           await m.createTable(transactionItemsTable);
         }
         if (from < 13) {
-          await customStatement(
-            'ALTER TABLE product_variants ADD COLUMN low_stock_alert INTEGER',
-          );
+          try {
+            await customStatement(
+              'ALTER TABLE product_variants ADD COLUMN low_stock_alert INTEGER',
+            );
+          } catch (_) {}
+        }
+        if (from < 14) {
+          try {
+            await customStatement(
+              'ALTER TABLE products ADD COLUMN image_path TEXT',
+            );
+          } catch (_) {}
         }
       },
     );

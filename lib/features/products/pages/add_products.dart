@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pos/core/const/app_colors.dart';
@@ -79,6 +82,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
 
   // Shared UI state
   String _sellBy = 'unit';
+  bool _showImagePicker = false;
 
   // Variants (advanced + hasVariants)
   final List<_VariantForm> _variants = [_VariantForm()];
@@ -90,9 +94,12 @@ class _AddProductsViewState extends State<_AddProductsView> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final cubit = context.read<ProductFormCubit>();
+        // Switch to advanced mode and enable variants so the per-variant
+        // barcode fields are visible and the assignment banner shows.
         cubit.switchMode(ProductFormMode.advanced);
-        if (!cubit.state.moreOptionsExpanded) cubit.toggleMoreOptions();
-        _barcodeControllers[0].text = widget.initialBarcode!;
+        cubit.setHasVariants(true);
+        // Pre-assign the scanned barcode to the first variant.
+        _variants[0].barcode.text = widget.initialBarcode!;
       });
     }
   }
@@ -275,6 +282,8 @@ class _AddProductsViewState extends State<_AddProductsView> {
         lowStockAlert: (isAdvanced && !state.hasVariants && state.trackInventory)
             ? _lowStockController.text
             : null,
+        // Image
+        imagePath: state.imagePath,
         // More options
         barcodes: isAdvanced
             ? _barcodeControllers.map((c) => c.text).toList()
@@ -289,6 +298,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
                       costPrice: v.cost.text,
                       stock: v.stock.text,
                       lowStockAlert: v.lowStock.text,
+                      barcode: v.barcode.text,
                     ))
                 .toList()
             : [],
@@ -418,14 +428,13 @@ class _AddProductsViewState extends State<_AddProductsView> {
         ),
         const SizedBox(height: 14),
 
-        // Category (required)
-        const AppFieldLabel('Category *'),
+        // Category (optional)
+        const AppFieldLabel('Category'),
         AppDropdown<String>(
           value: state.selectedCategoryId,
-          hint: 'Select category',
+          hint: 'No category',
           addItemLabel: 'Add Category',
           onAddItem: _showAddCategorySheet,
-          validator: (v) => v == null ? 'Category is required' : null,
           items: state.categories
               .map((c) => AppDropdownItem(value: c.id, label: c.name))
               .toList(),
@@ -466,6 +475,33 @@ class _AddProductsViewState extends State<_AddProductsView> {
 
         // Barcode (optional toggle)
         _BarcodeToggleField(controller: _simpleBarcodeController),
+        const SizedBox(height: 10),
+
+        // Product Image (optional, toggleable) — bottom of card
+        _SwitchRow(
+          icon: Icons.image_outlined,
+          label: 'Product Image',
+          subtitle: 'Optional photo for this product',
+          value: _showImagePicker || state.imagePath != null,
+          onChanged: (v) {
+            setState(() => _showImagePicker = v);
+            if (!v) cubit.clearImage();
+          },
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          child: (_showImagePicker || state.imagePath != null)
+              ? Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: _ImagePickerField(
+                    imagePath: state.imagePath,
+                    onPick: (source) => cubit.pickImage(source),
+                    onClear: cubit.clearImage,
+                  ),
+                )
+              : const SizedBox(width: double.infinity, height: 0),
+        ),
       ],
     );
   }
@@ -493,14 +529,13 @@ class _AddProductsViewState extends State<_AddProductsView> {
         ),
         const SizedBox(height: 14),
 
-        // Category (required)
-        const AppFieldLabel('Category *'),
+        // Category (optional)
+        const AppFieldLabel('Category'),
         AppDropdown<String>(
           value: state.selectedCategoryId,
-          hint: 'Select category',
+          hint: 'No category',
           addItemLabel: 'Add Category',
           onAddItem: _showAddCategorySheet,
-          validator: (v) => v == null ? 'Category is required' : null,
           items: state.categories
               .map((c) => AppDropdownItem(value: c.id, label: c.name))
               .toList(),
@@ -666,6 +701,59 @@ class _AddProductsViewState extends State<_AddProductsView> {
       title: 'Variants',
       icon: Icons.tune_rounded,
       children: [
+        // Barcode assignment banner — shown when opened from a POS scan
+        if (widget.initialBarcode?.isNotEmpty == true) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.brandSoft,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.brand.withAlpha(60)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.qr_code_rounded,
+                    size: 16, color: AppColors.brand),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Barcode pre-assigned to Variant 1',
+                        style: getOutfitStyle(
+                          color: AppColors.brand,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        widget.initialBarcode!,
+                        style: getOutfitStyle(
+                          color: AppColors.brand,
+                          fontSize: 11,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Move it to the correct variant using the barcode field below.',
+                        style: getOutfitStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
+
         // Global Track Inventory (compact inline — no bordered container)
         _SwitchRow(
           icon: Icons.inventory_2_outlined,
@@ -778,6 +866,33 @@ class _AddProductsViewState extends State<_AddProductsView> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        const Divider(height: 1, color: AppColors.borderSoft),
+
+        // Product Image (optional)
+        _ToggleRow(
+          icon: Icons.image_outlined,
+          label: 'Product Image',
+          subtitle: 'Add a photo for this product',
+          enabled: _showImagePicker || state.imagePath != null,
+          onChanged: (v) {
+            setState(() => _showImagePicker = v);
+            if (!v) cubit.clearImage();
+          },
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          child: (_showImagePicker || state.imagePath != null)
+              ? Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: _ImagePickerField(
+                    imagePath: state.imagePath,
+                    onPick: (source) => cubit.pickImage(source),
+                    onClear: cubit.clearImage,
+                  ),
+                )
+              : const SizedBox(width: double.infinity, height: 0),
+        ),
         const Divider(height: 1, color: AppColors.borderSoft),
 
         // Barcodes
@@ -1383,6 +1498,7 @@ class _VariantForm {
   final TextEditingController cost = TextEditingController();
   final TextEditingController stock = TextEditingController(text: '0');
   final TextEditingController lowStock = TextEditingController();
+  final TextEditingController barcode = TextEditingController();
 
   void dispose() {
     name.dispose();
@@ -1390,6 +1506,7 @@ class _VariantForm {
     cost.dispose();
     stock.dispose();
     lowStock.dispose();
+    barcode.dispose();
   }
 }
 
@@ -1609,7 +1726,172 @@ class _VariantCardState extends State<_VariantCard> {
                   )
                 : const SizedBox(width: double.infinity, height: 0),
           ),
+
+          const SizedBox(height: 8),
+
+          // Barcode (per-variant, toggleable)
+          _BarcodeToggleField(controller: widget.form.barcode),
         ],
+      ),
+    );
+  }
+}
+
+// ── Product Image Picker ──────────────────────────────────────────────────────
+
+class _ImagePickerField extends StatelessWidget {
+  final String? imagePath;
+  final Future<void> Function(ImageSource source) onPick;
+  final VoidCallback onClear;
+
+  const _ImagePickerField({
+    required this.imagePath,
+    required this.onPick,
+    required this.onClear,
+  });
+
+  Future<void> _showSourcePicker(BuildContext context) async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.borderSoft,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined,
+                  color: AppColors.brand),
+              title: Text('Take Photo',
+                  style: getOutfitStyle(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600)),
+              onTap: () => Navigator.pop(sheetCtx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined,
+                  color: AppColors.brand),
+              title: Text('Choose from Gallery',
+                  style: getOutfitStyle(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600)),
+              onTap: () => Navigator.pop(sheetCtx, ImageSource.gallery),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (source != null) await onPick(source);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (imagePath != null) {
+      return Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.file(
+              File(imagePath!),
+              width: double.infinity,
+              height: 140,
+              fit: BoxFit.cover,
+              errorBuilder: (ctx, err, stack) => _emptyPicker(ctx),
+            ),
+          ),
+          Positioned(
+            top: 6,
+            right: 6,
+            child: GestureDetector(
+              onTap: onClear,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                padding: const EdgeInsets.all(4),
+                child: const Icon(Icons.close_rounded,
+                    color: Colors.white, size: 16),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 6,
+            right: 6,
+            child: GestureDetector(
+              onTap: () => _showSourcePicker(context),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.edit_outlined,
+                        color: Colors.white, size: 13),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Change',
+                      style: getOutfitStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return _emptyPicker(context);
+  }
+
+  Widget _emptyPicker(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _showSourcePicker(context),
+      child: Container(
+        width: double.infinity,
+        height: 100,
+        decoration: BoxDecoration(
+          color: AppColors.inputFill,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.borderSoft, width: 1.5),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.add_photo_alternate_outlined,
+                size: 28, color: AppColors.textMuted),
+            const SizedBox(height: 6),
+            Text(
+              'Tap to add image',
+              style: getOutfitStyle(
+                color: AppColors.textMuted,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

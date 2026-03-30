@@ -14,6 +14,7 @@ import 'package:pos/core/database/daos/products_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
 import 'package:pos/core/database/daos/transactions_dao.dart';
 import 'package:pos/core/theme/theme_controller.dart';
+import 'package:pos/core/services/cart_service.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_service.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
@@ -39,6 +40,7 @@ import 'package:pos/features/business/data/datasources/business_remote_ds.dart';
 import 'package:pos/features/business/data/repositories/business_repository_impl.dart';
 import 'package:pos/features/business/domain/repositories/business_repository.dart';
 import 'package:pos/features/business/presentation/bloc/business_bloc.dart';
+import 'package:pos/core/services/image_service.dart';
 import 'package:pos/features/products/data/datasources/products_remote_ds.dart';
 import 'package:pos/features/pos/data/datasources/transactions_remote_ds.dart';
 
@@ -83,6 +85,8 @@ Future<void> initDI() async {
   );
   sl.registerLazySingleton<TransactionsDao>(() => TransactionsDao(sl<AppDatabase>()));
 
+  sl.registerLazySingleton<CartService>(() => CartService());
+  sl.registerLazySingleton<ImageService>(() => ImageService());
   sl.registerLazySingleton<ConnectivityService>(() => ConnectivityService());
 
   sl.registerFactory(() => BranchCubit());

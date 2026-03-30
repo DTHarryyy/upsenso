@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math' show min;
 import 'package:flutter/material.dart';
 import 'package:pos/core/const/app_colors.dart';
@@ -26,6 +27,21 @@ class ProductCard extends StatelessWidget {
   }
 
 
+
+  Widget _imagePlaceholder(bool isFraction) {
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: AppColors.brandSoft,
+      child: Center(
+        child: Icon(
+          isFraction ? Icons.scale_outlined : Icons.inventory_2_outlined,
+          size: 32,
+          color: AppColors.brand.withAlpha(180),
+        ),
+      ),
+    );
+  }
 
   String _priceLabel() {
     final price = _minPrice();
@@ -69,21 +85,18 @@ class ProductCard extends StatelessWidget {
                 Expanded(
                   child: Stack(
                     children: [
-                      Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: AppColors.brandSoft,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Center(
-                          child: Icon(
-                            isFraction
-                                ? Icons.scale_outlined
-                                : Icons.inventory_2_outlined,
-                            size: 32,
-                            color: AppColors.brand.withAlpha(180),
-                          ),
-                        ),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: product.imagePath != null
+                            ? Image.file(
+                                File(product.imagePath!),
+                                width: double.infinity,
+                                height: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (ctx, err, stack) =>
+                                    _imagePlaceholder(isFraction),
+                              )
+                            : _imagePlaceholder(isFraction),
                       ),
 
                       if (!product.isActive)

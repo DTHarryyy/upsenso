@@ -4,8 +4,6 @@ class TransactionsRemoteDs {
   final SupabaseClient client;
   TransactionsRemoteDs(this.client);
 
-  /// Upsert a completed transaction to the existing Supabase `transactions` table.
-  /// Only Supabase-compatible fields are sent; local-only fields are omitted.
   Future<void> createTransaction({
     required String id,
     required String cashierId,
@@ -26,6 +24,5 @@ class TransactionsRemoteDs {
       'transaction_hash': null,
       'created_at': createdAt.toIso8601String(),
     });
-    // No items upsert — no remote transaction_items table exists
   }
 }

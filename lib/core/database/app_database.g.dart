@@ -3215,6 +3215,17 @@ class $ProductsTableTable extends ProductsTable
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _imagePathMeta = const VerificationMeta(
+    'imagePath',
+  );
+  @override
+  late final GeneratedColumn<String> imagePath = GeneratedColumn<String>(
+    'image_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _isActiveMeta = const VerificationMeta(
     'isActive',
   );
@@ -3289,6 +3300,7 @@ class $ProductsTableTable extends ProductsTable
     tax,
     sellBy,
     hasVariants,
+    imagePath,
     isActive,
     syncStatus,
     lastSyncAttempt,
@@ -3365,6 +3377,12 @@ class $ProductsTableTable extends ProductsTable
           data['has_variants']!,
           _hasVariantsMeta,
         ),
+      );
+    }
+    if (data.containsKey('image_path')) {
+      context.handle(
+        _imagePathMeta,
+        imagePath.isAcceptableOrUnknown(data['image_path']!, _imagePathMeta),
       );
     }
     if (data.containsKey('is_active')) {
@@ -3448,6 +3466,10 @@ class $ProductsTableTable extends ProductsTable
         DriftSqlType.bool,
         data['${effectivePrefix}has_variants'],
       )!,
+      imagePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}image_path'],
+      ),
       isActive: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_active'],
@@ -3488,6 +3510,10 @@ class ProductsTableData extends DataClass
   final double? tax;
   final String sellBy;
   final bool hasVariants;
+
+  /// Local file path to the product image, stored in app documents directory.
+  /// Null means no image. Offline-first — no network required.
+  final String? imagePath;
   final bool isActive;
 
   /// 0=pendingUpload, 1=pendingUpdate, 2=pendingDelete, 3=synced, 4=failed
@@ -3505,6 +3531,7 @@ class ProductsTableData extends DataClass
     this.tax,
     required this.sellBy,
     required this.hasVariants,
+    this.imagePath,
     required this.isActive,
     required this.syncStatus,
     this.lastSyncAttempt,
@@ -3531,6 +3558,9 @@ class ProductsTableData extends DataClass
     }
     map['sell_by'] = Variable<String>(sellBy);
     map['has_variants'] = Variable<bool>(hasVariants);
+    if (!nullToAbsent || imagePath != null) {
+      map['image_path'] = Variable<String>(imagePath);
+    }
     map['is_active'] = Variable<bool>(isActive);
     map['sync_status'] = Variable<int>(syncStatus);
     if (!nullToAbsent || lastSyncAttempt != null) {
@@ -3558,6 +3588,9 @@ class ProductsTableData extends DataClass
       tax: tax == null && nullToAbsent ? const Value.absent() : Value(tax),
       sellBy: Value(sellBy),
       hasVariants: Value(hasVariants),
+      imagePath: imagePath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(imagePath),
       isActive: Value(isActive),
       syncStatus: Value(syncStatus),
       lastSyncAttempt: lastSyncAttempt == null && nullToAbsent
@@ -3585,6 +3618,7 @@ class ProductsTableData extends DataClass
       tax: serializer.fromJson<double?>(json['tax']),
       sellBy: serializer.fromJson<String>(json['sellBy']),
       hasVariants: serializer.fromJson<bool>(json['hasVariants']),
+      imagePath: serializer.fromJson<String?>(json['imagePath']),
       isActive: serializer.fromJson<bool>(json['isActive']),
       syncStatus: serializer.fromJson<int>(json['syncStatus']),
       lastSyncAttempt: serializer.fromJson<DateTime?>(json['lastSyncAttempt']),
@@ -3605,6 +3639,7 @@ class ProductsTableData extends DataClass
       'tax': serializer.toJson<double?>(tax),
       'sellBy': serializer.toJson<String>(sellBy),
       'hasVariants': serializer.toJson<bool>(hasVariants),
+      'imagePath': serializer.toJson<String?>(imagePath),
       'isActive': serializer.toJson<bool>(isActive),
       'syncStatus': serializer.toJson<int>(syncStatus),
       'lastSyncAttempt': serializer.toJson<DateTime?>(lastSyncAttempt),
@@ -3623,6 +3658,7 @@ class ProductsTableData extends DataClass
     Value<double?> tax = const Value.absent(),
     String? sellBy,
     bool? hasVariants,
+    Value<String?> imagePath = const Value.absent(),
     bool? isActive,
     int? syncStatus,
     Value<DateTime?> lastSyncAttempt = const Value.absent(),
@@ -3638,6 +3674,7 @@ class ProductsTableData extends DataClass
     tax: tax.present ? tax.value : this.tax,
     sellBy: sellBy ?? this.sellBy,
     hasVariants: hasVariants ?? this.hasVariants,
+    imagePath: imagePath.present ? imagePath.value : this.imagePath,
     isActive: isActive ?? this.isActive,
     syncStatus: syncStatus ?? this.syncStatus,
     lastSyncAttempt: lastSyncAttempt.present
@@ -3663,6 +3700,7 @@ class ProductsTableData extends DataClass
       hasVariants: data.hasVariants.present
           ? data.hasVariants.value
           : this.hasVariants,
+      imagePath: data.imagePath.present ? data.imagePath.value : this.imagePath,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
       syncStatus: data.syncStatus.present
           ? data.syncStatus.value
@@ -3689,6 +3727,7 @@ class ProductsTableData extends DataClass
           ..write('tax: $tax, ')
           ..write('sellBy: $sellBy, ')
           ..write('hasVariants: $hasVariants, ')
+          ..write('imagePath: $imagePath, ')
           ..write('isActive: $isActive, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('lastSyncAttempt: $lastSyncAttempt, ')
@@ -3709,6 +3748,7 @@ class ProductsTableData extends DataClass
     tax,
     sellBy,
     hasVariants,
+    imagePath,
     isActive,
     syncStatus,
     lastSyncAttempt,
@@ -3728,6 +3768,7 @@ class ProductsTableData extends DataClass
           other.tax == this.tax &&
           other.sellBy == this.sellBy &&
           other.hasVariants == this.hasVariants &&
+          other.imagePath == this.imagePath &&
           other.isActive == this.isActive &&
           other.syncStatus == this.syncStatus &&
           other.lastSyncAttempt == this.lastSyncAttempt &&
@@ -3745,6 +3786,7 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
   final Value<double?> tax;
   final Value<String> sellBy;
   final Value<bool> hasVariants;
+  final Value<String?> imagePath;
   final Value<bool> isActive;
   final Value<int> syncStatus;
   final Value<DateTime?> lastSyncAttempt;
@@ -3761,6 +3803,7 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
     this.tax = const Value.absent(),
     this.sellBy = const Value.absent(),
     this.hasVariants = const Value.absent(),
+    this.imagePath = const Value.absent(),
     this.isActive = const Value.absent(),
     this.syncStatus = const Value.absent(),
     this.lastSyncAttempt = const Value.absent(),
@@ -3778,6 +3821,7 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
     this.tax = const Value.absent(),
     this.sellBy = const Value.absent(),
     this.hasVariants = const Value.absent(),
+    this.imagePath = const Value.absent(),
     this.isActive = const Value.absent(),
     this.syncStatus = const Value.absent(),
     this.lastSyncAttempt = const Value.absent(),
@@ -3797,6 +3841,7 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
     Expression<double>? tax,
     Expression<String>? sellBy,
     Expression<bool>? hasVariants,
+    Expression<String>? imagePath,
     Expression<bool>? isActive,
     Expression<int>? syncStatus,
     Expression<DateTime>? lastSyncAttempt,
@@ -3814,6 +3859,7 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
       if (tax != null) 'tax': tax,
       if (sellBy != null) 'sell_by': sellBy,
       if (hasVariants != null) 'has_variants': hasVariants,
+      if (imagePath != null) 'image_path': imagePath,
       if (isActive != null) 'is_active': isActive,
       if (syncStatus != null) 'sync_status': syncStatus,
       if (lastSyncAttempt != null) 'last_sync_attempt': lastSyncAttempt,
@@ -3833,6 +3879,7 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
     Value<double?>? tax,
     Value<String>? sellBy,
     Value<bool>? hasVariants,
+    Value<String?>? imagePath,
     Value<bool>? isActive,
     Value<int>? syncStatus,
     Value<DateTime?>? lastSyncAttempt,
@@ -3850,6 +3897,7 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
       tax: tax ?? this.tax,
       sellBy: sellBy ?? this.sellBy,
       hasVariants: hasVariants ?? this.hasVariants,
+      imagePath: imagePath ?? this.imagePath,
       isActive: isActive ?? this.isActive,
       syncStatus: syncStatus ?? this.syncStatus,
       lastSyncAttempt: lastSyncAttempt ?? this.lastSyncAttempt,
@@ -3889,6 +3937,9 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
     if (hasVariants.present) {
       map['has_variants'] = Variable<bool>(hasVariants.value);
     }
+    if (imagePath.present) {
+      map['image_path'] = Variable<String>(imagePath.value);
+    }
     if (isActive.present) {
       map['is_active'] = Variable<bool>(isActive.value);
     }
@@ -3922,6 +3973,7 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
           ..write('tax: $tax, ')
           ..write('sellBy: $sellBy, ')
           ..write('hasVariants: $hasVariants, ')
+          ..write('imagePath: $imagePath, ')
           ..write('isActive: $isActive, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('lastSyncAttempt: $lastSyncAttempt, ')
@@ -8338,6 +8390,7 @@ typedef $$ProductsTableTableCreateCompanionBuilder =
       Value<double?> tax,
       Value<String> sellBy,
       Value<bool> hasVariants,
+      Value<String?> imagePath,
       Value<bool> isActive,
       Value<int> syncStatus,
       Value<DateTime?> lastSyncAttempt,
@@ -8356,6 +8409,7 @@ typedef $$ProductsTableTableUpdateCompanionBuilder =
       Value<double?> tax,
       Value<String> sellBy,
       Value<bool> hasVariants,
+      Value<String?> imagePath,
       Value<bool> isActive,
       Value<int> syncStatus,
       Value<DateTime?> lastSyncAttempt,
@@ -8415,6 +8469,11 @@ class $$ProductsTableTableFilterComposer
 
   ColumnFilters<bool> get hasVariants => $composableBuilder(
     column: $table.hasVariants,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get imagePath => $composableBuilder(
+    column: $table.imagePath,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8498,6 +8557,11 @@ class $$ProductsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get imagePath => $composableBuilder(
+    column: $table.imagePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isActive => $composableBuilder(
     column: $table.isActive,
     builder: (column) => ColumnOrderings(column),
@@ -8566,6 +8630,9 @@ class $$ProductsTableTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get imagePath =>
+      $composableBuilder(column: $table.imagePath, builder: (column) => column);
+
   GeneratedColumn<bool> get isActive =>
       $composableBuilder(column: $table.isActive, builder: (column) => column);
 
@@ -8632,6 +8699,7 @@ class $$ProductsTableTableTableManager
                 Value<double?> tax = const Value.absent(),
                 Value<String> sellBy = const Value.absent(),
                 Value<bool> hasVariants = const Value.absent(),
+                Value<String?> imagePath = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<int> syncStatus = const Value.absent(),
                 Value<DateTime?> lastSyncAttempt = const Value.absent(),
@@ -8648,6 +8716,7 @@ class $$ProductsTableTableTableManager
                 tax: tax,
                 sellBy: sellBy,
                 hasVariants: hasVariants,
+                imagePath: imagePath,
                 isActive: isActive,
                 syncStatus: syncStatus,
                 lastSyncAttempt: lastSyncAttempt,
@@ -8666,6 +8735,7 @@ class $$ProductsTableTableTableManager
                 Value<double?> tax = const Value.absent(),
                 Value<String> sellBy = const Value.absent(),
                 Value<bool> hasVariants = const Value.absent(),
+                Value<String?> imagePath = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<int> syncStatus = const Value.absent(),
                 Value<DateTime?> lastSyncAttempt = const Value.absent(),
@@ -8682,6 +8752,7 @@ class $$ProductsTableTableTableManager
                 tax: tax,
                 sellBy: sellBy,
                 hasVariants: hasVariants,
+                imagePath: imagePath,
                 isActive: isActive,
                 syncStatus: syncStatus,
                 lastSyncAttempt: lastSyncAttempt,

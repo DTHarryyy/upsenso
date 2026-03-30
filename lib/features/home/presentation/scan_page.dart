@@ -67,7 +67,6 @@ class ScanPage extends StatelessWidget {
                   height: 48,
                   child: FilledButton.icon(
                     onPressed: () {
-                      // TODO: Implement QR scanner functionality
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('QR Scanner - Coming Soon!'),
@@ -82,7 +81,7 @@ class ScanPage extends StatelessWidget {
                 const SizedBox(height: 16),
                 TextButton.icon(
                   onPressed: () {
-                    // TODO: Implement manual entry
+                    // TODO: Implement manual entry 
                   },
                   icon: const Icon(Icons.keyboard),
                   label: const Text('Enter Code Manually'),

@@ -19,6 +19,11 @@ class ProductsTable extends Table {
 
   BoolColumn get hasVariants =>
       boolean().withDefault(const Constant(false))();
+
+  /// Local file path to the product image, stored in app documents directory.
+  /// Null means no image. Offline-first — no network required.
+  TextColumn get imagePath => text().nullable()();
+
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
 
   /// 0=pendingUpload, 1=pendingUpdate, 2=pendingDelete, 3=synced, 4=failed

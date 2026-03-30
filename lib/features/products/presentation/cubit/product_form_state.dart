@@ -14,6 +14,7 @@ class ProductFormState {
   final bool isSaving;
   final bool isSuccess;
   final String? error;
+  final String? imagePath;
 
   const ProductFormState({
     required this.mode,
@@ -27,6 +28,7 @@ class ProductFormState {
     required this.isSaving,
     required this.isSuccess,
     this.error,
+    this.imagePath,
   });
 
   factory ProductFormState.initial() => const ProductFormState(
@@ -41,6 +43,7 @@ class ProductFormState {
         isSaving: false,
         isSuccess: false,
         error: null,
+        imagePath: null,
       );
 
   ProductFormState copyWith({
@@ -58,6 +61,8 @@ class ProductFormState {
     bool? isSuccess,
     String? error,
     bool clearError = false,
+    String? imagePath,
+    bool clearImagePath = false,
   }) {
     return ProductFormState(
       mode: mode ?? this.mode,
@@ -73,6 +78,7 @@ class ProductFormState {
       isSaving: isSaving ?? this.isSaving,
       isSuccess: isSuccess ?? this.isSuccess,
       error: clearError ? null : (error ?? this.error),
+      imagePath: clearImagePath ? null : (imagePath ?? this.imagePath),
     );
   }
 }
@@ -85,6 +91,7 @@ class VariantFormData {
   final String? costPrice;
   final String? stock;
   final String? lowStockAlert;
+  final String? barcode;
 
   const VariantFormData({
     required this.name,
@@ -92,6 +99,7 @@ class VariantFormData {
     this.costPrice,
     this.stock,
     this.lowStockAlert,
+    this.barcode,
   });
 }
 
@@ -114,6 +122,7 @@ class ProductFormData {
   final List<String> barcodes;
   final String? sku;
   final List<VariantFormData> variants;
+  final String? imagePath;
 
   const ProductFormData({
     required this.name,
@@ -129,5 +138,6 @@ class ProductFormData {
     required this.barcodes,
     this.sku,
     required this.variants,
+    this.imagePath,
   });
 }

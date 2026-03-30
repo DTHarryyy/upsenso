@@ -6,6 +6,8 @@ import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/categories_dao.dart';
 import 'package:pos/core/database/daos/products_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:pos/core/services/image_service.dart';
 import 'product_form_state.dart';
 
 class ProductFormCubit extends Cubit<ProductFormState> {
@@ -18,6 +20,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   final _categoriesDao = sl<CategoriesDao>();
   final _productsDao = sl<ProductsDao>();
   final _productVariantsDao = sl<ProductVariantsDao>();
+  final _imageService = sl<ImageService>();
 
   // ── Category loading ──────────────────────────────────────────────────────
 
@@ -57,6 +60,15 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   void selectCategory(String? id) =>
       emit(state.copyWith(selectedCategoryId: id));
 
+  // ── Image ─────────────────────────────────────────────────────────────────
+
+  Future<void> pickImage(ImageSource source) async {
+    final path = await _imageService.pickAndSaveImage(source: source);
+    if (path != null) emit(state.copyWith(imagePath: path));
+  }
+
+  void clearImage() => emit(state.copyWith(clearImagePath: true));
+
   // ── SKU generation ────────────────────────────────────────────────────────
 
   String generateSku(String name) {
@@ -93,8 +105,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       final isFraction = data.sellBy == 'fraction';
       final hasVariants = isAdvanced && state.hasVariants;
 
-      // Build barcode string (comma-separated non-empty entries)
-      final barcode = data.barcodes
+      // Build barcode string for the Default variant (Advanced + No Variants).
+      // When hasVariants=true, barcodes live at variant level — not product level.
+      final variantBarcode = data.barcodes
           .map((s) => s.trim())
           .where((s) => s.isNotEmpty)
           .join(',');
@@ -104,7 +117,8 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           ? double.tryParse(data.taxPercent!)
           : null;
 
-      // Insert product row
+      // Insert product row — product-level barcode is never used when hasVariants,
+      // since POS lookup uses variant-level barcodes.
       await _productsDao.insertProduct(
         ProductsTableCompanion.insert(
           id: productId,
@@ -112,16 +126,17 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           name: data.name.trim(),
           categoryId: Value(state.selectedCategoryId),
           sku: Value(data.sku?.trim().isNotEmpty == true ? data.sku!.trim() : null),
-          barcode: Value(barcode.isNotEmpty ? barcode : null),
+          barcode: const Value(null),
           hasVariants: Value(hasVariants),
           tax: Value(tax),
           sellBy: Value(data.sellBy),
+          imagePath: Value(data.imagePath),
           isActive: const Value(true),
         ),
       );
 
       if (hasVariants) {
-        // Advanced + variants ON: one row per variant
+        // Advanced + variants ON: one row per variant with per-variant barcode.
         final companions = data.variants.map((v) {
           final vPrice = double.tryParse(v.price) ?? 0.0;
           final vCost = (v.costPrice?.trim().isNotEmpty == true)
@@ -136,6 +151,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           final vLowAlert = (v.lowStockAlert?.trim().isNotEmpty == true)
               ? int.tryParse(v.lowStockAlert!)
               : null;
+          final vBarcode = (v.barcode?.trim().isNotEmpty == true)
+              ? v.barcode!.trim()
+              : null;
           return ProductVariantsTableCompanion.insert(
             id: const Uuid().v4(),
             productId: productId,
@@ -144,6 +162,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             price: Value(vPrice),
             costPrice: Value(vCost),
             retailPrice: const Value(null),
+            barcode: Value(vBarcode),
             stock: Value(vStockInt),
             stockDecimal: Value(vStockReal),
             lowStockAlert: Value(vLowAlert),
@@ -155,7 +174,8 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         }).toList();
         await _productVariantsDao.insertVariants(companions);
       } else if (isAdvanced) {
-        // Advanced + variants OFF: single "Default" variant with full pricing
+        // Advanced + variants OFF: single "Default" variant.
+        // Barcodes from More Options are saved at variant level (not product level).
         final price = double.tryParse(data.sellingPrice ?? '') ?? 0.0;
         final cost = (data.costPrice?.trim().isNotEmpty == true)
             ? double.tryParse(data.costPrice!)
@@ -181,6 +201,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             price: Value(price),
             costPrice: Value(cost),
             retailPrice: Value(retail),
+            barcode: Value(variantBarcode.isNotEmpty ? variantBarcode : null),
             stock: Value(stockInt),
             stockDecimal: Value(stockReal),
             lowStockAlert: Value(lowAlert),

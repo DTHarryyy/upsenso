@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:pos/core/config/di.dart';
+import 'package:pos/core/services/cart_service.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/breakpoint.dart';
@@ -15,7 +16,6 @@ import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:pos/features/pos/data/models/cart_model.dart';
 import 'package:pos/features/pos/presentation/pages/checkout_payment_page.dart';
 
 class PosTerminalPage extends StatefulWidget {
@@ -41,23 +41,30 @@ class _PosTerminalPageState extends State<PosTerminalPage>
   final _variantsDao = sl<ProductVariantsDao>();
   final _productsDao = sl<ProductsDao>();
 
+  late final CartService _cartService;
+
   bool _permissionDenied = false;
   bool _torchEnabled = false;
   bool _isCollapsed = false;
   bool _scanning = false;
   DateTime? _lastScanTime;
   String? _lastScannedCode;
-  final List<CartItem> _cartItems = [];
 
   @override
   void initState() {
     super.initState();
+    _cartService = sl<CartService>();
+    _cartService.addListener(_onCartChanged);
     WidgetsBinding.instance.addObserver(this);
     if (widget.isActive) {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _checkCameraPermission(),
       );
     }
+  }
+
+  void _onCartChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -77,13 +84,17 @@ class _PosTerminalPageState extends State<PosTerminalPage>
   }
 
   Future<void> _checkCameraPermission() async {
-    final status = await Permission.camera.request();
+    var status = await Permission.camera.status;
+    if (!status.isGranted) {
+      status = await Permission.camera.request();
+    }
     if (!mounted) return;
     setState(() => _permissionDenied = !status.isGranted);
   }
 
   @override
   void dispose() {
+    _cartService.removeListener(_onCartChanged);
     WidgetsBinding.instance.removeObserver(this);
     _scannerController.dispose();
     _sheetController.dispose();
@@ -91,8 +102,8 @@ class _PosTerminalPageState extends State<PosTerminalPage>
     super.dispose();
   }
 
-  double get _subtotal => _cartItems.fold(0.0, (s, i) => s + i.total);
-  double get _tax => _cartItems.fold(0.0, (s, i) => s + i.taxAmount);
+  double get _subtotal => _cartService.items.fold(0.0, (s, i) => s + i.total);
+  double get _tax => _cartService.items.fold(0.0, (s, i) => s + i.taxAmount);
   double get _grandTotal => _subtotal + _tax;
 
   String _fmt(double v) => '₱${v.toStringAsFixed(2).replaceAllMapped(
@@ -105,7 +116,9 @@ class _PosTerminalPageState extends State<PosTerminalPage>
     setState(() => _torchEnabled = !_torchEnabled);
   }
 
-  void _removeItem(int i) => setState(() => _cartItems.removeAt(i));
+  void _removeItem(int i) {
+    _cartService.remove(_cartService.items[i].variantId);
+  }
 
   void _tapDragHandle() {
     if (!_sheetController.isAttached) return;
@@ -118,14 +131,14 @@ class _PosTerminalPageState extends State<PosTerminalPage>
   }
 
   Future<void> _clearCart() async {
-    if (_cartItems.isEmpty) return;
+    if (_cartService.isEmpty) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Clear Cart'),
         content: Text(
-          'Remove all ${_cartItems.length} '
-          '${_cartItems.length == 1 ? 'item' : 'items'} from the order?',
+          'Remove all ${_cartService.itemCount} '
+          '${_cartService.itemCount == 1 ? 'item' : 'items'} from the order?',
         ),
         actions: [
           TextButton(
@@ -141,7 +154,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
       ),
     );
     if (confirmed == true && mounted) {
-      setState(() => _cartItems.clear());
+      _cartService.clear();
     }
   }
 
@@ -149,23 +162,26 @@ class _PosTerminalPageState extends State<PosTerminalPage>
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => CheckoutPaymentPage(
-          items: List.unmodifiable(_cartItems),
+          items: List.from(_cartService.items),
           subtotal: _subtotal,
           tax: _tax,
           total: _grandTotal,
-          onPaymentConfirmed: () => setState(() => _cartItems.clear()),
+          onPaymentConfirmed: () {
+            if (mounted) _cartService.clear();
+          },
         ),
       ),
     );
   }
 
-  void _increment(int i) => setState(() => _cartItems[i].qty += 1);
+  void _increment(int i) {
+    final item = _cartService.items[i];
+    _cartService.setQty(item.variantId, item.qty + 1);
+  }
+
   void _decrement(int i) {
-    if (_cartItems[i].qty <= 1) {
-      _removeItem(i);
-    } else {
-      setState(() => _cartItems[i].qty -= 1);
-    }
+    final item = _cartService.items[i];
+    _cartService.setQty(item.variantId, item.qty - 1);
   }
 
   Future<void> _onBarcodeDetected(BarcodeCapture capture) async {
@@ -186,6 +202,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
     _scanning = true;
 
     try {
+      if (!mounted) return;
       final authState = context.read<AuthBloc>().state;
       if (authState is! AuthAuthenticated) return;
       final businessId = authState.user.businessId;
@@ -250,35 +267,33 @@ class _PosTerminalPageState extends State<PosTerminalPage>
     required double unitPrice,
     double? taxRate,
   }) {
-    setState(() {
-      final idx = _cartItems.indexWhere((i) => i.variantId == variantId);
-      if (idx >= 0) {
-        _cartItems[idx].qty += 1;
-      } else {
-        _cartItems.add(CartItem(
-          variantId: variantId,
-          name: name,
-          variant: variant,
-          unitPrice: unitPrice,
-          taxRate: taxRate,
-        ));
-      }
-    });
+    _cartService.addOrIncrement(
+      variantId: variantId,
+      name: name,
+      variant: variant,
+      unitPrice: unitPrice,
+      taxRate: taxRate,
+    );
     final label = variant.isNotEmpty ? '$name · $variant' : name;
-    _showFeedback("$label added to cart");
+    _showFeedback('$label added to cart');
     if (_isCollapsed && _sheetController.isAttached) {
-      _sheetController.animateTo(
-        0.50,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
+      try {
+        _sheetController.animateTo(
+          0.50,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      } catch (_) {}
     }
   }
 
   void _showFeedback(String message, {bool isError = false}) {
     if (!mounted) return;
-      StatusSnack.show(context, type: StatusType.success, message: message);
-    
+    StatusSnack.show(
+      context,
+      type: isError ? StatusType.error : StatusType.success,
+      message: message,
+    );
   }
 
   Future<void> _showAddProductDialog(String barcode) async {
@@ -477,7 +492,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
             : LayoutBuilder(
                 builder: (ctx, constraints) {
                   final showFooter =
-                      _cartItems.isNotEmpty && constraints.maxHeight >= 340;
+                      _cartService.isNotEmpty && constraints.maxHeight >= 340;
                   return Column(
                     children: [
                       GestureDetector(
@@ -519,7 +534,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
                       ),
                       _buildCartHeader(),
                       Expanded(
-                        child: _cartItems.isEmpty
+                        child: _cartService.isEmpty
                             ? _buildCartEmptyState()
                             : ListView.separated(
                                 controller: sc,
@@ -528,7 +543,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
                                   right: 16,
                                   bottom: 12,
                                 ),
-                                itemCount: _cartItems.length,
+                                itemCount: _cartService.itemCount,
                                 separatorBuilder: (_, _) => const Divider(
                                     height: 1, color: AppColors.borderSoft),
                                 itemBuilder: (_, i) =>
@@ -555,7 +570,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
         child: Row(
           children: [
             Icon(
-              _cartItems.isEmpty
+              _cartService.isEmpty
                   ? Icons.shopping_cart_outlined
                   : Icons.shopping_cart_rounded,
               size: 20,
@@ -563,7 +578,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
             ),
             const SizedBox(width: 8),
             Text(
-              '${_cartItems.length} ${_cartItems.length == 1 ? 'item' : 'items'}',
+              '${_cartService.itemCount} ${_cartService.itemCount == 1 ? 'item' : 'items'}',
               style: getOutfitStyle(
                 color: AppColors.textSecondary,
                 fontWeight: FontWeight.w600,
@@ -613,7 +628,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              '${_cartItems.length} ${_cartItems.length == 1 ? 'item' : 'items'}',
+              '${_cartService.itemCount} ${_cartService.itemCount == 1 ? 'item' : 'items'}',
               style: getOutfitStyle(
                 color: AppColors.brand,
                 fontWeight: FontWeight.w600,
@@ -622,7 +637,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
             ),
           ),
           const Spacer(),
-          if (_cartItems.isNotEmpty)
+          if (_cartService.isNotEmpty)
             IconButton(
               icon: const Icon(
                 Icons.delete_outline_rounded,
@@ -683,10 +698,10 @@ class _PosTerminalPageState extends State<PosTerminalPage>
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
           child: AppFilledButton(
-            label: _cartItems.isEmpty
+            label: _cartService.isEmpty
                 ? 'Checkout'
                 : 'Checkout · ${_fmt(_grandTotal)}',
-            onPressed: _cartItems.isEmpty ? null : _checkout,
+            onPressed: _cartService.isEmpty ? null : _checkout,
           ),
         ),
       ],
@@ -699,12 +714,12 @@ class _PosTerminalPageState extends State<PosTerminalPage>
       children: [
         _buildCartHeader(),
         Expanded(
-          child: _cartItems.isEmpty
+          child: _cartService.isEmpty
               ? _buildCartEmptyState()
               : ListView.separated(
                   controller: sc,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: _cartItems.length,
+                  itemCount: _cartService.itemCount,
                   separatorBuilder: (_, _) =>
                       const Divider(height: 1, color: AppColors.borderSoft),
                   itemBuilder: (_, i) => _buildDismissibleItemRow(i),
@@ -749,7 +764,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
 
   Widget _buildDismissibleItemRow(int i) {
     return Dismissible(
-      key: ValueKey(_cartItems[i].variantId),
+      key: ValueKey(_cartService.items[i].variantId),
       direction: DismissDirection.endToStart,
       background: Container(
         alignment: Alignment.centerRight,
@@ -767,7 +782,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
   }
 
   Widget _buildCartItemRow(int index) {
-    final item = _cartItems[index];
+    final item = _cartService.items[index];
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(

@@ -33,6 +33,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   int _pendingSyncCount = 0;
   late final ConnectivityService _connectivityService;
   StreamSubscription<int>? _syncCountSub;
+  StreamSubscription<bool>? _connectivitySub;
 
   @override
   void initState() {
@@ -49,11 +50,12 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   @override
   void dispose() {
     _syncCountSub?.cancel();
+    _connectivitySub?.cancel();
     super.dispose();
   }
 
   void _setupConnectivityListener() {
-    _connectivityService.onConnectivityChanged.listen((isConnected) {
+    _connectivitySub = _connectivityService.onConnectivityChanged.listen((isConnected) {
       if (mounted && _isOnline != isConnected) {
         setState(() {
           _isOnline = isConnected;

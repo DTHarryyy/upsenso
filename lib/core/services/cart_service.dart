@@ -1,0 +1,64 @@
+import 'package:flutter/foundation.dart';
+import 'package:pos/features/pos/data/models/cart_model.dart';
+
+/// Singleton cart shared across all pages (Products, POS terminal, etc.).
+/// Notifies listeners whenever items change so any widget can rebuild.
+class CartService extends ChangeNotifier {
+  final List<CartItem> _items = [];
+
+  List<CartItem> get items => List.unmodifiable(_items);
+
+  bool get isEmpty => _items.isEmpty;
+  bool get isNotEmpty => _items.isNotEmpty;
+  int get itemCount => _items.length;
+
+  /// Adds a new item or increments quantity of an existing one.
+  void addOrIncrement({
+    required String variantId,
+    required String name,
+    required String variant,
+    required double unitPrice,
+    double? taxRate,
+    double qty = 1,
+  }) {
+    final idx = _items.indexWhere((i) => i.variantId == variantId);
+    if (idx >= 0) {
+      _items[idx].qty += qty;
+    } else {
+      final item = CartItem(
+        variantId: variantId,
+        name: name,
+        variant: variant,
+        unitPrice: unitPrice,
+        taxRate: taxRate,
+      );
+      item.qty = qty;
+      _items.add(item);
+    }
+    notifyListeners();
+  }
+
+  /// Removes an item by variantId.
+  void remove(String variantId) {
+    _items.removeWhere((i) => i.variantId == variantId);
+    notifyListeners();
+  }
+
+  /// Sets the quantity of an item. Removes the item if qty <= 0.
+  void setQty(String variantId, double qty) {
+    final idx = _items.indexWhere((i) => i.variantId == variantId);
+    if (idx < 0) return;
+    if (qty <= 0) {
+      _items.removeAt(idx);
+    } else {
+      _items[idx].qty = qty;
+    }
+    notifyListeners();
+  }
+
+  /// Clears all cart items (call after successful checkout).
+  void clear() {
+    _items.clear();
+    notifyListeners();
+  }
+}
