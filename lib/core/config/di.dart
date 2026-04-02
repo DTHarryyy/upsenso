@@ -44,6 +44,12 @@ import 'package:pos/core/services/image_service.dart';
 import 'package:pos/features/products/data/datasources/products_remote_ds.dart';
 import 'package:pos/features/pos/data/datasources/transactions_remote_ds.dart';
 import 'package:pos/features/pos/domain/usecases/resolve_barcode_use_case.dart';
+import 'package:pos/features/ai_assistant/services/llm_engine.dart';
+import 'package:pos/features/ai_assistant/services/llm_service.dart';
+import 'package:pos/features/ai_assistant/services/model_manager.dart';
+import 'package:pos/features/ai_assistant/services/model_download_service.dart';
+import 'package:pos/features/ai_assistant/services/ai_tool_service.dart';
+import 'package:pos/features/ai_assistant/services/ai_pipeline.dart';
 
 final sl = GetIt.instance;
 
@@ -179,6 +185,30 @@ Future<void> initDI() async {
       transactionsRemoteDs: sl<TransactionsRemoteDs>(),
       connectivityService: sl<ConnectivityService>(),
     )..init(),
+  );
+
+  // ── AI Assistant services ──────────────────────────────────────────────
+  sl.registerLazySingleton<LlmEngine>(() => LlmEngine());
+  sl.registerLazySingleton<ModelManager>(() => ModelManager());
+  sl.registerLazySingleton<ModelDownloadService>(
+    () => ModelDownloadService(modelManager: sl<ModelManager>()),
+  );
+  sl.registerLazySingleton<LlmService>(
+    () => LlmService(engine: sl<LlmEngine>(), modelManager: sl<ModelManager>()),
+  );
+  sl.registerLazySingleton<AiToolService>(
+    () => AiToolService(
+      productsDao: sl<ProductsDao>(),
+      variantsDao: sl<ProductVariantsDao>(),
+      transactionsDao: sl<TransactionsDao>(),
+      db: sl<AppDatabase>(),
+    ),
+  );
+  sl.registerLazySingleton<AiPipeline>(
+    () => AiPipeline(
+      llmService: sl<LlmService>(),
+      toolService: sl<AiToolService>(),
+    ),
   );
 
   // Ensures businessId is available immediately on startup
