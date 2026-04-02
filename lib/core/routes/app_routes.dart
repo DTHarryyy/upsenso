@@ -21,4 +21,7 @@ class AppRoutes {
   static const String scan = '/scan';
   static const String inventory = '/inventory';
   static const String more = '/more';
+
+  // AI Assistant
+  static const String aiChat = '/ai-chat';
 }

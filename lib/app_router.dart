@@ -4,6 +4,11 @@ import 'package:go_router/go_router.dart';
 import 'package:pos/core/const/app_key.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/routes/app_routes.dart';
+import 'package:pos/features/ai_assistant/pagges/ai_chat_page.dart';
+import 'package:pos/features/ai_assistant/bloc/ai_chat_bloc.dart';
+import 'package:pos/features/ai_assistant/services/ai_pipeline.dart';
+import 'package:pos/features/ai_assistant/services/model_download_service.dart';
+import 'package:pos/features/ai_assistant/services/model_manager.dart';
 import 'package:pos/features/auth/domain/repositories/auth_repository.dart';
 import 'package:pos/features/auth/presentation/sign_in.dart';
 import 'package:pos/features/auth/presentation/sign_up.dart';
@@ -171,6 +176,24 @@ class AppRouter {
         builder: (context, state) => AddProductsPage(
           productToEdit: state.extra as ProductsTableData?,
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.aiChat,
+        builder: (context, _) {
+          final authRepo = sl<AuthRepository>();
+          final currentUser = authRepo.getCurrentUser();
+          return BlocProvider(
+            create: (_) => AiChatBloc(
+              pipeline: sl<AiPipeline>(),
+              downloadService: sl<ModelDownloadService>(),
+              modelManager: sl<ModelManager>(),
+              businessId: currentUser?.businessId ?? '',
+              cashierId: currentUser?.id ?? '',
+              branchId: currentUser?.branchId,
+            ),
+            child: const AiChatPage(),
+          );
+        },
       ),
     ],
   );

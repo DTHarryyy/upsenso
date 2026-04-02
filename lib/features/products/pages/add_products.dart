@@ -1,8 +1,5 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pos/core/const/app_colors.dart';
@@ -14,8 +11,16 @@ import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
+import 'package:pos/features/products/data/holder/variant_form.dart';
 import 'package:pos/features/products/presentation/cubit/product_form_cubit.dart';
 import 'package:pos/features/products/presentation/cubit/product_form_state.dart';
+import 'package:pos/features/products/widgets/barcode_togggle_section.dart';
+import 'package:pos/features/products/widgets/barcode_toggle_field.dart';
+import 'package:pos/features/products/widgets/image_picker_field.dart';
+import 'package:pos/features/products/widgets/sku_section_toggle.dart';
+import 'package:pos/features/products/widgets/switch_row.dart';
+import 'package:pos/features/products/widgets/toggle_row.dart';
+import 'package:pos/features/products/widgets/variant_card_state.dart';
 
 String _formatDate(DateTime d) =>
     '${d.day.toString().padLeft(2, '0')}/'
@@ -93,7 +98,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
   bool _showImagePicker = false;
 
   // Variants (advanced + hasVariants)
-  final List<_VariantForm> _variants = [_VariantForm()];
+  final List<VariantForm> _variants = [VariantForm()];
 
   @override
   void initState() {
@@ -133,7 +138,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
       // Advanced + variants: populate variant forms
       _variants.clear();
       for (final v in variants.where((v) => v.isActive)) {
-        final form = _VariantForm();
+        final form = VariantForm();
         form.name.text = v.name == 'Default' ? '' : v.name;
         form.price.text = v.price.toStringAsFixed(2);
         if (v.costPrice != null) form.cost.text = v.costPrice!.toStringAsFixed(2);
@@ -142,7 +147,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
         if (v.barcode != null) form.barcode.text = v.barcode!;
         _variants.add(form);
       }
-      if (_variants.isEmpty) _variants.add(_VariantForm());
+      if (_variants.isEmpty) _variants.add(VariantForm());
     } else {
       // Simple or advanced no-variants
       final v = variants.firstOrNull;
@@ -542,11 +547,11 @@ class _AddProductsViewState extends State<_AddProductsView> {
         const SizedBox(height: 10),
 
         // Barcode (optional toggle)
-        _BarcodeToggleField(controller: _simpleBarcodeController),
+        BarcodeToggleField(controller: _simpleBarcodeController),
         const SizedBox(height: 10),
 
         // Product Image (optional, toggleable) — bottom of card
-        _SwitchRow(
+        SwitchRow(
           icon: Icons.image_outlined,
           label: 'Product Image',
           subtitle: 'Optional photo for this product',
@@ -562,7 +567,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
           child: (_showImagePicker || state.imagePath != null)
               ? Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: _ImagePickerField(
+                  child: ImagePickerField(
                     imagePath: state.imagePath,
                     onPick: (source) => cubit.pickImage(source),
                     onClear: cubit.clearImage,
@@ -624,7 +629,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
         const SizedBox(height: 14),
 
         // Has Variants toggle
-        _SwitchRow(
+        SwitchRow(
           icon: Icons.tune_rounded,
           label: 'Has Variants',
           subtitle: 'Each variant has its own price  (e.g. Small / Medium / Large)',
@@ -678,7 +683,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
         const SizedBox(height: 14),
 
         // Track Inventory
-        _SwitchRow(
+        SwitchRow(
           icon: Icons.inventory_2_outlined,
           label: 'Track Inventory',
           subtitle: 'Manage stock levels',
@@ -850,7 +855,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
         ),
 
         // Global Track Inventory
-        _SwitchRow(
+        SwitchRow(
           icon: Icons.inventory_2_outlined,
           label: 'Track Inventory',
           subtitle: 'Adds a stock field to every variant below',
@@ -865,7 +870,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
           final v = entry.value;
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: _VariantCard(
+            child: VariantCard(
               index: i + 1,
               form: v,
               isFraction: isFraction,
@@ -881,7 +886,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
 
         // Add Variant button
         OutlinedButton.icon(
-          onPressed: () => setState(() => _variants.add(_VariantForm())),
+          onPressed: () => setState(() => _variants.add(VariantForm())),
           icon: const Icon(Icons.add_rounded, size: 16),
           label: Text(
             'Add Variant',
@@ -964,7 +969,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
         const Divider(height: 1, color: AppColors.borderSoft),
 
         // Product Image (optional)
-        _ToggleRow(
+        ToggleRow(
           icon: Icons.image_outlined,
           label: 'Product Image',
           subtitle: 'Add a photo for this product',
@@ -980,7 +985,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
           child: (_showImagePicker || state.imagePath != null)
               ? Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: _ImagePickerField(
+                  child: ImagePickerField(
                     imagePath: state.imagePath,
                     onPick: (source) => cubit.pickImage(source),
                     onClear: cubit.clearImage,
@@ -991,7 +996,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
         const Divider(height: 1, color: AppColors.borderSoft),
 
         // Barcodes
-        _BarcodesSectionToggle(
+        BarcodesSectionToggle(
           controllers: _barcodeControllers,
           onAdd: _addBarcode,
           onRemove: _removeBarcode,
@@ -999,7 +1004,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
         const Divider(height: 1, color: AppColors.borderSoft),
 
         // SKU
-        _SkuSectionToggle(
+        SkuSectionToggle(
           controller: _skuController,
           onAutoSku: () {
             final sku = cubit.generateSku(_nameController.text);
@@ -1009,7 +1014,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
         const Divider(height: 1, color: AppColors.borderSoft),
 
         // Retail Price (optional, toggleable)
-        _ToggleRow(
+        ToggleRow(
           icon: Icons.price_change_outlined,
           label: 'Retail Price',
           subtitle: 'Suggested customer / SRP price',
@@ -1046,7 +1051,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
         const Divider(height: 1, color: AppColors.borderSoft),
 
         // Tax % (optional, toggleable)
-        _ToggleRow(
+        ToggleRow(
           icon: Icons.receipt_long_outlined,
           label: 'Tax (%)',
           subtitle: 'Already included in the selling price',
@@ -1091,7 +1096,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
         const Divider(height: 1, color: AppColors.borderSoft),
 
         // Track Expiry
-        _ToggleRow(
+        ToggleRow(
           icon: Icons.event_rounded,
           label: 'Track Expiry',
           subtitle: 'Enable for perishable or dated items',
@@ -1217,777 +1222,3 @@ class _ModeChip extends StatelessWidget {
 
 // ── Reusable switch row (compact, no border container) ───────────────────────
 
-class _SwitchRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String? subtitle;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  const _SwitchRow({
-    required this.icon,
-    required this.label,
-    this.subtitle,
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon,
-            size: 16,
-            color: value ? AppColors.brand : AppColors.textMuted),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: getOutfitStyle(
-                  color: value ? AppColors.textPrimary : AppColors.textSecondary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-              ),
-              if (subtitle != null)
-                Text(subtitle!,
-                    style: getOutfitStyle(
-                        color: AppColors.textMuted, fontSize: 11)),
-            ],
-          ),
-        ),
-        Switch.adaptive(
-          value: value,
-          onChanged: onChanged,
-          activeThumbColor: AppColors.brand,
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-      ],
-    );
-  }
-}
-
-// ── Toggle row (for More Options sections) ───────────────────────────────────
-
-class _ToggleRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String? subtitle;
-  final bool enabled;
-  final ValueChanged<bool> onChanged;
-
-  const _ToggleRow({
-    required this.icon,
-    required this.label,
-    this.subtitle,
-    required this.enabled,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Row(
-        children: [
-          Icon(icon,
-              size: 16,
-              color: enabled ? AppColors.brand : AppColors.textMuted),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: getOutfitStyle(
-                    color: enabled
-                        ? AppColors.textPrimary
-                        : AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
-                ),
-                if (subtitle != null)
-                  Text(subtitle!,
-                      style: getOutfitStyle(
-                          color: AppColors.textMuted, fontSize: 11)),
-              ],
-            ),
-          ),
-          Switch.adaptive(
-            value: enabled,
-            onChanged: onChanged,
-            activeThumbColor: AppColors.brand,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Barcode toggle field (simple mode inline) ─────────────────────────────────
-
-class _BarcodeToggleField extends StatefulWidget {
-  final TextEditingController controller;
-  const _BarcodeToggleField({required this.controller});
-
-  @override
-  State<_BarcodeToggleField> createState() => _BarcodeToggleFieldState();
-}
-
-class _BarcodeToggleFieldState extends State<_BarcodeToggleField> {
-  bool _enabled = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _enabled = widget.controller.text.isNotEmpty;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.qr_code_rounded,
-                size: 16,
-                color: _enabled ? AppColors.brand : AppColors.textMuted),
-            const SizedBox(width: 10),
-            Text(
-              'Barcode',
-              style: getOutfitStyle(
-                color: _enabled
-                    ? AppColors.textPrimary
-                    : AppColors.textSecondary,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Text('(optional)',
-                style: getOutfitStyle(
-                    color: AppColors.textMuted, fontSize: 11)),
-            const Spacer(),
-            Switch.adaptive(
-              value: _enabled,
-              onChanged: (v) => setState(() => _enabled = v),
-              activeThumbColor: AppColors.brand,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-          ],
-        ),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          child: _enabled
-              ? Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: TextFormField(
-                    controller: widget.controller,
-                    keyboardType: TextInputType.number,
-                    textInputAction: TextInputAction.done,
-                    decoration: appInputDeco('Scan or type barcode').copyWith(
-                      prefixIcon: const Icon(Icons.qr_code_rounded,
-                          size: 17, color: AppColors.textMuted),
-                    ),
-                    style: getOutfitStyle(color: AppColors.textPrimary),
-                  ),
-                )
-              : const SizedBox(width: double.infinity, height: 0),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Barcodes section (More Options) ──────────────────────────────────────────
-
-class _BarcodesSectionToggle extends StatefulWidget {
-  final List<TextEditingController> controllers;
-  final VoidCallback onAdd;
-  final void Function(int) onRemove;
-  const _BarcodesSectionToggle(
-      {required this.controllers,
-      required this.onAdd,
-      required this.onRemove});
-
-  @override
-  State<_BarcodesSectionToggle> createState() =>
-      _BarcodesSectionToggleState();
-}
-
-class _BarcodesSectionToggleState extends State<_BarcodesSectionToggle> {
-  bool _enabled = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _enabled = widget.controllers.any((c) => c.text.isNotEmpty);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _ToggleRow(
-          icon: Icons.qr_code_rounded,
-          label: 'Barcode(s)',
-          enabled: _enabled,
-          onChanged: (v) => setState(() => _enabled = v),
-        ),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          child: _enabled
-              ? Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ...widget.controllers.asMap().entries.map((entry) {
-                        final i = entry.key;
-                        final ctrl = entry.value;
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TextFormField(
-                                  controller: ctrl,
-                                  keyboardType: TextInputType.number,
-                                  decoration: appInputDeco(
-                                    i == 0
-                                        ? 'Scan or type barcode'
-                                        : 'Additional barcode',
-                                  ).copyWith(
-                                    prefixIcon: const Icon(
-                                        Icons.qr_code_rounded,
-                                        size: 17,
-                                        color: AppColors.textMuted),
-                                  ),
-                                  style: getOutfitStyle(
-                                      color: AppColors.textPrimary),
-                                ),
-                              ),
-                              if (widget.controllers.length > 1) ...[
-                                const SizedBox(width: 8),
-                                GestureDetector(
-                                  onTap: () => widget.onRemove(i),
-                                  child: const Icon(Icons.close_rounded,
-                                      size: 18,
-                                      color: AppColors.textMuted),
-                                ),
-                              ],
-                            ],
-                          ),
-                        );
-                      }),
-                      TextButton.icon(
-                        onPressed: widget.onAdd,
-                        icon: const Icon(Icons.add_rounded, size: 15),
-                        label: Text(
-                          'Add Barcode',
-                          style: getOutfitStyle(
-                            color: AppColors.brand,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                        style: TextButton.styleFrom(
-                          foregroundColor: AppColors.brand,
-                          padding: EdgeInsets.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : const SizedBox(width: double.infinity, height: 0),
-        ),
-      ],
-    );
-  }
-}
-
-// ── SKU section (More Options) ────────────────────────────────────────────────
-
-class _SkuSectionToggle extends StatefulWidget {
-  final TextEditingController controller;
-  final VoidCallback onAutoSku;
-  const _SkuSectionToggle(
-      {required this.controller, required this.onAutoSku});
-
-  @override
-  State<_SkuSectionToggle> createState() => _SkuSectionToggleState();
-}
-
-class _SkuSectionToggleState extends State<_SkuSectionToggle> {
-  bool _enabled = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _enabled = widget.controller.text.isNotEmpty;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _ToggleRow(
-          icon: Icons.tag_rounded,
-          label: 'SKU',
-          enabled: _enabled,
-          onChanged: (v) => setState(() => _enabled = v),
-        ),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          child: _enabled
-              ? Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: widget.controller,
-                          textCapitalization: TextCapitalization.characters,
-                          decoration: appInputDeco('e.g. CAFE-001'),
-                          style:
-                              getOutfitStyle(color: AppColors.textPrimary),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      TextButton(
-                        onPressed: widget.onAutoSku,
-                        style: TextButton.styleFrom(
-                            foregroundColor: AppColors.brand),
-                        child: Text(
-                          'Auto',
-                          style: getOutfitStyle(
-                              color: AppColors.brand,
-                              fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : const SizedBox(width: double.infinity, height: 0),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Variant data holder ───────────────────────────────────────────────────────
-
-class _VariantForm {
-  final TextEditingController name = TextEditingController();
-  final TextEditingController price = TextEditingController();
-  final TextEditingController cost = TextEditingController();
-  final TextEditingController stock = TextEditingController(text: '0');
-  final TextEditingController lowStock = TextEditingController();
-  final TextEditingController barcode = TextEditingController();
-
-  void dispose() {
-    name.dispose();
-    price.dispose();
-    cost.dispose();
-    stock.dispose();
-    lowStock.dispose();
-    barcode.dispose();
-  }
-}
-
-// ── Variant Card (compact) ────────────────────────────────────────────────────
-
-class _VariantCard extends StatefulWidget {
-  final int index;
-  final _VariantForm form;
-  final bool isFraction;
-  final bool trackInventory;
-  final bool canDelete;
-  final VoidCallback onDelete;
-
-  const _VariantCard({
-    required this.index,
-    required this.form,
-    required this.isFraction,
-    required this.trackInventory,
-    required this.canDelete,
-    required this.onDelete,
-  });
-
-  @override
-  State<_VariantCard> createState() => _VariantCardState();
-}
-
-class _VariantCardState extends State<_VariantCard> {
-  final FocusNode _stockFocusNode = FocusNode();
-
-  @override
-  void dispose() {
-    _stockFocusNode.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final deco = appInputDeco('',
-        fillColor: AppColors.background, radius: 8, isDense: true);
-    final isFraction = widget.isFraction;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderSoft),
-      ),
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Row(
-            children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.brandSoft,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  'Variant ${widget.index}',
-                  style: getOutfitStyle(
-                    color: AppColors.brand,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 11,
-                  ),
-                ),
-              ),
-              const Spacer(),
-              if (widget.canDelete)
-                GestureDetector(
-                  onTap: widget.onDelete,
-                  child: const Icon(Icons.delete_outline_rounded,
-                      color: AppColors.error, size: 18),
-                ),
-            ],
-          ),
-          const SizedBox(height: 10),
-
-          // Name
-          TextFormField(
-            controller: widget.form.name,
-            textCapitalization: TextCapitalization.words,
-            textInputAction: TextInputAction.next,
-            decoration: deco.copyWith(
-              hintText: 'Variant name  (e.g. Small, Regular)',
-              labelText: 'Name *',
-            ),
-            style: getOutfitStyle(color: AppColors.textPrimary),
-            validator: (v) =>
-                (v == null || v.trim().isEmpty) ? 'Name required' : null,
-          ),
-          const SizedBox(height: 8),
-
-          // Price + Cost (2-column, NO retail)
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: widget.form.price,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*\.?\d{0,2}')),
-                  ],
-                  textInputAction: TextInputAction.next,
-                  decoration: deco.copyWith(
-                      hintText: '0.00',
-                      prefixText: '₱ ',
-                      labelText: 'Price *'),
-                  style: getOutfitStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Required';
-                    if (double.tryParse(v) == null) return 'Invalid';
-                    return null;
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextFormField(
-                  controller: widget.form.cost,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*\.?\d{0,2}')),
-                  ],
-                  textInputAction: TextInputAction.done,
-                  decoration: deco.copyWith(
-                      hintText: '0.00',
-                      prefixText: '₱ ',
-                      labelText: 'Cost'),
-                  style: getOutfitStyle(color: AppColors.textPrimary),
-                ),
-              ),
-            ],
-          ),
-
-          // Stock — compact inline row, only when trackInventory ON
-          AnimatedSize(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeInOut,
-            child: widget.trackInventory
-                ? Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Row(
-                      children: [
-                        Icon(Icons.inventory_2_outlined,
-                            size: 13, color: AppColors.textMuted),
-                        const SizedBox(width: 6),
-                        Text(
-                          isFraction ? 'Stock (kg) *' : 'Stock *',
-                          style: getOutfitStyle(
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w500,
-                            fontSize: 12,
-                          ),
-                        ),
-                        const Spacer(),
-                        SizedBox(
-                          width: 90,
-                          child: TextFormField(
-                            controller: widget.form.stock,
-                            focusNode: _stockFocusNode,
-                            keyboardType: isFraction
-                                ? const TextInputType.numberWithOptions(
-                                    decimal: true)
-                                : TextInputType.number,
-                            inputFormatters: isFraction
-                                ? [
-                                    FilteringTextInputFormatter.allow(
-                                        RegExp(r'^\d*\.?\d{0,3}'))
-                                  ]
-                                : [FilteringTextInputFormatter.digitsOnly],
-                            textInputAction: TextInputAction.next,
-                            decoration: deco.copyWith(
-                                hintText: isFraction ? '0.000' : '0'),
-                            style: getOutfitStyle(
-                                color: AppColors.textPrimary),
-                            validator: (v) {
-                              if (widget.trackInventory &&
-                                  (v == null || v.trim().isEmpty)) {
-                                return 'Required';
-                              }
-                              return null;
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        SizedBox(
-                          width: 80,
-                          child: TextFormField(
-                            controller: widget.form.lowStock,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                            ],
-                            textInputAction: TextInputAction.done,
-                            decoration: deco.copyWith(
-                              hintText: 'Alert',
-                              labelText: 'Low',
-                            ),
-                            style: getOutfitStyle(
-                                color: AppColors.textPrimary),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : const SizedBox(width: double.infinity, height: 0),
-          ),
-
-          const SizedBox(height: 8),
-
-          // Barcode (per-variant, toggleable)
-          _BarcodeToggleField(controller: widget.form.barcode),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Product Image Picker ──────────────────────────────────────────────────────
-
-class _ImagePickerField extends StatelessWidget {
-  final String? imagePath;
-  final Future<void> Function(ImageSource source) onPick;
-  final VoidCallback onClear;
-
-  const _ImagePickerField({
-    required this.imagePath,
-    required this.onPick,
-    required this.onClear,
-  });
-
-  Future<void> _showSourcePicker(BuildContext context) async {
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (sheetCtx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 8),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.borderSoft,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              leading: const Icon(Icons.camera_alt_outlined,
-                  color: AppColors.brand),
-              title: Text('Take Photo',
-                  style: getOutfitStyle(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w600)),
-              onTap: () => Navigator.pop(sheetCtx, ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined,
-                  color: AppColors.brand),
-              title: Text('Choose from Gallery',
-                  style: getOutfitStyle(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w600)),
-              onTap: () => Navigator.pop(sheetCtx, ImageSource.gallery),
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
-    if (source != null) await onPick(source);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (imagePath != null) {
-      return Stack(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: Image.file(
-              File(imagePath!),
-              width: double.infinity,
-              height: 140,
-              fit: BoxFit.cover,
-              errorBuilder: (ctx, err, stack) => _emptyPicker(ctx),
-            ),
-          ),
-          Positioned(
-            top: 6,
-            right: 6,
-            child: GestureDetector(
-              onTap: onClear,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                padding: const EdgeInsets.all(4),
-                child: const Icon(Icons.close_rounded,
-                    color: Colors.white, size: 16),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 6,
-            right: 6,
-            child: GestureDetector(
-              onTap: () => _showSourcePicker(context),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.edit_outlined,
-                        color: Colors.white, size: 13),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Change',
-                      style: getOutfitStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    return _emptyPicker(context);
-  }
-
-  Widget _emptyPicker(BuildContext context) {
-    return GestureDetector(
-      onTap: () => _showSourcePicker(context),
-      child: Container(
-        width: double.infinity,
-        height: 100,
-        decoration: BoxDecoration(
-          color: AppColors.inputFill,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.borderSoft, width: 1.5),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.add_photo_alternate_outlined,
-                size: 28, color: AppColors.textMuted),
-            const SizedBox(height: 6),
-            Text(
-              'Tap to add image',
-              style: getOutfitStyle(
-                color: AppColors.textMuted,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
