@@ -229,6 +229,32 @@ class AiResponseFormatter {
     return 'You have $count active product${count == 1 ? '' : 's'} in your inventory.';
   }
 
+  static String formatProductsWithoutSales(
+    List<ActiveProductInfo> products,
+    AiDateFilter filter,
+  ) {
+    final label = _dateLabel(filter);
+    if (products.isEmpty) {
+      return label.isNotEmpty
+          ? 'All products have sales for $label! Great job!'
+          : 'All products have sales! Great job!';
+    }
+
+    final header = label.isNotEmpty
+        ? '${products.length} product${products.length == 1 ? '' : 's'} with no sales ($label):\n'
+        : '${products.length} product${products.length == 1 ? '' : 's'} with no sales:\n';
+    final buffer = StringBuffer(header);
+
+    for (final p in products) {
+      final variant = p.variantName != 'Default' ? ' (${p.variantName})' : '';
+      buffer.writeln(
+        '• ${p.name}$variant — $_currency${_formatNumber(p.price)}'
+        ' | Stock: ${p.stock}',
+      );
+    }
+    return buffer.toString().trim();
+  }
+
   static String formatActiveProducts(List<ActiveProductInfo> products) {
     if (products.isEmpty) {
       return 'No active products found in your inventory.';
@@ -275,6 +301,7 @@ class AiResponseFormatter {
         "• Sales by product — \"sales by product this week\"\n"
         '• Product count — "how many products"\n'
         '• Active products — "show active products"\n'
+        '• Unsold products — "products without sales"\n'
         '• Transaction count — "how many transactions"\n'
         '• Create a sale — "2 coke, 1 chips"';
   }
