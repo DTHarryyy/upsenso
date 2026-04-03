@@ -147,7 +147,7 @@ class _VerificationPageState extends State<VerificationPage> {
       listenWhen: (prev, curr) => curr is! AuthLoading,
       listener: (context, state) {
         if (state is AuthAuthenticated) {
-          context.go(AppRoutes.businessProfile);
+          context.go(AppRoutes.businessProfileSetup);
           return;
         }
 

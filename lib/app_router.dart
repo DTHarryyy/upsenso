@@ -19,6 +19,7 @@ import 'package:pos/features/auth/presentation/reset_password_verification_page.
 import 'package:pos/features/auth/presentation/reset_password_page.dart';
 import 'package:pos/features/business/presentation/bloc/business_bloc.dart';
 import 'package:pos/features/business/presentation/business_profile_page.dart';
+import 'package:pos/features/business/presentation/business_profile_setup.dart';
 import 'package:pos/features/home/presentation/main_navigation_page.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/features/products/pages/add_products.dart';
@@ -45,7 +46,7 @@ class AppRouter {
         AppRoutes.resetPasswordVerification,
       );
       final goingToResetPassword = location.startsWith(AppRoutes.resetPassword);
-      final goingToBusinessProfile = location == AppRoutes.businessProfile;
+      final goingToBusinessProfileSetup = location == AppRoutes.businessProfileSetup;
       final isPublicAuthRoute =
           goingToSignIn || goingToSignUp || goingToVerification;
       final isPasswordResetRoute =
@@ -85,7 +86,7 @@ class AppRouter {
         'Router check - hasBusiness from cache: $hasBusiness, businessId: ${currentUser.businessId}',
       );
 
-      if (!hasBusiness && !goingToBusinessProfile && !isPasswordResetRoute) {
+      if (!hasBusiness && !goingToBusinessProfileSetup && !isPasswordResetRoute) {
         try {
           final userWithContext = await authRepository
               .getUserBusinessContext(currentUser.id)
@@ -107,13 +108,13 @@ class AppRouter {
         }
       }
 
-      if (!hasBusiness && !goingToBusinessProfile && !isPasswordResetRoute) {
-        debugPrint('Redirecting to business setup');
-        return AppRoutes.businessProfile;
+      if (!hasBusiness && !goingToBusinessProfileSetup && !isPasswordResetRoute) {
+        debugPrint('Redirecting to business setup yay putangina');
+        return AppRoutes.businessProfileSetup;
       }
 
       if (hasBusiness && (goingToOnboarding || isPublicAuthRoute)) {
-        debugPrint('Redirecting to home');
+        debugPrint('Redirecting to home yawa');
         return AppRoutes.home;
       }
 
@@ -122,6 +123,7 @@ class AppRouter {
 
     routes: [
       GoRoute(path: AppRoutes.saleshistory, builder: (context, _) => const SalesHistory()),
+      GoRoute(path: AppRoutes.businessProfile, builder: (context, _) => const BusinessProfilePage()),
       GoRoute(
         path: AppRoutes.onboarding,
         builder: (context, _) => const Onboarding(),
@@ -162,10 +164,10 @@ class AppRouter {
         builder: (context, _) => const ProfilePage(),
       ),
       GoRoute(
-        path: AppRoutes.businessProfile,
+        path: AppRoutes.businessProfileSetup,
         builder: (context, _) => BlocProvider(
           create: (_) => sl<BusinessBloc>(),
-          child: const BusinessProfilePage(),
+          child: const BusinessProfileSetup(),
         ),
       ),
       GoRoute(

@@ -6,6 +6,7 @@ class AppRoutes {
   static const String signUp = '/register';
   static const String verification = '/verification';
   static const String businessProfile = '/business-profile';
+  static const String businessProfileSetup = '/business-profile-setup';
   static const String forgotPassword = '/forgot-password';
   static const String resetPasswordVerification =
       '/reset-password-verification';

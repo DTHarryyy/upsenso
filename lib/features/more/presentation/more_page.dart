@@ -74,7 +74,7 @@ class MorePage extends StatelessWidget {
                   // Menu Items
                   _buildMenuSection(
                     context: context,
-                    title: 'Business',
+                    title: 'Main',
                     items: [
                       _MenuItem(
                         icon: Icons.history,

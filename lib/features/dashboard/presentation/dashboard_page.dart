@@ -1,262 +1,206 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:pos/core/branch/branch_cubit.dart';
-import 'package:pos/core/branch/branch_state.dart';
-import 'package:pos/core/config/di.dart';
-import 'package:pos/core/const/app_colors.dart';
-import 'package:pos/core/const/app_typography.dart';
-import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/features/ai_assistant/widgets/floating_ai_assistant_bar.dart';
-import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
+import 'package:pos/features/dashboard/presentation/widgets/ai_insights_card.dart';
+import 'package:pos/features/dashboard/presentation/widgets/category_performance_chart.dart';
+import 'package:pos/features/dashboard/presentation/widgets/payment_methods_chart.dart';
+import 'package:pos/features/dashboard/presentation/widgets/quick_actions_bar.dart';
+import 'package:pos/features/dashboard/presentation/widgets/sales_trend_chart.dart';
+import 'package:pos/features/dashboard/presentation/widgets/stat_card.dart';
+import 'package:pos/features/dashboard/presentation/widgets/top_selling_items.dart';
 
-class DashboardPage extends StatefulWidget {
+class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
-
-  @override
-  State<DashboardPage> createState() => _DashboardPageState();
-}
-
-class _DashboardPageState extends State<DashboardPage> {
-  late final ConnectivityService _connectivityService;
-  StreamSubscription<bool>? _connectivitySub;
-  bool _isOnline = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _connectivityService = sl<ConnectivityService>();
-    _connectivitySub = _connectivityService.onConnectivityChanged.listen((
-      isConnected,
-    ) {
-      if (mounted && _isOnline != isConnected) {
-        setState(() {
-          _isOnline = isConnected;
-        });
-      }
-    });
-    _loadInitialConnectivity();
-  }
-
-  Future<void> _loadInitialConnectivity() async {
-    final isConnected = await _connectivityService.isConnected;
-    if (mounted && _isOnline != isConnected) {
-      setState(() {
-        _isOnline = isConnected;
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _connectivitySub?.cancel();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       floatingActionButton: const FloatingAIAssistantBar(),
-      body: BlocBuilder<AuthBloc, AuthState>(
-        builder: (context, authState) {
-          if (authState is! AuthAuthenticated) {
-            return const Center(child: Text('Not authenticated'));
-          }
-
-          final user = authState.user;
-
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _isOnline
-                        ? Colors.green.withValues(alpha: 0.12)
-                        : Colors.orange.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    _isOnline ? 'ONLINE' : 'OFFLINE',
-                    style: AppTextStyles.body(context).copyWith(
-                      color: _isOnline ? Colors.green : Colors.orange,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _buildInfoCard(
-                  title: 'User Information',
-                  items: [
-                    _InfoItem('User ID', user.id),
-                    _InfoItem('Email', user.email ?? 'N/A'),
-                    _InfoItem('Full Name', user.fullName ?? 'N/A'),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _buildInfoCard(
-                  title: 'Business Information',
-                  items: [
-                    _InfoItem('Business ID', user.businessId ?? 'N/A'),
-                    _InfoItem('Business Name', user.businessName ?? 'N/A'),
-                    _InfoItem('Category', user.businessTemplateName ?? 'N/A'),
-                    _InfoItem('Role ID', user.roleId ?? 'N/A'),
-                    _InfoItem('Role Name', user.roleName ?? 'N/A'),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                BlocBuilder<BranchCubit, BranchState>(
-                  builder: (context, branchState) {
-                    return _buildInfoCard(
-                      title: 'Branch Information',
-                      items: [
-                        _InfoItem('Branch ID', user.branchId ?? 'N/A'),
-                        _InfoItem('Branch Name', user.branchName ?? 'N/A'),
-                        _InfoItem(
-                          'Selected Branch (Cubit)',
-                          branchState.selectedBranch?.isEmpty ?? true
-                              ? 'Not set'
-                              : branchState.selectedBranch!,
-                        ),
-                        _InfoItem(
-                          'Selected Branch ID (Cubit)',
-                          branchState.selectedBranchId?.isEmpty ?? true
-                              ? 'Not set'
-                              : branchState.selectedBranchId!,
-                        ),
-                      ],
-                    );
-                  },
-                ),
-                const SizedBox(height: 24),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: _isOnline ? Colors.green : Colors.orange,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // ── Stat Cards Row ──
+            LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth > 800) {
+                  return Row(
                     children: [
-                      Text(
-                        _isOnline
-                            ? 'All systems operational'
-                            : 'Working offline with cached data',
-                        style: AppTextStyles.subtitle(context).copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: StatCard(
+                          title: "Today's Sales",
+                          value: '\$3,842',
+                          change: '+12.5% from yesterday',
+                          isPositive: true,
+                          icon: Icons.attach_money,
+                          iconBgColor: const Color(0xFFDCFCE7),
+                          iconColor: const Color(0xFF22C55E),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _isOnline
-                            ? 'Connected to server. All features available.'
-                            : 'Offline mode active. Using cached business and user data.',
-                        style: AppTextStyles.body(
-                          context,
-                        ).copyWith(color: AppColors.textSecondary),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: StatCard(
+                          title: 'This Week',
+                          value: '\$24,606',
+                          change: '+8.2% from last week',
+                          isPositive: true,
+                          icon: Icons.trending_up,
+                          iconBgColor: const Color(0xFFDCFCE7),
+                          iconColor: const Color(0xFF22C55E),
+                        ),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Has Business: ${user.businessId != null ? "YES" : "NO"}',
-                        style: AppTextStyles.body(context).copyWith(
-                          color: user.businessId != null
-                              ? Colors.green
-                              : Colors.red,
-                          fontWeight: FontWeight.bold,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: StatCard(
+                          title: 'Transactions',
+                          value: '156',
+                          change: '+23 from yesterday',
+                          isPositive: true,
+                          icon: Icons.shopping_cart_outlined,
+                          iconBgColor: const Color(0xFFDBEAFE),
+                          iconColor: const Color(0xFF3B82F6),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: StatCard(
+                          title: 'Avg. Order Value',
+                          value: '\$24.63',
+                          change: '-2.1% from yesterday',
+                          isPositive: false,
+                          icon: Icons.bar_chart,
+                          iconBgColor: const Color(0xFFF3E8FF),
+                          iconColor: const Color(0xFF7C3AED),
                         ),
                       ),
                     ],
-                  ),
-                ),
-              ],
+                  );
+                }
+                // 2x2 grid for smaller screens
+                return Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: StatCard(
+                            title: "Today's Sales",
+                            value: '\$3,842',
+                            change: '+12.5% from yesterday',
+                            isPositive: true,
+                            icon: Icons.attach_money,
+                            iconBgColor: const Color(0xFFDCFCE7),
+                            iconColor: const Color(0xFF22C55E),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: StatCard(
+                            title: 'This Week',
+                            value: '\$24,606',
+                            change: '+8.2% from last week',
+                            isPositive: true,
+                            icon: Icons.trending_up,
+                            iconBgColor: const Color(0xFFDCFCE7),
+                            iconColor: const Color(0xFF22C55E),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: StatCard(
+                            title: 'Transactions',
+                            value: '156',
+                            change: '+23 from yesterday',
+                            isPositive: true,
+                            icon: Icons.shopping_cart_outlined,
+                            iconBgColor: const Color(0xFFDBEAFE),
+                            iconColor: const Color(0xFF3B82F6),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: StatCard(
+                            title: 'Avg. Order Value',
+                            value: '\$24.63',
+                            change: '-2.1% from yesterday',
+                            isPositive: false,
+                            icon: Icons.bar_chart,
+                            iconBgColor: const Color(0xFFF3E8FF),
+                            iconColor: const Color(0xFF7C3AED),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+              },
             ),
-          );
-        },
+
+            const SizedBox(height: 16),
+
+            // ── Quick Actions ──
+            const QuickActionsBar(),
+
+            const SizedBox(height: 16),
+
+            // ── Sales Trend + Payment Methods ──
+            LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth > 800) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Expanded(flex: 2, child: SalesTrendChart()),
+                      const SizedBox(width: 16),
+                      const Expanded(flex: 1, child: PaymentMethodsChart()),
+                    ],
+                  );
+                }
+                return const Column(
+                  children: [
+                    SalesTrendChart(),
+                    SizedBox(height: 16),
+                    PaymentMethodsChart(),
+                  ],
+                );
+              },
+            ),
+
+            const SizedBox(height: 16),
+
+            // ── Category Performance + Top Selling + AI Insights ──
+            LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth > 800) {
+                  return const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: CategoryPerformanceChart()),
+                      SizedBox(width: 16),
+                      Expanded(child: TopSellingItems()),
+                      SizedBox(width: 16),
+                      Expanded(child: AiInsightsCard()),
+                    ],
+                  );
+                }
+                return const Column(
+                  children: [
+                    CategoryPerformanceChart(),
+                    SizedBox(height: 16),
+                    TopSellingItems(),
+                    SizedBox(height: 16),
+                    AiInsightsCard(),
+                  ],
+                );
+              },
+            ),
+
+            const SizedBox(height: 24),
+          ],
+        ),
       ),
     );
   }
-
-  Widget _buildInfoCard({
-    required String title,
-    required List<_InfoItem> items,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: AppTextStyles.subtitle(context).copyWith(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-          const Divider(),
-          const SizedBox(height: 8),
-          ...items.map(
-            (item) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    width: 120,
-                    child: Text(
-                      item.label,
-                      style: AppTextStyles.body(context).copyWith(
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      item.value,
-                      style: AppTextStyles.body(
-                        context,
-                      ).copyWith(color: AppColors.textPrimary),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoItem {
-  final String label;
-  final String value;
-
-  _InfoItem(this.label, this.value);
 }

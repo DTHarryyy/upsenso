@@ -1,21 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
-
+import 'package:pos/core/branch/branch_cubit.dart';
+import 'package:pos/core/branch/branch_state.dart';
+import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
-import 'package:pos/core/const/validators.dart';
-import 'package:pos/core/routes/app_routes.dart';
-import 'package:pos/core/ui/status/status_snack.dart';
-import 'package:pos/core/ui/status/status_type.dart';
-
+import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
-import 'package:pos/features/business/domain/entities/business_template.dart';
-import 'package:pos/features/business/presentation/bloc/business_bloc.dart';
-import 'package:pos/features/business/presentation/bloc/business_event.dart';
-import 'package:pos/features/business/presentation/bloc/business_state.dart';
 
 class BusinessProfilePage extends StatefulWidget {
   const BusinessProfilePage({super.key});
@@ -25,402 +19,248 @@ class BusinessProfilePage extends StatefulWidget {
 }
 
 class _BusinessProfilePageState extends State<BusinessProfilePage> {
-  final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _nameController;
-  late final TextEditingController _branchNameController;
-  BusinessTemplate? _selectedTemplate;
+  late final ConnectivityService _connectivityService;
+  StreamSubscription<bool>? _connectivitySub;
+  bool _isOnline = true;
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController();
-    _branchNameController = TextEditingController();
-    context.read<BusinessBloc>().add(LoadBusinessTemplates());
+    _connectivityService = sl<ConnectivityService>();
+    _connectivitySub = _connectivityService.onConnectivityChanged.listen((
+      isConnected,
+    ) {
+      if (mounted && _isOnline != isConnected) {
+        setState(() {
+          _isOnline = isConnected;
+        });
+      }
+    });
+    _loadInitialConnectivity();
+  }
+
+  Future<void> _loadInitialConnectivity() async {
+    final isConnected = await _connectivityService.isConnected;
+    if (mounted && _isOnline != isConnected) {
+      setState(() {
+        _isOnline = isConnected;
+      });
+    }
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _branchNameController.dispose();
+    _connectivitySub?.cancel();
     super.dispose();
-  }
-
-  bool _hasText(String? value) {
-    return value != null && value.trim().isNotEmpty;
-  }
-
-  Future<void> _navigateToHomeWhenBusinessContextReady() async {
-    final authBloc = context.read<AuthBloc>();
-
-    // Wait until auth state contains the freshly created business context.
-    for (var attempt = 0; attempt < 12; attempt++) {
-      final authState = authBloc.state;
-      if (authState is AuthAuthenticated) {
-        final hasBusiness = _hasText(authState.user.businessId);
-        final hasRole =
-            _hasText(authState.user.roleId) ||
-            _hasText(authState.user.roleName);
-
-        if (hasBusiness && hasRole) {
-          if (!mounted) return;
-          context.go(AppRoutes.home);
-          return;
-        }
-      }
-
-      authBloc.add(AuthStarted());
-      await Future<void>.delayed(const Duration(milliseconds: 350));
-    }
-
-    // Fallback navigation; router guard will still protect inconsistent state.
-    if (!mounted) return;
-    context.go(AppRoutes.home);
-  }
-
-  void _onSubmit() {
-    final valid = _formKey.currentState?.validate() ?? false;
-    if (!valid) return;
-
-    if (_selectedTemplate == null) {
-      StatusSnack.show(
-        context,
-        type: StatusType.warning,
-        title: 'Select Template',
-        message: 'Please select a business template to continue.',
-      );
-      return;
-    }
-
-    context.read<BusinessBloc>().add(
-      CreateBusinessRequested(
-        name: _nameController.text.trim(),
-        templateId: _selectedTemplate!.id,
-        branchName: _branchNameController.text.trim(),
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocConsumer<BusinessBloc, BusinessState>(
-      listenWhen: (prev, curr) => curr is! BusinessLoading,
-      listener: (context, state) {
-        if (state is BusinessCreated) {
-          // Refresh user data to fetch business_id, role_id, business_name
-          // (created by database trigger)
-          context.read<AuthBloc>().add(AuthStarted());
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Eto muna okay na to!!!!'),
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.textPrimary,
+        elevation: 0,
+      ),
+      body: BlocBuilder<AuthBloc, AuthState>(
+        builder: (context, authState) {
+          if (authState is! AuthAuthenticated) {
+            return const Center(child: Text('Not authenticated'));
+          }
 
-          StatusSnack.show(
-            context,
-            type: StatusType.success,
-            title: 'Success',
-            message: 'Business profile created successfully!',
-          );
+          final user = authState.user;
 
-          _navigateToHomeWhenBusinessContextReady();
-          return;
-        }
-
-        if (state is BusinessError) {
-          StatusSnack.show(
-            context,
-            type: StatusType.error,
-            title: 'Error',
-            message: state.message,
-          );
-        }
-      },
-      builder: (context, state) {
-        final isLoading = state is BusinessLoading;
-        final templates = state is BusinessTemplatesLoaded
-            ? state.templates
-            : <BusinessTemplate>[];
-
-        return Scaffold(
-          body: SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24.0),
-                child: Form(
-                  key: _formKey,
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _isOnline
+                        ? Colors.green.withValues(alpha: 0.12)
+                        : Colors.orange.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    _isOnline ? 'ONLINE' : 'OFFLINE',
+                    style: AppTextStyles.body(context).copyWith(
+                      color: _isOnline ? Colors.green : Colors.orange,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildInfoCard(
+                  title: 'User Information',
+                  items: [
+                    _InfoItem('User ID', user.id),
+                    _InfoItem('Email', user.email ?? 'N/A'),
+                    _InfoItem('Full Name', user.fullName ?? 'N/A'),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildInfoCard(
+                  title: 'Business Information',
+                  items: [
+                    _InfoItem('Business ID', user.businessId ?? 'N/A'),
+                    _InfoItem('Business Name', user.businessName ?? 'N/A'),
+                    _InfoItem('Category', user.businessTemplateName ?? 'N/A'),
+                    _InfoItem('Role ID', user.roleId ?? 'N/A'),
+                    _InfoItem('Role Name', user.roleName ?? 'N/A'),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                BlocBuilder<BranchCubit, BranchState>(
+                  builder: (context, branchState) {
+                    return _buildInfoCard(
+                      title: 'Branch Information',
+                      items: [
+                        _InfoItem('Branch ID', user.branchId ?? 'N/A'),
+                        _InfoItem('Branch Name', user.branchName ?? 'N/A'),
+                        _InfoItem(
+                          'Selected Branch (Cubit)',
+                          branchState.selectedBranch?.isEmpty ?? true
+                              ? 'Not set'
+                              : branchState.selectedBranch!,
+                        ),
+                        _InfoItem(
+                          'Selected Branch ID (Cubit)',
+                          branchState.selectedBranchId?.isEmpty ?? true
+                              ? 'Not set'
+                              : branchState.selectedBranchId!,
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 24),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _isOnline ? Colors.green : Colors.orange,
+                      width: 1.5,
+                    ),
+                  ),
                   child: Column(
-                    mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Header section
-                      Center(
-                        child: Column(
-                          children: [
-                            Container(
-                              width: 72,
-                              height: 72,
-                              decoration: BoxDecoration(
-                                color: AppColors.brandSoft,
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: const Icon(
-                                Icons.store_rounded,
-                                size: 36,
-                                color: AppColors.brand,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Set Up Your Business',
-                              style: AppTextStyles.headline(
-                                context,
-                              ).copyWith(color: AppColors.textPrimary),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Create your business profile to get started with your POS system',
-                              style: AppTextStyles.body(
-                                context,
-                              ).copyWith(color: AppColors.textSecondary),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      // Business Name Field
                       Text(
-                        'Business Name',
+                        _isOnline
+                            ? 'All systems operational'
+                            : 'Working offline with cached data',
                         style: AppTextStyles.subtitle(context).copyWith(
                           color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                       const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _nameController,
-                        decoration: const InputDecoration(
-                          hintText: 'Enter your business name',
-                          prefixIcon: Icon(Icons.business_rounded),
-                        ),
-                        textCapitalization: TextCapitalization.words,
-                        validator: (v) =>
-                            Validators.required(v, fieldName: 'Business name'),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // Branch Name Field
                       Text(
-                        'Branch Name',
-                        style: AppTextStyles.subtitle(context).copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Name for your first branch/location',
-                        style: AppTextStyles.caption(
+                        _isOnline
+                            ? 'Connected to server. All features available.'
+                            : 'Offline mode active. Using cached business and user data.',
+                        style: AppTextStyles.body(
                           context,
-                        ).copyWith(color: AppColors.textMuted),
+                        ).copyWith(color: AppColors.textSecondary),
                       ),
                       const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _branchNameController,
-                        decoration: const InputDecoration(
-                          hintText: 'e.g., Main Branch, Downtown Store',
-                          prefixIcon: Icon(Icons.store_rounded),
-                        ),
-                        textCapitalization: TextCapitalization.words,
-                        validator: (v) =>
-                            Validators.required(v, fieldName: 'Branch name'),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // Template Dropdown
                       Text(
-                        'Business Type',
-                        style: AppTextStyles.subtitle(context).copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Select a template to customize your POS experience',
-                        style: AppTextStyles.caption(
-                          context,
-                        ).copyWith(color: AppColors.textMuted),
-                      ),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<BusinessTemplate>(
-                        initialValue: _selectedTemplate,
-                        decoration: const InputDecoration(
-                          hintText: 'Select a business template',
-                          prefixIcon: Icon(Icons.category_rounded),
-                        ),
-                        isExpanded: true,
-                        items: templates.map((template) {
-                          return DropdownMenuItem<BusinessTemplate>(
-                            value: template,
-                            child: Text(template.name),
-                          );
-                        }).toList(),
-                        onChanged: (template) {
-                          setState(() {
-                            _selectedTemplate = template;
-                          });
-                          if (template != null) {
-                            context.read<BusinessBloc>().add(
-                              SelectTemplate(template),
-                            );
-                          }
-                        },
-                        validator: (value) {
-                          if (value == null) {
-                            return 'Please select a business template';
-                          }
-                          return null;
-                        },
-                      ),
-
-                      // Template Details Card
-                      if (_selectedTemplate != null) ...[
-                        const SizedBox(height: 16),
-                        _buildTemplateDetailsCard(_selectedTemplate!),
-                      ],
-
-                      const SizedBox(height: 32),
-
-                      // Submit Button
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton(
-                          onPressed: isLoading ? null : _onSubmit,
-                          child: isLoading
-                              ? const SizedBox(
-                                  height: 18,
-                                  width: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Text('Create Business'),
+                        'Has Business: ${user.businessId != null ? "YES" : "NO"}',
+                        style: AppTextStyles.body(context).copyWith(
+                          color: user.businessId != null
+                              ? Colors.green
+                              : Colors.red,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
+              ],
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
-  Widget _buildTemplateDetailsCard(BusinessTemplate template) {
-    // Extract enabled modules
-    final enabledModules = template.defaultModules.entries
-        .where((e) => e.value == true)
-        .map((e) => e.key)
-        .toList();
-
-    // Extract roles
-    final roles = template.defaultRoles
-        .map((r) => r['name'] as String)
-        .toList();
-
+  Widget _buildInfoCard({
+    required String title,
+    required List<_InfoItem> items,
+  }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderSoft),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(
-                Icons.info_outline_rounded,
-                size: 20,
-                color: AppColors.brand,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Template Details',
-                style: AppTextStyles.subtitle(context).copyWith(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
+          Text(
+            title,
+            style: AppTextStyles.subtitle(context).copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 12),
-
-          // Modules
-          _buildDetailRow(
-            icon: Icons.apps_rounded,
-            label: 'Modules',
-            value: enabledModules.join(', '),
-          ),
+          const Divider(),
           const SizedBox(height: 8),
-
-          // Roles
-          _buildDetailRow(
-            icon: Icons.people_rounded,
-            label: 'Roles',
-            value: roles.join(', '),
-          ),
-
-          // Tax Rate
-          if (template.defaultTaxRate != null) ...[
-            const SizedBox(height: 8),
-            _buildDetailRow(
-              icon: Icons.percent_rounded,
-              label: 'Default Tax Rate',
-              value: '${template.defaultTaxRate}%',
+          ...items.map(
+            (item) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 120,
+                    child: Text(
+                      item.label,
+                      style: AppTextStyles.body(context).copyWith(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      item.value,
+                      style: AppTextStyles.body(
+                        context,
+                      ).copyWith(color: AppColors.textPrimary),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ],
+          ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildDetailRow({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 16, color: AppColors.textMuted),
-        const SizedBox(width: 8),
-        Expanded(
-          child: RichText(
-            text: TextSpan(
-              children: [
-                TextSpan(
-                  text: '$label: ',
-                  style: AppTextStyles.caption(context).copyWith(
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                TextSpan(
-                  text: value,
-                  style: AppTextStyles.caption(
-                    context,
-                  ).copyWith(color: AppColors.textPrimary),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+class _InfoItem {
+  final String label;
+  final String value;
+
+  _InfoItem(this.label, this.value);
 }

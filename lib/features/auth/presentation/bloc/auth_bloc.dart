@@ -178,7 +178,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           _getUserContextWithRetry(user.id)
               .then((updatedUser) {
                 if (updatedUser != null && !isClosed) {
-                  debugPrint('🔄 AuthBloc: Updating with fresh user context');
+                  debugPrint('AuthBloc: Updating with fresh user context');
                   add(AuthUserContextUpdated(updatedUser));
                 }
               })
@@ -339,9 +339,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     if (!event.isLoggedIn) {
-      // Supabase session ended (intentional logout or expiry) — always log out.
-      // In-memory cache is only for cold-start offline scenarios, not for
-      // keeping sessions alive after a SIGNED_OUT event.
       emit(AuthUnauthenticated());
       return;
     }
