@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:nobodywho/nobodywho.dart' as nobodywho;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:pos/core/config/di.dart';
@@ -49,6 +50,14 @@ Future<Widget> bootstrap() async {
     );
   } catch (e) {
     rethrow;
+  }
+
+  // Initialize NobodyWho LLM runtime (must be called exactly once)
+  try {
+    await nobodywho.NobodyWho.init();
+    debugPrint('NobodyWho LLM runtime initialized');
+  } catch (e) {
+    debugPrint('NobodyWho init failed: $e — rule-based parser will be used');
   }
 
   final authBloc = sl<AuthBloc>();

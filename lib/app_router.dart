@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pos/core/const/app_key.dart';
 import 'package:pos/core/config/di.dart';
+import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/features/ai_assistant/pagges/ai_chat_page.dart';
 import 'package:pos/features/ai_assistant/bloc/ai_chat_bloc.dart';
@@ -22,6 +23,7 @@ import 'package:pos/features/home/presentation/main_navigation_page.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/features/products/pages/add_products.dart';
 import 'package:pos/features/profile/presentation/profile_page.dart';
+import 'package:pos/features/sales/sales_history.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:pos/features/onboarding/onboarding.dart';
@@ -119,6 +121,7 @@ class AppRouter {
     },
 
     routes: [
+      GoRoute(path: AppRoutes.saleshistory, builder: (context, _) => const SalesHistory()),
       GoRoute(
         path: AppRoutes.onboarding,
         builder: (context, _) => const Onboarding(),
@@ -182,6 +185,7 @@ class AppRouter {
         builder: (context, _) {
           final authRepo = sl<AuthRepository>();
           final currentUser = authRepo.getCurrentUser();
+          final branchCubit = context.read<BranchCubit>();
           return BlocProvider(
             create: (_) => AiChatBloc(
               pipeline: sl<AiPipeline>(),
@@ -189,7 +193,8 @@ class AppRouter {
               modelManager: sl<ModelManager>(),
               businessId: currentUser?.businessId ?? '',
               cashierId: currentUser?.id ?? '',
-              branchId: currentUser?.branchId,
+              selectedBranchId: () =>
+                  branchCubit.getSelectedBranchIdForFiltering(),
             ),
             child: const AiChatPage(),
           );

@@ -52,7 +52,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration {
@@ -142,6 +142,13 @@ class AppDatabase extends _$AppDatabase {
           try {
             await customStatement(
               'ALTER TABLE products ADD COLUMN image_path TEXT',
+            );
+          } catch (_) {}
+        }
+        if (from < 15) {
+          try {
+            await customStatement(
+              'ALTER TABLE product_variants ADD COLUMN track_stock INTEGER NOT NULL DEFAULT 0',
             );
           } catch (_) {}
         }

@@ -87,6 +87,26 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
     return query.watchSingle().map((row) => row.read(countExp) ?? 0);
   }
 
+  /// Watch all completed transactions ordered by date, optionally filtered by branch.
+  Stream<List<TransactionsTableData>> watchTransactions({
+    String? branchId,
+  }) {
+    final query = select(transactionsTable)
+      ..orderBy([
+        (t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
+      ]);
+    if (branchId != null) {
+      query.where((t) => t.branchId.equals(branchId));
+    }
+    return query.watch();
+  }
+
+  /// Fetch a single transaction by ID.
+  Future<TransactionsTableData?> getById(String id) {
+    return (select(transactionsTable)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+  }
+
   /// Clear all transactions and items (e.g., on logout/reset).
   Future<void> clearAll() async {
     await delete(transactionItemsTable).go();

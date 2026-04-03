@@ -72,6 +72,7 @@ dependencies:
   permission_handler: ^11.3.0
   image_picker: ^1.1.2
   audioplayers: ^6.4.0
+  nobodywho: ^0.5.2
 
 dev_dependencies:
   flutter_test:
