@@ -137,6 +137,10 @@ class AiMatchedProduct {
   final double? taxRate;
   final double quantity;
   final int availableStock;
+  final bool trackStock;
+
+  /// All active variants for this product (populated when hasVariants is true).
+  final List<AiVariantOption> availableVariants;
 
   const AiMatchedProduct({
     required this.productId,
@@ -147,10 +151,48 @@ class AiMatchedProduct {
     this.taxRate,
     required this.quantity,
     required this.availableStock,
+    this.trackStock = false,
+    this.availableVariants = const [],
   });
+
+  /// Whether the user needs to pick a variant.
+  bool get needsVariantSelection => availableVariants.length > 1;
 
   double get lineTotal => unitPrice * quantity;
   double get lineTax => unitPrice * quantity * (taxRate ?? 0) / 100;
+
+  /// Create a copy with a different selected variant.
+  AiMatchedProduct selectVariant(AiVariantOption variant) {
+    return AiMatchedProduct(
+      productId: productId,
+      variantId: variant.variantId,
+      productName: productName,
+      variantName: variant.variantName,
+      unitPrice: variant.price,
+      taxRate: taxRate,
+      quantity: quantity,
+      availableStock: variant.stock,
+      trackStock: variant.trackStock,
+      availableVariants: availableVariants,
+    );
+  }
+}
+
+/// A selectable variant option shown in the transaction preview.
+class AiVariantOption {
+  final String variantId;
+  final String variantName;
+  final double price;
+  final int stock;
+  final bool trackStock;
+
+  const AiVariantOption({
+    required this.variantId,
+    required this.variantName,
+    required this.price,
+    required this.stock,
+    this.trackStock = false,
+  });
 }
 
 /// The preview data shown before confirming a transaction.

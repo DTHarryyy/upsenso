@@ -44,15 +44,17 @@ INTENT DETECTION:
 - "buy","sell", item lists → CREATE_TRANSACTION
 - If unclear → UNKNOWN
 
-CATEGORY vs PRODUCT:
-- GROUP names (beverages,snacks,food,drinks) → category
-- SPECIFIC ITEM names (coke,sprite,biscuits) → product
-- If unclear → set both as null
+CRITICAL — PRODUCT & CATEGORY EXTRACTION:
+- GROUP names (beverages,snacks,food,drinks) → category filter
+- ANY OTHER NOUN that is NOT a group = product filter (coke,sprite,biscuits,rice,chicken,water,etc.)
+- ALWAYS extract the product/category name from the query. NEVER leave product as null when a specific item is mentioned.
 
-SCOPE:
-- "sales of beverages" → category = "beverages"
-- "sales of coke" → product = "coke"
-- "sales of coke in beverages" → product = "coke", category = "beverages"
+SCOPE EXAMPLES:
+- "sales of beverages" → category="beverages", product=null
+- "sales of coke" → product="coke", category=null
+- "show product coke sales" → product="coke", category=null
+- "coke sales today" → product="coke", date.type="today"
+- "sales of coke in beverages" → product="coke", category="beverages"
 Priority: Product > Category > General
 
 RANKING / AGGREGATION:
@@ -70,8 +72,33 @@ DATE UNDERSTANDING:
 - If no date → "type":"none"
 
 ITEMS (CREATE_TRANSACTION only): extract product names and quantities. Default quantity=1.
+Users may glue quantity and name together. Separate them:
+- "2coke" → {"name":"coke","quantity":2}
+- "coke2" → {"name":"coke","quantity":2}
+- "3xcoke" → {"name":"coke","quantity":3}
+- "cok" (typo for "coke") → {"name":"cok","quantity":1} (keep as-is, matching layer handles typos)
 CATEGORY: extract only if explicitly mentioned; otherwise null.
 PRODUCT: extract only if a specific product name is mentioned; otherwise null.
+
+FEW-SHOT EXAMPLES:
+User: "show product coke sales"
+{"action":"GET_SALES","filters":{"date":{"type":"none","value":null,"start":null,"end":null},"category":null,"product":"coke"},"aggregation":{"type":"total"},"items":[]}
+
+User: "sales of sprite today"
+{"action":"GET_SALES","filters":{"date":{"type":"today","value":null,"start":null,"end":null},"category":null,"product":"sprite"},"aggregation":{"type":"total"},"items":[]}
+
+User: "beverages sales this week"
+{"action":"GET_SALES_BY_CATEGORY","filters":{"date":{"type":"range","value":null,"start":"2026-03-27","end":"2026-04-02"},"category":"beverages","product":null},"aggregation":{"type":"total"},"items":[]}
+
+User: "top selling product"
+{"action":"GET_SALES_BY_PRODUCT","filters":{"date":{"type":"none","value":null,"start":null,"end":null},"category":null,"product":null},"aggregation":{"type":"highest"},"items":[]}
+
+User: "buy coke 2pcs and sprite"
+{"action":"CREATE_TRANSACTION","filters":{"date":{"type":"none","value":null,"start":null,"end":null},"category":null,"product":null},"aggregation":{"type":"total"},"items":[{"name":"coke","quantity":2},{"name":"sprite","quantity":1}]}
+
+User: "3 burger and fries 2pcs"
+{"action":"CREATE_TRANSACTION","filters":{"date":{"type":"none","value":null,"start":null,"end":null},"category":null,"product":null},"aggregation":{"type":"total"},"items":[{"name":"burger","quantity":3},{"name":"fries","quantity":2}]}
+
 Return ONLY valid JSON. No explanation. No markdown. No extra text.''';
 
   /// Try to locate and load the on-device GGUF model.
@@ -297,8 +324,11 @@ Return ONLY valid JSON. No explanation. No markdown. No extra text.''';
       return true;
     }
 
-    // Has quantity + word pattern (e.g. "2 coke")
-    if (RegExp(r'\d+\s+\w+').hasMatch(lower)) return true;
+    // Has quantity + word pattern (e.g. "2 coke", "3x coke")
+    if (RegExp(r'\d+\s*(?:x|pcs|pc|pieces?)?\s+\w+').hasMatch(lower)) return true;
+
+    // Has word + quantity pattern (e.g. "coke 2", "lol 2pcs")
+    if (RegExp(r'[a-zA-Z]+\s+\d+').hasMatch(lower)) return true;
 
     // Has comma-separated words that aren't questions
     if (lower.contains(',') && !lower.contains('?')) return true;
@@ -687,22 +717,98 @@ Return ONLY valid JSON. No explanation. No markdown. No extra text.''';
     if (segments.isEmpty) return [];
 
     final items = <Map<String, dynamic>>[];
-    final quantityPattern = RegExp(r'^(\d+(?:\.\d+)?)\s+(.+)$');
-
     for (final segment in segments) {
-      final match = quantityPattern.firstMatch(segment);
-      if (match != null) {
-        final qty = double.tryParse(match.group(1)!) ?? 1;
-        final name = match.group(2)!.trim();
-        if (name.isNotEmpty) {
-          items.add({'name': name, 'quantity': qty});
+      items.addAll(_parseSegment(segment));
+    }
+    return items;
+  }
+
+  /// Parse a single segment into one or more items using token scanning.
+  /// Handles: "2 coke", "coke 2", "coke 2pcs", "3x coke", "coke x3",
+  /// "2coke", "coke2", and multi-item without separators:
+  /// "lol 2 lol 2pcs", "coke 2 sprite 3".
+  List<Map<String, dynamic>> _parseSegment(String segment) {
+    // Pre-process: split glued qty+name and name+qty tokens.
+    // "2coke" → "2 coke", "coke2" → "coke 2", "3xcoke" → "3x coke"
+    final expanded = segment.replaceAllMapped(
+      RegExp(r'(\d+(?:\.\d+)?)(x?)([a-zA-Z]\w*)', caseSensitive: false),
+      (m) => '${m.group(1)}${m.group(2)} ${m.group(3)}',
+    ).replaceAllMapped(
+      RegExp(r'([a-zA-Z]\w*)(\d+(?:\.\d+)?(?:pcs|pc|pieces?|x)?)', caseSensitive: false),
+      (m) => '${m.group(1)} ${m.group(2)}',
+    );
+
+    final tokens = expanded.split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toList();
+    final items = <Map<String, dynamic>>[];
+
+    int i = 0;
+    while (i < tokens.length) {
+      final qty = _extractQty(tokens[i]);
+
+      if (qty != null) {
+        // QTY-FIRST: collect following name tokens until next qty
+        i++;
+        final nameTokens = <String>[];
+        while (i < tokens.length &&
+            _extractQty(tokens[i]) == null &&
+            !_isStopWord(tokens[i])) {
+          nameTokens.add(tokens[i]);
+          i++;
         }
-      } else if (segment.isNotEmpty && !_isStopWord(segment)) {
-        items.add({'name': segment, 'quantity': 1});
+        if (nameTokens.isNotEmpty) {
+          items.add({'name': nameTokens.join(' '), 'quantity': qty});
+        }
+      } else if (!_isStopWord(tokens[i])) {
+        // NAME-FIRST: collect name tokens, then look for trailing qty
+        final nameTokens = <String>[tokens[i]];
+        i++;
+        while (i < tokens.length &&
+            _extractQty(tokens[i]) == null &&
+            !_isStopWord(tokens[i])) {
+          nameTokens.add(tokens[i]);
+          i++;
+        }
+        // Check for following qty
+        if (i < tokens.length) {
+          final followQty = _extractQty(tokens[i]);
+          if (followQty != null) {
+            items.add({'name': nameTokens.join(' '), 'quantity': followQty});
+            i++;
+          } else {
+            items.add({'name': nameTokens.join(' '), 'quantity': 1});
+          }
+        } else {
+          items.add({'name': nameTokens.join(' '), 'quantity': 1});
+        }
+      } else {
+        i++;
       }
     }
 
     return items;
+  }
+
+  /// Extract a quantity from a token, or null if it's not a qty token.
+  /// Handles: "2", "2.5", "2pcs", "3x", "x3".
+  double? _extractQty(String token) {
+    final pure = double.tryParse(token);
+    if (pure != null) return pure;
+
+    // Number with suffix: "2pcs", "2pc", "3x"
+    final suffixMatch = RegExp(
+      r'^(\d+(?:\.\d+)?)\s*(?:x|pcs|pc|pieces?)$',
+      caseSensitive: false,
+    ).firstMatch(token);
+    if (suffixMatch != null) return double.tryParse(suffixMatch.group(1)!);
+
+    // Prefix "x": "x3"
+    final prefixMatch = RegExp(
+      r'^x(\d+(?:\.\d+)?)$',
+      caseSensitive: false,
+    ).firstMatch(token);
+    if (prefixMatch != null) return double.tryParse(prefixMatch.group(1)!);
+
+    return null;
   }
 
   bool _isStopWord(String word) {

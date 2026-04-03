@@ -32,6 +32,15 @@ class AiChatTransactionCancelled extends AiChatEvent {
   const AiChatTransactionCancelled();
 }
 
+/// User changed a variant selection in the preview — update pending preview.
+class AiChatPreviewUpdated extends AiChatEvent {
+  final AiTransactionPreview updatedPreview;
+  const AiChatPreviewUpdated(this.updatedPreview);
+
+  @override
+  List<Object?> get props => [updatedPreview];
+}
+
 /// Initialize the AI pipeline on page open.
 class AiChatInitialized extends AiChatEvent {
   const AiChatInitialized();

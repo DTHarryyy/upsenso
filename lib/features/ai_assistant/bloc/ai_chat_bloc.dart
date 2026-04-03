@@ -16,7 +16,7 @@ class AiChatBloc extends Bloc<AiChatEvent, AiChatState> {
   final ModelManager _modelManager;
   final String businessId;
   final String cashierId;
-  final String? branchId;
+  final String? Function() selectedBranchId;
   final _uuid = const Uuid();
 
   StreamSubscription<ModelDownloadProgress>? _downloadSub;
@@ -27,7 +27,7 @@ class AiChatBloc extends Bloc<AiChatEvent, AiChatState> {
     required ModelManager modelManager,
     required this.businessId,
     required this.cashierId,
-    this.branchId,
+    required this.selectedBranchId,
   })  : _pipeline = pipeline,
         _downloadService = downloadService,
         _modelManager = modelManager,
@@ -44,6 +44,7 @@ class AiChatBloc extends Bloc<AiChatEvent, AiChatState> {
     on<AiChatMessageSent>(_onMessageSent);
     on<AiChatTransactionConfirmed>(_onTransactionConfirmed);
     on<AiChatTransactionCancelled>(_onTransactionCancelled);
+    on<AiChatPreviewUpdated>(_onPreviewUpdated);
     on<AiModelDownloadRequested>(_onDownloadRequested);
     on<AiModelDownloadProgressUpdated>(_onDownloadProgress);
     on<AiModelDownloadCancelled>(_onDownloadCancelled);
@@ -162,7 +163,7 @@ class AiChatBloc extends Bloc<AiChatEvent, AiChatState> {
       userMessage: text,
       businessId: businessId,
       cashierId: cashierId,
-      branchId: branchId,
+      branchId: selectedBranchId(),
     );
 
     // Remove loading message and add AI response
@@ -195,7 +196,7 @@ class AiChatBloc extends Bloc<AiChatEvent, AiChatState> {
     final result = await _pipeline.confirmTransaction(
       preview: event.preview,
       cashierId: cashierId,
-      branchId: branchId,
+      branchId: selectedBranchId(),
     );
 
     final aiMsg = AiChatMessage(
@@ -228,6 +229,32 @@ class AiChatBloc extends Bloc<AiChatEvent, AiChatState> {
     emit(state.copyWith(
       messages: [...state.messages, aiMsg],
       clearPreview: true,
+    ));
+  }
+
+  void _onPreviewUpdated(
+    AiChatPreviewUpdated event,
+    Emitter<AiChatState> emit,
+  ) {
+    // Update the pending preview and the matching message with new variant selections.
+    final updatedMessages = state.messages.map((msg) {
+      if (msg.transactionPreview != null &&
+          msg.transactionPreview == state.pendingPreview) {
+        return AiChatMessage(
+          id: msg.id,
+          text: AiResponseFormatter.formatPreviewMessage(event.updatedPreview),
+          isUser: false,
+          type: AiMessageType.transactionPreview,
+          transactionPreview: event.updatedPreview,
+          timestamp: msg.timestamp,
+        );
+      }
+      return msg;
+    }).toList();
+
+    emit(state.copyWith(
+      messages: updatedMessages,
+      pendingPreview: event.updatedPreview,
     ));
   }
 

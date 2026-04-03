@@ -24,7 +24,7 @@ class AiPipeline {
   /// Cached product catalog (refreshed periodically).
   List<ProductWithVariant>? _cachedCatalog;
   DateTime? _catalogCacheTime;
-  static const _cacheDuration = Duration(minutes: 5);
+  static const _cacheDuration = Duration(seconds: 30);
 
   AiPipeline({
     required LlmService llmService,
@@ -98,6 +98,7 @@ class AiPipeline {
             cashierId,
             result.product!,
             result.dateFilter,
+            branchId: branchId,
           );
           if (productResult != null) {
             return AiPipelineResult(
@@ -123,6 +124,7 @@ class AiPipeline {
             cashierId,
             result.category!,
             result.dateFilter,
+            branchId: branchId,
           );
           return AiPipelineResult(
             responseText: AiResponseFormatter.formatCategorySales(
@@ -138,6 +140,7 @@ class AiPipeline {
           businessId,
           cashierId,
           result.dateFilter,
+          branchId: branchId,
         );
         return AiPipelineResult(
           responseText: AiResponseFormatter.formatSalesTotal(
@@ -158,6 +161,7 @@ class AiPipeline {
           businessId,
           cashierId,
           result.dateFilter,
+          branchId: branchId,
         );
         // Route based on aggregation type
         switch (result.aggregation) {
@@ -192,6 +196,7 @@ class AiPipeline {
           businessId,
           cashierId,
           result.dateFilter,
+          branchId: branchId,
         );
         // Route based on aggregation type
         switch (result.aggregation) {
@@ -240,6 +245,7 @@ class AiPipeline {
           businessId,
           cashierId,
           result.dateFilter,
+          branchId: branchId,
         );
         return AiPipelineResult(
           responseText: AiResponseFormatter.formatProductsWithoutSales(
@@ -254,6 +260,7 @@ class AiPipeline {
           businessId,
           cashierId,
           result.dateFilter,
+          branchId: branchId,
         );
         return AiPipelineResult(
           responseText: AiResponseFormatter.formatTransactionCount(
@@ -291,6 +298,9 @@ class AiPipeline {
   }) async {
     // Layer 5: Get product catalog (with caching)
     final catalog = await _getCatalog(businessId);
+    debugPrint('AI Pipeline [Catalog]: businessId=$businessId, '
+        'products=${catalog.length}, '
+        'names=${catalog.map((c) => c.product.name).toSet().join(", ")}');
 
     if (catalog.isEmpty) {
       return AiPipelineResult(
@@ -301,6 +311,7 @@ class AiPipeline {
     }
 
     // Layer 6: Fuzzy match items against catalog
+    debugPrint('AI Pipeline [Items]: ${items.map((i) => '${i.name}×${i.quantity}').join(', ')}');
     final matchResult = ProductMatcher.matchItems(
       parsedItems: items,
       catalog: catalog,
@@ -309,11 +320,19 @@ class AiPipeline {
     // Build preview
     final matched = matchResult.matched;
     final unmatched = matchResult.unmatched;
+    debugPrint('AI Pipeline [Match]: matched=${matched.length}, '
+        'unmatched=${unmatched.join(', ')}');
 
     if (matched.isEmpty) {
+      final catalogNames = catalog
+          .map((c) => c.product.name)
+          .toSet()
+          .toList()
+        ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
       return AiPipelineResult(
         responseText: AiResponseFormatter.formatUnmatchedProducts(
           unmatched.isNotEmpty ? unmatched : items.map((i) => i.name).toList(),
+          catalogNames: catalogNames,
         ),
         type: AiResponseType.text,
       );

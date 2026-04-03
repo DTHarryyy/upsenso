@@ -5,8 +5,10 @@ import 'package:pos/features/ai_assistant/bloc/ai_chat_bloc.dart';
 import 'package:pos/features/ai_assistant/bloc/ai_chat_event.dart';
 import 'package:pos/features/ai_assistant/bloc/ai_chat_state.dart';
 import 'package:pos/features/ai_assistant/models/ai_models.dart';
-import 'package:pos/features/ai_assistant/services/model_download_service.dart';
+import 'package:pos/features/ai_assistant/widgets/download_offer_banner.dart';
+import 'package:pos/features/ai_assistant/widgets/download_progress_banner.dart';
 import 'package:pos/features/ai_assistant/widgets/transaction_preview_card.dart';
+import 'package:pos/features/ai_assistant/widgets/typing_indicator.dart';
 
 /// Layer 1 — Full-page AI assistant chat screen.
 class AiChatPage extends StatefulWidget {
@@ -101,10 +103,8 @@ class _AiChatPageState extends State<AiChatPage> {
         builder: (context, state) {
           return Column(
             children: [
-              // ── Model download banner ──────────────────────
               _ModelStatusBanner(state: state),
 
-              // ── Chat messages ──────────────────────────────
               Expanded(
                 child: ListView.builder(
                   controller: _scrollController,
@@ -119,7 +119,7 @@ class _AiChatPageState extends State<AiChatPage> {
                       onConfirm: msg.transactionPreview != null
                           ? () => context.read<AiChatBloc>().add(
                                 AiChatTransactionConfirmed(
-                                  msg.transactionPreview!,
+                                  state.pendingPreview ?? msg.transactionPreview!,
                                 ),
                               )
                           : null,
@@ -132,6 +132,11 @@ class _AiChatPageState extends State<AiChatPage> {
                       showPreviewActions:
                           state.pendingPreview != null &&
                           msg.transactionPreview == state.pendingPreview,
+                      onPreviewUpdated: msg.transactionPreview != null
+                          ? (updated) => context.read<AiChatBloc>().add(
+                                AiChatPreviewUpdated(updated),
+                              )
+                          : null,
                     );
                   },
                 ),
@@ -207,9 +212,6 @@ class _AiChatPageState extends State<AiChatPage> {
   }
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// Chat bubble row with avatar for AI messages, timestamp, transaction preview
-// ────────────────────────────────────────────────────────────────────────────
 class _ChatBubbleRow extends StatelessWidget {
   final AiChatMessage message;
   final String formattedTime;
@@ -217,6 +219,7 @@ class _ChatBubbleRow extends StatelessWidget {
   final VoidCallback? onCancel;
   final bool isProcessing;
   final bool showPreviewActions;
+  final ValueChanged<AiTransactionPreview>? onPreviewUpdated;
 
   const _ChatBubbleRow({
     required this.message,
@@ -225,6 +228,7 @@ class _ChatBubbleRow extends StatelessWidget {
     this.onCancel,
     this.isProcessing = false,
     this.showPreviewActions = false,
+    this.onPreviewUpdated,
   });
 
   @override
@@ -268,7 +272,7 @@ class _ChatBubbleRow extends StatelessWidget {
                   ),
                 ],
               ),
-              child: const _TypingIndicator(),
+              child: const TypingIndicator(),
             ),
           ],
         ),
@@ -344,6 +348,7 @@ class _ChatBubbleRow extends StatelessWidget {
                     onConfirm: onConfirm ?? () {},
                     onCancel: onCancel ?? () {},
                     isProcessing: isProcessing,
+                    onPreviewUpdated: onPreviewUpdated,
                   ),
                 const SizedBox(height: 4),
                 Text(
@@ -363,65 +368,8 @@ class _ChatBubbleRow extends StatelessWidget {
   }
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// Typing indicator (three animated dots)
-// ────────────────────────────────────────────────────────────────────────────
-class _TypingIndicator extends StatefulWidget {
-  const _TypingIndicator();
 
-  @override
-  State<_TypingIndicator> createState() => _TypingIndicatorState();
-}
 
-class _TypingIndicatorState extends State<_TypingIndicator>
-    with TickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: List.generate(3, (index) {
-            final delay = index * 0.2;
-            final value = (_controller.value + delay) % 1.0;
-            final opacity = (value < 0.5) ? value * 2 : (1.0 - value) * 2;
-            return Container(
-              margin: EdgeInsets.only(right: index < 2 ? 4 : 0),
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: AppColors.textMuted.withAlpha((opacity * 255).toInt()),
-                shape: BoxShape.circle,
-              ),
-            );
-          }),
-        );
-      },
-    );
-  }
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// Small circular icon button used in the input bar
-// ────────────────────────────────────────────────────────────────────────────
 class _CircleIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onPressed;
@@ -454,9 +402,6 @@ class _CircleIconButton extends StatelessWidget {
   }
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// Model download / status banner shown at the top of the chat
-// ────────────────────────────────────────────────────────────────────────────
 class _ModelStatusBanner extends StatelessWidget {
   final AiChatState state;
   const _ModelStatusBanner({required this.state});
@@ -471,176 +416,10 @@ class _ModelStatusBanner extends StatelessWidget {
         return const SizedBox.shrink();
 
       case AiModelStatus.notDownloaded:
-        return _DownloadOfferBanner();
+        return const DownloadOfferBanner();
 
       case AiModelStatus.downloading:
-        return _DownloadProgressBanner(progress: state.downloadProgress);
+        return DownloadProgressBanner(progress: state.downloadProgress);
     }
-  }
-}
-
-/// Banner offering to download the AI model.
-class _DownloadOfferBanner extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.brandSoft,
-        border: Border(
-          bottom: BorderSide(color: AppColors.borderSoft, width: 1),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.brand.withAlpha(25),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Icons.download_rounded,
-              color: AppColors.brand,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Enhance with AI',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Download Qwen 2.5 1.5B (~1 GB) for smarter responses',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            height: 34,
-            child: FilledButton(
-              onPressed: () {
-                context.read<AiChatBloc>().add(const AiModelDownloadRequested());
-              },
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.brand,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text(
-                'Download',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Banner showing download progress with a progress bar.
-class _DownloadProgressBanner extends StatelessWidget {
-  final ModelDownloadProgress? progress;
-  const _DownloadProgressBanner({this.progress});
-
-  @override
-  Widget build(BuildContext context) {
-    final p = progress;
-    final pct = p?.percentInt ?? 0;
-    final downloaded = p?.downloadedMB ?? '0.0';
-    final total = p?.totalMB ?? '0.0';
-    final fraction = p?.progress ?? 0.0;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.brandSoft,
-        border: Border(
-          bottom: BorderSide(color: AppColors.borderSoft, width: 1),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: AppColors.brand,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Downloading AI model… $pct%',
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-              // Cancel button
-              GestureDetector(
-                onTap: () {
-                  context
-                      .read<AiChatBloc>()
-                      .add(const AiModelDownloadCancelled());
-                },
-                child: Text(
-                  'Cancel',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // Progress bar
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: fraction,
-              minHeight: 6,
-              backgroundColor: AppColors.brand.withAlpha(30),
-              color: AppColors.brand,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '$downloaded MB / $total MB',
-            style: TextStyle(
-              color: AppColors.textMuted,
-              fontSize: 11,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
