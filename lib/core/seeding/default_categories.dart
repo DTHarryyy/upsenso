@@ -7,6 +7,11 @@ class DefaultCategories {
     'restaurant': ['Food', 'Beverages', 'Desserts'],
     'retail store': ['Clothing', 'Electronics', 'Accessories'],
     'coffee shop': ['Coffee & Tea', 'Pastries', 'Cold Drinks'],
+    'bakery': ['Bread', 'Cakes', 'Pastries', 'Cookies'],
+    'grocery store': ['Fresh Produce', 'Dairy', 'Canned Goods', 'Snacks'],
+    'food truck': ['Main Dishes', 'Sides', 'Drinks'],
+    'pharmacy': ['Medicines', 'Supplements', 'Personal Care'],
+    'salon': ['Haircuts', 'Treatments', 'Products'],
   };
 
   /// Returns the default category names for the given template.
