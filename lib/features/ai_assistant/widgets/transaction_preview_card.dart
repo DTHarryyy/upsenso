@@ -1,19 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/features/ai_assistant/models/ai_models.dart';
-
-/// Layer 8 — UI Preview Layer: Shows transaction details before confirmation.
-///
-/// Displays:
-/// - Product name, variant, quantity, price, line total
-/// - Subtotal, tax, grand total
-/// - CONFIRM and CANCEL buttons
-/// - User MUST confirm before any DB write occurs
-class TransactionPreviewCard extends StatelessWidget {
+   
+class TransactionPreviewCard extends StatefulWidget {
   final AiTransactionPreview preview;
   final VoidCallback onConfirm;
   final VoidCallback onCancel;
   final bool isProcessing;
+  final ValueChanged<AiTransactionPreview>? onPreviewUpdated;
 
   const TransactionPreviewCard({
     super.key,
@@ -21,7 +15,61 @@ class TransactionPreviewCard extends StatelessWidget {
     required this.onConfirm,
     required this.onCancel,
     this.isProcessing = false,
+    this.onPreviewUpdated,
   });
+
+  @override
+  State<TransactionPreviewCard> createState() => _TransactionPreviewCardState();
+}
+
+class _TransactionPreviewCardState extends State<TransactionPreviewCard> {
+  late List<AiMatchedProduct> _products;
+
+  @override
+  void initState() {
+    super.initState();
+    _products = List.of(widget.preview.matchedProducts);
+  }
+
+  @override
+  void didUpdateWidget(TransactionPreviewCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.preview != widget.preview) {
+      _products = List.of(widget.preview.matchedProducts);
+    }
+  }
+
+  void _selectVariant(int index, AiVariantOption variant) {
+    if (variant.trackStock && variant.stock <= 0) return;
+    setState(() {
+      _products[index] = _products[index].selectVariant(variant);
+    });
+    _notifyPreviewUpdated();
+  }
+
+  void _removeProduct(int index) {
+    setState(() {
+      _products.removeAt(index);
+    });
+    _notifyPreviewUpdated();
+  }
+
+  void _notifyPreviewUpdated() {
+    final subtotal = _products.fold(0.0, (sum, p) => sum + p.lineTotal);
+    final totalTax = _products.fold(0.0, (sum, p) => sum + p.lineTax);
+    final updated = AiTransactionPreview(
+      matchedProducts: _products,
+      unmatchedNames: widget.preview.unmatchedNames,
+      subtotal: subtotal,
+      totalTax: totalTax,
+      grandTotal: subtotal + totalTax,
+    );
+    widget.onPreviewUpdated?.call(updated);
+  }
+
+  double get _subtotal => _products.fold(0.0, (sum, p) => sum + p.lineTotal);
+  double get _totalTax => _products.fold(0.0, (sum, p) => sum + p.lineTax);
+  double get _grandTotal => _subtotal + _totalTax;
 
   @override
   Widget build(BuildContext context) {
@@ -67,7 +115,7 @@ class TransactionPreviewCard extends StatelessWidget {
                 ),
                 const Spacer(),
                 Text(
-                  '${preview.matchedProducts.length} item${preview.matchedProducts.length == 1 ? '' : 's'}',
+                  '${_products.length} item${_products.length == 1 ? '' : 's'}',
                   style: const TextStyle(
                     fontSize: 13,
                     color: AppColors.textSecondary,
@@ -82,8 +130,14 @@ class TransactionPreviewCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Column(
               children: [
-                for (final product in preview.matchedProducts)
-                  _LineItemRow(product: product),
+                for (int i = 0; i < _products.length; i++)
+                  _LineItemRow(
+                    product: _products[i],
+                    onVariantSelected: _products[i].needsVariantSelection
+                        ? (variant) => _selectVariant(i, variant)
+                        : null,
+                    onRemove: () => _removeProduct(i),
+                  ),
               ],
             ),
           ),
@@ -98,19 +152,19 @@ class TransactionPreviewCard extends StatelessWidget {
               children: [
                 _TotalRow(
                   label: 'Subtotal',
-                  value: preview.subtotal,
+                  value: _subtotal,
                 ),
-                if (preview.totalTax > 0) ...[
+                if (_totalTax > 0) ...[
                   const SizedBox(height: 4),
                   _TotalRow(
                     label: 'Tax',
-                    value: preview.totalTax,
+                    value: _totalTax,
                   ),
                 ],
                 const SizedBox(height: 8),
                 _TotalRow(
                   label: 'Total',
-                  value: preview.grandTotal,
+                  value: _grandTotal,
                   isBold: true,
                 ),
               ],
@@ -118,7 +172,7 @@ class TransactionPreviewCard extends StatelessWidget {
           ),
 
           // Unmatched warning
-          if (preview.unmatchedNames.isNotEmpty)
+          if (widget.preview.unmatchedNames.isNotEmpty)
             Container(
               margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               padding: const EdgeInsets.all(10),
@@ -136,7 +190,7 @@ class TransactionPreviewCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Not found: ${preview.unmatchedNames.join(", ")}',
+                      'Not found: ${widget.preview.unmatchedNames.join(", ")}',
                       style: const TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
@@ -155,7 +209,7 @@ class TransactionPreviewCard extends StatelessWidget {
                 // Cancel
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: isProcessing ? null : onCancel,
+                    onPressed: widget.isProcessing ? null : widget.onCancel,
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.textSecondary,
                       side: const BorderSide(color: AppColors.borderSoft),
@@ -177,7 +231,7 @@ class TransactionPreviewCard extends StatelessWidget {
                 // Confirm
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: isProcessing ? null : onConfirm,
+                    onPressed: widget.isProcessing ? null : widget.onConfirm,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.brand,
                       foregroundColor: AppColors.textInverse,
@@ -187,7 +241,7 @@ class TransactionPreviewCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       elevation: 0,
                     ),
-                    child: isProcessing
+                    child: widget.isProcessing
                         ? const SizedBox(
                             height: 18,
                             width: 18,
@@ -216,70 +270,203 @@ class TransactionPreviewCard extends StatelessWidget {
 
 class _LineItemRow extends StatelessWidget {
   final AiMatchedProduct product;
+  final ValueChanged<AiVariantOption>? onVariantSelected;
+  final VoidCallback? onRemove;
 
-  const _LineItemRow({required this.product});
+  const _LineItemRow({
+    required this.product,
+    this.onVariantSelected,
+    this.onRemove,
+  });
 
   @override
   Widget build(BuildContext context) {
     final showVariant =
         product.variantName != 'Default' && product.variantName.isNotEmpty;
+    final hasTax = (product.taxRate ?? 0) > 0;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Product info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  product.productName,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Remove button
+              GestureDetector(
+                onTap: onRemove,
+                child: const Padding(
+                  padding: EdgeInsets.only(right: 6, top: 2),
+                  child: Icon(
+                    Icons.close_rounded,
+                    size: 16,
+                    color: AppColors.error,
                   ),
                 ),
-                if (showVariant)
-                  Text(
-                    product.variantName,
-                    style: const TextStyle(
+              ),
+              // Product info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.productName,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: product.trackStock && product.availableStock <= 0
+                            ? AppColors.textMuted
+                            : AppColors.textPrimary,
+                        decoration: product.trackStock && product.availableStock <= 0
+                            ? TextDecoration.lineThrough
+                            : null,
+                      ),
+                    ),
+                    if (product.trackStock && product.availableStock <= 0)
+                      const Text(
+                        'Out of stock',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.error,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    if (showVariant && !product.needsVariantSelection)
+                      Text(
+                        product.variantName,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              // Quantity
+              Text(
+                '×${_formatQty(product.quantity)}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Unit price
+              Text(
+                '₱${_formatNum(product.unitPrice)}',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textMuted,
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Line total
+              Text(
+                '₱${_formatNum(product.lineTotal)}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          // Per-line tax info
+          if (hasTax)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                'Tax ${product.taxRate!.toStringAsFixed(0)}%: ₱${_formatNum(product.lineTax)}',
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          // Variant radio buttons
+          if (product.needsVariantSelection && onVariantSelected != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Choose variant:',
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.textMuted,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textSecondary,
                     ),
                   ),
-              ],
+                  ...product.availableVariants.map((v) {
+                    final isSelected = v.variantId == product.variantId;
+                    final isOutOfStock = v.trackStock && v.stock <= 0;
+                    return GestureDetector(
+                      onTap: isOutOfStock
+                          ? null
+                          : () => onVariantSelected!(v),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          children: [
+                            Icon(
+                              isSelected
+                                  ? Icons.radio_button_checked
+                                  : Icons.radio_button_unchecked,
+                              size: 18,
+                              color: isOutOfStock
+                                  ? AppColors.textMuted.withAlpha(100)
+                                  : isSelected
+                                      ? AppColors.brand
+                                      : AppColors.textMuted,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              v.variantName,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                                color: isOutOfStock
+                                    ? AppColors.textMuted.withAlpha(100)
+                                    : isSelected
+                                        ? AppColors.textPrimary
+                                        : AppColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '₱${_formatNum(v.price)}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isOutOfStock
+                                    ? AppColors.textMuted.withAlpha(100)
+                                    : isSelected
+                                        ? AppColors.brand
+                                        : AppColors.textMuted,
+                              ),
+                            ),
+                            if (isOutOfStock) ...[
+                              const SizedBox(width: 6),
+                              const Text(
+                                'Out of stock',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.error,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
             ),
-          ),
-          // Quantity
-          Text(
-            '×${_formatQty(product.quantity)}',
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Unit price
-          Text(
-            '₱${_formatNum(product.unitPrice)}',
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.textMuted,
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Line total
-          Text(
-            '₱${_formatNum(product.lineTotal)}',
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
         ],
       ),
     );
