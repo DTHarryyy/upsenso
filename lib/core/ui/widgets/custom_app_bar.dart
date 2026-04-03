@@ -9,6 +9,8 @@ import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/ui/widgets/user_profile_section.dart';
+import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 
 class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
   final List<String> branches;
@@ -257,6 +259,169 @@ class _CustomAppBarState extends State<CustomAppBar> {
     );
   }
 
+  static const String _addNewBranchValue = '__add_new_branch__';
+
+  void _showAddBranchDialog(BuildContext context) {
+    final nameController = TextEditingController();
+    final addressController = TextEditingController();
+    final phoneController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.add_business_rounded, color: AppColors.brand, size: 24),
+              const SizedBox(width: 8),
+              Text(
+                'Add New Branch',
+                style: getOutfitStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: nameController,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      labelText: 'Branch Name *',
+                      hintText: 'e.g. Downtown Branch',
+                      prefixIcon: const Icon(Icons.store_rounded, size: 20),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.borderSoft),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.brand, width: 2),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Branch name is required';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: addressController,
+                    decoration: InputDecoration(
+                      labelText: 'Address',
+                      hintText: 'e.g. 123 Main St',
+                      prefixIcon: const Icon(Icons.location_on_outlined, size: 20),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.borderSoft),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.brand, width: 2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: phoneController,
+                    keyboardType: TextInputType.phone,
+                    decoration: InputDecoration(
+                      labelText: 'Phone',
+                      hintText: 'e.g. +63 912 345 6789',
+                      prefixIcon: const Icon(Icons.phone_outlined, size: 20),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.borderSoft),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.brand, width: 2),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(
+                'Cancel',
+                style: getOutfitStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+
+                final authState = context.read<AuthBloc>().state;
+                if (authState is! AuthAuthenticated) return;
+                final businessId = authState.user.businessId;
+                if (businessId == null || businessId.trim().isEmpty) return;
+
+                Navigator.of(dialogContext).pop();
+
+                await context.read<BranchCubit>().addBranch(
+                  businessId: businessId,
+                  name: nameController.text,
+                  address: addressController.text.isEmpty
+                      ? null
+                      : addressController.text,
+                  phone: phoneController.text.isEmpty
+                      ? null
+                      : phoneController.text,
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.brand,
+                foregroundColor: AppColors.textInverse,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+              child: Text(
+                'Add Branch',
+                style: getOutfitStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textInverse,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildBranchDropdown() {
     return BlocBuilder<BranchCubit, BranchState>(
       builder: (context, branchState) {
@@ -267,39 +432,121 @@ class _CustomAppBarState extends State<CustomAppBar> {
             ? branchState.availableBranches
             : widget.branches;
 
-        return DropdownButton<String>(
-          value: selectedBranch,
-          onChanged: widget.onBranchChanged != null && canSwitch
-              ? (String? newValue) {
-                  if (newValue != null) {
-                    unawaited(
-                      context.read<BranchCubit>().selectBranch(newValue),
-                    );
-                    widget.onBranchChanged?.call(newValue);
-                  }
-                }
-              : null,
-          underline: const SizedBox.shrink(),
-          icon: Icon(
-            Icons.unfold_more,
-            size: 18,
-            color: AppColors.textSecondary,
+        return PopupMenuButton<String>(
+          onSelected: (value) {
+            if (value == _addNewBranchValue) {
+              _showAddBranchDialog(context);
+            } else if (widget.onBranchChanged != null && canSwitch) {
+              unawaited(
+                context.read<BranchCubit>().selectBranch(value),
+              );
+              widget.onBranchChanged?.call(value);
+            }
+          },
+          enabled: canSwitch,
+          offset: const Offset(0, 40),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-          items: branches.map<DropdownMenuItem<String>>((String branch) {
-            return DropdownMenuItem<String>(
-              value: branch,
-              child: Text(
-                branch,
-                overflow: TextOverflow.ellipsis,
-                style: getOutfitStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+          itemBuilder: (context) {
+            final items = <PopupMenuEntry<String>>[];
+            for (final branch in branches) {
+              items.add(PopupMenuItem<String>(
+                value: branch,
+                child: Row(
+                  children: [
+                    Icon(
+                      branch == BranchCubit.allBranchesLabel
+                          ? Icons.all_inclusive_rounded
+                          : Icons.store_rounded,
+                      size: 18,
+                      color: branch == selectedBranch
+                          ? AppColors.brand
+                          : AppColors.textMuted,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        branch,
+                        overflow: TextOverflow.ellipsis,
+                        style: getOutfitStyle(
+                          fontSize: 14,
+                          fontWeight: branch == selectedBranch
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: branch == selectedBranch
+                              ? AppColors.brand
+                              : AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    if (branch == selectedBranch)
+                      const Icon(
+                        Icons.check_rounded,
+                        size: 18,
+                        color: AppColors.brand,
+                      ),
+                  ],
+                ),
+              ));
+            }
+            if (canSwitch) {
+              items.add(const PopupMenuDivider());
+              items.add(PopupMenuItem<String>(
+                value: _addNewBranchValue,
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.add_rounded,
+                      size: 18,
+                      color: AppColors.brand,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Add New Branch',
+                      style: getOutfitStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.brand,
+                      ),
+                    ),
+                  ],
+                ),
+              ));
+            }
+            return items;
+          },
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.store_rounded,
+                size: 18,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: 6),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 160),
+                child: Text(
+                  selectedBranch,
+                  overflow: TextOverflow.ellipsis,
+                  style: getOutfitStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               ),
-            );
-          }).toList(),
-          style: getOutfitStyle(fontSize: 14, color: AppColors.textPrimary),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.unfold_more,
+                size: 18,
+                color: canSwitch
+                    ? AppColors.textSecondary
+                    : AppColors.textMuted,
+              ),
+            ],
+          ),
         );
       },
     );
@@ -315,64 +562,140 @@ class _CustomAppBarState extends State<CustomAppBar> {
             ? branchState.availableBranches
             : widget.branches;
 
-        return Container(
-          height: 38,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceAlt,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.borderSoft),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              isExpanded: true,
-              value: selectedBranch,
-              onChanged: widget.onBranchChanged != null && canSwitch
-                  ? (String? newValue) {
-                      if (newValue != null) {
-                        unawaited(
-                          context.read<BranchCubit>().selectBranch(newValue),
-                        );
-                        widget.onBranchChanged?.call(newValue);
-                      }
-                    }
-                  : null,
-              icon: Icon(
-                Icons.expand_more,
-                size: 16,
-                color: AppColors.textSecondary,
-              ),
-              selectedItemBuilder: (context) {
-                return branches.map((branch) {
-                  return Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      selectedBranch,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: getOutfitStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+        return GestureDetector(
+          onTap: canSwitch
+              ? () {
+                  final RenderBox box =
+                      context.findRenderObject() as RenderBox;
+                  final Offset offset =
+                      box.localToGlobal(Offset.zero);
+
+                  final items = <PopupMenuEntry<String>>[];
+                  for (final branch in branches) {
+                    items.add(PopupMenuItem<String>(
+                      value: branch,
+                      child: Row(
+                        children: [
+                          Icon(
+                            branch == BranchCubit.allBranchesLabel
+                                ? Icons.all_inclusive_rounded
+                                : Icons.store_rounded,
+                            size: 16,
+                            color: branch == selectedBranch
+                                ? AppColors.brand
+                                : AppColors.textMuted,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              branch,
+                              overflow: TextOverflow.ellipsis,
+                              style: getOutfitStyle(
+                                fontSize: 13,
+                                fontWeight: branch == selectedBranch
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                                color: branch == selectedBranch
+                                    ? AppColors.brand
+                                    : AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                          if (branch == selectedBranch)
+                            const Icon(
+                              Icons.check_rounded,
+                              size: 16,
+                              color: AppColors.brand,
+                            ),
+                        ],
                       ),
+                    ));
+                  }
+                  if (canSwitch) {
+                    items.add(const PopupMenuDivider());
+                    items.add(PopupMenuItem<String>(
+                      value: _addNewBranchValue,
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.add_rounded,
+                            size: 16,
+                            color: AppColors.brand,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Add New Branch',
+                            style: getOutfitStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.brand,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ));
+                  }
+
+                  showMenu<String>(
+                    context: context,
+                    position: RelativeRect.fromLTRB(
+                      offset.dx,
+                      offset.dy + box.size.height,
+                      offset.dx + box.size.width,
+                      0,
                     ),
-                  );
-                }).toList();
-              },
-              items: branches.map<DropdownMenuItem<String>>((String branch) {
-                return DropdownMenuItem<String>(
-                  value: branch,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    items: items,
+                  ).then((value) {
+                    if (value == null) return;
+                    if(!context.mounted) return;
+                    if (value == _addNewBranchValue) {
+                      _showAddBranchDialog(context);
+                    } else {
+                      unawaited(
+                        context
+                            .read<BranchCubit>()
+                            .selectBranch(value),
+                      );
+                      widget.onBranchChanged?.call(value);
+                    }
+                  });
+                }
+              : null,
+          child: Container(
+            height: 38,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.borderSoft),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
                   child: Text(
-                    branch,
+                    selectedBranch,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: getOutfitStyle(
-                      fontSize: 13,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                       color: AppColors.textPrimary,
                     ),
                   ),
-                );
-              }).toList(),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.expand_more,
+                  size: 16,
+                  color: canSwitch
+                      ? AppColors.textSecondary
+                      : AppColors.textMuted,
+                ),
+              ],
             ),
           ),
         );

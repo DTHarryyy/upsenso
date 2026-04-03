@@ -310,10 +310,29 @@ class AiResponseFormatter {
     return 'Sorry, something went wrong: $message';
   }
 
-  static String formatUnmatchedProducts(List<String> names) {
+  static String formatUnmatchedProducts(
+    List<String> names, {
+    List<String> catalogNames = const [],
+  }) {
     if (names.isEmpty) return '';
     final joined = names.map((n) => '"$n"').join(', ');
-    return "I couldn't find these products: $joined. Please check the names and try again.";
+    final buffer = StringBuffer(
+      "I couldn't find these products: $joined.\n",
+    );
+
+    if (catalogNames.isNotEmpty) {
+      // Suggest up to 5 product names so the user can pick the right one
+      final suggestions = catalogNames.take(5).map((n) => '"$n"').join(', ');
+      buffer.write(
+        '\nAvailable products include: $suggestions'
+        '${catalogNames.length > 5 ? ' and ${catalogNames.length - 5} more' : ''}.'
+        '\n\nTip: Try using the exact product name, or a shorter keyword.',
+      );
+    } else {
+      buffer.write('Please check the names and try again.');
+    }
+
+    return buffer.toString();
   }
 
   static String formatPreviewMessage(AiTransactionPreview preview) {

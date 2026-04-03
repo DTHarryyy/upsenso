@@ -77,9 +77,20 @@ class MorePage extends StatelessWidget {
                     title: 'Business',
                     items: [
                       _MenuItem(
+                        icon: Icons.history,
+                        title: 'Sales History',
+                        onTap: () => context.push(AppRoutes.saleshistory),
+                      ),
+                    ],
+                  ),
+                  _buildMenuSection(
+                    context: context,
+                    title: 'Business',
+                    items: [
+                      _MenuItem(
                         icon: Icons.business,
                         title: 'Business Profile',
-                        onTap: () => context.go(AppRoutes.profile),
+                        onTap: () => context.push(AppRoutes.businessProfile),
                       ),
                       _MenuItem(
                         icon: Icons.settings,

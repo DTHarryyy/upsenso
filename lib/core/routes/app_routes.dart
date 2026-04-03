@@ -24,4 +24,5 @@ class AppRoutes {
 
   // AI Assistant
   static const String aiChat = '/ai-chat';
+  static const String saleshistory = '/more/sales-history';
 }

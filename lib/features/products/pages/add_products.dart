@@ -131,7 +131,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
     final variants = await cubit.loadVariants(product.id);
     if (!mounted) return;
 
-    final hasStock = variants.any((v) => v.stock > 0 || (v.stockDecimal ?? 0) > 0);
+    final hasStock = variants.any((v) => v.trackStock);
     if (hasStock) cubit.setTrackInventory(true);
 
     if (product.hasVariants) {

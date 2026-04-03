@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
+import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
@@ -88,7 +89,9 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
       if (authState is! AuthAuthenticated) return;
 
       final cashierId = authState.user.id;
-      final branchId = authState.user.branchId;
+      final branchId =
+          context.read<BranchCubit>().getSelectedBranchIdForFiltering() ??
+          authState.user.branchId;
       final txId = const Uuid().v4();
       final customerName = _customerController.text.trim();
 

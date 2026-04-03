@@ -3,11 +3,14 @@ import 'dart:convert';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
+import 'package:pos/core/sync/sync_status.dart';
 import 'package:pos/features/auth/domain/entities/app_user.dart';
 import 'package:pos/features/business/data/datasources/business_remote_ds.dart';
+import 'package:pos/features/business/domain/entities/branch.dart';
 
 /// Manages branch selection and filtering based on user role
 class BranchCubit extends Cubit<BranchState> {
@@ -307,6 +310,11 @@ class BranchCubit extends Cubit<BranchState> {
       }
     }
 
+    // Remove the placeholder 'Branch' entry if real branches were fetched
+    if (branchOptions.any((o) => o.name != 'Branch')) {
+      branchOptions.removeWhere((o) => o.name == 'Branch' && o.id == null);
+    }
+
     await applyBranchState();
   }
 
@@ -378,6 +386,80 @@ class BranchCubit extends Cubit<BranchState> {
       return null; // No filter, show all
     }
     return state.selectedBranchId;
+  }
+
+  /// Add a new branch (Super Admin only)
+  Future<String?> addBranch({
+    required String businessId,
+    required String name,
+    String? address,
+    String? phone,
+  }) async {
+    if (!state.canSwitchBranches) return null;
+
+    final id = const Uuid().v4();
+    final branch = Branch(
+      id: id,
+      businessId: businessId,
+      name: name.trim(),
+      address: address?.trim(),
+      phone: phone?.trim(),
+    );
+
+    // Save locally
+    final branchesDao = sl<BranchesDao>();
+    await branchesDao.insertBranch(branch);
+
+    // Try remote
+    try {
+      final remote = sl<BusinessRemoteDs>();
+      await remote.createBranch(
+        id: id,
+        businessId: businessId,
+        name: branch.name,
+        address: branch.address,
+        phone: branch.phone,
+      );
+      await branchesDao.updateSyncStatus(id: id, status: SyncStatus.synced);
+    } catch (e) {
+      debugPrint('[BranchCubit] Remote branch creation failed: $e');
+    }
+
+    // Update state with the new branch
+    final updatedIdsByName = Map<String, String?>.from(_branchIdsByName);
+    updatedIdsByName[branch.name] = id;
+    _branchIdsByName = Map.unmodifiable(updatedIdsByName);
+
+    final updatedBranches = List<String>.from(state.availableBranches);
+    if (!updatedBranches.contains(branch.name)) {
+      // Insert before "All Branches" stays first
+      final insertIndex = updatedBranches.contains(allBranchesLabel) ? 1 : 0;
+      updatedBranches.insert(insertIndex, branch.name);
+      updatedBranches.sort((a, b) {
+        if (a == allBranchesLabel) return -1;
+        if (b == allBranchesLabel) return 1;
+        return a.toLowerCase().compareTo(b.toLowerCase());
+      });
+    }
+
+    // Auto-select the new branch
+    emit(BranchState(
+      selectedBranch: branch.name,
+      selectedBranchId: id,
+      availableBranches: updatedBranches,
+      canSwitchBranches: state.canSwitchBranches,
+      roleName: state.roleName,
+    ));
+
+    await _saveSelectedBranch(branchName: branch.name, branchId: id);
+
+    final cacheableOptions = updatedIdsByName.entries
+        .where((entry) => entry.key != allBranchesLabel)
+        .map((entry) => _BranchOption(name: entry.key, id: entry.value))
+        .toList(growable: false);
+    await _saveCachedBranchOptions(cacheableOptions);
+
+    return id;
   }
 
   /// Reset to initial state

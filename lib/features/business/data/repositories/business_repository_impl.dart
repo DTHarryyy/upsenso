@@ -3,6 +3,7 @@ import 'package:pos/core/database/daos/business_templates_dao.dart';
 import 'package:pos/core/database/daos/businesses_dao.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/core/database/daos/categories_dao.dart';
+import 'package:pos/core/seeding/default_business_templates.dart';
 import 'package:pos/core/seeding/default_categories.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_status.dart';
@@ -44,52 +45,35 @@ class BusinessRepositoryImpl implements BusinessRepository {
   @override
   Future<List<BusinessTemplate>> getBusinessTemplates() async {
     // Try to get from local cache first
-    final localTemplates = await templatesDao.getAllTemplates();
+    // Always prefer fresh server data when online to avoid stale template IDs.
+    final online = await connectivity.isConnected;
+    if (online) {
+      try {
+        final data = await remote.getBusinessTemplates();
+        final templates = data
+            .map((json) => BusinessTemplateModel.fromJson(json))
+            .toList();
 
+        // Replace local cache with server data
+        await templatesDao.clearAll();
+        await templatesDao.upsertTemplates(templates);
+
+        return templates;
+      } catch (_) {
+        // Server fetch failed – fall through to local cache
+      }
+    }
+
+    // Offline or server error – use local cache
+    final localTemplates = await templatesDao.getAllTemplates();
     if (localTemplates.isNotEmpty) {
-      // Return cached data immediately
-      final templates = localTemplates
+      return localTemplates
           .map((t) => BusinessTemplatesDao.toEntity(t))
           .toList();
-
-      // Refresh from server in background if online
-      _refreshTemplatesFromServer();
-
-      return templates;
     }
 
-    // No local data, must fetch from server
-    final online = await connectivity.isConnected;
-    if (!online) {
-      return []; // No local data and offline
-    }
-
-    // Fetch from server and cache locally
-    final data = await remote.getBusinessTemplates();
-    final templates = data
-        .map((json) => BusinessTemplateModel.fromJson(json))
-        .toList();
-
-    // Cache locally
-    await templatesDao.upsertTemplates(templates);
-
-    return templates;
-  }
-
-  Future<void> _refreshTemplatesFromServer() async {
-    try {
-      final online = await connectivity.isConnected;
-      if (!online) return;
-
-      final data = await remote.getBusinessTemplates();
-      final templates = data
-          .map((json) => BusinessTemplateModel.fromJson(json))
-          .toList();
-
-      await templatesDao.upsertTemplates(templates);
-    } catch (_) {
-      // Silent fail for background refresh
-    }
+    // No cache at all – return hardcoded fallback
+    return DefaultBusinessTemplates.all;
   }
 
   @override

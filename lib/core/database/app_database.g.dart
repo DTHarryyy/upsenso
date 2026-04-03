@@ -4115,6 +4115,21 @@ class $ProductVariantsTableTable extends ProductVariantsTable
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _trackStockMeta = const VerificationMeta(
+    'trackStock',
+  );
+  @override
+  late final GeneratedColumn<bool> trackStock = GeneratedColumn<bool>(
+    'track_stock',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("track_stock" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _trackExpiryMeta = const VerificationMeta(
     'trackExpiry',
   );
@@ -4218,6 +4233,7 @@ class $ProductVariantsTableTable extends ProductVariantsTable
     barcode,
     stockDecimal,
     lowStockAlert,
+    trackStock,
     trackExpiry,
     expiryDate,
     isActive,
@@ -4322,6 +4338,12 @@ class $ProductVariantsTableTable extends ProductVariantsTable
           data['low_stock_alert']!,
           _lowStockAlertMeta,
         ),
+      );
+    }
+    if (data.containsKey('track_stock')) {
+      context.handle(
+        _trackStockMeta,
+        trackStock.isAcceptableOrUnknown(data['track_stock']!, _trackStockMeta),
       );
     }
     if (data.containsKey('track_expiry')) {
@@ -4435,6 +4457,10 @@ class $ProductVariantsTableTable extends ProductVariantsTable
         DriftSqlType.int,
         data['${effectivePrefix}low_stock_alert'],
       ),
+      trackStock: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}track_stock'],
+      )!,
       trackExpiry: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}track_expiry'],
@@ -4492,6 +4518,7 @@ class ProductVariantsTableData extends DataClass
 
   /// Optional threshold below which a low-stock alert should be triggered.
   final int? lowStockAlert;
+  final bool trackStock;
   final bool trackExpiry;
   final String? expiryDate;
   final bool isActive;
@@ -4514,6 +4541,7 @@ class ProductVariantsTableData extends DataClass
     this.barcode,
     this.stockDecimal,
     this.lowStockAlert,
+    required this.trackStock,
     required this.trackExpiry,
     this.expiryDate,
     required this.isActive,
@@ -4549,6 +4577,7 @@ class ProductVariantsTableData extends DataClass
     if (!nullToAbsent || lowStockAlert != null) {
       map['low_stock_alert'] = Variable<int>(lowStockAlert);
     }
+    map['track_stock'] = Variable<bool>(trackStock);
     map['track_expiry'] = Variable<bool>(trackExpiry);
     if (!nullToAbsent || expiryDate != null) {
       map['expiry_date'] = Variable<String>(expiryDate);
@@ -4589,6 +4618,7 @@ class ProductVariantsTableData extends DataClass
       lowStockAlert: lowStockAlert == null && nullToAbsent
           ? const Value.absent()
           : Value(lowStockAlert),
+      trackStock: Value(trackStock),
       trackExpiry: Value(trackExpiry),
       expiryDate: expiryDate == null && nullToAbsent
           ? const Value.absent()
@@ -4623,6 +4653,7 @@ class ProductVariantsTableData extends DataClass
       barcode: serializer.fromJson<String?>(json['barcode']),
       stockDecimal: serializer.fromJson<double?>(json['stockDecimal']),
       lowStockAlert: serializer.fromJson<int?>(json['lowStockAlert']),
+      trackStock: serializer.fromJson<bool>(json['trackStock']),
       trackExpiry: serializer.fromJson<bool>(json['trackExpiry']),
       expiryDate: serializer.fromJson<String?>(json['expiryDate']),
       isActive: serializer.fromJson<bool>(json['isActive']),
@@ -4648,6 +4679,7 @@ class ProductVariantsTableData extends DataClass
       'barcode': serializer.toJson<String?>(barcode),
       'stockDecimal': serializer.toJson<double?>(stockDecimal),
       'lowStockAlert': serializer.toJson<int?>(lowStockAlert),
+      'trackStock': serializer.toJson<bool>(trackStock),
       'trackExpiry': serializer.toJson<bool>(trackExpiry),
       'expiryDate': serializer.toJson<String?>(expiryDate),
       'isActive': serializer.toJson<bool>(isActive),
@@ -4671,6 +4703,7 @@ class ProductVariantsTableData extends DataClass
     Value<String?> barcode = const Value.absent(),
     Value<double?> stockDecimal = const Value.absent(),
     Value<int?> lowStockAlert = const Value.absent(),
+    bool? trackStock,
     bool? trackExpiry,
     Value<String?> expiryDate = const Value.absent(),
     bool? isActive,
@@ -4693,6 +4726,7 @@ class ProductVariantsTableData extends DataClass
     lowStockAlert: lowStockAlert.present
         ? lowStockAlert.value
         : this.lowStockAlert,
+    trackStock: trackStock ?? this.trackStock,
     trackExpiry: trackExpiry ?? this.trackExpiry,
     expiryDate: expiryDate.present ? expiryDate.value : this.expiryDate,
     isActive: isActive ?? this.isActive,
@@ -4727,6 +4761,9 @@ class ProductVariantsTableData extends DataClass
       lowStockAlert: data.lowStockAlert.present
           ? data.lowStockAlert.value
           : this.lowStockAlert,
+      trackStock: data.trackStock.present
+          ? data.trackStock.value
+          : this.trackStock,
       trackExpiry: data.trackExpiry.present
           ? data.trackExpiry.value
           : this.trackExpiry,
@@ -4762,6 +4799,7 @@ class ProductVariantsTableData extends DataClass
           ..write('barcode: $barcode, ')
           ..write('stockDecimal: $stockDecimal, ')
           ..write('lowStockAlert: $lowStockAlert, ')
+          ..write('trackStock: $trackStock, ')
           ..write('trackExpiry: $trackExpiry, ')
           ..write('expiryDate: $expiryDate, ')
           ..write('isActive: $isActive, ')
@@ -4787,6 +4825,7 @@ class ProductVariantsTableData extends DataClass
     barcode,
     stockDecimal,
     lowStockAlert,
+    trackStock,
     trackExpiry,
     expiryDate,
     isActive,
@@ -4811,6 +4850,7 @@ class ProductVariantsTableData extends DataClass
           other.barcode == this.barcode &&
           other.stockDecimal == this.stockDecimal &&
           other.lowStockAlert == this.lowStockAlert &&
+          other.trackStock == this.trackStock &&
           other.trackExpiry == this.trackExpiry &&
           other.expiryDate == this.expiryDate &&
           other.isActive == this.isActive &&
@@ -4834,6 +4874,7 @@ class ProductVariantsTableCompanion
   final Value<String?> barcode;
   final Value<double?> stockDecimal;
   final Value<int?> lowStockAlert;
+  final Value<bool> trackStock;
   final Value<bool> trackExpiry;
   final Value<String?> expiryDate;
   final Value<bool> isActive;
@@ -4855,6 +4896,7 @@ class ProductVariantsTableCompanion
     this.barcode = const Value.absent(),
     this.stockDecimal = const Value.absent(),
     this.lowStockAlert = const Value.absent(),
+    this.trackStock = const Value.absent(),
     this.trackExpiry = const Value.absent(),
     this.expiryDate = const Value.absent(),
     this.isActive = const Value.absent(),
@@ -4877,6 +4919,7 @@ class ProductVariantsTableCompanion
     this.barcode = const Value.absent(),
     this.stockDecimal = const Value.absent(),
     this.lowStockAlert = const Value.absent(),
+    this.trackStock = const Value.absent(),
     this.trackExpiry = const Value.absent(),
     this.expiryDate = const Value.absent(),
     this.isActive = const Value.absent(),
@@ -4902,6 +4945,7 @@ class ProductVariantsTableCompanion
     Expression<String>? barcode,
     Expression<double>? stockDecimal,
     Expression<int>? lowStockAlert,
+    Expression<bool>? trackStock,
     Expression<bool>? trackExpiry,
     Expression<String>? expiryDate,
     Expression<bool>? isActive,
@@ -4924,6 +4968,7 @@ class ProductVariantsTableCompanion
       if (barcode != null) 'barcode': barcode,
       if (stockDecimal != null) 'stock_decimal': stockDecimal,
       if (lowStockAlert != null) 'low_stock_alert': lowStockAlert,
+      if (trackStock != null) 'track_stock': trackStock,
       if (trackExpiry != null) 'track_expiry': trackExpiry,
       if (expiryDate != null) 'expiry_date': expiryDate,
       if (isActive != null) 'is_active': isActive,
@@ -4948,6 +4993,7 @@ class ProductVariantsTableCompanion
     Value<String?>? barcode,
     Value<double?>? stockDecimal,
     Value<int?>? lowStockAlert,
+    Value<bool>? trackStock,
     Value<bool>? trackExpiry,
     Value<String?>? expiryDate,
     Value<bool>? isActive,
@@ -4970,6 +5016,7 @@ class ProductVariantsTableCompanion
       barcode: barcode ?? this.barcode,
       stockDecimal: stockDecimal ?? this.stockDecimal,
       lowStockAlert: lowStockAlert ?? this.lowStockAlert,
+      trackStock: trackStock ?? this.trackStock,
       trackExpiry: trackExpiry ?? this.trackExpiry,
       expiryDate: expiryDate ?? this.expiryDate,
       isActive: isActive ?? this.isActive,
@@ -5020,6 +5067,9 @@ class ProductVariantsTableCompanion
     if (lowStockAlert.present) {
       map['low_stock_alert'] = Variable<int>(lowStockAlert.value);
     }
+    if (trackStock.present) {
+      map['track_stock'] = Variable<bool>(trackStock.value);
+    }
     if (trackExpiry.present) {
       map['track_expiry'] = Variable<bool>(trackExpiry.value);
     }
@@ -5062,6 +5112,7 @@ class ProductVariantsTableCompanion
           ..write('barcode: $barcode, ')
           ..write('stockDecimal: $stockDecimal, ')
           ..write('lowStockAlert: $lowStockAlert, ')
+          ..write('trackStock: $trackStock, ')
           ..write('trackExpiry: $trackExpiry, ')
           ..write('expiryDate: $expiryDate, ')
           ..write('isActive: $isActive, ')
@@ -8799,6 +8850,7 @@ typedef $$ProductVariantsTableTableCreateCompanionBuilder =
       Value<String?> barcode,
       Value<double?> stockDecimal,
       Value<int?> lowStockAlert,
+      Value<bool> trackStock,
       Value<bool> trackExpiry,
       Value<String?> expiryDate,
       Value<bool> isActive,
@@ -8822,6 +8874,7 @@ typedef $$ProductVariantsTableTableUpdateCompanionBuilder =
       Value<String?> barcode,
       Value<double?> stockDecimal,
       Value<int?> lowStockAlert,
+      Value<bool> trackStock,
       Value<bool> trackExpiry,
       Value<String?> expiryDate,
       Value<bool> isActive,
@@ -8898,6 +8951,11 @@ class $$ProductVariantsTableTableFilterComposer
 
   ColumnFilters<int> get lowStockAlert => $composableBuilder(
     column: $table.lowStockAlert,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get trackStock => $composableBuilder(
+    column: $table.trackStock,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9006,6 +9064,11 @@ class $$ProductVariantsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get trackStock => $composableBuilder(
+    column: $table.trackStock,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get trackExpiry => $composableBuilder(
     column: $table.trackExpiry,
     builder: (column) => ColumnOrderings(column),
@@ -9092,6 +9155,11 @@ class $$ProductVariantsTableTableAnnotationComposer
 
   GeneratedColumn<int> get lowStockAlert => $composableBuilder(
     column: $table.lowStockAlert,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get trackStock => $composableBuilder(
+    column: $table.trackStock,
     builder: (column) => column,
   );
 
@@ -9182,6 +9250,7 @@ class $$ProductVariantsTableTableTableManager
                 Value<String?> barcode = const Value.absent(),
                 Value<double?> stockDecimal = const Value.absent(),
                 Value<int?> lowStockAlert = const Value.absent(),
+                Value<bool> trackStock = const Value.absent(),
                 Value<bool> trackExpiry = const Value.absent(),
                 Value<String?> expiryDate = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
@@ -9203,6 +9272,7 @@ class $$ProductVariantsTableTableTableManager
                 barcode: barcode,
                 stockDecimal: stockDecimal,
                 lowStockAlert: lowStockAlert,
+                trackStock: trackStock,
                 trackExpiry: trackExpiry,
                 expiryDate: expiryDate,
                 isActive: isActive,
@@ -9226,6 +9296,7 @@ class $$ProductVariantsTableTableTableManager
                 Value<String?> barcode = const Value.absent(),
                 Value<double?> stockDecimal = const Value.absent(),
                 Value<int?> lowStockAlert = const Value.absent(),
+                Value<bool> trackStock = const Value.absent(),
                 Value<bool> trackExpiry = const Value.absent(),
                 Value<String?> expiryDate = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
@@ -9247,6 +9318,7 @@ class $$ProductVariantsTableTableTableManager
                 barcode: barcode,
                 stockDecimal: stockDecimal,
                 lowStockAlert: lowStockAlert,
+                trackStock: trackStock,
                 trackExpiry: trackExpiry,
                 expiryDate: expiryDate,
                 isActive: isActive,

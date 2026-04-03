@@ -179,6 +179,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             stock: Value(vStockInt),
             stockDecimal: Value(vStockReal),
             lowStockAlert: Value(vLowAlert),
+            trackStock: Value(state.trackInventory),
             trackExpiry: Value(state.trackExpiry),
             expiryDate: Value(
               state.trackExpiry ? state.expiryDate?.toIso8601String() : null,
@@ -216,6 +217,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             stock: Value(stockInt),
             stockDecimal: Value(stockReal),
             lowStockAlert: Value(lowAlert),
+            trackStock: Value(state.trackInventory),
             trackExpiry: Value(state.trackExpiry),
             expiryDate: Value(
               state.trackExpiry ? state.expiryDate?.toIso8601String() : null,
@@ -239,6 +241,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             stockDecimal: const Value(null),
             lowStockAlert: const Value(null),
             barcode: Value(simpleBarcode?.isNotEmpty == true ? simpleBarcode : null),
+            trackStock: const Value(false),
             trackExpiry: const Value(false),
             expiryDate: const Value(null),
           ),
@@ -322,6 +325,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             stock: Value(vStockInt),
             stockDecimal: Value(vStockReal),
             lowStockAlert: Value(vLowAlert),
+            trackStock: Value(state.trackInventory),
             trackExpiry: Value(state.trackExpiry),
             expiryDate: Value(
               state.trackExpiry ? state.expiryDate?.toIso8601String() : null,
@@ -361,6 +365,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             stock: Value(stockInt),
             stockDecimal: Value(stockReal),
             lowStockAlert: Value(lowAlert),
+            trackStock: Value(state.trackInventory),
             trackExpiry: Value(state.trackExpiry),
             expiryDate: Value(
               state.trackExpiry ? state.expiryDate?.toIso8601String() : null,
@@ -384,6 +389,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             stockDecimal: const Value(null),
             lowStockAlert: const Value(null),
             barcode: Value(simpleBarcode?.isNotEmpty == true ? simpleBarcode : null),
+            trackStock: const Value(false),
             trackExpiry: const Value(false),
             expiryDate: const Value(null),
           ),
