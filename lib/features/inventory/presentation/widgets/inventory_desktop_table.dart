@@ -49,11 +49,19 @@ class InventoryDesktopTable extends StatelessWidget {
     // Here the constraints come from the parent Column, which is always finite.
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Use whichever is larger: the available width or the minimum table
-        // width. If minWidth wins, the horizontal scroll view takes over.
-        final tableWidth = constraints.maxWidth > minWidth
+        // constraints.maxWidth can be infinite if a parent has no width bound.
+        // Fall back to minWidth so we always have a finite, renderable value.
+        // Row padding (16 each side) is NOT part of minWidth, but is consumed
+        // by the container — add it back so the SizedBox is large enough.
+        const rowPadTotal = 16.0 * 2;
+        final availableWidth = constraints.maxWidth.isFinite
             ? constraints.maxWidth
-            : minWidth;
+            : minWidth + rowPadTotal;
+        // If the viewport is wide enough for content + padding, fill it.
+        // Otherwise use minWidth + padding and let horizontal scroll take over.
+        final tableWidth = availableWidth > (minWidth + rowPadTotal)
+            ? availableWidth
+            : minWidth + rowPadTotal;
 
         return Container(
           decoration: BoxDecoration(
@@ -127,9 +135,13 @@ class _TableHeader extends StatelessWidget {
 
   const _TableHeader({required this.branches, required this.tableWidth});
 
+  // Horizontal padding applied to each row — must be subtracted before
+  // computing column widths so columns don't exceed the available inner width.
+  static const double _rowPadH = 16;
+
   @override
   Widget build(BuildContext context) {
-    final widths = _columnWidths(branches.length, tableWidth);
+    final widths = _columnWidths(branches.length, tableWidth - _rowPadH * 2);
     final labels = [
       'Product',
       'SKU',
@@ -142,7 +154,7 @@ class _TableHeader extends StatelessWidget {
 
     return Container(
       color: AppColors.surfaceAlt,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+      padding: const EdgeInsets.symmetric(horizontal: _rowPadH, vertical: 11),
       child: Row(
         children: [
           for (var i = 0; i < labels.length; i++)
@@ -191,9 +203,11 @@ class _TableRow extends StatelessWidget {
     return AppColors.textPrimary;
   }
 
+  static const double _rowPadH = 16;
+
   @override
   Widget build(BuildContext context) {
-    final widths = _columnWidths(branches.length, tableWidth);
+    final widths = _columnWidths(branches.length, tableWidth - _rowPadH * 2);
     var colIdx = 0;
 
     Widget cell(Widget child) => SizedBox(width: widths[colIdx++], child: child);
@@ -202,7 +216,7 @@ class _TableRow extends StatelessWidget {
       color: isEven
           ? Colors.transparent
           : AppColors.surfaceAlt.withValues(alpha: 0.35),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      padding: const EdgeInsets.symmetric(horizontal: _rowPadH, vertical: 13),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [

@@ -113,8 +113,6 @@ class _InventoryState extends State<Inventory> {
                 ? state.displayItems
                 : <InventoryItem>[];
             final isLoading = state is InventoryLoading;
-            final selectedBranchId =
-                state is InventoryLoaded ? state.selectedBranchId : null;
             final statusFilter =
                 state is InventoryLoaded ? state.statusFilter : null;
             final viewMode = state is InventoryLoaded
@@ -122,6 +120,25 @@ class _InventoryState extends State<Inventory> {
                 : InventoryViewMode.table;
 
             return Scaffold(
+              appBar: AppBar(
+                centerTitle: false,
+                title: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    
+                    const Text('Stock Levels'),
+                    Text(
+                      'Monitor and manage inventory across branches',
+                      style: getOutfitStyle(
+                          fontSize: 13, color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+                
+                backgroundColor: AppColors.surface,
+                foregroundColor: AppColors.textPrimary,
+                elevation: 0,
+              ),
               backgroundColor: AppColors.background,
               body: RefreshIndicator(
                 onRefresh: () async => _triggerLoad(),
@@ -139,8 +156,8 @@ class _InventoryState extends State<Inventory> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _PageHeader(onRefresh: _triggerLoad),
-                          const SizedBox(height: 18),
+                          // _PageHeader(onRefresh: _triggerLoad),
+                          // const SizedBox(height: 18),
 
                           InventoryStatsRow(
                               data: data, isLoading: isLoading),
@@ -148,13 +165,9 @@ class _InventoryState extends State<Inventory> {
 
                           _SearchAndFilter(
                             searchController: _searchController,
-                            branches: data.branches,
-                            selectedBranchId: selectedBranchId,
                             viewMode: viewMode,
                             onSearchChanged: (q) =>
                                 _cubit.setSearchQuery(q),
-                            onBranchChanged: (id) =>
-                                _cubit.setBranchFilter(id),
                             onViewModeChanged: (m) =>
                                 _cubit.setViewMode(m),
                           ),
@@ -252,154 +265,55 @@ class _PageHeader extends StatelessWidget {
   }
 }
 
-// ── Search + branch filter ───────────────────────────────────────────────────
-// Uses DropdownButtonFormField (not DropdownMenu) so it fills its parent
-// properly at every screen width without extra SizedBox hacks.
+// ── Search + view toggle ─────────────────────────────────────────────────────
 
 class _SearchAndFilter extends StatelessWidget {
   final TextEditingController searchController;
-  final List<BranchInfo> branches;
-  final String? selectedBranchId;
   final InventoryViewMode viewMode;
   final ValueChanged<String> onSearchChanged;
-  final ValueChanged<String?> onBranchChanged;
   final ValueChanged<InventoryViewMode> onViewModeChanged;
 
   const _SearchAndFilter({
     required this.searchController,
-    required this.branches,
-    required this.selectedBranchId,
     required this.viewMode,
     required this.onSearchChanged,
-    required this.onBranchChanged,
     required this.onViewModeChanged,
   });
 
-  InputDecoration get _base => InputDecoration(
-        filled: true,
-        fillColor: AppColors.surface,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.borderSoft),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.borderSoft),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide:
-              const BorderSide(color: AppColors.brand, width: 1.5),
-        ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-      );
-
   @override
   Widget build(BuildContext context) {
-    final searchField = TextField(
-      controller: searchController,
-      onChanged: onSearchChanged,
-      decoration: _base.copyWith(
-        hintText: 'Search products...',
-        prefixIcon: const Icon(Icons.search, size: 18),
-      ),
-    );
-
-    // Deduplicate by ID — duplicate branch rows crash DropdownButtonFormField
-    final seenBranchIds = <String>{};
-    final uniqueBranches =
-        branches.where((b) => seenBranchIds.add(b.id)).toList();
-
-    // Guard: if the current value is no longer in the list (e.g. after a sync
-    // removed the branch), fall back to null so the assertion is never violated.
-    final safeValue = uniqueBranches.any((b) => b.id == selectedBranchId)
-        ? selectedBranchId
-        : null;
-
-    // Plain Container + DropdownButton — avoids InputDecorator's intrinsic-size
-    // measurement loop that freezes the app, and avoids DropdownButtonFormField's
-    // FormField state that won't update on rebuilds (causing the assertion crash).
-    final branchDropdown = Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderSoft),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.store_outlined,
-              size: 16, color: AppColors.textSecondary),
-          const SizedBox(width: 8),
-          Expanded(
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String?>(
-                value: safeValue,
-                isExpanded: true,
-                isDense: true,
-                style:
-                    getOutfitStyle(fontSize: 14, color: AppColors.textPrimary),
-                items: [
-                  DropdownMenuItem<String?>(
-                    value: null,
-                    child: Text('All Branches',
-                        style: getOutfitStyle(
-                            fontSize: 14, color: AppColors.textPrimary)),
-                  ),
-                  ...uniqueBranches.map(
-                    (b) => DropdownMenuItem<String?>(
-                      value: b.id,
-                      child: Text(b.name,
-                          style: getOutfitStyle(
-                              fontSize: 14, color: AppColors.textPrimary)),
-                    ),
-                  ),
-                ],
-                onChanged: onBranchChanged,
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: searchController,
+            onChanged: onSearchChanged,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: AppColors.surface,
+              hintText: 'Search products...',
+              prefixIcon: const Icon(Icons.search, size: 18),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: AppColors.borderSoft),
               ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: AppColors.borderSoft),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide:
+                    const BorderSide(color: AppColors.brand, width: 1.5),
+              ),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
             ),
           ),
-        ],
-      ),
-    );
-
-    final viewToggle = _ViewToggle(
-      current: viewMode,
-      onChanged: onViewModeChanged,
-    );
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Side-by-side at ≥ 540 lp; stacked below that.
-        if (constraints.maxWidth >= 540) {
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(flex: 3, child: searchField),
-              const SizedBox(width: 12),
-              Expanded(flex: 2, child: branchDropdown),
-              const SizedBox(width: 12),
-              viewToggle,
-            ],
-          );
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            searchField,
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(child: branchDropdown),
-                const SizedBox(width: 10),
-                viewToggle,
-              ],
-            ),
-          ],
-        );
-      },
+        ),
+        const SizedBox(width: 12),
+        _ViewToggle(current: viewMode, onChanged: onViewModeChanged),
+      ],
     );
   }
 }
