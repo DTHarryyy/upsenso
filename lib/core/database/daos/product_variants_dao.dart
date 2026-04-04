@@ -139,6 +139,69 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
     return delete(productVariantsTable).go();
   }
 
+  /// Deduct [qty] from the variant's stock if stock tracking is enabled.
+  /// - Unit products: deducts from [stock] (integer), clamped at 0.
+  /// - Fraction products (stockDecimal != null): deducts from [stockDecimal].
+  /// Marks the variant as pendingUpdate so it syncs to the server.
+  Future<void> decrementStockIfTracked(String variantId, double qty) async {
+    final variant = await (select(productVariantsTable)
+          ..where((v) => v.id.equals(variantId)))
+        .getSingleOrNull();
+
+    if (variant == null || !variant.trackStock) return;
+
+    if (variant.stockDecimal != null) {
+      // Fraction / weight product
+      final newStock =
+          (variant.stockDecimal! - qty).clamp(0.0, double.maxFinite);
+      await (update(productVariantsTable)
+            ..where((v) => v.id.equals(variantId)))
+          .write(
+        ProductVariantsTableCompanion(
+          stockDecimal: Value(newStock),
+          syncStatus: const Value(1), // pendingUpdate
+          localUpdatedAt: Value(DateTime.now()),
+        ),
+      );
+    } else {
+      // Unit product — clamp to [0, current stock]
+      final newStock = (variant.stock - qty.round()).clamp(0, variant.stock);
+      await (update(productVariantsTable)
+            ..where((v) => v.id.equals(variantId)))
+          .write(
+        ProductVariantsTableCompanion(
+          stock: Value(newStock),
+          syncStatus: const Value(1), // pendingUpdate
+          localUpdatedAt: Value(DateTime.now()),
+        ),
+      );
+    }
+  }
+
+  /// Get variants that are tracked and at or below their low-stock threshold.
+  /// Also includes tracked items with stock = 0 even if no threshold is set.
+  Future<List<ProductVariantsTableData>> getLowStockByBusinessId(
+    String businessId,
+  ) async {
+    final rows = await (select(productVariantsTable)
+          ..where(
+            (v) =>
+                v.businessId.equals(businessId) &
+                v.trackStock.equals(true) &
+                v.isActive.equals(true),
+          ))
+        .get();
+    return rows.where((v) {
+      final threshold = v.lowStockAlert;
+      if (threshold != null) {
+        // Has a threshold → alert when stock is at or below it
+        return v.stock <= threshold;
+      }
+      // No threshold set → only alert when completely out of stock
+      return v.stock <= 0;
+    }).toList();
+  }
+
   /// Convert a Drift row to the domain entity.
   static ProductVariant toEntity(ProductVariantsTableData data) {
     return ProductVariant(

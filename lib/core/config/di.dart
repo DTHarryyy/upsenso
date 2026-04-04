@@ -50,6 +50,7 @@ import 'package:pos/features/ai_assistant/services/model_manager.dart';
 import 'package:pos/features/ai_assistant/services/model_download_service.dart';
 import 'package:pos/features/ai_assistant/services/ai_tool_service.dart';
 import 'package:pos/features/ai_assistant/services/ai_pipeline.dart';
+import 'package:pos/features/dashboard/data/dashboard_repository.dart';
 
 final sl = GetIt.instance;
 
@@ -208,6 +209,16 @@ Future<void> initDI() async {
     () => AiPipeline(
       llmService: sl<LlmService>(),
       toolService: sl<AiToolService>(),
+    ),
+  );
+
+  sl.registerLazySingleton<DashboardRepository>(
+    () => DashboardRepository(
+      txnDao: sl<TransactionsDao>(),
+      variantsDao: sl<ProductVariantsDao>(),
+      productsDao: sl<ProductsDao>(),
+      categoriesDao: sl<CategoriesDao>(),
+      branchesDao: sl<BranchesDao>(),
     ),
   );
 
