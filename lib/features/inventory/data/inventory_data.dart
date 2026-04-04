@@ -1,0 +1,72 @@
+import 'package:equatable/equatable.dart';
+
+enum StockStatus { inStock, warning, lowStock }
+
+class BranchInfo extends Equatable {
+  final String id;
+  final String name;
+
+  const BranchInfo({required this.id, required this.name});
+
+  @override
+  List<Object?> get props => [id, name];
+}
+
+class InventoryItem extends Equatable {
+  final String variantId;
+  final String productId;
+  final String productName;
+  final String variantName;
+  final String? sku;
+
+  /// Stock keyed by branchId. A null key means "global / no branch".
+  final Map<String, int> stockByBranch;
+
+  /// Total stock across all branches (or from product_variants.stock when
+  /// no per-branch entries exist yet).
+  final int totalStock;
+
+  /// Reorder threshold from product_variants.lowStockAlert (0 when unset).
+  final int reorderLevel;
+
+  const InventoryItem({
+    required this.variantId,
+    required this.productId,
+    required this.productName,
+    required this.variantName,
+    this.sku,
+    required this.stockByBranch,
+    required this.totalStock,
+    required this.reorderLevel,
+  });
+
+  StockStatus get status {
+    if (reorderLevel <= 0) {
+      return totalStock <= 0 ? StockStatus.lowStock : StockStatus.inStock;
+    }
+    if (totalStock <= reorderLevel) return StockStatus.lowStock;
+    if (totalStock <= (reorderLevel * 1.5).ceil()) return StockStatus.warning;
+    return StockStatus.inStock;
+  }
+
+  @override
+  List<Object?> get props => [variantId, stockByBranch, totalStock];
+}
+
+class InventoryData extends Equatable {
+  final List<InventoryItem> items;
+  final List<BranchInfo> branches;
+
+  const InventoryData({required this.items, required this.branches});
+
+  static const empty = InventoryData(items: [], branches: []);
+
+  int get totalProducts => items.length;
+  int get lowStockCount =>
+      items.where((i) => i.status == StockStatus.lowStock).length;
+  int get warningCount =>
+      items.where((i) => i.status == StockStatus.warning).length;
+
+  @override
+  List<Object?> get props => [items, branches];
+}

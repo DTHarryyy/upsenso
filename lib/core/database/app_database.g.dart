@@ -6839,6 +6839,1148 @@ class TransactionItemsTableCompanion
   }
 }
 
+class $InventoryLevelsTableTable extends InventoryLevelsTable
+    with TableInfo<$InventoryLevelsTableTable, InventoryLevelsTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InventoryLevelsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _variantIdMeta = const VerificationMeta(
+    'variantId',
+  );
+  @override
+  late final GeneratedColumn<String> variantId = GeneratedColumn<String>(
+    'variant_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _quantityMeta = const VerificationMeta(
+    'quantity',
+  );
+  @override
+  late final GeneratedColumn<int> quantity = GeneratedColumn<int>(
+    'quantity',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+    'syncStatus',
+  );
+  @override
+  late final GeneratedColumn<int> syncStatus = GeneratedColumn<int>(
+    'sync_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _localUpdatedAtMeta = const VerificationMeta(
+    'localUpdatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> localUpdatedAt =
+      GeneratedColumn<DateTime>(
+        'local_updated_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+        defaultValue: currentDateAndTime,
+      );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    variantId,
+    branchId,
+    businessId,
+    quantity,
+    syncStatus,
+    localUpdatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'inventory_levels';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InventoryLevelsTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('variant_id')) {
+      context.handle(
+        _variantIdMeta,
+        variantId.isAcceptableOrUnknown(data['variant_id']!, _variantIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_variantIdMeta);
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    }
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('quantity')) {
+      context.handle(
+        _quantityMeta,
+        quantity.isAcceptableOrUnknown(data['quantity']!, _quantityMeta),
+      );
+    }
+    if (data.containsKey('sync_status')) {
+      context.handle(
+        _syncStatusMeta,
+        syncStatus.isAcceptableOrUnknown(data['sync_status']!, _syncStatusMeta),
+      );
+    }
+    if (data.containsKey('local_updated_at')) {
+      context.handle(
+        _localUpdatedAtMeta,
+        localUpdatedAt.isAcceptableOrUnknown(
+          data['local_updated_at']!,
+          _localUpdatedAtMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  InventoryLevelsTableData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InventoryLevelsTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      variantId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}variant_id'],
+      )!,
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      ),
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      quantity: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}quantity'],
+      )!,
+      syncStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sync_status'],
+      )!,
+      localUpdatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}local_updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $InventoryLevelsTableTable createAlias(String alias) {
+    return $InventoryLevelsTableTable(attachedDatabase, alias);
+  }
+}
+
+class InventoryLevelsTableData extends DataClass
+    implements Insertable<InventoryLevelsTableData> {
+  /// Composite key: "$variantId:${branchId ?? 'global'}"
+  final String id;
+  final String variantId;
+  final String? branchId;
+  final String businessId;
+  final int quantity;
+
+  /// 0=pendingUpload, 1=pendingUpdate, 3=synced, 4=failed
+  final int syncStatus;
+  final DateTime localUpdatedAt;
+  const InventoryLevelsTableData({
+    required this.id,
+    required this.variantId,
+    this.branchId,
+    required this.businessId,
+    required this.quantity,
+    required this.syncStatus,
+    required this.localUpdatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['variant_id'] = Variable<String>(variantId);
+    if (!nullToAbsent || branchId != null) {
+      map['branch_id'] = Variable<String>(branchId);
+    }
+    map['business_id'] = Variable<String>(businessId);
+    map['quantity'] = Variable<int>(quantity);
+    map['sync_status'] = Variable<int>(syncStatus);
+    map['local_updated_at'] = Variable<DateTime>(localUpdatedAt);
+    return map;
+  }
+
+  InventoryLevelsTableCompanion toCompanion(bool nullToAbsent) {
+    return InventoryLevelsTableCompanion(
+      id: Value(id),
+      variantId: Value(variantId),
+      branchId: branchId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(branchId),
+      businessId: Value(businessId),
+      quantity: Value(quantity),
+      syncStatus: Value(syncStatus),
+      localUpdatedAt: Value(localUpdatedAt),
+    );
+  }
+
+  factory InventoryLevelsTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InventoryLevelsTableData(
+      id: serializer.fromJson<String>(json['id']),
+      variantId: serializer.fromJson<String>(json['variantId']),
+      branchId: serializer.fromJson<String?>(json['branchId']),
+      businessId: serializer.fromJson<String>(json['businessId']),
+      quantity: serializer.fromJson<int>(json['quantity']),
+      syncStatus: serializer.fromJson<int>(json['syncStatus']),
+      localUpdatedAt: serializer.fromJson<DateTime>(json['localUpdatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'variantId': serializer.toJson<String>(variantId),
+      'branchId': serializer.toJson<String?>(branchId),
+      'businessId': serializer.toJson<String>(businessId),
+      'quantity': serializer.toJson<int>(quantity),
+      'syncStatus': serializer.toJson<int>(syncStatus),
+      'localUpdatedAt': serializer.toJson<DateTime>(localUpdatedAt),
+    };
+  }
+
+  InventoryLevelsTableData copyWith({
+    String? id,
+    String? variantId,
+    Value<String?> branchId = const Value.absent(),
+    String? businessId,
+    int? quantity,
+    int? syncStatus,
+    DateTime? localUpdatedAt,
+  }) => InventoryLevelsTableData(
+    id: id ?? this.id,
+    variantId: variantId ?? this.variantId,
+    branchId: branchId.present ? branchId.value : this.branchId,
+    businessId: businessId ?? this.businessId,
+    quantity: quantity ?? this.quantity,
+    syncStatus: syncStatus ?? this.syncStatus,
+    localUpdatedAt: localUpdatedAt ?? this.localUpdatedAt,
+  );
+  InventoryLevelsTableData copyWithCompanion(
+    InventoryLevelsTableCompanion data,
+  ) {
+    return InventoryLevelsTableData(
+      id: data.id.present ? data.id.value : this.id,
+      variantId: data.variantId.present ? data.variantId.value : this.variantId,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      quantity: data.quantity.present ? data.quantity.value : this.quantity,
+      syncStatus: data.syncStatus.present
+          ? data.syncStatus.value
+          : this.syncStatus,
+      localUpdatedAt: data.localUpdatedAt.present
+          ? data.localUpdatedAt.value
+          : this.localUpdatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InventoryLevelsTableData(')
+          ..write('id: $id, ')
+          ..write('variantId: $variantId, ')
+          ..write('branchId: $branchId, ')
+          ..write('businessId: $businessId, ')
+          ..write('quantity: $quantity, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('localUpdatedAt: $localUpdatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    variantId,
+    branchId,
+    businessId,
+    quantity,
+    syncStatus,
+    localUpdatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InventoryLevelsTableData &&
+          other.id == this.id &&
+          other.variantId == this.variantId &&
+          other.branchId == this.branchId &&
+          other.businessId == this.businessId &&
+          other.quantity == this.quantity &&
+          other.syncStatus == this.syncStatus &&
+          other.localUpdatedAt == this.localUpdatedAt);
+}
+
+class InventoryLevelsTableCompanion
+    extends UpdateCompanion<InventoryLevelsTableData> {
+  final Value<String> id;
+  final Value<String> variantId;
+  final Value<String?> branchId;
+  final Value<String> businessId;
+  final Value<int> quantity;
+  final Value<int> syncStatus;
+  final Value<DateTime> localUpdatedAt;
+  final Value<int> rowid;
+  const InventoryLevelsTableCompanion({
+    this.id = const Value.absent(),
+    this.variantId = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.businessId = const Value.absent(),
+    this.quantity = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.localUpdatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  InventoryLevelsTableCompanion.insert({
+    required String id,
+    required String variantId,
+    this.branchId = const Value.absent(),
+    required String businessId,
+    this.quantity = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.localUpdatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       variantId = Value(variantId),
+       businessId = Value(businessId);
+  static Insertable<InventoryLevelsTableData> custom({
+    Expression<String>? id,
+    Expression<String>? variantId,
+    Expression<String>? branchId,
+    Expression<String>? businessId,
+    Expression<int>? quantity,
+    Expression<int>? syncStatus,
+    Expression<DateTime>? localUpdatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (variantId != null) 'variant_id': variantId,
+      if (branchId != null) 'branch_id': branchId,
+      if (businessId != null) 'business_id': businessId,
+      if (quantity != null) 'quantity': quantity,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (localUpdatedAt != null) 'local_updated_at': localUpdatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  InventoryLevelsTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? variantId,
+    Value<String?>? branchId,
+    Value<String>? businessId,
+    Value<int>? quantity,
+    Value<int>? syncStatus,
+    Value<DateTime>? localUpdatedAt,
+    Value<int>? rowid,
+  }) {
+    return InventoryLevelsTableCompanion(
+      id: id ?? this.id,
+      variantId: variantId ?? this.variantId,
+      branchId: branchId ?? this.branchId,
+      businessId: businessId ?? this.businessId,
+      quantity: quantity ?? this.quantity,
+      syncStatus: syncStatus ?? this.syncStatus,
+      localUpdatedAt: localUpdatedAt ?? this.localUpdatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (variantId.present) {
+      map['variant_id'] = Variable<String>(variantId.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
+    }
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (quantity.present) {
+      map['quantity'] = Variable<int>(quantity.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<int>(syncStatus.value);
+    }
+    if (localUpdatedAt.present) {
+      map['local_updated_at'] = Variable<DateTime>(localUpdatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InventoryLevelsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('variantId: $variantId, ')
+          ..write('branchId: $branchId, ')
+          ..write('businessId: $businessId, ')
+          ..write('quantity: $quantity, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('localUpdatedAt: $localUpdatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $StockLedgerTableTable extends StockLedgerTable
+    with TableInfo<$StockLedgerTableTable, StockLedgerTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $StockLedgerTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _variantIdMeta = const VerificationMeta(
+    'variantId',
+  );
+  @override
+  late final GeneratedColumn<String> variantId = GeneratedColumn<String>(
+    'variant_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _productIdMeta = const VerificationMeta(
+    'productId',
+  );
+  @override
+  late final GeneratedColumn<String> productId = GeneratedColumn<String>(
+    'product_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _changeTypeMeta = const VerificationMeta(
+    'changeType',
+  );
+  @override
+  late final GeneratedColumn<String> changeType = GeneratedColumn<String>(
+    'change_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _quantityMeta = const VerificationMeta(
+    'quantity',
+  );
+  @override
+  late final GeneratedColumn<int> quantity = GeneratedColumn<int>(
+    'quantity',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _reasonMeta = const VerificationMeta('reason');
+  @override
+  late final GeneratedColumn<String> reason = GeneratedColumn<String>(
+    'reason',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+    'syncStatus',
+  );
+  @override
+  late final GeneratedColumn<int> syncStatus = GeneratedColumn<int>(
+    'sync_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    variantId,
+    productId,
+    branchId,
+    businessId,
+    changeType,
+    quantity,
+    reason,
+    note,
+    createdAt,
+    syncStatus,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'stock_ledger';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<StockLedgerTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('variant_id')) {
+      context.handle(
+        _variantIdMeta,
+        variantId.isAcceptableOrUnknown(data['variant_id']!, _variantIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_variantIdMeta);
+    }
+    if (data.containsKey('product_id')) {
+      context.handle(
+        _productIdMeta,
+        productId.isAcceptableOrUnknown(data['product_id']!, _productIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_productIdMeta);
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    }
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('change_type')) {
+      context.handle(
+        _changeTypeMeta,
+        changeType.isAcceptableOrUnknown(data['change_type']!, _changeTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_changeTypeMeta);
+    }
+    if (data.containsKey('quantity')) {
+      context.handle(
+        _quantityMeta,
+        quantity.isAcceptableOrUnknown(data['quantity']!, _quantityMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_quantityMeta);
+    }
+    if (data.containsKey('reason')) {
+      context.handle(
+        _reasonMeta,
+        reason.isAcceptableOrUnknown(data['reason']!, _reasonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_reasonMeta);
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('sync_status')) {
+      context.handle(
+        _syncStatusMeta,
+        syncStatus.isAcceptableOrUnknown(data['sync_status']!, _syncStatusMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  StockLedgerTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StockLedgerTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      variantId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}variant_id'],
+      )!,
+      productId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}product_id'],
+      )!,
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      ),
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      changeType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}change_type'],
+      )!,
+      quantity: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}quantity'],
+      )!,
+      reason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reason'],
+      )!,
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      syncStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sync_status'],
+      )!,
+    );
+  }
+
+  @override
+  $StockLedgerTableTable createAlias(String alias) {
+    return $StockLedgerTableTable(attachedDatabase, alias);
+  }
+}
+
+class StockLedgerTableData extends DataClass
+    implements Insertable<StockLedgerTableData> {
+  final String id;
+  final String variantId;
+  final String productId;
+  final String? branchId;
+  final String businessId;
+
+  /// 'IN' for incoming stock, 'OUT' for outgoing stock.
+  final String changeType;
+
+  /// Always a positive integer (direction is determined by [changeType]).
+  final int quantity;
+
+  /// One of: 'Restock', 'Damage', 'Transfer', 'Adjustment'
+  final String reason;
+  final String? note;
+  final DateTime createdAt;
+
+  /// 0=pendingUpload, 3=synced, 4=failed
+  final int syncStatus;
+  const StockLedgerTableData({
+    required this.id,
+    required this.variantId,
+    required this.productId,
+    this.branchId,
+    required this.businessId,
+    required this.changeType,
+    required this.quantity,
+    required this.reason,
+    this.note,
+    required this.createdAt,
+    required this.syncStatus,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['variant_id'] = Variable<String>(variantId);
+    map['product_id'] = Variable<String>(productId);
+    if (!nullToAbsent || branchId != null) {
+      map['branch_id'] = Variable<String>(branchId);
+    }
+    map['business_id'] = Variable<String>(businessId);
+    map['change_type'] = Variable<String>(changeType);
+    map['quantity'] = Variable<int>(quantity);
+    map['reason'] = Variable<String>(reason);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['sync_status'] = Variable<int>(syncStatus);
+    return map;
+  }
+
+  StockLedgerTableCompanion toCompanion(bool nullToAbsent) {
+    return StockLedgerTableCompanion(
+      id: Value(id),
+      variantId: Value(variantId),
+      productId: Value(productId),
+      branchId: branchId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(branchId),
+      businessId: Value(businessId),
+      changeType: Value(changeType),
+      quantity: Value(quantity),
+      reason: Value(reason),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      createdAt: Value(createdAt),
+      syncStatus: Value(syncStatus),
+    );
+  }
+
+  factory StockLedgerTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StockLedgerTableData(
+      id: serializer.fromJson<String>(json['id']),
+      variantId: serializer.fromJson<String>(json['variantId']),
+      productId: serializer.fromJson<String>(json['productId']),
+      branchId: serializer.fromJson<String?>(json['branchId']),
+      businessId: serializer.fromJson<String>(json['businessId']),
+      changeType: serializer.fromJson<String>(json['changeType']),
+      quantity: serializer.fromJson<int>(json['quantity']),
+      reason: serializer.fromJson<String>(json['reason']),
+      note: serializer.fromJson<String?>(json['note']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      syncStatus: serializer.fromJson<int>(json['syncStatus']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'variantId': serializer.toJson<String>(variantId),
+      'productId': serializer.toJson<String>(productId),
+      'branchId': serializer.toJson<String?>(branchId),
+      'businessId': serializer.toJson<String>(businessId),
+      'changeType': serializer.toJson<String>(changeType),
+      'quantity': serializer.toJson<int>(quantity),
+      'reason': serializer.toJson<String>(reason),
+      'note': serializer.toJson<String?>(note),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'syncStatus': serializer.toJson<int>(syncStatus),
+    };
+  }
+
+  StockLedgerTableData copyWith({
+    String? id,
+    String? variantId,
+    String? productId,
+    Value<String?> branchId = const Value.absent(),
+    String? businessId,
+    String? changeType,
+    int? quantity,
+    String? reason,
+    Value<String?> note = const Value.absent(),
+    DateTime? createdAt,
+    int? syncStatus,
+  }) => StockLedgerTableData(
+    id: id ?? this.id,
+    variantId: variantId ?? this.variantId,
+    productId: productId ?? this.productId,
+    branchId: branchId.present ? branchId.value : this.branchId,
+    businessId: businessId ?? this.businessId,
+    changeType: changeType ?? this.changeType,
+    quantity: quantity ?? this.quantity,
+    reason: reason ?? this.reason,
+    note: note.present ? note.value : this.note,
+    createdAt: createdAt ?? this.createdAt,
+    syncStatus: syncStatus ?? this.syncStatus,
+  );
+  StockLedgerTableData copyWithCompanion(StockLedgerTableCompanion data) {
+    return StockLedgerTableData(
+      id: data.id.present ? data.id.value : this.id,
+      variantId: data.variantId.present ? data.variantId.value : this.variantId,
+      productId: data.productId.present ? data.productId.value : this.productId,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      changeType: data.changeType.present
+          ? data.changeType.value
+          : this.changeType,
+      quantity: data.quantity.present ? data.quantity.value : this.quantity,
+      reason: data.reason.present ? data.reason.value : this.reason,
+      note: data.note.present ? data.note.value : this.note,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      syncStatus: data.syncStatus.present
+          ? data.syncStatus.value
+          : this.syncStatus,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StockLedgerTableData(')
+          ..write('id: $id, ')
+          ..write('variantId: $variantId, ')
+          ..write('productId: $productId, ')
+          ..write('branchId: $branchId, ')
+          ..write('businessId: $businessId, ')
+          ..write('changeType: $changeType, ')
+          ..write('quantity: $quantity, ')
+          ..write('reason: $reason, ')
+          ..write('note: $note, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('syncStatus: $syncStatus')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    variantId,
+    productId,
+    branchId,
+    businessId,
+    changeType,
+    quantity,
+    reason,
+    note,
+    createdAt,
+    syncStatus,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StockLedgerTableData &&
+          other.id == this.id &&
+          other.variantId == this.variantId &&
+          other.productId == this.productId &&
+          other.branchId == this.branchId &&
+          other.businessId == this.businessId &&
+          other.changeType == this.changeType &&
+          other.quantity == this.quantity &&
+          other.reason == this.reason &&
+          other.note == this.note &&
+          other.createdAt == this.createdAt &&
+          other.syncStatus == this.syncStatus);
+}
+
+class StockLedgerTableCompanion extends UpdateCompanion<StockLedgerTableData> {
+  final Value<String> id;
+  final Value<String> variantId;
+  final Value<String> productId;
+  final Value<String?> branchId;
+  final Value<String> businessId;
+  final Value<String> changeType;
+  final Value<int> quantity;
+  final Value<String> reason;
+  final Value<String?> note;
+  final Value<DateTime> createdAt;
+  final Value<int> syncStatus;
+  final Value<int> rowid;
+  const StockLedgerTableCompanion({
+    this.id = const Value.absent(),
+    this.variantId = const Value.absent(),
+    this.productId = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.businessId = const Value.absent(),
+    this.changeType = const Value.absent(),
+    this.quantity = const Value.absent(),
+    this.reason = const Value.absent(),
+    this.note = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  StockLedgerTableCompanion.insert({
+    required String id,
+    required String variantId,
+    required String productId,
+    this.branchId = const Value.absent(),
+    required String businessId,
+    required String changeType,
+    required int quantity,
+    required String reason,
+    this.note = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       variantId = Value(variantId),
+       productId = Value(productId),
+       businessId = Value(businessId),
+       changeType = Value(changeType),
+       quantity = Value(quantity),
+       reason = Value(reason);
+  static Insertable<StockLedgerTableData> custom({
+    Expression<String>? id,
+    Expression<String>? variantId,
+    Expression<String>? productId,
+    Expression<String>? branchId,
+    Expression<String>? businessId,
+    Expression<String>? changeType,
+    Expression<int>? quantity,
+    Expression<String>? reason,
+    Expression<String>? note,
+    Expression<DateTime>? createdAt,
+    Expression<int>? syncStatus,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (variantId != null) 'variant_id': variantId,
+      if (productId != null) 'product_id': productId,
+      if (branchId != null) 'branch_id': branchId,
+      if (businessId != null) 'business_id': businessId,
+      if (changeType != null) 'change_type': changeType,
+      if (quantity != null) 'quantity': quantity,
+      if (reason != null) 'reason': reason,
+      if (note != null) 'note': note,
+      if (createdAt != null) 'created_at': createdAt,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  StockLedgerTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? variantId,
+    Value<String>? productId,
+    Value<String?>? branchId,
+    Value<String>? businessId,
+    Value<String>? changeType,
+    Value<int>? quantity,
+    Value<String>? reason,
+    Value<String?>? note,
+    Value<DateTime>? createdAt,
+    Value<int>? syncStatus,
+    Value<int>? rowid,
+  }) {
+    return StockLedgerTableCompanion(
+      id: id ?? this.id,
+      variantId: variantId ?? this.variantId,
+      productId: productId ?? this.productId,
+      branchId: branchId ?? this.branchId,
+      businessId: businessId ?? this.businessId,
+      changeType: changeType ?? this.changeType,
+      quantity: quantity ?? this.quantity,
+      reason: reason ?? this.reason,
+      note: note ?? this.note,
+      createdAt: createdAt ?? this.createdAt,
+      syncStatus: syncStatus ?? this.syncStatus,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (variantId.present) {
+      map['variant_id'] = Variable<String>(variantId.value);
+    }
+    if (productId.present) {
+      map['product_id'] = Variable<String>(productId.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
+    }
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (changeType.present) {
+      map['change_type'] = Variable<String>(changeType.value);
+    }
+    if (quantity.present) {
+      map['quantity'] = Variable<int>(quantity.value);
+    }
+    if (reason.present) {
+      map['reason'] = Variable<String>(reason.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<int>(syncStatus.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StockLedgerTableCompanion(')
+          ..write('id: $id, ')
+          ..write('variantId: $variantId, ')
+          ..write('productId: $productId, ')
+          ..write('branchId: $branchId, ')
+          ..write('businessId: $businessId, ')
+          ..write('changeType: $changeType, ')
+          ..write('quantity: $quantity, ')
+          ..write('reason: $reason, ')
+          ..write('note: $note, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6861,6 +8003,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $TransactionsTableTable(this);
   late final $TransactionItemsTableTable transactionItemsTable =
       $TransactionItemsTableTable(this);
+  late final $InventoryLevelsTableTable inventoryLevelsTable =
+      $InventoryLevelsTableTable(this);
+  late final $StockLedgerTableTable stockLedgerTable = $StockLedgerTableTable(
+    this,
+  );
   late final AuthContextDao authContextDao = AuthContextDao(
     this as AppDatabase,
   );
@@ -6877,6 +8024,12 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final TransactionsDao transactionsDao = TransactionsDao(
     this as AppDatabase,
   );
+  late final InventoryLevelsDao inventoryLevelsDao = InventoryLevelsDao(
+    this as AppDatabase,
+  );
+  late final StockLedgerDao stockLedgerDao = StockLedgerDao(
+    this as AppDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6891,6 +8044,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     productVariantsTable,
     transactionsTable,
     transactionItemsTable,
+    inventoryLevelsTable,
+    stockLedgerTable,
   ];
 }
 
@@ -10172,6 +11327,596 @@ typedef $$TransactionItemsTableTableProcessedTableManager =
       TransactionItemsTableData,
       PrefetchHooks Function()
     >;
+typedef $$InventoryLevelsTableTableCreateCompanionBuilder =
+    InventoryLevelsTableCompanion Function({
+      required String id,
+      required String variantId,
+      Value<String?> branchId,
+      required String businessId,
+      Value<int> quantity,
+      Value<int> syncStatus,
+      Value<DateTime> localUpdatedAt,
+      Value<int> rowid,
+    });
+typedef $$InventoryLevelsTableTableUpdateCompanionBuilder =
+    InventoryLevelsTableCompanion Function({
+      Value<String> id,
+      Value<String> variantId,
+      Value<String?> branchId,
+      Value<String> businessId,
+      Value<int> quantity,
+      Value<int> syncStatus,
+      Value<DateTime> localUpdatedAt,
+      Value<int> rowid,
+    });
+
+class $$InventoryLevelsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $InventoryLevelsTableTable> {
+  $$InventoryLevelsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get variantId => $composableBuilder(
+    column: $table.variantId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get quantity => $composableBuilder(
+    column: $table.quantity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get localUpdatedAt => $composableBuilder(
+    column: $table.localUpdatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$InventoryLevelsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $InventoryLevelsTableTable> {
+  $$InventoryLevelsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get variantId => $composableBuilder(
+    column: $table.variantId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get quantity => $composableBuilder(
+    column: $table.quantity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get localUpdatedAt => $composableBuilder(
+    column: $table.localUpdatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$InventoryLevelsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $InventoryLevelsTableTable> {
+  $$InventoryLevelsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get variantId =>
+      $composableBuilder(column: $table.variantId, builder: (column) => column);
+
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
+
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get quantity =>
+      $composableBuilder(column: $table.quantity, builder: (column) => column);
+
+  GeneratedColumn<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get localUpdatedAt => $composableBuilder(
+    column: $table.localUpdatedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$InventoryLevelsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $InventoryLevelsTableTable,
+          InventoryLevelsTableData,
+          $$InventoryLevelsTableTableFilterComposer,
+          $$InventoryLevelsTableTableOrderingComposer,
+          $$InventoryLevelsTableTableAnnotationComposer,
+          $$InventoryLevelsTableTableCreateCompanionBuilder,
+          $$InventoryLevelsTableTableUpdateCompanionBuilder,
+          (
+            InventoryLevelsTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $InventoryLevelsTableTable,
+              InventoryLevelsTableData
+            >,
+          ),
+          InventoryLevelsTableData,
+          PrefetchHooks Function()
+        > {
+  $$InventoryLevelsTableTableTableManager(
+    _$AppDatabase db,
+    $InventoryLevelsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$InventoryLevelsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$InventoryLevelsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$InventoryLevelsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> variantId = const Value.absent(),
+                Value<String?> branchId = const Value.absent(),
+                Value<String> businessId = const Value.absent(),
+                Value<int> quantity = const Value.absent(),
+                Value<int> syncStatus = const Value.absent(),
+                Value<DateTime> localUpdatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InventoryLevelsTableCompanion(
+                id: id,
+                variantId: variantId,
+                branchId: branchId,
+                businessId: businessId,
+                quantity: quantity,
+                syncStatus: syncStatus,
+                localUpdatedAt: localUpdatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String variantId,
+                Value<String?> branchId = const Value.absent(),
+                required String businessId,
+                Value<int> quantity = const Value.absent(),
+                Value<int> syncStatus = const Value.absent(),
+                Value<DateTime> localUpdatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InventoryLevelsTableCompanion.insert(
+                id: id,
+                variantId: variantId,
+                branchId: branchId,
+                businessId: businessId,
+                quantity: quantity,
+                syncStatus: syncStatus,
+                localUpdatedAt: localUpdatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$InventoryLevelsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $InventoryLevelsTableTable,
+      InventoryLevelsTableData,
+      $$InventoryLevelsTableTableFilterComposer,
+      $$InventoryLevelsTableTableOrderingComposer,
+      $$InventoryLevelsTableTableAnnotationComposer,
+      $$InventoryLevelsTableTableCreateCompanionBuilder,
+      $$InventoryLevelsTableTableUpdateCompanionBuilder,
+      (
+        InventoryLevelsTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $InventoryLevelsTableTable,
+          InventoryLevelsTableData
+        >,
+      ),
+      InventoryLevelsTableData,
+      PrefetchHooks Function()
+    >;
+typedef $$StockLedgerTableTableCreateCompanionBuilder =
+    StockLedgerTableCompanion Function({
+      required String id,
+      required String variantId,
+      required String productId,
+      Value<String?> branchId,
+      required String businessId,
+      required String changeType,
+      required int quantity,
+      required String reason,
+      Value<String?> note,
+      Value<DateTime> createdAt,
+      Value<int> syncStatus,
+      Value<int> rowid,
+    });
+typedef $$StockLedgerTableTableUpdateCompanionBuilder =
+    StockLedgerTableCompanion Function({
+      Value<String> id,
+      Value<String> variantId,
+      Value<String> productId,
+      Value<String?> branchId,
+      Value<String> businessId,
+      Value<String> changeType,
+      Value<int> quantity,
+      Value<String> reason,
+      Value<String?> note,
+      Value<DateTime> createdAt,
+      Value<int> syncStatus,
+      Value<int> rowid,
+    });
+
+class $$StockLedgerTableTableFilterComposer
+    extends Composer<_$AppDatabase, $StockLedgerTableTable> {
+  $$StockLedgerTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get variantId => $composableBuilder(
+    column: $table.variantId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get productId => $composableBuilder(
+    column: $table.productId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get changeType => $composableBuilder(
+    column: $table.changeType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get quantity => $composableBuilder(
+    column: $table.quantity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$StockLedgerTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $StockLedgerTableTable> {
+  $$StockLedgerTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get variantId => $composableBuilder(
+    column: $table.variantId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get productId => $composableBuilder(
+    column: $table.productId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get changeType => $composableBuilder(
+    column: $table.changeType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get quantity => $composableBuilder(
+    column: $table.quantity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$StockLedgerTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $StockLedgerTableTable> {
+  $$StockLedgerTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get variantId =>
+      $composableBuilder(column: $table.variantId, builder: (column) => column);
+
+  GeneratedColumn<String> get productId =>
+      $composableBuilder(column: $table.productId, builder: (column) => column);
+
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
+
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get changeType => $composableBuilder(
+    column: $table.changeType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get quantity =>
+      $composableBuilder(column: $table.quantity, builder: (column) => column);
+
+  GeneratedColumn<String> get reason =>
+      $composableBuilder(column: $table.reason, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => column,
+  );
+}
+
+class $$StockLedgerTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $StockLedgerTableTable,
+          StockLedgerTableData,
+          $$StockLedgerTableTableFilterComposer,
+          $$StockLedgerTableTableOrderingComposer,
+          $$StockLedgerTableTableAnnotationComposer,
+          $$StockLedgerTableTableCreateCompanionBuilder,
+          $$StockLedgerTableTableUpdateCompanionBuilder,
+          (
+            StockLedgerTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $StockLedgerTableTable,
+              StockLedgerTableData
+            >,
+          ),
+          StockLedgerTableData,
+          PrefetchHooks Function()
+        > {
+  $$StockLedgerTableTableTableManager(
+    _$AppDatabase db,
+    $StockLedgerTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$StockLedgerTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$StockLedgerTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$StockLedgerTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> variantId = const Value.absent(),
+                Value<String> productId = const Value.absent(),
+                Value<String?> branchId = const Value.absent(),
+                Value<String> businessId = const Value.absent(),
+                Value<String> changeType = const Value.absent(),
+                Value<int> quantity = const Value.absent(),
+                Value<String> reason = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> syncStatus = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => StockLedgerTableCompanion(
+                id: id,
+                variantId: variantId,
+                productId: productId,
+                branchId: branchId,
+                businessId: businessId,
+                changeType: changeType,
+                quantity: quantity,
+                reason: reason,
+                note: note,
+                createdAt: createdAt,
+                syncStatus: syncStatus,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String variantId,
+                required String productId,
+                Value<String?> branchId = const Value.absent(),
+                required String businessId,
+                required String changeType,
+                required int quantity,
+                required String reason,
+                Value<String?> note = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> syncStatus = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => StockLedgerTableCompanion.insert(
+                id: id,
+                variantId: variantId,
+                productId: productId,
+                branchId: branchId,
+                businessId: businessId,
+                changeType: changeType,
+                quantity: quantity,
+                reason: reason,
+                note: note,
+                createdAt: createdAt,
+                syncStatus: syncStatus,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$StockLedgerTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $StockLedgerTableTable,
+      StockLedgerTableData,
+      $$StockLedgerTableTableFilterComposer,
+      $$StockLedgerTableTableOrderingComposer,
+      $$StockLedgerTableTableAnnotationComposer,
+      $$StockLedgerTableTableCreateCompanionBuilder,
+      $$StockLedgerTableTableUpdateCompanionBuilder,
+      (
+        StockLedgerTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $StockLedgerTableTable,
+          StockLedgerTableData
+        >,
+      ),
+      StockLedgerTableData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -10197,4 +11942,8 @@ class $AppDatabaseManager {
       $$TransactionsTableTableTableManager(_db, _db.transactionsTable);
   $$TransactionItemsTableTableTableManager get transactionItemsTable =>
       $$TransactionItemsTableTableTableManager(_db, _db.transactionItemsTable);
+  $$InventoryLevelsTableTableTableManager get inventoryLevelsTable =>
+      $$InventoryLevelsTableTableTableManager(_db, _db.inventoryLevelsTable);
+  $$StockLedgerTableTableTableManager get stockLedgerTable =>
+      $$StockLedgerTableTableTableManager(_db, _db.stockLedgerTable);
 }

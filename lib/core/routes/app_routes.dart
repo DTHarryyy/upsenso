@@ -22,6 +22,7 @@ class AppRoutes {
   static const String scan = '/scan';
   static const String inventory = '/inventory';
   static const String more = '/more';
+  static const String stockLevel = '/more/stock-level';
 
   // AI Assistant
   static const String aiChat = '/ai-chat';

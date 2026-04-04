@@ -51,6 +51,9 @@ import 'package:pos/features/ai_assistant/services/model_download_service.dart';
 import 'package:pos/features/ai_assistant/services/ai_tool_service.dart';
 import 'package:pos/features/ai_assistant/services/ai_pipeline.dart';
 import 'package:pos/features/dashboard/data/dashboard_repository.dart';
+import 'package:pos/core/database/daos/inventory_levels_dao.dart';
+import 'package:pos/core/database/daos/stock_ledger_dao.dart';
+import 'package:pos/features/inventory/data/inventory_repository.dart';
 
 final sl = GetIt.instance;
 
@@ -92,6 +95,12 @@ Future<void> initDI() async {
     () => ProductVariantsDao(sl<AppDatabase>()),
   );
   sl.registerLazySingleton<TransactionsDao>(() => TransactionsDao(sl<AppDatabase>()));
+  sl.registerLazySingleton<InventoryLevelsDao>(
+    () => InventoryLevelsDao(sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<StockLedgerDao>(
+    () => StockLedgerDao(sl<AppDatabase>()),
+  );
 
   sl.registerLazySingleton<CartService>(() => CartService());
   sl.registerLazySingleton<ImageService>(() => ImageService());
@@ -209,6 +218,16 @@ Future<void> initDI() async {
     () => AiPipeline(
       llmService: sl<LlmService>(),
       toolService: sl<AiToolService>(),
+    ),
+  );
+
+  sl.registerLazySingleton<InventoryRepository>(
+    () => InventoryRepository(
+      productsDao: sl<ProductsDao>(),
+      variantsDao: sl<ProductVariantsDao>(),
+      branchesDao: sl<BranchesDao>(),
+      levelsDao: sl<InventoryLevelsDao>(),
+      ledgerDao: sl<StockLedgerDao>(),
     ),
   );
 

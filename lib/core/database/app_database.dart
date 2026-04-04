@@ -14,6 +14,8 @@ import 'package:pos/core/database/tables/products_table.dart';
 import 'package:pos/core/database/tables/product_variants_table.dart';
 import 'package:pos/core/database/tables/transactions_table.dart';
 import 'package:pos/core/database/tables/transaction_items_table.dart';
+import 'package:pos/core/database/tables/inventory_levels_table.dart';
+import 'package:pos/core/database/tables/stock_ledger_table.dart';
 import 'package:pos/core/database/daos/auth_context_dao.dart';
 import 'package:pos/core/database/daos/business_templates_dao.dart';
 import 'package:pos/core/database/daos/businesses_dao.dart';
@@ -22,6 +24,8 @@ import 'package:pos/core/database/daos/categories_dao.dart';
 import 'package:pos/core/database/daos/products_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
 import 'package:pos/core/database/daos/transactions_dao.dart';
+import 'package:pos/core/database/daos/inventory_levels_dao.dart';
+import 'package:pos/core/database/daos/stock_ledger_dao.dart';
 
 part 'app_database.g.dart';
 
@@ -36,6 +40,8 @@ part 'app_database.g.dart';
     ProductVariantsTable,
     TransactionsTable,
     TransactionItemsTable,
+    InventoryLevelsTable,
+    StockLedgerTable,
   ],
   daos: [
     AuthContextDao,
@@ -46,13 +52,15 @@ part 'app_database.g.dart';
     ProductsDao,
     ProductVariantsDao,
     TransactionsDao,
+    InventoryLevelsDao,
+    StockLedgerDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration {
@@ -151,6 +159,10 @@ class AppDatabase extends _$AppDatabase {
               'ALTER TABLE product_variants ADD COLUMN track_stock INTEGER NOT NULL DEFAULT 0',
             );
           } catch (_) {}
+        }
+        if (from < 16) {
+          await m.createTable(inventoryLevelsTable);
+          await m.createTable(stockLedgerTable);
         }
       },
     );

@@ -81,6 +81,11 @@ class MorePage extends StatelessWidget {
                         title: 'Sales History',
                         onTap: () => context.push(AppRoutes.saleshistory),
                       ),
+                      _MenuItem(
+                        icon: Icons.history,
+                        title: 'Stock Level',
+                        onTap: () => context.push(AppRoutes.inventory),
+                      ),
                     ],
                   ),
                   _buildMenuSection(

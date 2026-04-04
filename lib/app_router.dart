@@ -22,6 +22,7 @@ import 'package:pos/features/business/presentation/business_profile_page.dart';
 import 'package:pos/features/business/presentation/business_profile_setup.dart';
 import 'package:pos/features/home/presentation/main_navigation_page.dart';
 import 'package:pos/core/database/app_database.dart';
+import 'package:pos/features/inventory/inventory.dart';
 import 'package:pos/features/products/pages/add_products.dart';
 import 'package:pos/features/profile/presentation/profile_page.dart';
 import 'package:pos/features/sales/sales_history.dart';
@@ -130,6 +131,7 @@ class AppRouter {
       ),
       GoRoute(path: AppRoutes.signIn, builder: (context, _) => const SignIn()),
       GoRoute(path: AppRoutes.signUp, builder: (context, _) => const SignUp()),
+      GoRoute(path: AppRoutes.inventory, builder: (context, _) => const Inventory()),
       GoRoute(
         path: AppRoutes.verification,
         builder: (context, state) {
