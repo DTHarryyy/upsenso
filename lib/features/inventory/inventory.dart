@@ -117,81 +117,80 @@ class _InventoryState extends State<Inventory> {
                 state is InventoryLoaded ? state.selectedBranchId : null;
             final statusFilter =
                 state is InventoryLoaded ? state.statusFilter : null;
+            final viewMode = state is InventoryLoaded
+                ? state.viewMode
+                : InventoryViewMode.table;
 
             return Scaffold(
               backgroundColor: AppColors.background,
               body: RefreshIndicator(
                 onRefresh: () async => _triggerLoad(),
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // ── Page header ──
-                      _PageHeader(onRefresh: _triggerLoad),
-                      const SizedBox(height: 16),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final w = constraints.maxWidth;
+                    final hPad = _adaptivePad(w);
+                    // User toggle takes precedence; default to table on wide screens.
+                    final useTable = viewMode == InventoryViewMode.table;
 
-                      // ── Stat cards ──
-                      InventoryStatsRow(data: data, isLoading: isLoading),
-                      const SizedBox(height: 16),
+                    return SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: hPad, vertical: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _PageHeader(onRefresh: _triggerLoad),
+                          const SizedBox(height: 18),
 
-                      // ── Search + branch filter ──
-                      _SearchAndFilter(
-                        searchController: _searchController,
-                        branches: data.branches,
-                        selectedBranchId: selectedBranchId,
-                        onSearchChanged: (q) => _cubit.setSearchQuery(q),
-                        onBranchChanged: (id) => _cubit.setBranchFilter(id),
-                      ),
-                      const SizedBox(height: 12),
+                          InventoryStatsRow(
+                              data: data, isLoading: isLoading),
+                          const SizedBox(height: 16),
 
-                      // ── Status filter chips ──
-                      _StatusChips(
-                        selected: statusFilter,
-                        onSelected: (s) => _cubit.setStatusFilter(s),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // ── Responsive table / cards ──
-                      if (isLoading)
-                        const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(48),
-                            child: CircularProgressIndicator(),
+                          _SearchAndFilter(
+                            searchController: _searchController,
+                            branches: data.branches,
+                            selectedBranchId: selectedBranchId,
+                            viewMode: viewMode,
+                            onSearchChanged: (q) =>
+                                _cubit.setSearchQuery(q),
+                            onBranchChanged: (id) =>
+                                _cubit.setBranchFilter(id),
+                            onViewModeChanged: (m) =>
+                                _cubit.setViewMode(m),
                           ),
-                        )
-                      else
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            if (constraints.maxWidth >= 1024) {
-                              return InventoryDesktopTable(
-                                items: items,
-                                branches: data.branches,
-                                onAdjust: _onAdjust,
-                              );
-                            } else if (constraints.maxWidth >= 600) {
-                              // Tablet: card rows with structured layout
-                              return _CardList(
-                                items: items,
-                                branches: data.branches,
-                                onAdjust: _onAdjust,
-                                isTablet: true,
-                              );
-                            } else {
-                              // Mobile: full stacked cards
-                              return _CardList(
-                                items: items,
-                                branches: data.branches,
-                                onAdjust: _onAdjust,
-                                isTablet: false,
-                              );
-                            }
-                          },
-                        ),
-                      const SizedBox(height: 24),
-                    ],
-                  ),
+                          const SizedBox(height: 12),
+
+                          _StatusChips(
+                            selected: statusFilter,
+                            onSelected: (s) => _cubit.setStatusFilter(s),
+                          ),
+                          const SizedBox(height: 16),
+
+                          if (isLoading)
+                            const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(56),
+                                child: CircularProgressIndicator(),
+                              ),
+                            )
+                          else if (useTable)
+                            InventoryDesktopTable(
+                              items: items,
+                              branches: data.branches,
+                              onAdjust: _onAdjust,
+                            )
+                          else
+                            _CardList(
+                              items: items,
+                              branches: data.branches,
+                              onAdjust: _onAdjust,
+                            ),
+
+                          const SizedBox(height: 24),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ),
             );
@@ -201,6 +200,11 @@ class _InventoryState extends State<Inventory> {
     );
   }
 }
+
+/// Maps viewport width → horizontal padding.
+/// 320 lp → 12 dp, 1200+ lp → 32 dp. Scales smoothly in between.
+double _adaptivePad(double width) =>
+    (12.0 + (width - 320).clamp(0.0, 880.0) / 880.0 * 20.0).clamp(12.0, 32.0);
 
 // ── Page header ─────────────────────────────────────────────────────────────
 
@@ -239,8 +243,8 @@ class _PageHeader extends StatelessWidget {
           style: OutlinedButton.styleFrom(
             side: const BorderSide(color: AppColors.borderSoft),
             foregroundColor: AppColors.textSecondary,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8)),
           ),
         ),
       ],
@@ -248,106 +252,240 @@ class _PageHeader extends StatelessWidget {
   }
 }
 
-// ── Search + branch filter row ───────────────────────────────────────────────
+// ── Search + branch filter ───────────────────────────────────────────────────
+// Uses DropdownButtonFormField (not DropdownMenu) so it fills its parent
+// properly at every screen width without extra SizedBox hacks.
 
 class _SearchAndFilter extends StatelessWidget {
   final TextEditingController searchController;
   final List<BranchInfo> branches;
   final String? selectedBranchId;
+  final InventoryViewMode viewMode;
   final ValueChanged<String> onSearchChanged;
   final ValueChanged<String?> onBranchChanged;
+  final ValueChanged<InventoryViewMode> onViewModeChanged;
 
   const _SearchAndFilter({
     required this.searchController,
     required this.branches,
     required this.selectedBranchId,
+    required this.viewMode,
     required this.onSearchChanged,
     required this.onBranchChanged,
+    required this.onViewModeChanged,
   });
+
+  InputDecoration get _base => InputDecoration(
+        filled: true,
+        fillColor: AppColors.surface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.borderSoft),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.borderSoft),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide:
+              const BorderSide(color: AppColors.brand, width: 1.5),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      );
 
   @override
   Widget build(BuildContext context) {
+    final searchField = TextField(
+      controller: searchController,
+      onChanged: onSearchChanged,
+      decoration: _base.copyWith(
+        hintText: 'Search products...',
+        prefixIcon: const Icon(Icons.search, size: 18),
+      ),
+    );
+
+    // Deduplicate by ID — duplicate branch rows crash DropdownButtonFormField
+    final seenBranchIds = <String>{};
+    final uniqueBranches =
+        branches.where((b) => seenBranchIds.add(b.id)).toList();
+
+    // Guard: if the current value is no longer in the list (e.g. after a sync
+    // removed the branch), fall back to null so the assertion is never violated.
+    final safeValue = uniqueBranches.any((b) => b.id == selectedBranchId)
+        ? selectedBranchId
+        : null;
+
+    // Plain Container + DropdownButton — avoids InputDecorator's intrinsic-size
+    // measurement loop that freezes the app, and avoids DropdownButtonFormField's
+    // FormField state that won't update on rebuilds (causing the assertion crash).
+    final branchDropdown = Container(
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.borderSoft),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.store_outlined,
+              size: 16, color: AppColors.textSecondary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String?>(
+                value: safeValue,
+                isExpanded: true,
+                isDense: true,
+                style:
+                    getOutfitStyle(fontSize: 14, color: AppColors.textPrimary),
+                items: [
+                  DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('All Branches',
+                        style: getOutfitStyle(
+                            fontSize: 14, color: AppColors.textPrimary)),
+                  ),
+                  ...uniqueBranches.map(
+                    (b) => DropdownMenuItem<String?>(
+                      value: b.id,
+                      child: Text(b.name,
+                          style: getOutfitStyle(
+                              fontSize: 14, color: AppColors.textPrimary)),
+                    ),
+                  ),
+                ],
+                onChanged: onBranchChanged,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    final viewToggle = _ViewToggle(
+      current: viewMode,
+      onChanged: onViewModeChanged,
+    );
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= 600;
-        final searchField = TextField(
-          controller: searchController,
-          onChanged: onSearchChanged,
-          decoration: InputDecoration(
-            hintText: 'Search products...',
-            prefixIcon: const Icon(Icons.search, size: 18),
-            filled: true,
-            fillColor: AppColors.surface,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.borderSoft),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.borderSoft),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide:
-                  const BorderSide(color: AppColors.brand, width: 1.5),
-            ),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          ),
-        );
-
-        final branchItems = <DropdownMenuEntry<String?>>[
-          DropdownMenuEntry(
-            value: null,
-            label: 'All Branches',
-            leadingIcon: const Icon(Icons.store_outlined, size: 16),
-          ),
-          ...branches.map(
-            (b) => DropdownMenuEntry(
-              value: b.id,
-              label: b.name,
-            ),
-          ),
-        ];
-
-        final branchFilter = DropdownMenu<String?>(
-          initialSelection: selectedBranchId,
-          leadingIcon: const Icon(Icons.store_outlined, size: 16),
-          inputDecorationTheme: InputDecorationTheme(
-            filled: true,
-            fillColor: AppColors.surface,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.borderSoft),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.borderSoft),
-            ),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          ),
-          dropdownMenuEntries: branchItems,
-          onSelected: onBranchChanged,
-        );
-
-        if (isWide) {
+        // Side-by-side at ≥ 540 lp; stacked below that.
+        if (constraints.maxWidth >= 540) {
           return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: searchField),
+              Expanded(flex: 3, child: searchField),
               const SizedBox(width: 12),
-              branchFilter,
+              Expanded(flex: 2, child: branchDropdown),
+              const SizedBox(width: 12),
+              viewToggle,
             ],
           );
         }
         return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             searchField,
             const SizedBox(height: 10),
-            SizedBox(width: double.infinity, child: branchFilter),
+            Row(
+              children: [
+                Expanded(child: branchDropdown),
+                const SizedBox(width: 10),
+                viewToggle,
+              ],
+            ),
           ],
         );
       },
+    );
+  }
+}
+
+// ── View mode toggle (Cards ↔ Table) ────────────────────────────────────────
+
+class _ViewToggle extends StatelessWidget {
+  final InventoryViewMode current;
+  final ValueChanged<InventoryViewMode> onChanged;
+
+  const _ViewToggle({required this.current, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.borderSoft),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ToggleBtn(
+            icon: Icons.grid_view_rounded,
+            tooltip: 'Card view',
+            active: current == InventoryViewMode.cards,
+            isFirst: true,
+            onTap: () => onChanged(InventoryViewMode.cards),
+          ),
+          Container(width: 1, height: 22, color: AppColors.borderSoft),
+          _ToggleBtn(
+            icon: Icons.table_rows_rounded,
+            tooltip: 'Table view',
+            active: current == InventoryViewMode.table,
+            isFirst: false,
+            onTap: () => onChanged(InventoryViewMode.table),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ToggleBtn extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final bool active;
+  final bool isFirst;
+  final VoidCallback onTap;
+
+  const _ToggleBtn({
+    required this.icon,
+    required this.tooltip,
+    required this.active,
+    required this.isFirst,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.horizontal(
+          left: isFirst ? const Radius.circular(9) : Radius.zero,
+          right: isFirst ? Radius.zero : const Radius.circular(9),
+        ),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          decoration: BoxDecoration(
+            color: active ? AppColors.brandSoft : Colors.transparent,
+            borderRadius: BorderRadius.horizontal(
+              left: isFirst ? const Radius.circular(9) : Radius.zero,
+              right: isFirst ? Radius.zero : const Radius.circular(9),
+            ),
+          ),
+          child: Icon(
+            icon,
+            size: 18,
+            color: active ? AppColors.brand : AppColors.textSecondary,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -403,26 +541,26 @@ class _StatusChips extends StatelessWidget {
   }
 }
 
-// ── Card list (mobile + tablet) ──────────────────────────────────────────────
+// ── Card list (mobile / narrow tablet) ──────────────────────────────────────
+// Each InventoryItemCard uses its own LayoutBuilder to decide mobile vs
+// horizontal layout — no isTablet flag needed here.
 
 class _CardList extends StatelessWidget {
   final List<InventoryItem> items;
   final List<BranchInfo> branches;
   final void Function(InventoryItem, bool) onAdjust;
-  final bool isTablet;
 
   const _CardList({
     required this.items,
     required this.branches,
     required this.onAdjust,
-    required this.isTablet,
   });
 
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
       return Container(
-        padding: const EdgeInsets.all(48),
+        padding: const EdgeInsets.symmetric(vertical: 56),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
@@ -430,6 +568,7 @@ class _CardList extends StatelessWidget {
         ),
         child: Center(
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.inventory_2_outlined,
                   size: 48, color: AppColors.textMuted),
@@ -440,6 +579,12 @@ class _CardList extends StatelessWidget {
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Add products to start tracking inventory',
+                style:
+                    getOutfitStyle(fontSize: 13, color: AppColors.textMuted),
               ),
             ],
           ),
@@ -453,7 +598,6 @@ class _CardList extends StatelessWidget {
                 item: item,
                 branches: branches,
                 onAdjust: onAdjust,
-                isTablet: isTablet,
               ))
           .toList(),
     );

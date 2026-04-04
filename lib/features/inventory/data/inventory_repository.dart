@@ -43,17 +43,24 @@ class InventoryRepository {
   }) async {
     final products = await _productsDao.getByBusinessId(businessId);
     final variants = await _variantsDao.getByBusinessId(businessId);
-    final branches = await _branchesDao.getByBusinessId(businessId);
+    final rawBranches = await _branchesDao.getByBusinessId(businessId);
     final levels = await _levelsDao.getByBusinessId(businessId);
 
-    // Filter branches if a specific one is selected
+    // Deduplicate branches by ID (sync can occasionally insert duplicates)
+    final seenIds = <String>{};
+    final branches =
+        rawBranches.where((b) => seenIds.add(b.id)).toList();
+
+    // branchInfos always contains ALL branches so the dropdown can show
+    // every option regardless of which branch is currently selected for filtering.
+    final branchInfos =
+        branches.map((b) => BranchInfo(id: b.id, name: b.name)).toList();
+
+    // The branches actually used for computing per-item stock columns.
+    // When a branch filter is active only that branch is shown; otherwise all.
     final visibleBranches = branchId != null
         ? branches.where((b) => b.id == branchId).toList()
         : branches;
-
-    final branchInfos = visibleBranches
-        .map((b) => BranchInfo(id: b.id, name: b.name))
-        .toList();
 
     // Build a lookup: variantId -> { branchId -> quantity }
     final levelMap = <String, Map<String?, int>>{};
@@ -64,15 +71,25 @@ class InventoryRepository {
 
     final productMap = {for (final p in products) p.id: p};
 
+    // Deduplicate variants by (productId, name) — repeated syncs can insert
+    // multiple rows for the same logical variant with different UUIDs.
+    final seenVariantKeys = <String>{};
+    final dedupedVariants = variants.where((v) {
+      return seenVariantKeys.add('${v.productId}:${v.name}');
+    }).toList();
+
+    // ignore: avoid_print
+    print('[INV] load: ${variants.length} raw variants → ${dedupedVariants.length} after dedup');
+
     final items = <InventoryItem>[];
-    for (final v in variants) {
+    for (final v in dedupedVariants) {
       if (!v.isActive) continue;
       final product = productMap[v.productId];
       if (product == null || !product.isActive) continue;
 
       final branchStock = levelMap[v.id] ?? {};
 
-      // Compute per-branch stock for visible branches
+      // Compute per-branch stock for the visible (filtered) branches only.
       final stockByBranch = <String, int>{};
       for (final b in visibleBranches) {
         stockByBranch[b.id] = branchStock[b.id] ?? 0;
@@ -165,5 +182,57 @@ class InventoryRepository {
         Variable.withString(variantId),
       ],
     );
+  }
+
+  /// Called at checkout to record each sold item in the ledger, deduct it
+  /// from [inventory_levels], and decrement [product_variants.stock].
+  ///
+  /// Only processes variants that have [trackStock] enabled.
+  ///
+  /// Order matters: the variant's stock is captured BEFORE decrementing it so
+  /// that [adjustQuantity] seeds a new [inventory_levels] row from the correct
+  /// pre-sale quantity, avoiding double-deduction.
+  Future<void> recordSaleDeductions({
+    required List<({String variantId, int qty})> items,
+    required String businessId,
+    required String? branchId,
+  }) async {
+    for (final item in items) {
+      if (item.qty <= 0) continue;
+
+      final variant = await _variantsDao.getById(item.variantId);
+      if (variant == null) continue;
+
+      final originalStock = variant.stock;
+
+      // 1. Insert stock ledger entry
+      await _ledgerDao.insertEntry(
+        StockLedgerTableCompanion.insert(
+          id: _uuid.v4(),
+          variantId: item.variantId,
+          productId: variant.productId,
+          branchId: Value(branchId),
+          businessId: businessId,
+          changeType: 'OUT',
+          quantity: item.qty,
+          reason: 'Sale',
+          createdAt: Value(DateTime.now()),
+        ),
+      );
+
+      // 2. Deduct from inventory_levels; seed from pre-sale stock when no row
+      //    exists yet (first sale for this variant+branch combination).
+      await _levelsDao.adjustQuantity(
+        variantId: item.variantId,
+        branchId: branchId,
+        businessId: businessId,
+        delta: -item.qty,
+        seedQuantity: originalStock,
+      );
+
+      // 3. Decrement product_variants.stock (only when trackStock=true)
+      await _variantsDao.decrementStockIfTracked(
+          item.variantId, item.qty.toDouble());
+    }
   }
 }

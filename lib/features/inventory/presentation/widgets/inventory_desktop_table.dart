@@ -4,6 +4,25 @@ import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/features/inventory/data/inventory_data.dart';
 import 'package:pos/features/inventory/presentation/widgets/stock_status_badge.dart';
 
+// Fixed column widths — the table scrolls horizontally when branches make it
+// wider than the viewport, rather than squashing every column.
+const double _colProduct = 180;
+const double _colSku = 110;
+const double _colBranch = 110;
+const double _colTotal = 80;
+const double _colReorder = 110;
+const double _colStatus = 110;
+const double _colActions = 140;
+
+double _tableMinWidth(int branchCount) =>
+    _colProduct +
+    _colSku +
+    (_colBranch * branchCount) +
+    _colTotal +
+    _colReorder +
+    _colStatus +
+    _colActions;
+
 class InventoryDesktopTable extends StatelessWidget {
   final List<InventoryItem> items;
   final List<BranchInfo> branches;
@@ -19,96 +38,150 @@ class InventoryDesktopTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
-      return _EmptyState();
+      return const _EmptyState();
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderSoft),
-      ),
-      child: Column(
-        children: [
-          _TableHeader(branches: branches),
-          const Divider(height: 1, color: AppColors.borderSoft),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: items.length,
-            separatorBuilder: (context, i) =>
-                const Divider(height: 1, color: AppColors.borderSoft),
-            itemBuilder: (_, i) => _TableRow(
-              item: items[i],
-              branches: branches,
-              onAdjust: onAdjust,
-              isEven: i.isEven,
+    final minWidth = _tableMinWidth(branches.length);
+
+    // LayoutBuilder must be OUTSIDE the horizontal SingleChildScrollView.
+    // Inside the scroll view, maxWidth is unbounded (infinity), which flows
+    // into SizedBox(width: infinity) and crashes the layout engine.
+    // Here the constraints come from the parent Column, which is always finite.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Use whichever is larger: the available width or the minimum table
+        // width. If minWidth wins, the horizontal scroll view takes over.
+        final tableWidth = constraints.maxWidth > minWidth
+            ? constraints.maxWidth
+            : minWidth;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.borderSoft),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: tableWidth,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _TableHeader(branches: branches, tableWidth: tableWidth),
+                  const Divider(height: 1, color: AppColors.borderSoft),
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: items.length,
+                    separatorBuilder: (context, i) =>
+                        const Divider(height: 1, color: AppColors.borderSoft),
+                    itemBuilder: (_, i) => _TableRow(
+                      item: items[i],
+                      branches: branches,
+                      onAdjust: onAdjust,
+                      isEven: i.isEven,
+                      tableWidth: tableWidth,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
+
+// ── Column widths helper ─────────────────────────────────────────────────────
+
+/// Returns the actual widths for all columns given the real [tableWidth].
+/// Extra space (when table is wider than minWidth) is distributed to Product
+/// and branch columns proportionally, so the layout breathes on large screens.
+List<double> _columnWidths(int branchCount, double tableWidth) {
+  final min = _tableMinWidth(branchCount);
+  final extra = (tableWidth - min).clamp(0.0, double.infinity);
+
+  // Distribute extra space: 40% to Product, 60% split equally among branches
+  final productExtra = extra * 0.4;
+  final branchExtra = branchCount > 0 ? (extra * 0.6) / branchCount : 0.0;
+
+  return [
+    _colProduct + productExtra,    // Product
+    _colSku,                       // SKU
+    for (var i = 0; i < branchCount; i++) _colBranch + branchExtra, // branches
+    _colTotal,                     // Total
+    _colReorder,                   // Reorder
+    _colStatus,                    // Status
+    _colActions,                   // Actions
+  ];
+}
+
+// ── Header ───────────────────────────────────────────────────────────────────
 
 class _TableHeader extends StatelessWidget {
   final List<BranchInfo> branches;
-  const _TableHeader({required this.branches});
+  final double tableWidth;
+
+  const _TableHeader({required this.branches, required this.tableWidth});
 
   @override
   Widget build(BuildContext context) {
+    final widths = _columnWidths(branches.length, tableWidth);
+    final labels = [
+      'Product',
+      'SKU',
+      ...branches.map((b) => b.name),
+      'Total',
+      'Reorder Level',
+      'Status',
+      'Actions',
+    ];
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      color: AppColors.surfaceAlt,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
       child: Row(
         children: [
-          _HeaderCell('Product', flex: 3),
-          _HeaderCell('SKU', flex: 2),
-          ...branches.map((b) => _HeaderCell(b.name, flex: 2)),
-          _HeaderCell('Total', flex: 1),
-          _HeaderCell('Reorder Level', flex: 2),
-          _HeaderCell('Status', flex: 2),
-          _HeaderCell('Actions', flex: 2, align: TextAlign.right),
+          for (var i = 0; i < labels.length; i++)
+            SizedBox(
+              width: widths[i],
+              child: Text(
+                labels[i],
+                textAlign:
+                    i == labels.length - 1 ? TextAlign.right : TextAlign.left,
+                overflow: TextOverflow.ellipsis,
+                style: getOutfitStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textSecondary,
+                  letterSpacing: 0.4,
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 }
 
-class _HeaderCell extends StatelessWidget {
-  final String text;
-  final int flex;
-  final TextAlign align;
-
-  const _HeaderCell(this.text, {this.flex = 1, this.align = TextAlign.left});
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      flex: flex,
-      child: Text(
-        text,
-        textAlign: align,
-        style: getOutfitStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textSecondary,
-        ),
-      ),
-    );
-  }
-}
+// ── Row ──────────────────────────────────────────────────────────────────────
 
 class _TableRow extends StatelessWidget {
   final InventoryItem item;
   final List<BranchInfo> branches;
   final void Function(InventoryItem item, bool isIncoming) onAdjust;
   final bool isEven;
+  final double tableWidth;
 
   const _TableRow({
     required this.item,
     required this.branches,
     required this.onAdjust,
     required this.isEven,
+    required this.tableWidth,
   });
 
   Color _stockColor(int qty, int reorder) {
@@ -120,116 +193,112 @@ class _TableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final widths = _columnWidths(branches.length, tableWidth);
+    var colIdx = 0;
+
+    Widget cell(Widget child) => SizedBox(width: widths[colIdx++], child: child);
+
     return Container(
-      color: isEven ? Colors.transparent : AppColors.surfaceAlt.withValues(alpha: 0.4),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      color: isEven
+          ? Colors.transparent
+          : AppColors.surfaceAlt.withValues(alpha: 0.35),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Product name + variant
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.productName,
-                  style: getOutfitStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
+          // Product
+          cell(Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                item.productName,
+                overflow: TextOverflow.ellipsis,
+                style: getOutfitStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
                 ),
-                if (item.variantName.isNotEmpty)
-                  Text(
-                    item.variantName,
-                    style: getOutfitStyle(
-                        fontSize: 11, color: AppColors.textSecondary),
-                  ),
-              ],
-            ),
-          ),
+              ),
+              if (item.variantName.isNotEmpty)
+                Text(
+                  item.variantName,
+                  overflow: TextOverflow.ellipsis,
+                  style: getOutfitStyle(
+                      fontSize: 11, color: AppColors.textSecondary),
+                ),
+            ],
+          )),
           // SKU
-          Expanded(
-            flex: 2,
-            child: Text(
-              item.sku ?? '—',
-              style: getOutfitStyle(
-                  fontSize: 12, color: AppColors.textSecondary),
-            ),
-          ),
-          // Per-branch stock
-          ...branches.map((b) {
-            final qty = item.stockByBranch[b.id] ?? 0;
-            final color = _stockColor(qty, item.reorderLevel);
-            return Expanded(
-              flex: 2,
-              child: Text(
+          cell(Text(
+            item.sku ?? '—',
+            overflow: TextOverflow.ellipsis,
+            style:
+                getOutfitStyle(fontSize: 12, color: AppColors.textSecondary),
+          )),
+          // Per-branch
+          for (final b in branches)
+            cell(() {
+              final qty = item.stockByBranch[b.id] ?? 0;
+              return Text(
                 '$qty',
                 style: getOutfitStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: color,
+                  color: _stockColor(qty, item.reorderLevel),
                 ),
-              ),
-            );
-          }),
+              );
+            }()),
           // Total
-          Expanded(
-            flex: 1,
-            child: Text(
-              '${item.totalStock}',
-              style: getOutfitStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
+          cell(Text(
+            '${item.totalStock}',
+            style: getOutfitStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
             ),
-          ),
-          // Reorder level
-          Expanded(
-            flex: 2,
-            child: Text(
-              item.reorderLevel > 0 ? '${item.reorderLevel}' : '—',
-              style: getOutfitStyle(
-                fontSize: 13,
-                color: item.reorderLevel > 0
-                    ? AppColors.textSecondary
-                    : AppColors.textMuted,
-              ),
+          )),
+          // Reorder
+          cell(Text(
+            item.reorderLevel > 0 ? '${item.reorderLevel}' : '—',
+            style: getOutfitStyle(
+              fontSize: 13,
+              color: item.reorderLevel > 0
+                  ? AppColors.textSecondary
+                  : AppColors.textMuted,
             ),
-          ),
+          )),
           // Status
-          Expanded(
-            flex: 2,
+          cell(Align(
+            alignment: Alignment.centerLeft,
             child: StockStatusBadge(status: item.status),
-          ),
+          )),
           // Actions
-          Expanded(
-            flex: 2,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                _ActionButton(
-                  label: '+ In',
-                  color: AppColors.success,
-                  bgColor: AppColors.successSoft,
-                  onTap: () => onAdjust(item, true),
-                ),
-                const SizedBox(width: 6),
-                _ActionButton(
-                  label: '− Out',
-                  color: AppColors.error,
-                  bgColor: AppColors.errorSoft,
-                  onTap: () => onAdjust(item, false),
-                ),
-              ],
-            ),
-          ),
+          cell(Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              _ActionButton(
+                label: '+ In',
+                color: AppColors.success,
+                bgColor: AppColors.successSoft,
+                onTap: () => onAdjust(item, true),
+              ),
+              const SizedBox(width: 6),
+              _ActionButton(
+                label: '− Out',
+                color: AppColors.error,
+                bgColor: AppColors.errorSoft,
+                onTap: () => onAdjust(item, false),
+              ),
+            ],
+          )),
         ],
       ),
     );
   }
 }
+
+// ── Action button ─────────────────────────────────────────────────────────────
 
 class _ActionButton extends StatelessWidget {
   final String label;
@@ -269,11 +338,15 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
+// ── Empty state ───────────────────────────────────────────────────────────────
+
 class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(48),
+      padding: const EdgeInsets.symmetric(vertical: 56),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
@@ -281,6 +354,7 @@ class _EmptyState extends StatelessWidget {
       ),
       child: Center(
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.inventory_2_outlined,
                 size: 48, color: AppColors.textMuted),
@@ -295,8 +369,8 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               'Add products to start tracking inventory',
-              style: getOutfitStyle(
-                  fontSize: 13, color: AppColors.textMuted),
+              style:
+                  getOutfitStyle(fontSize: 13, color: AppColors.textMuted),
             ),
           ],
         ),

@@ -14,9 +14,10 @@ class InventoryCubit extends Cubit<InventoryState> {
   bool _isLoading = false;
   bool _pendingReload = false;
 
-  // Local filter state preserved across reloads
+  // Local filter / view state preserved across reloads
   String _searchQuery = '';
   StockStatus? _statusFilter;
+  InventoryViewMode _viewMode = InventoryViewMode.table;
 
   InventoryCubit(this._repository) : super(const InventoryInitial());
 
@@ -48,6 +49,14 @@ class InventoryCubit extends Cubit<InventoryState> {
   void setBranchFilter(String? branchId) {
     _branchId = branchId;
     _doLoad(showSpinner: false);
+  }
+
+  void setViewMode(InventoryViewMode mode) {
+    _viewMode = mode;
+    final current = state;
+    if (current is InventoryLoaded) {
+      emit(current.copyWith(viewMode: mode));
+    }
   }
 
   Future<void> adjustStock({
@@ -104,6 +113,7 @@ class InventoryCubit extends Cubit<InventoryState> {
           searchQuery: _searchQuery,
           selectedBranchId: _branchId,
           statusFilter: _statusFilter,
+          viewMode: _viewMode,
         ));
       }
     } catch (e) {

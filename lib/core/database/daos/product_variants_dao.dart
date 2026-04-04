@@ -27,6 +27,13 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
+  /// Get a single variant by its ID.
+  Future<ProductVariantsTableData?> getById(String id) {
+    return (select(productVariantsTable)
+          ..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+  }
+
   /// Get all variants for a product.
   Future<List<ProductVariantsTableData>> getByProductId(String productId) {
     return (select(productVariantsTable)

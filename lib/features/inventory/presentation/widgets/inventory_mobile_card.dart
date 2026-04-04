@@ -4,11 +4,13 @@ import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/features/inventory/data/inventory_data.dart';
 import 'package:pos/features/inventory/presentation/widgets/stock_status_badge.dart';
 
-/// Used on mobile (full card) and tablet (structured row inside card).
+/// Self-adapting inventory card.
+/// Uses its own [LayoutBuilder] to switch between a compact horizontal layout
+/// (≥ 520 logical pixels wide) and a stacked mobile layout (< 520).
+/// No `isTablet` flag required — the card decides based on its own width.
 class InventoryItemCard extends StatelessWidget {
   final InventoryItem item;
   final List<BranchInfo> branches;
-  final bool isTablet;
   final void Function(InventoryItem item, bool isIncoming) onAdjust;
 
   const InventoryItemCard({
@@ -16,32 +18,38 @@ class InventoryItemCard extends StatelessWidget {
     required this.item,
     required this.branches,
     required this.onAdjust,
-    this.isTablet = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
+      margin: const EdgeInsets.symmetric(vertical: 4),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.borderSoft),
       ),
-      child: isTablet ? _TabletLayout(item: item, branches: branches, onAdjust: onAdjust)
-                      : _MobileLayout(item: item, branches: branches, onAdjust: onAdjust),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return constraints.maxWidth >= 520
+              ? _HorizontalLayout(
+                  item: item, branches: branches, onAdjust: onAdjust)
+              : _StackedLayout(
+                  item: item, branches: branches, onAdjust: onAdjust);
+        },
+      ),
     );
   }
 }
 
-// ── Mobile: stacked card layout ────────────────────────────────────────────
+// ── Stacked (mobile) layout ──────────────────────────────────────────────────
 
-class _MobileLayout extends StatelessWidget {
+class _StackedLayout extends StatelessWidget {
   final InventoryItem item;
   final List<BranchInfo> branches;
   final void Function(InventoryItem, bool) onAdjust;
 
-  const _MobileLayout({
+  const _StackedLayout({
     required this.item,
     required this.branches,
     required this.onAdjust,
@@ -54,8 +62,9 @@ class _MobileLayout extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Product name + badge
+          // Name + status badge
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
@@ -70,62 +79,62 @@ class _MobileLayout extends StatelessWidget {
                       ),
                     ),
                     if (item.variantName.isNotEmpty)
-                      Text(item.variantName,
-                          style: getOutfitStyle(
-                              fontSize: 12, color: AppColors.textSecondary)),
+                      Text(
+                        item.variantName,
+                        style: getOutfitStyle(
+                            fontSize: 12, color: AppColors.textSecondary),
+                      ),
                     if (item.sku != null)
-                      Text(item.sku!,
-                          style: getOutfitStyle(
-                              fontSize: 11, color: AppColors.textMuted)),
+                      Text(
+                        item.sku!,
+                        style: getOutfitStyle(
+                            fontSize: 11, color: AppColors.textMuted),
+                      ),
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               StockStatusBadge(status: item.status),
             ],
           ),
           const SizedBox(height: 12),
 
-          // Branch stock grid
-          if (branches.isNotEmpty)
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                ...branches.map((b) => _BranchChip(
+          // Stock chips — wraps naturally
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (branches.isNotEmpty)
+                ...branches.map((b) => _StockChip(
                       label: b.name,
                       qty: item.stockByBranch[b.id] ?? 0,
                       reorderLevel: item.reorderLevel,
                     )),
-                _BranchChip(
-                  label: 'Total',
-                  qty: item.totalStock,
-                  reorderLevel: item.reorderLevel,
-                  isTotal: true,
-                ),
-              ],
-            )
-          else
-            _BranchChip(
-              label: 'Total Stock',
-              qty: item.totalStock,
-              reorderLevel: item.reorderLevel,
-              isTotal: true,
-            ),
+              _StockChip(
+                label: branches.isNotEmpty ? 'Total' : 'Stock',
+                qty: item.totalStock,
+                reorderLevel: item.reorderLevel,
+                isHighlighted: true,
+              ),
+            ],
+          ),
 
-          const SizedBox(height: 8),
-          if (item.reorderLevel > 0)
+          if (item.reorderLevel > 0) ...[
+            const SizedBox(height: 8),
             Text(
-              'Reorder at: ${item.reorderLevel}',
+              'Reorder at ${item.reorderLevel}',
               style: getOutfitStyle(
                   fontSize: 12, color: AppColors.textSecondary),
             ),
+          ],
+
           const SizedBox(height: 12),
 
-          // Action buttons
+          // Action buttons full-width
           Row(
             children: [
               Expanded(
-                child: _MobileActionBtn(
+                child: _CardActionBtn(
                   label: '+ Stock In',
                   color: AppColors.success,
                   bgColor: AppColors.successSoft,
@@ -134,7 +143,7 @@ class _MobileLayout extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: _MobileActionBtn(
+                child: _CardActionBtn(
                   label: '− Stock Out',
                   color: AppColors.error,
                   bgColor: AppColors.errorSoft,
@@ -149,14 +158,14 @@ class _MobileLayout extends StatelessWidget {
   }
 }
 
-// ── Tablet: horizontal row inside a card ───────────────────────────────────
+// ── Horizontal (tablet) layout ───────────────────────────────────────────────
 
-class _TabletLayout extends StatelessWidget {
+class _HorizontalLayout extends StatelessWidget {
   final InventoryItem item;
   final List<BranchInfo> branches;
   final void Function(InventoryItem, bool) onAdjust;
 
-  const _TabletLayout({
+  const _HorizontalLayout({
     required this.item,
     required this.branches,
     required this.onAdjust,
@@ -167,15 +176,18 @@ class _TabletLayout extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Product info
+          // Product info — 30% of card width
           Expanded(
-            flex: 3,
+            flex: 30,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   item.productName,
+                  overflow: TextOverflow.ellipsis,
                   style: getOutfitStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -183,48 +195,62 @@ class _TabletLayout extends StatelessWidget {
                   ),
                 ),
                 if (item.variantName.isNotEmpty)
-                  Text(item.variantName,
-                      style: getOutfitStyle(
-                          fontSize: 11, color: AppColors.textSecondary)),
+                  Text(
+                    item.variantName,
+                    overflow: TextOverflow.ellipsis,
+                    style: getOutfitStyle(
+                        fontSize: 11, color: AppColors.textSecondary),
+                  ),
                 if (item.sku != null)
-                  Text(item.sku!,
-                      style: getOutfitStyle(
-                          fontSize: 11, color: AppColors.textMuted)),
+                  Text(
+                    item.sku!,
+                    overflow: TextOverflow.ellipsis,
+                    style: getOutfitStyle(
+                        fontSize: 11, color: AppColors.textMuted),
+                  ),
               ],
             ),
           ),
-          // Branch stock inline
+          const SizedBox(width: 12),
+
+          // Stock chips — 35% of card width, wrap naturally
           Expanded(
-            flex: 4,
+            flex: 35,
             child: Wrap(
-              spacing: 8,
+              spacing: 6,
+              runSpacing: 6,
               children: [
-                ...branches.map((b) => _BranchChip(
-                      label: b.name,
-                      qty: item.stockByBranch[b.id] ?? 0,
-                      reorderLevel: item.reorderLevel,
-                    )),
-                _BranchChip(
-                  label: 'Total',
+                if (branches.isNotEmpty)
+                  ...branches.map((b) => _StockChip(
+                        label: b.name,
+                        qty: item.stockByBranch[b.id] ?? 0,
+                        reorderLevel: item.reorderLevel,
+                      )),
+                _StockChip(
+                  label: branches.isNotEmpty ? 'Total' : 'Stock',
                   qty: item.totalStock,
                   reorderLevel: item.reorderLevel,
-                  isTotal: true,
+                  isHighlighted: true,
                 ),
               ],
             ),
           ),
-          // Status
+          const SizedBox(width: 12),
+
+          // Status badge — 15%
           Expanded(
-            flex: 2,
+            flex: 15,
             child: Center(child: StockStatusBadge(status: item.status)),
           ),
-          // Actions
+          const SizedBox(width: 8),
+
+          // Action buttons — 20%
           Expanded(
-            flex: 2,
+            flex: 20,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                _MobileActionBtn(
+                _CardActionBtn(
                   label: '+ In',
                   color: AppColors.success,
                   bgColor: AppColors.successSoft,
@@ -232,7 +258,7 @@ class _TabletLayout extends StatelessWidget {
                   compact: true,
                 ),
                 const SizedBox(width: 6),
-                _MobileActionBtn(
+                _CardActionBtn(
                   label: '− Out',
                   color: AppColors.error,
                   bgColor: AppColors.errorSoft,
@@ -248,23 +274,26 @@ class _TabletLayout extends StatelessWidget {
   }
 }
 
-// ── Shared sub-widgets ──────────────────────────────────────────────────────
+// ── Shared widgets ───────────────────────────────────────────────────────────
 
-class _BranchChip extends StatelessWidget {
+class _StockChip extends StatelessWidget {
   final String label;
   final int qty;
   final int reorderLevel;
-  final bool isTotal;
+  final bool isHighlighted;
 
-  const _BranchChip({
+  const _StockChip({
     required this.label,
     required this.qty,
     required this.reorderLevel,
-    this.isTotal = false,
+    this.isHighlighted = false,
   });
 
   Color get _qtyColor {
-    if (reorderLevel <= 0) return qty <= 0 ? AppColors.error : AppColors.textPrimary;
+    if (isHighlighted) return AppColors.brand;
+    if (reorderLevel <= 0) {
+      return qty <= 0 ? AppColors.error : AppColors.textPrimary;
+    }
     if (qty <= reorderLevel) return AppColors.error;
     if (qty <= (reorderLevel * 1.5).ceil()) return AppColors.warning;
     return AppColors.textPrimary;
@@ -275,10 +304,12 @@ class _BranchChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: isTotal ? AppColors.brandSoft : AppColors.surfaceAlt,
+        color: isHighlighted ? AppColors.brandSoft : AppColors.surfaceAlt,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isTotal ? AppColors.brand.withValues(alpha: 0.3) : AppColors.borderSoft,
+          color: isHighlighted
+              ? AppColors.brand.withValues(alpha: 0.25)
+              : AppColors.borderSoft,
         ),
       ),
       child: Column(
@@ -288,7 +319,9 @@ class _BranchChip extends StatelessWidget {
             label,
             style: getOutfitStyle(
               fontSize: 10,
-              color: isTotal ? AppColors.brand : AppColors.textSecondary,
+              color: isHighlighted
+                  ? AppColors.brand
+                  : AppColors.textSecondary,
             ),
           ),
           Text(
@@ -296,7 +329,7 @@ class _BranchChip extends StatelessWidget {
             style: getOutfitStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
-              color: isTotal ? AppColors.brand : _qtyColor,
+              color: _qtyColor,
             ),
           ),
         ],
@@ -305,14 +338,14 @@ class _BranchChip extends StatelessWidget {
   }
 }
 
-class _MobileActionBtn extends StatelessWidget {
+class _CardActionBtn extends StatelessWidget {
   final String label;
   final Color color;
   final Color bgColor;
   final VoidCallback onTap;
   final bool compact;
 
-  const _MobileActionBtn({
+  const _CardActionBtn({
     required this.label,
     required this.color,
     required this.bgColor,
@@ -328,7 +361,7 @@ class _MobileActionBtn extends StatelessWidget {
       child: Container(
         padding: EdgeInsets.symmetric(
           horizontal: compact ? 10 : 14,
-          vertical: compact ? 6 : 9,
+          vertical: compact ? 7 : 10,
         ),
         decoration: BoxDecoration(
           color: bgColor,

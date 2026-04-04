@@ -58,19 +58,22 @@ class InventoryLevelsDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Atomically adjust the quantity for a variant+branch by [delta].
-  /// If no row exists yet, it is created starting from 0 + delta.
+  ///
+  /// [seedQuantity] is used as the starting stock when no row exists yet
+  /// (e.g. on first sale after inventory module is introduced). Defaults to 0.
   Future<void> adjustQuantity({
     required String variantId,
     required String? branchId,
     required String businessId,
     required int delta,
+    int seedQuantity = 0,
   }) async {
     final id = makeId(variantId, branchId);
     final existing = await (select(inventoryLevelsTable)
           ..where((t) => t.id.equals(id)))
         .getSingleOrNull();
 
-    final current = existing?.quantity ?? 0;
+    final current = existing?.quantity ?? seedQuantity;
     final next = (current + delta).clamp(0, 999999);
 
     await into(inventoryLevelsTable).insertOnConflictUpdate(
