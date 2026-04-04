@@ -9,6 +9,7 @@ import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/database/app_database.dart';
+import 'package:pos/core/database/daos/product_variants_dao.dart';
 import 'package:pos/core/database/daos/transactions_dao.dart';
 import 'package:pos/core/ui/status/status_snack.dart';
 import 'package:pos/core/ui/status/status_type.dart';
@@ -127,6 +128,12 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
           .toList();
 
       await sl<TransactionsDao>().insertTransaction(tx, txItems);
+
+      // Deduct stock for every tracked variant in the cart
+      final variantsDao = sl<ProductVariantsDao>();
+      for (final item in widget.items) {
+        await variantsDao.decrementStockIfTracked(item.variantId, item.qty);
+      }
 
       widget.onPaymentConfirmed();
       if (!mounted) return;
