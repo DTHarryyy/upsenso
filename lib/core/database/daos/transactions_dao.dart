@@ -112,4 +112,39 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
     await delete(transactionItemsTable).go();
     await delete(transactionsTable).go();
   }
+
+  /// Fetch all transactions since [cutoff], optionally filtered by branch.
+  Future<List<TransactionsTableData>> getTransactionsSince(
+    DateTime cutoff, {
+    String? branchId,
+  }) {
+    final query = select(transactionsTable)
+      ..where((t) {
+        Expression<bool> cond = t.createdAt.isBiggerOrEqualValue(cutoff);
+        if (branchId != null) {
+          cond = cond & t.branchId.equals(branchId);
+        }
+        return cond;
+      })
+      ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]);
+    return query.get();
+  }
+
+  /// Fetch ALL transactions (all branches) since [cutoff] – used for branch comparison.
+  Future<List<TransactionsTableData>> getAllTransactionsSince(DateTime cutoff) {
+    return (select(transactionsTable)
+          ..where((t) => t.createdAt.isBiggerOrEqualValue(cutoff))
+          ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
+        .get();
+  }
+
+  /// Fetch all line-items whose transaction is in [transactionIds].
+  Future<List<TransactionItemsTableData>> getItemsForTransactions(
+    List<String> transactionIds,
+  ) {
+    if (transactionIds.isEmpty) return Future.value([]);
+    return (select(transactionItemsTable)
+          ..where((t) => t.transactionId.isIn(transactionIds)))
+        .get();
+  }
 }

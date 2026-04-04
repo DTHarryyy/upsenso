@@ -1,8 +1,10 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:pos/features/dashboard/data/dashboard_data.dart';
 
 class SalesTrendChart extends StatefulWidget {
-  const SalesTrendChart({super.key});
+  final DashboardData data;
+  const SalesTrendChart({super.key, required this.data});
 
   @override
   State<SalesTrendChart> createState() => _SalesTrendChartState();
@@ -11,8 +13,32 @@ class SalesTrendChart extends StatefulWidget {
 class _SalesTrendChartState extends State<SalesTrendChart> {
   bool _is7Days = true;
 
+  List<double> get _totals =>
+      _is7Days ? widget.data.sevenDayTotals : widget.data.thirtyDayTotals;
+
+  List<String> get _labels =>
+      _is7Days ? widget.data.sevenDayLabels : widget.data.thirtyDayLabels;
+
+  double get _maxY {
+    if (_totals.isEmpty) return 1000;
+    final max = _totals.reduce((a, b) => a > b ? a : b);
+    if (max == 0) return 1000;
+    // Round up to a nice number
+    final step = (max / 4).ceilToDouble();
+    final rounded = (step / 100).ceil() * 100.0;
+    return rounded * 4;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final spots = List.generate(
+      _totals.length,
+      (i) => FlSpot(i.toDouble(), _totals[i]),
+    );
+
+    final maxY = _maxY;
+    final interval = maxY / 4;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -28,10 +54,7 @@ class _SalesTrendChartState extends State<SalesTrendChart> {
             children: [
               const Text(
                 'Sales Trend',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
               Row(
                 children: [
@@ -53,121 +76,108 @@ class _SalesTrendChartState extends State<SalesTrendChart> {
           const SizedBox(height: 24),
           SizedBox(
             height: 220,
-            child: LineChart(
-              LineChartData(
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: true,
-                  horizontalInterval: 1500,
-                  getDrawingHorizontalLine: (value) => FlLine(
-                    color: Colors.grey.shade200,
-                    strokeWidth: 1,
-                  ),
-                  getDrawingVerticalLine: (value) => FlLine(
-                    color: Colors.grey.shade200,
-                    strokeWidth: 1,
-                  ),
-                ),
-                titlesData: FlTitlesData(
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 50,
-                      interval: 1500,
-                      getTitlesWidget: (value, meta) {
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: Text(
-                            '\$${value.toInt()}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey.shade500,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: 1,
-                      getTitlesWidget: (value, meta) {
-                        const days = [
-                          'Mon',
-                          'Tue',
-                          'Wed',
-                          'Thu',
-                          'Fri',
-                          'Sat',
-                          'Sun',
-                        ];
-                        final index = value.toInt();
-                        if (index < 0 || index >= days.length) {
-                          return const SizedBox();
-                        }
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            days[index],
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey.shade500,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                borderData: FlBorderData(show: false),
-                minX: 0,
-                maxX: 6,
-                minY: 0,
-                maxY: 6000,
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: const [
-                      FlSpot(0, 2200),
-                      FlSpot(1, 1200),
-                      FlSpot(2, 3000),
-                      FlSpot(3, 3500),
-                      FlSpot(4, 3400),
-                      FlSpot(5, 4800),
-                      FlSpot(6, 3842),
-                    ],
-                    isCurved: true,
-                    color: const Color(0xFF3B82F6),
-                    barWidth: 2.5,
-                    isStrokeCapRound: true,
-                    dotData: FlDotData(
-                      show: true,
-                      getDotPainter: (spot, percent, barData, index) =>
-                          FlDotCirclePainter(
-                        radius: 4,
-                        color: const Color(0xFF3B82F6),
-                        strokeWidth: 2,
-                        strokeColor: Colors.white,
+            child: _totals.isEmpty
+                ? const Center(
+                    child: Text('No sales data yet',
+                        style: TextStyle(color: Colors.grey)),
+                  )
+                : LineChart(
+                    LineChartData(
+                      gridData: FlGridData(
+                        show: true,
+                        drawVerticalLine: true,
+                        horizontalInterval: interval,
+                        getDrawingHorizontalLine: (_) =>
+                            FlLine(color: Colors.grey.shade200, strokeWidth: 1),
+                        getDrawingVerticalLine: (_) =>
+                            FlLine(color: Colors.grey.shade200, strokeWidth: 1),
                       ),
-                    ),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: const Color(0xFF3B82F6).withValues(alpha: 0.08),
+                      titlesData: FlTitlesData(
+                        topTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
+                        rightTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 56,
+                            interval: interval,
+                            getTitlesWidget: (value, _) => Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: Text(
+                                _formatAmount(value),
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey.shade500),
+                              ),
+                            ),
+                          ),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            interval: _is7Days ? 1 : 5,
+                            getTitlesWidget: (value, _) {
+                              final idx = value.toInt();
+                              if (idx < 0 || idx >= _labels.length) {
+                                return const SizedBox();
+                              }
+                              final label = _labels[idx];
+                              if (label.isEmpty) return const SizedBox();
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Text(
+                                  label,
+                                  style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.grey.shade500),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      borderData: FlBorderData(show: false),
+                      minX: 0,
+                      maxX: (_totals.length - 1).toDouble(),
+                      minY: 0,
+                      maxY: maxY,
+                      lineBarsData: [
+                        LineChartBarData(
+                          spots: spots,
+                          isCurved: true,
+                          color: const Color(0xFF3B82F6),
+                          barWidth: 2.5,
+                          isStrokeCapRound: true,
+                          dotData: FlDotData(
+                            show: true,
+                            getDotPainter: (spot, _, _, _) =>
+                                FlDotCirclePainter(
+                              radius: 3.5,
+                              color: const Color(0xFF3B82F6),
+                              strokeWidth: 2,
+                              strokeColor: Colors.white,
+                            ),
+                          ),
+                          belowBarData: BarAreaData(
+                            show: true,
+                            color: const Color(0xFF3B82F6).withValues(alpha: 0.08),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            ),
           ),
         ],
       ),
     );
+  }
+
+  String _formatAmount(double value) {
+    if (value >= 1000) {
+      return '₱${(value / 1000).toStringAsFixed(1)}k';
+    }
+    return '₱${value.toInt()}';
   }
 }
 
