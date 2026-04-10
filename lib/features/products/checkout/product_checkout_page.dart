@@ -26,6 +26,7 @@ class ProductCheckoutPage extends StatefulWidget {
   final double subtotal;
   final double tax;
   final double total;
+  final double discountAmount;
   final VoidCallback onPaymentConfirmed;
 
   const ProductCheckoutPage({
@@ -34,6 +35,7 @@ class ProductCheckoutPage extends StatefulWidget {
     required this.subtotal,
     required this.tax,
     required this.total,
+    this.discountAmount = 0,
     required this.onPaymentConfirmed,
   });
 
@@ -471,9 +473,64 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
                   )
                 : const SizedBox(width: double.infinity, height: 0),
           ),
+          // Subtotal / Discount / Tax / Total footer
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+            child: Column(
+              children: [
+                _summaryLine('Subtotal',
+                    ProductCartPage.fmtPrice(widget.subtotal)),
+                if (widget.discountAmount > 0) ...[
+                  const SizedBox(height: 4),
+                  _summaryLine(
+                    'Discount',
+                    '− ${ProductCartPage.fmtPrice(widget.discountAmount)}',
+                    valueColor: AppColors.success,
+                  ),
+                ],
+                if (widget.tax > 0) ...[
+                  const SizedBox(height: 4),
+                  _summaryLine('Tax', ProductCartPage.fmtPrice(widget.tax)),
+                ],
+                const SizedBox(height: 8),
+                const Divider(height: 1, color: AppColors.borderSoft),
+                const SizedBox(height: 8),
+                _summaryLine(
+                  'Total',
+                  ProductCartPage.fmtPrice(widget.total),
+                  isBold: true,
+                ),
+              ],
+            ),
+          ),
           const Divider(height: 1, color: AppColors.borderSoft),
         ],
       ),
+    );
+  }
+
+  Widget _summaryLine(String label, String value,
+      {bool isBold = false, Color? valueColor}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: getOutfitStyle(
+            fontSize: isBold ? 14 : 13,
+            fontWeight: isBold ? FontWeight.w700 : FontWeight.normal,
+            color: isBold ? AppColors.textPrimary : AppColors.textSecondary,
+          ),
+        ),
+        Text(
+          value,
+          style: getOutfitStyle(
+            fontSize: isBold ? 15 : 13,
+            fontWeight: isBold ? FontWeight.w700 : FontWeight.w600,
+            color: valueColor ?? (isBold ? AppColors.brand : AppColors.textSecondary),
+          ),
+        ),
+      ],
     );
   }
 

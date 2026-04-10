@@ -120,7 +120,11 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
         sku: Value(row['sku'] as String?),
         barcode: Value(row['barcode'] as String?),
         trackExpiry: Value((row['track_expiry'] as bool?) ?? false),
-        expiryDate: Value(row['expiry_date'] as String?),
+        expiryDate: Value(
+          row['expiry_date'] != null
+              ? DateTime.tryParse(row['expiry_date'] as String)
+              : null,
+        ),
         isActive: Value((row['is_active'] as bool?) ?? true),
         syncStatus: const Value(3), // synced
         lastSyncAttempt: Value(DateTime.now()),
@@ -223,5 +227,18 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
       barcode: data.barcode,
       isActive: data.isActive,
     );
+  }
+
+  /// Update the global stock total for a variant to [stock].
+  /// Used after editing to keep product_variants.stock in sync with
+  /// the authoritative sum from inventory_levels.
+  Future<void> updateVariantStock(String variantId, int stock) {
+    return (update(productVariantsTable)
+          ..where((t) => t.id.equals(variantId)))
+        .write(ProductVariantsTableCompanion(
+          stock: Value(stock),
+          syncStatus: const Value(1),
+          localUpdatedAt: Value(DateTime.now()),
+        ));
   }
 }

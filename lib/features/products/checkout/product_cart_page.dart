@@ -6,6 +6,7 @@ import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/services/cart_service.dart';
 import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/pos/data/models/cart_model.dart';
+import 'package:pos/features/pos/presentation/widgets/discount_sheet.dart';
 import 'package:pos/features/products/checkout/product_checkout_page.dart';
 
 class ProductCartPage extends StatelessWidget {
@@ -35,7 +36,8 @@ class ProductCartPage extends StatelessWidget {
         final items = cartService.items;
         final subtotal = items.fold(0.0, (s, i) => s + i.total);
         final tax = items.fold(0.0, (s, i) => s + i.taxAmount);
-        final total = subtotal + tax;
+        final discountAmount = cartService.discountAmount(subtotal);
+        final total = (subtotal - discountAmount + tax).clamp(0.0, double.infinity);
 
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -102,6 +104,8 @@ class ProductCartPage extends StatelessWidget {
                       subtotal: subtotal,
                       tax: tax,
                       total: total,
+                      discountAmount: discountAmount,
+                      cartService: cartService,
                       onCheckout: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => ProductCheckoutPage(
@@ -109,6 +113,7 @@ class ProductCartPage extends StatelessWidget {
                             subtotal: subtotal,
                             tax: tax,
                             total: total,
+                            discountAmount: discountAmount,
                             onPaymentConfirmed: cartService.clear,
                           ),
                         ),
@@ -327,25 +332,28 @@ class _CartFooter extends StatelessWidget {
   final double subtotal;
   final double tax;
   final double total;
+  final double discountAmount;
+  final CartService cartService;
   final VoidCallback onCheckout;
 
   const _CartFooter({
     required this.subtotal,
     required this.tax,
     required this.total,
+    required this.discountAmount,
+    required this.cartService,
     required this.onCheckout,
   });
 
   @override
   Widget build(BuildContext context) {
+    final hasDiscount = cartService.hasDiscount;
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.surface,
         boxShadow: [
           BoxShadow(
-              color: Color(0x14000000),
-              blurRadius: 12,
-              offset: Offset(0, -4))
+              color: Color(0x14000000), blurRadius: 12, offset: Offset(0, -4))
         ],
       ),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -354,11 +362,42 @@ class _CartFooter extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _row(context, 'Subtotal',
-                ProductCartPage.fmtPrice(subtotal), false),
+            _row('Subtotal', ProductCartPage.fmtPrice(subtotal)),
+            if (hasDiscount) ...[
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        cartService.discountType?.name == 'percentage'
+                            ? 'Discount (${cartService.discountValue.toStringAsFixed(cartService.discountValue % 1 == 0 ? 0 : 1)}%)'
+                            : 'Discount (Fixed)',
+                        style: getOutfitStyle(
+                            fontSize: 14, color: AppColors.success),
+                      ),
+                      const SizedBox(width: 6),
+                      GestureDetector(
+                        onTap: cartService.clearDiscount,
+                        child: const Icon(Icons.close_rounded,
+                            size: 14, color: AppColors.success),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    '− ${ProductCartPage.fmtPrice(discountAmount)}',
+                    style: getOutfitStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.success),
+                  ),
+                ],
+              ),
+            ],
             if (tax > 0) ...[
               const SizedBox(height: 4),
-              _row(context, 'Tax', ProductCartPage.fmtPrice(tax), false),
+              _row('Tax', ProductCartPage.fmtPrice(tax)),
             ],
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 10),
@@ -380,7 +419,56 @@ class _CartFooter extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
+            // Discount button
+            GestureDetector(
+              onTap: () => showDiscountSheet(context, cartService, subtotal),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                decoration: BoxDecoration(
+                  color: hasDiscount
+                      ? AppColors.successSoft
+                      : AppColors.surfaceAlt,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: hasDiscount
+                        ? AppColors.success
+                        : AppColors.borderSoft,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      hasDiscount
+                          ? Icons.local_offer_rounded
+                          : Icons.local_offer_outlined,
+                      size: 15,
+                      color: hasDiscount
+                          ? AppColors.success
+                          : AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      hasDiscount
+                          ? 'Discount applied · tap to change'
+                          : 'Add Discount',
+                      style: getOutfitStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: hasDiscount
+                            ? AppColors.success
+                            : AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
             AppFilledButton(
                 label: 'Proceed to Checkout', onPressed: onCheckout),
             const SizedBox(height: 8),
@@ -390,13 +478,13 @@ class _CartFooter extends StatelessWidget {
     );
   }
 
-  Widget _row(BuildContext context, String label, String value, bool big) {
+  Widget _row(String label, String value) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label,
-            style: AppTextStyles.body(context)
-                .copyWith(color: AppColors.textSecondary)),
+            style: getOutfitStyle(
+                color: AppColors.textSecondary, fontSize: 14)),
         Text(value,
             style: getOutfitStyle(
                 color: AppColors.textSecondary,

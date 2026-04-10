@@ -28,7 +28,10 @@ class ProductVariantsTable extends Table {
       boolean().withDefault(const Constant(false))();
   BoolColumn get trackExpiry =>
       boolean().withDefault(const Constant(false))();
-  TextColumn get expiryDate => text().nullable()(); // ISO 8601 date string
+
+  /// Expiry date for the variant. Stored as Unix epoch ms (Drift DateTimeColumn).
+  /// Migrated from TEXT (ISO 8601) in schema v19.
+  DateTimeColumn get expiryDate => dateTime().nullable()();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
 
   /// 0=pendingUpload, 1=pendingUpdate, 2=pendingDelete, 3=synced, 4=failed

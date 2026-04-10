@@ -13,6 +13,7 @@ class VariantCard extends StatefulWidget {
   final bool trackInventory;
   final bool canDelete;
   final VoidCallback onDelete;
+  final bool stockReadOnly;
 
   const VariantCard({
     super.key,
@@ -22,6 +23,7 @@ class VariantCard extends StatefulWidget {
     required this.trackInventory,
     required this.canDelete,
     required this.onDelete,
+    this.stockReadOnly = false,
   });
 
   @override
@@ -164,32 +166,42 @@ class VariantCardState extends State<VariantCard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: TextFormField(
-                            controller: widget.form.stock,
-                            focusNode: _stockFocusNode,
-                            keyboardType: isFraction
-                                ? const TextInputType.numberWithOptions(
-                                    decimal: true)
-                                : TextInputType.number,
-                            inputFormatters: isFraction
-                                ? [
-                                    FilteringTextInputFormatter.allow(
-                                        RegExp(r'^\d*\.?\d{0,3}'))
-                                  ]
-                                : [FilteringTextInputFormatter.digitsOnly],
-                            textInputAction: TextInputAction.next,
-                            decoration: deco.copyWith(
-                              hintText: isFraction ? '0.000' : '0',
-                              labelText: isFraction ? 'Stock (kg) *' : 'Stock *',
+                          child: Opacity(
+                            opacity: widget.stockReadOnly ? 0.6 : 1.0,
+                            child: TextFormField(
+                              controller: widget.form.stock,
+                              focusNode: _stockFocusNode,
+                              readOnly: widget.stockReadOnly,
+                              keyboardType: isFraction
+                                  ? const TextInputType.numberWithOptions(
+                                      decimal: true)
+                                  : TextInputType.number,
+                              inputFormatters: isFraction
+                                  ? [
+                                      FilteringTextInputFormatter.allow(
+                                          RegExp(r'^\d*\.?\d{0,3}'))
+                                    ]
+                                  : [FilteringTextInputFormatter.digitsOnly],
+                              textInputAction: TextInputAction.next,
+                              decoration: deco.copyWith(
+                                hintText: isFraction ? '0.000' : '0',
+                                labelText: isFraction ? 'Stock (kg) *' : 'Stock *',
+                                filled: true,
+                                fillColor: widget.stockReadOnly
+                                    ? AppColors.surfaceAlt
+                                    : AppColors.background,
+                              ),
+                              style:
+                                  getOutfitStyle(color: AppColors.textPrimary),
+                              validator: (v) {
+                                if (!widget.stockReadOnly &&
+                                    widget.trackInventory &&
+                                    (v == null || v.trim().isEmpty)) {
+                                  return 'Required';
+                                }
+                                return null;
+                              },
                             ),
-                            style: getOutfitStyle(color: AppColors.textPrimary),
-                            validator: (v) {
-                              if (widget.trackInventory &&
-                                  (v == null || v.trim().isEmpty)) {
-                                return 'Required';
-                              }
-                              return null;
-                            },
                           ),
                         ),
                         const SizedBox(width: 8),

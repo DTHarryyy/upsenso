@@ -4149,11 +4149,11 @@ class $ProductVariantsTableTable extends ProductVariantsTable
     'expiryDate',
   );
   @override
-  late final GeneratedColumn<String> expiryDate = GeneratedColumn<String>(
+  late final GeneratedColumn<DateTime> expiryDate = GeneratedColumn<DateTime>(
     'expiry_date',
     aliasedName,
     true,
-    type: DriftSqlType.string,
+    type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
   static const VerificationMeta _isActiveMeta = const VerificationMeta(
@@ -4466,7 +4466,7 @@ class $ProductVariantsTableTable extends ProductVariantsTable
         data['${effectivePrefix}track_expiry'],
       )!,
       expiryDate: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
+        DriftSqlType.dateTime,
         data['${effectivePrefix}expiry_date'],
       ),
       isActive: attachedDatabase.typeMapping.read(
@@ -4520,7 +4520,10 @@ class ProductVariantsTableData extends DataClass
   final int? lowStockAlert;
   final bool trackStock;
   final bool trackExpiry;
-  final String? expiryDate;
+
+  /// Expiry date for the variant. Stored as Unix epoch ms (Drift DateTimeColumn).
+  /// Migrated from TEXT (ISO 8601) in schema v19.
+  final DateTime? expiryDate;
   final bool isActive;
 
   /// 0=pendingUpload, 1=pendingUpdate, 2=pendingDelete, 3=synced, 4=failed
@@ -4580,7 +4583,7 @@ class ProductVariantsTableData extends DataClass
     map['track_stock'] = Variable<bool>(trackStock);
     map['track_expiry'] = Variable<bool>(trackExpiry);
     if (!nullToAbsent || expiryDate != null) {
-      map['expiry_date'] = Variable<String>(expiryDate);
+      map['expiry_date'] = Variable<DateTime>(expiryDate);
     }
     map['is_active'] = Variable<bool>(isActive);
     map['sync_status'] = Variable<int>(syncStatus);
@@ -4655,7 +4658,7 @@ class ProductVariantsTableData extends DataClass
       lowStockAlert: serializer.fromJson<int?>(json['lowStockAlert']),
       trackStock: serializer.fromJson<bool>(json['trackStock']),
       trackExpiry: serializer.fromJson<bool>(json['trackExpiry']),
-      expiryDate: serializer.fromJson<String?>(json['expiryDate']),
+      expiryDate: serializer.fromJson<DateTime?>(json['expiryDate']),
       isActive: serializer.fromJson<bool>(json['isActive']),
       syncStatus: serializer.fromJson<int>(json['syncStatus']),
       lastSyncAttempt: serializer.fromJson<DateTime?>(json['lastSyncAttempt']),
@@ -4681,7 +4684,7 @@ class ProductVariantsTableData extends DataClass
       'lowStockAlert': serializer.toJson<int?>(lowStockAlert),
       'trackStock': serializer.toJson<bool>(trackStock),
       'trackExpiry': serializer.toJson<bool>(trackExpiry),
-      'expiryDate': serializer.toJson<String?>(expiryDate),
+      'expiryDate': serializer.toJson<DateTime?>(expiryDate),
       'isActive': serializer.toJson<bool>(isActive),
       'syncStatus': serializer.toJson<int>(syncStatus),
       'lastSyncAttempt': serializer.toJson<DateTime?>(lastSyncAttempt),
@@ -4705,7 +4708,7 @@ class ProductVariantsTableData extends DataClass
     Value<int?> lowStockAlert = const Value.absent(),
     bool? trackStock,
     bool? trackExpiry,
-    Value<String?> expiryDate = const Value.absent(),
+    Value<DateTime?> expiryDate = const Value.absent(),
     bool? isActive,
     int? syncStatus,
     Value<DateTime?> lastSyncAttempt = const Value.absent(),
@@ -4876,7 +4879,7 @@ class ProductVariantsTableCompanion
   final Value<int?> lowStockAlert;
   final Value<bool> trackStock;
   final Value<bool> trackExpiry;
-  final Value<String?> expiryDate;
+  final Value<DateTime?> expiryDate;
   final Value<bool> isActive;
   final Value<int> syncStatus;
   final Value<DateTime?> lastSyncAttempt;
@@ -4947,7 +4950,7 @@ class ProductVariantsTableCompanion
     Expression<int>? lowStockAlert,
     Expression<bool>? trackStock,
     Expression<bool>? trackExpiry,
-    Expression<String>? expiryDate,
+    Expression<DateTime>? expiryDate,
     Expression<bool>? isActive,
     Expression<int>? syncStatus,
     Expression<DateTime>? lastSyncAttempt,
@@ -4995,7 +4998,7 @@ class ProductVariantsTableCompanion
     Value<int?>? lowStockAlert,
     Value<bool>? trackStock,
     Value<bool>? trackExpiry,
-    Value<String?>? expiryDate,
+    Value<DateTime?>? expiryDate,
     Value<bool>? isActive,
     Value<int>? syncStatus,
     Value<DateTime?>? lastSyncAttempt,
@@ -5074,7 +5077,7 @@ class ProductVariantsTableCompanion
       map['track_expiry'] = Variable<bool>(trackExpiry.value);
     }
     if (expiryDate.present) {
-      map['expiry_date'] = Variable<String>(expiryDate.value);
+      map['expiry_date'] = Variable<DateTime>(expiryDate.value);
     }
     if (isActive.present) {
       map['is_active'] = Variable<bool>(isActive.value);
@@ -6872,9 +6875,9 @@ class $InventoryLevelsTableTable extends InventoryLevelsTable
   late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
     'branch_id',
     aliasedName,
-    true,
+    false,
     type: DriftSqlType.string,
-    requiredDuringInsert: false,
+    requiredDuringInsert: true,
   );
   static const VerificationMeta _businessIdMeta = const VerificationMeta(
     'businessId',
@@ -6898,6 +6901,27 @@ class $InventoryLevelsTableTable extends InventoryLevelsTable
     type: DriftSqlType.int,
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _quantityDecimalMeta = const VerificationMeta(
+    'quantityDecimal',
+  );
+  @override
+  late final GeneratedColumn<double> quantityDecimal = GeneratedColumn<double>(
+    'quantity_decimal',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lowStockAlertOverrideMeta =
+      const VerificationMeta('lowStockAlertOverride');
+  @override
+  late final GeneratedColumn<int> lowStockAlertOverride = GeneratedColumn<int>(
+    'low_stock_alert_override',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _syncStatusMeta = const VerificationMeta(
     'syncStatus',
@@ -6931,6 +6955,8 @@ class $InventoryLevelsTableTable extends InventoryLevelsTable
     branchId,
     businessId,
     quantity,
+    quantityDecimal,
+    lowStockAlertOverride,
     syncStatus,
     localUpdatedAt,
   ];
@@ -6964,6 +6990,8 @@ class $InventoryLevelsTableTable extends InventoryLevelsTable
         _branchIdMeta,
         branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
       );
+    } else if (isInserting) {
+      context.missing(_branchIdMeta);
     }
     if (data.containsKey('business_id')) {
       context.handle(
@@ -6977,6 +7005,24 @@ class $InventoryLevelsTableTable extends InventoryLevelsTable
       context.handle(
         _quantityMeta,
         quantity.isAcceptableOrUnknown(data['quantity']!, _quantityMeta),
+      );
+    }
+    if (data.containsKey('quantity_decimal')) {
+      context.handle(
+        _quantityDecimalMeta,
+        quantityDecimal.isAcceptableOrUnknown(
+          data['quantity_decimal']!,
+          _quantityDecimalMeta,
+        ),
+      );
+    }
+    if (data.containsKey('low_stock_alert_override')) {
+      context.handle(
+        _lowStockAlertOverrideMeta,
+        lowStockAlertOverride.isAcceptableOrUnknown(
+          data['low_stock_alert_override']!,
+          _lowStockAlertOverrideMeta,
+        ),
       );
     }
     if (data.containsKey('sync_status')) {
@@ -7017,7 +7063,7 @@ class $InventoryLevelsTableTable extends InventoryLevelsTable
       branchId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}branch_id'],
-      ),
+      )!,
       businessId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}business_id'],
@@ -7026,6 +7072,14 @@ class $InventoryLevelsTableTable extends InventoryLevelsTable
         DriftSqlType.int,
         data['${effectivePrefix}quantity'],
       )!,
+      quantityDecimal: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}quantity_decimal'],
+      ),
+      lowStockAlertOverride: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}low_stock_alert_override'],
+      ),
       syncStatus: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}sync_status'],
@@ -7045,12 +7099,23 @@ class $InventoryLevelsTableTable extends InventoryLevelsTable
 
 class InventoryLevelsTableData extends DataClass
     implements Insertable<InventoryLevelsTableData> {
-  /// Composite key: "$variantId:${branchId ?? 'global'}"
+  /// Composite key: "$variantId:$branchId"
   final String id;
   final String variantId;
-  final String? branchId;
+
+  /// NOT NULL — every stock row must belong to a specific branch.
+  final String branchId;
   final String businessId;
+
+  /// Integer quantity for unit products (sellBy='unit').
   final int quantity;
+
+  /// Decimal quantity for fractional products (sellBy='fraction'). Null for unit products.
+  final double? quantityDecimal;
+
+  /// Per-branch low stock alert threshold.
+  /// NULL means fall back to [product_variants.lowStockAlert] as the global default.
+  final int? lowStockAlertOverride;
 
   /// 0=pendingUpload, 1=pendingUpdate, 3=synced, 4=failed
   final int syncStatus;
@@ -7058,9 +7123,11 @@ class InventoryLevelsTableData extends DataClass
   const InventoryLevelsTableData({
     required this.id,
     required this.variantId,
-    this.branchId,
+    required this.branchId,
     required this.businessId,
     required this.quantity,
+    this.quantityDecimal,
+    this.lowStockAlertOverride,
     required this.syncStatus,
     required this.localUpdatedAt,
   });
@@ -7069,11 +7136,15 @@ class InventoryLevelsTableData extends DataClass
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['variant_id'] = Variable<String>(variantId);
-    if (!nullToAbsent || branchId != null) {
-      map['branch_id'] = Variable<String>(branchId);
-    }
+    map['branch_id'] = Variable<String>(branchId);
     map['business_id'] = Variable<String>(businessId);
     map['quantity'] = Variable<int>(quantity);
+    if (!nullToAbsent || quantityDecimal != null) {
+      map['quantity_decimal'] = Variable<double>(quantityDecimal);
+    }
+    if (!nullToAbsent || lowStockAlertOverride != null) {
+      map['low_stock_alert_override'] = Variable<int>(lowStockAlertOverride);
+    }
     map['sync_status'] = Variable<int>(syncStatus);
     map['local_updated_at'] = Variable<DateTime>(localUpdatedAt);
     return map;
@@ -7083,11 +7154,15 @@ class InventoryLevelsTableData extends DataClass
     return InventoryLevelsTableCompanion(
       id: Value(id),
       variantId: Value(variantId),
-      branchId: branchId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(branchId),
+      branchId: Value(branchId),
       businessId: Value(businessId),
       quantity: Value(quantity),
+      quantityDecimal: quantityDecimal == null && nullToAbsent
+          ? const Value.absent()
+          : Value(quantityDecimal),
+      lowStockAlertOverride: lowStockAlertOverride == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lowStockAlertOverride),
       syncStatus: Value(syncStatus),
       localUpdatedAt: Value(localUpdatedAt),
     );
@@ -7101,9 +7176,13 @@ class InventoryLevelsTableData extends DataClass
     return InventoryLevelsTableData(
       id: serializer.fromJson<String>(json['id']),
       variantId: serializer.fromJson<String>(json['variantId']),
-      branchId: serializer.fromJson<String?>(json['branchId']),
+      branchId: serializer.fromJson<String>(json['branchId']),
       businessId: serializer.fromJson<String>(json['businessId']),
       quantity: serializer.fromJson<int>(json['quantity']),
+      quantityDecimal: serializer.fromJson<double?>(json['quantityDecimal']),
+      lowStockAlertOverride: serializer.fromJson<int?>(
+        json['lowStockAlertOverride'],
+      ),
       syncStatus: serializer.fromJson<int>(json['syncStatus']),
       localUpdatedAt: serializer.fromJson<DateTime>(json['localUpdatedAt']),
     );
@@ -7114,9 +7193,11 @@ class InventoryLevelsTableData extends DataClass
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'variantId': serializer.toJson<String>(variantId),
-      'branchId': serializer.toJson<String?>(branchId),
+      'branchId': serializer.toJson<String>(branchId),
       'businessId': serializer.toJson<String>(businessId),
       'quantity': serializer.toJson<int>(quantity),
+      'quantityDecimal': serializer.toJson<double?>(quantityDecimal),
+      'lowStockAlertOverride': serializer.toJson<int?>(lowStockAlertOverride),
       'syncStatus': serializer.toJson<int>(syncStatus),
       'localUpdatedAt': serializer.toJson<DateTime>(localUpdatedAt),
     };
@@ -7125,17 +7206,25 @@ class InventoryLevelsTableData extends DataClass
   InventoryLevelsTableData copyWith({
     String? id,
     String? variantId,
-    Value<String?> branchId = const Value.absent(),
+    String? branchId,
     String? businessId,
     int? quantity,
+    Value<double?> quantityDecimal = const Value.absent(),
+    Value<int?> lowStockAlertOverride = const Value.absent(),
     int? syncStatus,
     DateTime? localUpdatedAt,
   }) => InventoryLevelsTableData(
     id: id ?? this.id,
     variantId: variantId ?? this.variantId,
-    branchId: branchId.present ? branchId.value : this.branchId,
+    branchId: branchId ?? this.branchId,
     businessId: businessId ?? this.businessId,
     quantity: quantity ?? this.quantity,
+    quantityDecimal: quantityDecimal.present
+        ? quantityDecimal.value
+        : this.quantityDecimal,
+    lowStockAlertOverride: lowStockAlertOverride.present
+        ? lowStockAlertOverride.value
+        : this.lowStockAlertOverride,
     syncStatus: syncStatus ?? this.syncStatus,
     localUpdatedAt: localUpdatedAt ?? this.localUpdatedAt,
   );
@@ -7150,6 +7239,12 @@ class InventoryLevelsTableData extends DataClass
           ? data.businessId.value
           : this.businessId,
       quantity: data.quantity.present ? data.quantity.value : this.quantity,
+      quantityDecimal: data.quantityDecimal.present
+          ? data.quantityDecimal.value
+          : this.quantityDecimal,
+      lowStockAlertOverride: data.lowStockAlertOverride.present
+          ? data.lowStockAlertOverride.value
+          : this.lowStockAlertOverride,
       syncStatus: data.syncStatus.present
           ? data.syncStatus.value
           : this.syncStatus,
@@ -7167,6 +7262,8 @@ class InventoryLevelsTableData extends DataClass
           ..write('branchId: $branchId, ')
           ..write('businessId: $businessId, ')
           ..write('quantity: $quantity, ')
+          ..write('quantityDecimal: $quantityDecimal, ')
+          ..write('lowStockAlertOverride: $lowStockAlertOverride, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('localUpdatedAt: $localUpdatedAt')
           ..write(')'))
@@ -7180,6 +7277,8 @@ class InventoryLevelsTableData extends DataClass
     branchId,
     businessId,
     quantity,
+    quantityDecimal,
+    lowStockAlertOverride,
     syncStatus,
     localUpdatedAt,
   );
@@ -7192,6 +7291,8 @@ class InventoryLevelsTableData extends DataClass
           other.branchId == this.branchId &&
           other.businessId == this.businessId &&
           other.quantity == this.quantity &&
+          other.quantityDecimal == this.quantityDecimal &&
+          other.lowStockAlertOverride == this.lowStockAlertOverride &&
           other.syncStatus == this.syncStatus &&
           other.localUpdatedAt == this.localUpdatedAt);
 }
@@ -7200,9 +7301,11 @@ class InventoryLevelsTableCompanion
     extends UpdateCompanion<InventoryLevelsTableData> {
   final Value<String> id;
   final Value<String> variantId;
-  final Value<String?> branchId;
+  final Value<String> branchId;
   final Value<String> businessId;
   final Value<int> quantity;
+  final Value<double?> quantityDecimal;
+  final Value<int?> lowStockAlertOverride;
   final Value<int> syncStatus;
   final Value<DateTime> localUpdatedAt;
   final Value<int> rowid;
@@ -7212,6 +7315,8 @@ class InventoryLevelsTableCompanion
     this.branchId = const Value.absent(),
     this.businessId = const Value.absent(),
     this.quantity = const Value.absent(),
+    this.quantityDecimal = const Value.absent(),
+    this.lowStockAlertOverride = const Value.absent(),
     this.syncStatus = const Value.absent(),
     this.localUpdatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -7219,14 +7324,17 @@ class InventoryLevelsTableCompanion
   InventoryLevelsTableCompanion.insert({
     required String id,
     required String variantId,
-    this.branchId = const Value.absent(),
+    required String branchId,
     required String businessId,
     this.quantity = const Value.absent(),
+    this.quantityDecimal = const Value.absent(),
+    this.lowStockAlertOverride = const Value.absent(),
     this.syncStatus = const Value.absent(),
     this.localUpdatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        variantId = Value(variantId),
+       branchId = Value(branchId),
        businessId = Value(businessId);
   static Insertable<InventoryLevelsTableData> custom({
     Expression<String>? id,
@@ -7234,6 +7342,8 @@ class InventoryLevelsTableCompanion
     Expression<String>? branchId,
     Expression<String>? businessId,
     Expression<int>? quantity,
+    Expression<double>? quantityDecimal,
+    Expression<int>? lowStockAlertOverride,
     Expression<int>? syncStatus,
     Expression<DateTime>? localUpdatedAt,
     Expression<int>? rowid,
@@ -7244,6 +7354,9 @@ class InventoryLevelsTableCompanion
       if (branchId != null) 'branch_id': branchId,
       if (businessId != null) 'business_id': businessId,
       if (quantity != null) 'quantity': quantity,
+      if (quantityDecimal != null) 'quantity_decimal': quantityDecimal,
+      if (lowStockAlertOverride != null)
+        'low_stock_alert_override': lowStockAlertOverride,
       if (syncStatus != null) 'sync_status': syncStatus,
       if (localUpdatedAt != null) 'local_updated_at': localUpdatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -7253,9 +7366,11 @@ class InventoryLevelsTableCompanion
   InventoryLevelsTableCompanion copyWith({
     Value<String>? id,
     Value<String>? variantId,
-    Value<String?>? branchId,
+    Value<String>? branchId,
     Value<String>? businessId,
     Value<int>? quantity,
+    Value<double?>? quantityDecimal,
+    Value<int?>? lowStockAlertOverride,
     Value<int>? syncStatus,
     Value<DateTime>? localUpdatedAt,
     Value<int>? rowid,
@@ -7266,6 +7381,9 @@ class InventoryLevelsTableCompanion
       branchId: branchId ?? this.branchId,
       businessId: businessId ?? this.businessId,
       quantity: quantity ?? this.quantity,
+      quantityDecimal: quantityDecimal ?? this.quantityDecimal,
+      lowStockAlertOverride:
+          lowStockAlertOverride ?? this.lowStockAlertOverride,
       syncStatus: syncStatus ?? this.syncStatus,
       localUpdatedAt: localUpdatedAt ?? this.localUpdatedAt,
       rowid: rowid ?? this.rowid,
@@ -7290,6 +7408,14 @@ class InventoryLevelsTableCompanion
     if (quantity.present) {
       map['quantity'] = Variable<int>(quantity.value);
     }
+    if (quantityDecimal.present) {
+      map['quantity_decimal'] = Variable<double>(quantityDecimal.value);
+    }
+    if (lowStockAlertOverride.present) {
+      map['low_stock_alert_override'] = Variable<int>(
+        lowStockAlertOverride.value,
+      );
+    }
     if (syncStatus.present) {
       map['sync_status'] = Variable<int>(syncStatus.value);
     }
@@ -7310,6 +7436,8 @@ class InventoryLevelsTableCompanion
           ..write('branchId: $branchId, ')
           ..write('businessId: $businessId, ')
           ..write('quantity: $quantity, ')
+          ..write('quantityDecimal: $quantityDecimal, ')
+          ..write('lowStockAlertOverride: $lowStockAlertOverride, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('localUpdatedAt: $localUpdatedAt, ')
           ..write('rowid: $rowid')
@@ -7362,9 +7490,9 @@ class $StockLedgerTableTable extends StockLedgerTable
   late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
     'branch_id',
     aliasedName,
-    true,
+    false,
     type: DriftSqlType.string,
-    requiredDuringInsert: false,
+    requiredDuringInsert: true,
   );
   static const VerificationMeta _businessIdMeta = const VerificationMeta(
     'businessId',
@@ -7392,12 +7520,34 @@ class $StockLedgerTableTable extends StockLedgerTable
     'quantity',
   );
   @override
-  late final GeneratedColumn<int> quantity = GeneratedColumn<int>(
+  late final GeneratedColumn<double> quantity = GeneratedColumn<double>(
     'quantity',
     aliasedName,
     false,
-    type: DriftSqlType.int,
+    type: DriftSqlType.double,
     requiredDuringInsert: true,
+  );
+  static const VerificationMeta _quantityBeforeMeta = const VerificationMeta(
+    'quantityBefore',
+  );
+  @override
+  late final GeneratedColumn<double> quantityBefore = GeneratedColumn<double>(
+    'quantity_before',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _quantityAfterMeta = const VerificationMeta(
+    'quantityAfter',
+  );
+  @override
+  late final GeneratedColumn<double> quantityAfter = GeneratedColumn<double>(
+    'quantity_after',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _reasonMeta = const VerificationMeta('reason');
   @override
@@ -7450,6 +7600,8 @@ class $StockLedgerTableTable extends StockLedgerTable
     businessId,
     changeType,
     quantity,
+    quantityBefore,
+    quantityAfter,
     reason,
     note,
     createdAt,
@@ -7493,6 +7645,8 @@ class $StockLedgerTableTable extends StockLedgerTable
         _branchIdMeta,
         branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
       );
+    } else if (isInserting) {
+      context.missing(_branchIdMeta);
     }
     if (data.containsKey('business_id')) {
       context.handle(
@@ -7517,6 +7671,24 @@ class $StockLedgerTableTable extends StockLedgerTable
       );
     } else if (isInserting) {
       context.missing(_quantityMeta);
+    }
+    if (data.containsKey('quantity_before')) {
+      context.handle(
+        _quantityBeforeMeta,
+        quantityBefore.isAcceptableOrUnknown(
+          data['quantity_before']!,
+          _quantityBeforeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('quantity_after')) {
+      context.handle(
+        _quantityAfterMeta,
+        quantityAfter.isAcceptableOrUnknown(
+          data['quantity_after']!,
+          _quantityAfterMeta,
+        ),
+      );
     }
     if (data.containsKey('reason')) {
       context.handle(
@@ -7568,7 +7740,7 @@ class $StockLedgerTableTable extends StockLedgerTable
       branchId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}branch_id'],
-      ),
+      )!,
       businessId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}business_id'],
@@ -7578,9 +7750,17 @@ class $StockLedgerTableTable extends StockLedgerTable
         data['${effectivePrefix}change_type'],
       )!,
       quantity: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.double,
         data['${effectivePrefix}quantity'],
       )!,
+      quantityBefore: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}quantity_before'],
+      ),
+      quantityAfter: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}quantity_after'],
+      ),
       reason: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}reason'],
@@ -7611,16 +7791,28 @@ class StockLedgerTableData extends DataClass
   final String id;
   final String variantId;
   final String productId;
-  final String? branchId;
+
+  /// NOT NULL — every movement must be traced to a specific branch.
+  /// Historical rows migrated from v17 carry the sentinel value 'unknown'.
+  final String branchId;
   final String businessId;
 
   /// 'IN' for incoming stock, 'OUT' for outgoing stock.
   final String changeType;
 
-  /// Always a positive integer (direction is determined by [changeType]).
-  final int quantity;
+  /// Always a positive value (direction determined by [changeType]).
+  /// REAL to support fractional products (sellBy='fraction').
+  final double quantity;
 
-  /// One of: 'Restock', 'Damage', 'Transfer', 'Adjustment'
+  /// Stock level for this variant+branch immediately before this movement.
+  /// Null for rows migrated from v17 (pre-snapshot era).
+  final double? quantityBefore;
+
+  /// Stock level for this variant+branch immediately after this movement.
+  /// Null for rows migrated from v17 (pre-snapshot era).
+  final double? quantityAfter;
+
+  /// One of: 'Sale', 'Restock', 'Damage', 'Transfer', 'Adjustment'
   final String reason;
   final String? note;
   final DateTime createdAt;
@@ -7631,10 +7823,12 @@ class StockLedgerTableData extends DataClass
     required this.id,
     required this.variantId,
     required this.productId,
-    this.branchId,
+    required this.branchId,
     required this.businessId,
     required this.changeType,
     required this.quantity,
+    this.quantityBefore,
+    this.quantityAfter,
     required this.reason,
     this.note,
     required this.createdAt,
@@ -7646,12 +7840,16 @@ class StockLedgerTableData extends DataClass
     map['id'] = Variable<String>(id);
     map['variant_id'] = Variable<String>(variantId);
     map['product_id'] = Variable<String>(productId);
-    if (!nullToAbsent || branchId != null) {
-      map['branch_id'] = Variable<String>(branchId);
-    }
+    map['branch_id'] = Variable<String>(branchId);
     map['business_id'] = Variable<String>(businessId);
     map['change_type'] = Variable<String>(changeType);
-    map['quantity'] = Variable<int>(quantity);
+    map['quantity'] = Variable<double>(quantity);
+    if (!nullToAbsent || quantityBefore != null) {
+      map['quantity_before'] = Variable<double>(quantityBefore);
+    }
+    if (!nullToAbsent || quantityAfter != null) {
+      map['quantity_after'] = Variable<double>(quantityAfter);
+    }
     map['reason'] = Variable<String>(reason);
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
@@ -7666,12 +7864,16 @@ class StockLedgerTableData extends DataClass
       id: Value(id),
       variantId: Value(variantId),
       productId: Value(productId),
-      branchId: branchId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(branchId),
+      branchId: Value(branchId),
       businessId: Value(businessId),
       changeType: Value(changeType),
       quantity: Value(quantity),
+      quantityBefore: quantityBefore == null && nullToAbsent
+          ? const Value.absent()
+          : Value(quantityBefore),
+      quantityAfter: quantityAfter == null && nullToAbsent
+          ? const Value.absent()
+          : Value(quantityAfter),
       reason: Value(reason),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       createdAt: Value(createdAt),
@@ -7688,10 +7890,12 @@ class StockLedgerTableData extends DataClass
       id: serializer.fromJson<String>(json['id']),
       variantId: serializer.fromJson<String>(json['variantId']),
       productId: serializer.fromJson<String>(json['productId']),
-      branchId: serializer.fromJson<String?>(json['branchId']),
+      branchId: serializer.fromJson<String>(json['branchId']),
       businessId: serializer.fromJson<String>(json['businessId']),
       changeType: serializer.fromJson<String>(json['changeType']),
-      quantity: serializer.fromJson<int>(json['quantity']),
+      quantity: serializer.fromJson<double>(json['quantity']),
+      quantityBefore: serializer.fromJson<double?>(json['quantityBefore']),
+      quantityAfter: serializer.fromJson<double?>(json['quantityAfter']),
       reason: serializer.fromJson<String>(json['reason']),
       note: serializer.fromJson<String?>(json['note']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -7705,10 +7909,12 @@ class StockLedgerTableData extends DataClass
       'id': serializer.toJson<String>(id),
       'variantId': serializer.toJson<String>(variantId),
       'productId': serializer.toJson<String>(productId),
-      'branchId': serializer.toJson<String?>(branchId),
+      'branchId': serializer.toJson<String>(branchId),
       'businessId': serializer.toJson<String>(businessId),
       'changeType': serializer.toJson<String>(changeType),
-      'quantity': serializer.toJson<int>(quantity),
+      'quantity': serializer.toJson<double>(quantity),
+      'quantityBefore': serializer.toJson<double?>(quantityBefore),
+      'quantityAfter': serializer.toJson<double?>(quantityAfter),
       'reason': serializer.toJson<String>(reason),
       'note': serializer.toJson<String?>(note),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -7720,10 +7926,12 @@ class StockLedgerTableData extends DataClass
     String? id,
     String? variantId,
     String? productId,
-    Value<String?> branchId = const Value.absent(),
+    String? branchId,
     String? businessId,
     String? changeType,
-    int? quantity,
+    double? quantity,
+    Value<double?> quantityBefore = const Value.absent(),
+    Value<double?> quantityAfter = const Value.absent(),
     String? reason,
     Value<String?> note = const Value.absent(),
     DateTime? createdAt,
@@ -7732,10 +7940,16 @@ class StockLedgerTableData extends DataClass
     id: id ?? this.id,
     variantId: variantId ?? this.variantId,
     productId: productId ?? this.productId,
-    branchId: branchId.present ? branchId.value : this.branchId,
+    branchId: branchId ?? this.branchId,
     businessId: businessId ?? this.businessId,
     changeType: changeType ?? this.changeType,
     quantity: quantity ?? this.quantity,
+    quantityBefore: quantityBefore.present
+        ? quantityBefore.value
+        : this.quantityBefore,
+    quantityAfter: quantityAfter.present
+        ? quantityAfter.value
+        : this.quantityAfter,
     reason: reason ?? this.reason,
     note: note.present ? note.value : this.note,
     createdAt: createdAt ?? this.createdAt,
@@ -7754,6 +7968,12 @@ class StockLedgerTableData extends DataClass
           ? data.changeType.value
           : this.changeType,
       quantity: data.quantity.present ? data.quantity.value : this.quantity,
+      quantityBefore: data.quantityBefore.present
+          ? data.quantityBefore.value
+          : this.quantityBefore,
+      quantityAfter: data.quantityAfter.present
+          ? data.quantityAfter.value
+          : this.quantityAfter,
       reason: data.reason.present ? data.reason.value : this.reason,
       note: data.note.present ? data.note.value : this.note,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
@@ -7773,6 +7993,8 @@ class StockLedgerTableData extends DataClass
           ..write('businessId: $businessId, ')
           ..write('changeType: $changeType, ')
           ..write('quantity: $quantity, ')
+          ..write('quantityBefore: $quantityBefore, ')
+          ..write('quantityAfter: $quantityAfter, ')
           ..write('reason: $reason, ')
           ..write('note: $note, ')
           ..write('createdAt: $createdAt, ')
@@ -7790,6 +8012,8 @@ class StockLedgerTableData extends DataClass
     businessId,
     changeType,
     quantity,
+    quantityBefore,
+    quantityAfter,
     reason,
     note,
     createdAt,
@@ -7806,6 +8030,8 @@ class StockLedgerTableData extends DataClass
           other.businessId == this.businessId &&
           other.changeType == this.changeType &&
           other.quantity == this.quantity &&
+          other.quantityBefore == this.quantityBefore &&
+          other.quantityAfter == this.quantityAfter &&
           other.reason == this.reason &&
           other.note == this.note &&
           other.createdAt == this.createdAt &&
@@ -7816,10 +8042,12 @@ class StockLedgerTableCompanion extends UpdateCompanion<StockLedgerTableData> {
   final Value<String> id;
   final Value<String> variantId;
   final Value<String> productId;
-  final Value<String?> branchId;
+  final Value<String> branchId;
   final Value<String> businessId;
   final Value<String> changeType;
-  final Value<int> quantity;
+  final Value<double> quantity;
+  final Value<double?> quantityBefore;
+  final Value<double?> quantityAfter;
   final Value<String> reason;
   final Value<String?> note;
   final Value<DateTime> createdAt;
@@ -7833,6 +8061,8 @@ class StockLedgerTableCompanion extends UpdateCompanion<StockLedgerTableData> {
     this.businessId = const Value.absent(),
     this.changeType = const Value.absent(),
     this.quantity = const Value.absent(),
+    this.quantityBefore = const Value.absent(),
+    this.quantityAfter = const Value.absent(),
     this.reason = const Value.absent(),
     this.note = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -7843,10 +8073,12 @@ class StockLedgerTableCompanion extends UpdateCompanion<StockLedgerTableData> {
     required String id,
     required String variantId,
     required String productId,
-    this.branchId = const Value.absent(),
+    required String branchId,
     required String businessId,
     required String changeType,
-    required int quantity,
+    required double quantity,
+    this.quantityBefore = const Value.absent(),
+    this.quantityAfter = const Value.absent(),
     required String reason,
     this.note = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -7855,6 +8087,7 @@ class StockLedgerTableCompanion extends UpdateCompanion<StockLedgerTableData> {
   }) : id = Value(id),
        variantId = Value(variantId),
        productId = Value(productId),
+       branchId = Value(branchId),
        businessId = Value(businessId),
        changeType = Value(changeType),
        quantity = Value(quantity),
@@ -7866,7 +8099,9 @@ class StockLedgerTableCompanion extends UpdateCompanion<StockLedgerTableData> {
     Expression<String>? branchId,
     Expression<String>? businessId,
     Expression<String>? changeType,
-    Expression<int>? quantity,
+    Expression<double>? quantity,
+    Expression<double>? quantityBefore,
+    Expression<double>? quantityAfter,
     Expression<String>? reason,
     Expression<String>? note,
     Expression<DateTime>? createdAt,
@@ -7881,6 +8116,8 @@ class StockLedgerTableCompanion extends UpdateCompanion<StockLedgerTableData> {
       if (businessId != null) 'business_id': businessId,
       if (changeType != null) 'change_type': changeType,
       if (quantity != null) 'quantity': quantity,
+      if (quantityBefore != null) 'quantity_before': quantityBefore,
+      if (quantityAfter != null) 'quantity_after': quantityAfter,
       if (reason != null) 'reason': reason,
       if (note != null) 'note': note,
       if (createdAt != null) 'created_at': createdAt,
@@ -7893,10 +8130,12 @@ class StockLedgerTableCompanion extends UpdateCompanion<StockLedgerTableData> {
     Value<String>? id,
     Value<String>? variantId,
     Value<String>? productId,
-    Value<String?>? branchId,
+    Value<String>? branchId,
     Value<String>? businessId,
     Value<String>? changeType,
-    Value<int>? quantity,
+    Value<double>? quantity,
+    Value<double?>? quantityBefore,
+    Value<double?>? quantityAfter,
     Value<String>? reason,
     Value<String?>? note,
     Value<DateTime>? createdAt,
@@ -7911,6 +8150,8 @@ class StockLedgerTableCompanion extends UpdateCompanion<StockLedgerTableData> {
       businessId: businessId ?? this.businessId,
       changeType: changeType ?? this.changeType,
       quantity: quantity ?? this.quantity,
+      quantityBefore: quantityBefore ?? this.quantityBefore,
+      quantityAfter: quantityAfter ?? this.quantityAfter,
       reason: reason ?? this.reason,
       note: note ?? this.note,
       createdAt: createdAt ?? this.createdAt,
@@ -7941,7 +8182,13 @@ class StockLedgerTableCompanion extends UpdateCompanion<StockLedgerTableData> {
       map['change_type'] = Variable<String>(changeType.value);
     }
     if (quantity.present) {
-      map['quantity'] = Variable<int>(quantity.value);
+      map['quantity'] = Variable<double>(quantity.value);
+    }
+    if (quantityBefore.present) {
+      map['quantity_before'] = Variable<double>(quantityBefore.value);
+    }
+    if (quantityAfter.present) {
+      map['quantity_after'] = Variable<double>(quantityAfter.value);
     }
     if (reason.present) {
       map['reason'] = Variable<String>(reason.value);
@@ -7971,6 +8218,8 @@ class StockLedgerTableCompanion extends UpdateCompanion<StockLedgerTableData> {
           ..write('businessId: $businessId, ')
           ..write('changeType: $changeType, ')
           ..write('quantity: $quantity, ')
+          ..write('quantityBefore: $quantityBefore, ')
+          ..write('quantityAfter: $quantityAfter, ')
           ..write('reason: $reason, ')
           ..write('note: $note, ')
           ..write('createdAt: $createdAt, ')
@@ -10007,7 +10256,7 @@ typedef $$ProductVariantsTableTableCreateCompanionBuilder =
       Value<int?> lowStockAlert,
       Value<bool> trackStock,
       Value<bool> trackExpiry,
-      Value<String?> expiryDate,
+      Value<DateTime?> expiryDate,
       Value<bool> isActive,
       Value<int> syncStatus,
       Value<DateTime?> lastSyncAttempt,
@@ -10031,7 +10280,7 @@ typedef $$ProductVariantsTableTableUpdateCompanionBuilder =
       Value<int?> lowStockAlert,
       Value<bool> trackStock,
       Value<bool> trackExpiry,
-      Value<String?> expiryDate,
+      Value<DateTime?> expiryDate,
       Value<bool> isActive,
       Value<int> syncStatus,
       Value<DateTime?> lastSyncAttempt,
@@ -10119,7 +10368,7 @@ class $$ProductVariantsTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get expiryDate => $composableBuilder(
+  ColumnFilters<DateTime> get expiryDate => $composableBuilder(
     column: $table.expiryDate,
     builder: (column) => ColumnFilters(column),
   );
@@ -10229,7 +10478,7 @@ class $$ProductVariantsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get expiryDate => $composableBuilder(
+  ColumnOrderings<DateTime> get expiryDate => $composableBuilder(
     column: $table.expiryDate,
     builder: (column) => ColumnOrderings(column),
   );
@@ -10323,7 +10572,7 @@ class $$ProductVariantsTableTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get expiryDate => $composableBuilder(
+  GeneratedColumn<DateTime> get expiryDate => $composableBuilder(
     column: $table.expiryDate,
     builder: (column) => column,
   );
@@ -10407,7 +10656,7 @@ class $$ProductVariantsTableTableTableManager
                 Value<int?> lowStockAlert = const Value.absent(),
                 Value<bool> trackStock = const Value.absent(),
                 Value<bool> trackExpiry = const Value.absent(),
-                Value<String?> expiryDate = const Value.absent(),
+                Value<DateTime?> expiryDate = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<int> syncStatus = const Value.absent(),
                 Value<DateTime?> lastSyncAttempt = const Value.absent(),
@@ -10453,7 +10702,7 @@ class $$ProductVariantsTableTableTableManager
                 Value<int?> lowStockAlert = const Value.absent(),
                 Value<bool> trackStock = const Value.absent(),
                 Value<bool> trackExpiry = const Value.absent(),
-                Value<String?> expiryDate = const Value.absent(),
+                Value<DateTime?> expiryDate = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<int> syncStatus = const Value.absent(),
                 Value<DateTime?> lastSyncAttempt = const Value.absent(),
@@ -11331,9 +11580,11 @@ typedef $$InventoryLevelsTableTableCreateCompanionBuilder =
     InventoryLevelsTableCompanion Function({
       required String id,
       required String variantId,
-      Value<String?> branchId,
+      required String branchId,
       required String businessId,
       Value<int> quantity,
+      Value<double?> quantityDecimal,
+      Value<int?> lowStockAlertOverride,
       Value<int> syncStatus,
       Value<DateTime> localUpdatedAt,
       Value<int> rowid,
@@ -11342,9 +11593,11 @@ typedef $$InventoryLevelsTableTableUpdateCompanionBuilder =
     InventoryLevelsTableCompanion Function({
       Value<String> id,
       Value<String> variantId,
-      Value<String?> branchId,
+      Value<String> branchId,
       Value<String> businessId,
       Value<int> quantity,
+      Value<double?> quantityDecimal,
+      Value<int?> lowStockAlertOverride,
       Value<int> syncStatus,
       Value<DateTime> localUpdatedAt,
       Value<int> rowid,
@@ -11381,6 +11634,16 @@ class $$InventoryLevelsTableTableFilterComposer
 
   ColumnFilters<int> get quantity => $composableBuilder(
     column: $table.quantity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get quantityDecimal => $composableBuilder(
+    column: $table.quantityDecimal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lowStockAlertOverride => $composableBuilder(
+    column: $table.lowStockAlertOverride,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -11429,6 +11692,16 @@ class $$InventoryLevelsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get quantityDecimal => $composableBuilder(
+    column: $table.quantityDecimal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lowStockAlertOverride => $composableBuilder(
+    column: $table.lowStockAlertOverride,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get syncStatus => $composableBuilder(
     column: $table.syncStatus,
     builder: (column) => ColumnOrderings(column),
@@ -11465,6 +11738,16 @@ class $$InventoryLevelsTableTableAnnotationComposer
 
   GeneratedColumn<int> get quantity =>
       $composableBuilder(column: $table.quantity, builder: (column) => column);
+
+  GeneratedColumn<double> get quantityDecimal => $composableBuilder(
+    column: $table.quantityDecimal,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lowStockAlertOverride => $composableBuilder(
+    column: $table.lowStockAlertOverride,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get syncStatus => $composableBuilder(
     column: $table.syncStatus,
@@ -11522,9 +11805,11 @@ class $$InventoryLevelsTableTableTableManager
               ({
                 Value<String> id = const Value.absent(),
                 Value<String> variantId = const Value.absent(),
-                Value<String?> branchId = const Value.absent(),
+                Value<String> branchId = const Value.absent(),
                 Value<String> businessId = const Value.absent(),
                 Value<int> quantity = const Value.absent(),
+                Value<double?> quantityDecimal = const Value.absent(),
+                Value<int?> lowStockAlertOverride = const Value.absent(),
                 Value<int> syncStatus = const Value.absent(),
                 Value<DateTime> localUpdatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -11534,6 +11819,8 @@ class $$InventoryLevelsTableTableTableManager
                 branchId: branchId,
                 businessId: businessId,
                 quantity: quantity,
+                quantityDecimal: quantityDecimal,
+                lowStockAlertOverride: lowStockAlertOverride,
                 syncStatus: syncStatus,
                 localUpdatedAt: localUpdatedAt,
                 rowid: rowid,
@@ -11542,9 +11829,11 @@ class $$InventoryLevelsTableTableTableManager
               ({
                 required String id,
                 required String variantId,
-                Value<String?> branchId = const Value.absent(),
+                required String branchId,
                 required String businessId,
                 Value<int> quantity = const Value.absent(),
+                Value<double?> quantityDecimal = const Value.absent(),
+                Value<int?> lowStockAlertOverride = const Value.absent(),
                 Value<int> syncStatus = const Value.absent(),
                 Value<DateTime> localUpdatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -11554,6 +11843,8 @@ class $$InventoryLevelsTableTableTableManager
                 branchId: branchId,
                 businessId: businessId,
                 quantity: quantity,
+                quantityDecimal: quantityDecimal,
+                lowStockAlertOverride: lowStockAlertOverride,
                 syncStatus: syncStatus,
                 localUpdatedAt: localUpdatedAt,
                 rowid: rowid,
@@ -11592,10 +11883,12 @@ typedef $$StockLedgerTableTableCreateCompanionBuilder =
       required String id,
       required String variantId,
       required String productId,
-      Value<String?> branchId,
+      required String branchId,
       required String businessId,
       required String changeType,
-      required int quantity,
+      required double quantity,
+      Value<double?> quantityBefore,
+      Value<double?> quantityAfter,
       required String reason,
       Value<String?> note,
       Value<DateTime> createdAt,
@@ -11607,10 +11900,12 @@ typedef $$StockLedgerTableTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> variantId,
       Value<String> productId,
-      Value<String?> branchId,
+      Value<String> branchId,
       Value<String> businessId,
       Value<String> changeType,
-      Value<int> quantity,
+      Value<double> quantity,
+      Value<double?> quantityBefore,
+      Value<double?> quantityAfter,
       Value<String> reason,
       Value<String?> note,
       Value<DateTime> createdAt,
@@ -11657,8 +11952,18 @@ class $$StockLedgerTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get quantity => $composableBuilder(
+  ColumnFilters<double> get quantity => $composableBuilder(
     column: $table.quantity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get quantityBefore => $composableBuilder(
+    column: $table.quantityBefore,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get quantityAfter => $composableBuilder(
+    column: $table.quantityAfter,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -11722,8 +12027,18 @@ class $$StockLedgerTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get quantity => $composableBuilder(
+  ColumnOrderings<double> get quantity => $composableBuilder(
     column: $table.quantity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get quantityBefore => $composableBuilder(
+    column: $table.quantityBefore,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get quantityAfter => $composableBuilder(
+    column: $table.quantityAfter,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -11779,8 +12094,18 @@ class $$StockLedgerTableTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get quantity =>
+  GeneratedColumn<double> get quantity =>
       $composableBuilder(column: $table.quantity, builder: (column) => column);
+
+  GeneratedColumn<double> get quantityBefore => $composableBuilder(
+    column: $table.quantityBefore,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get quantityAfter => $composableBuilder(
+    column: $table.quantityAfter,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get reason =>
       $composableBuilder(column: $table.reason, builder: (column) => column);
@@ -11837,10 +12162,12 @@ class $$StockLedgerTableTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> variantId = const Value.absent(),
                 Value<String> productId = const Value.absent(),
-                Value<String?> branchId = const Value.absent(),
+                Value<String> branchId = const Value.absent(),
                 Value<String> businessId = const Value.absent(),
                 Value<String> changeType = const Value.absent(),
-                Value<int> quantity = const Value.absent(),
+                Value<double> quantity = const Value.absent(),
+                Value<double?> quantityBefore = const Value.absent(),
+                Value<double?> quantityAfter = const Value.absent(),
                 Value<String> reason = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -11854,6 +12181,8 @@ class $$StockLedgerTableTableTableManager
                 businessId: businessId,
                 changeType: changeType,
                 quantity: quantity,
+                quantityBefore: quantityBefore,
+                quantityAfter: quantityAfter,
                 reason: reason,
                 note: note,
                 createdAt: createdAt,
@@ -11865,10 +12194,12 @@ class $$StockLedgerTableTableTableManager
                 required String id,
                 required String variantId,
                 required String productId,
-                Value<String?> branchId = const Value.absent(),
+                required String branchId,
                 required String businessId,
                 required String changeType,
-                required int quantity,
+                required double quantity,
+                Value<double?> quantityBefore = const Value.absent(),
+                Value<double?> quantityAfter = const Value.absent(),
                 required String reason,
                 Value<String?> note = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -11882,6 +12213,8 @@ class $$StockLedgerTableTableTableManager
                 businessId: businessId,
                 changeType: changeType,
                 quantity: quantity,
+                quantityBefore: quantityBefore,
+                quantityAfter: quantityAfter,
                 reason: reason,
                 note: note,
                 createdAt: createdAt,

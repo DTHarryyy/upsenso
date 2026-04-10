@@ -60,7 +60,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 19;
 
   @override
   MigrationStrategy get migration {
@@ -161,8 +161,89 @@ class AppDatabase extends _$AppDatabase {
           } catch (_) {}
         }
         if (from < 16) {
+          // NOTE: v16 created inventory_levels and stock_ledger with nullable branchId.
+          // v17 and v18 below recreate them with the correct non-nullable schema.
+          // Devices upgrading from <16 skip straight to v17/v18 which recreate correctly.
           await m.createTable(inventoryLevelsTable);
           await m.createTable(stockLedgerTable);
+        }
+        if (from < 17) {
+          // Recreate inventory_levels:
+          //   • branchId: nullable → NOT NULL (no more "global" stock rows)
+          //   • Add quantity_decimal (for sellBy='fraction' products)
+          //   • Add low_stock_alert_override (per-branch threshold)
+          // NULL-branch rows from v16 are intentionally discarded — they are
+          // pre-branch-era artifacts with no real stock data.
+          await customStatement(
+            'ALTER TABLE inventory_levels RENAME TO inventory_levels_old',
+          );
+          await m.createTable(inventoryLevelsTable);
+          await customStatement('''
+            INSERT INTO inventory_levels
+              (id, variant_id, branch_id, business_id, quantity,
+               quantity_decimal, low_stock_alert_override, sync_status, local_updated_at)
+            SELECT
+              variant_id || ':' || branch_id,
+              variant_id, branch_id, business_id, quantity,
+              NULL, NULL, sync_status, local_updated_at
+            FROM inventory_levels_old
+            WHERE branch_id IS NOT NULL
+          ''');
+          await customStatement('DROP TABLE inventory_levels_old');
+        }
+        if (from < 18) {
+          // Recreate stock_ledger:
+          //   • branchId: nullable → NOT NULL (NULL rows get sentinel 'unknown')
+          //   • quantity: INTEGER → REAL (supports fractional sellBy='fraction' products)
+          //   • Add quantity_before / quantity_after (stock snapshots for fraud detection)
+          // All existing rows are preserved. Historical rows have NULL snapshots.
+          await customStatement(
+            'ALTER TABLE stock_ledger RENAME TO stock_ledger_old',
+          );
+          await m.createTable(stockLedgerTable);
+          await customStatement('''
+            INSERT INTO stock_ledger
+              (id, variant_id, product_id, branch_id, business_id, change_type,
+               quantity, quantity_before, quantity_after, reason, note,
+               created_at, sync_status)
+            SELECT
+              id, variant_id, product_id,
+              COALESCE(branch_id, 'unknown'),
+              business_id, change_type,
+              CAST(quantity AS REAL),
+              NULL, NULL,
+              reason, note, created_at, sync_status
+            FROM stock_ledger_old
+          ''');
+          await customStatement('DROP TABLE stock_ledger_old');
+        }
+        if (from < 19) {
+          // Recreate product_variants:
+          //   • expiry_date: TEXT (ISO 8601) → INTEGER (Unix epoch ms, Drift DateTimeColumn)
+          // All other columns are unchanged. The julianday conversion handles NULL safely.
+          await customStatement(
+            'ALTER TABLE product_variants RENAME TO product_variants_old',
+          );
+          await m.createTable(productVariantsTable);
+          await customStatement('''
+            INSERT INTO product_variants
+              (id, product_id, business_id, name, price, cost_price, retail_price,
+               stock, sku, barcode, stock_decimal, low_stock_alert, track_stock,
+               track_expiry, expiry_date, is_active, sync_status,
+               last_sync_attempt, sync_error, local_updated_at)
+            SELECT
+              id, product_id, business_id, name, price, cost_price, retail_price,
+              stock, sku, barcode, stock_decimal, low_stock_alert, track_stock,
+              track_expiry,
+              CASE
+                WHEN expiry_date IS NULL THEN NULL
+                ELSE CAST((julianday(expiry_date) - 2440587.5) * 86400000 AS INTEGER)
+              END,
+              is_active, sync_status,
+              last_sync_attempt, sync_error, local_updated_at
+            FROM product_variants_old
+          ''');
+          await customStatement('DROP TABLE product_variants_old');
         }
       },
     );

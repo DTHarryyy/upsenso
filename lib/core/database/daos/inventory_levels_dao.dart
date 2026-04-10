@@ -9,8 +9,10 @@ class InventoryLevelsDao extends DatabaseAccessor<AppDatabase>
     with _$InventoryLevelsDaoMixin {
   InventoryLevelsDao(super.db);
 
-  static String makeId(String variantId, String? branchId) =>
-      '$variantId:${branchId ?? 'global'}';
+  /// Builds the composite PK string. branchId is now non-nullable — every
+  /// inventory row must belong to a real branch (no "global" rows allowed).
+  static String makeId(String variantId, String branchId) =>
+      '$variantId:$branchId';
 
   /// Get all inventory level rows for a business.
   Future<List<InventoryLevelsTableData>> getByBusinessId(String businessId) {
@@ -29,7 +31,7 @@ class InventoryLevelsDao extends DatabaseAccessor<AppDatabase>
   /// Get the level row for a specific variant + branch combo.
   Future<InventoryLevelsTableData?> getLevel(
     String variantId,
-    String? branchId,
+    String branchId,
   ) {
     final id = makeId(variantId, branchId);
     return (select(inventoryLevelsTable)..where((t) => t.id.equals(id)))
@@ -39,18 +41,20 @@ class InventoryLevelsDao extends DatabaseAccessor<AppDatabase>
   /// Upsert a level row. Creates it if missing, replaces it if present.
   Future<void> upsertLevel({
     required String variantId,
-    required String? branchId,
+    required String branchId,
     required String businessId,
     required int quantity,
+    double? quantityDecimal,
   }) {
     final id = makeId(variantId, branchId);
     return into(inventoryLevelsTable).insertOnConflictUpdate(
       InventoryLevelsTableCompanion.insert(
         id: id,
         variantId: variantId,
-        branchId: Value(branchId),
+        branchId: branchId,
         businessId: businessId,
         quantity: Value(quantity),
+        quantityDecimal: Value(quantityDecimal),
         syncStatus: const Value(1), // pendingUpdate
         localUpdatedAt: Value(DateTime.now()),
       ),
@@ -59,34 +63,60 @@ class InventoryLevelsDao extends DatabaseAccessor<AppDatabase>
 
   /// Atomically adjust the quantity for a variant+branch by [delta].
   ///
-  /// [seedQuantity] is used as the starting stock when no row exists yet
-  /// (e.g. on first sale after inventory module is introduced). Defaults to 0.
+  /// For unit products, pass [delta] (integer delta).
+  /// For fractional products (sellBy='fraction'), pass [deltaDecimal] instead;
+  /// [delta] should be 0 in that case.
+  ///
+  /// A branch with no existing row starts from 0 — there is no global-stock
+  /// seeding. Callers must NOT pass product_variants.stock as a seed.
   Future<void> adjustQuantity({
     required String variantId,
-    required String? branchId,
+    required String branchId,
     required String businessId,
     required int delta,
-    int seedQuantity = 0,
+    double? deltaDecimal,
   }) async {
     final id = makeId(variantId, branchId);
     final existing = await (select(inventoryLevelsTable)
           ..where((t) => t.id.equals(id)))
         .getSingleOrNull();
 
-    final current = existing?.quantity ?? seedQuantity;
-    final next = (current + delta).clamp(0, 999999);
+    final int nextQty;
+    final double? nextDecimal;
+
+    if (deltaDecimal != null) {
+      // Fractional product path
+      final currentDecimal = existing?.quantityDecimal ?? 0.0;
+      nextDecimal = (currentDecimal + deltaDecimal).clamp(0.0, 999999.0);
+      nextQty = existing?.quantity ?? 0;
+    } else {
+      // Unit product path
+      final current = existing?.quantity ?? 0;
+      nextQty = (current + delta).clamp(0, 999999);
+      nextDecimal = existing?.quantityDecimal;
+    }
 
     await into(inventoryLevelsTable).insertOnConflictUpdate(
       InventoryLevelsTableCompanion.insert(
         id: id,
         variantId: variantId,
-        branchId: Value(branchId),
+        branchId: branchId,
         businessId: businessId,
-        quantity: Value(next),
+        quantity: Value(nextQty),
+        quantityDecimal: Value(nextDecimal),
         syncStatus: const Value(1),
         localUpdatedAt: Value(DateTime.now()),
       ),
     );
+  }
+
+  /// Returns the effective low stock threshold for a variant+branch.
+  /// Uses the per-branch override when set, falls back to the global [defaultThreshold].
+  int getEffectiveLowStockAlert(
+    InventoryLevelsTableData? level,
+    int? defaultThreshold,
+  ) {
+    return level?.lowStockAlertOverride ?? defaultThreshold ?? 0;
   }
 
   /// Get all level rows for a specific variant across all branches.

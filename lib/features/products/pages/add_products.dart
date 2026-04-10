@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/core/ui/status/status_snack.dart';
 import 'package:pos/core/ui/status/status_type.dart';
 import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/core/database/app_database.dart';
+import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/products/data/holder/variant_form.dart';
@@ -40,8 +43,24 @@ class AddProductsPage extends StatelessWidget {
     final authState = context.read<AuthBloc>().state;
     if (authState is! AuthAuthenticated) return const SizedBox.shrink();
     return BlocProvider(
-      create: (_) =>
-          ProductFormCubit(businessId: authState.user.businessId ?? ''),
+      create: (context) {
+        final branchCubit = context.read<BranchCubit>();
+        // Prefer the explicitly selected branch UUID from BranchCubit.
+        // If BranchCubit state hasn't loaded its async prefs yet (selectedBranchId
+        // is null but the user isn't on "All Branches"), fall back to the user's
+        // own assigned branch from the synchronous auth context.
+        final String? effectiveBranchId;
+        if (branchCubit.state.selectedBranch == BranchCubit.allBranchesLabel) {
+          effectiveBranchId = null; // Explicitly "All Branches" — seed all branches
+        } else {
+          effectiveBranchId =
+              branchCubit.state.selectedBranchId ?? authState.user.branchId;
+        }
+        return ProductFormCubit(
+          businessId: authState.user.businessId ?? '',
+          selectedBranchId: effectiveBranchId,
+        );
+      },
       child: _AddProductsView(
         initialBarcode: initialBarcode,
         productToEdit: productToEdit,
@@ -127,12 +146,22 @@ class _AddProductsViewState extends State<_AddProductsView> {
     _nameController.text = product.name;
     setState(() => _sellBy = product.sellBy);
 
-    // Load existing variants
+    // Load existing variants + branch-specific stock
     final variants = await cubit.loadVariants(product.id);
+    if (!mounted) return;
+    final branchStock = await cubit.loadBranchStockMap(
+      variants.map((v) => v.id).toList(),
+    );
     if (!mounted) return;
 
     final hasStock = variants.any((v) => v.trackStock);
     if (hasStock) cubit.setTrackInventory(true);
+
+    // branchStock now always contains real sums from inventory_levels
+    // (per-branch for specific mode, summed across all branches for All Branches
+    // mode). Fall back to the stale product_variants.stock only if this variant
+    // has no inventory_levels rows yet (e.g. brand-new product, no stock seeded).
+    int stockFor(ProductVariantsTableData v) => branchStock[v.id] ?? v.stock;
 
     if (product.hasVariants) {
       // Advanced + variants: populate variant forms
@@ -142,7 +171,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
         form.name.text = v.name == 'Default' ? '' : v.name;
         form.price.text = v.price.toStringAsFixed(2);
         if (v.costPrice != null) form.cost.text = v.costPrice!.toStringAsFixed(2);
-        form.stock.text = v.stock.toString();
+        form.stock.text = stockFor(v).toString();
         if (v.lowStockAlert != null) form.lowStock.text = v.lowStockAlert.toString();
         if (v.barcode != null) form.barcode.text = v.barcode!;
         _variants.add(form);
@@ -159,7 +188,8 @@ class _AddProductsViewState extends State<_AddProductsView> {
           _simpleBarcodeController.text = v.barcode!;
           _barcodeControllers[0].text = v.barcode!;
         }
-        if (v.stock > 0) _stockController.text = v.stock.toString();
+        final qty = stockFor(v);
+        if (qty > 0) _stockController.text = qty.toString();
         if (v.lowStockAlert != null) _lowStockController.text = v.lowStockAlert.toString();
       }
     }
@@ -376,13 +406,43 @@ class _AddProductsViewState extends State<_AddProductsView> {
     }
   }
 
+  // ── Branch assignment dialog ──────────────────────────────────────────────
+
+  /// Shown after a successful new-product save when "All Branches" was active
+  /// and the user entered opening stock > 0. Lets the user nominate which
+  /// branch receives the opening inventory, then pops the page.
+  Future<void> _showBranchAssignmentDialog(
+    BuildContext ctx,
+    ProductFormCubit cubit,
+  ) async {
+    await showModalBottomSheet<void>(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => _BranchAssignmentSheet(
+        businessId: cubit.businessId,
+        onSkip: () {
+          Navigator.of(sheetCtx).pop();
+          ctx.pop();
+        },
+        onAssign: (branchId) async {
+          Navigator.of(sheetCtx).pop();
+          await cubit.assignInventoryToBranch(branchId);
+          if (ctx.mounted) ctx.pop();
+        },
+      ),
+    );
+  }
+
   // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     return BlocListener<ProductFormCubit, ProductFormState>(
       listener: (ctx, state) {
-        if (state.isSuccess) {
+        if (state.isSuccess && state.pendingBranchAssignment != null) {
+          _showBranchAssignmentDialog(ctx, ctx.read<ProductFormCubit>());
+        } else if (state.isSuccess) {
           ctx.pop();
         } else if (state.error != null) {
           StatusSnack.show(context,
@@ -644,6 +704,8 @@ class _AddProductsViewState extends State<_AddProductsView> {
 
   Widget _buildPricingSection(ProductFormState state, ProductFormCubit cubit) {
     final isFraction = _sellBy == 'fraction';
+    final isAllBranchesEdit =
+        widget.productToEdit != null && cubit.selectedBranchId == null;
 
     return AppSectionCard(
       title: 'Pricing & Inventory',
@@ -696,65 +758,109 @@ class _AddProductsViewState extends State<_AddProductsView> {
           child: state.trackInventory
               ? Padding(
                   padding: const EdgeInsets.only(top: 10),
-                  child: Row(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Stock *
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            AppFieldLabel(
-                                isFraction ? 'Stock * (kg)' : 'Stock *'),
-                            TextFormField(
-                              controller: _stockController,
-                              keyboardType: isFraction
-                                  ? const TextInputType.numberWithOptions(
-                                      decimal: true)
-                                  : TextInputType.number,
-                              inputFormatters: isFraction
-                                  ? [
-                                      FilteringTextInputFormatter.allow(
-                                          RegExp(r'^\d*\.?\d{0,3}'))
-                                    ]
-                                  : [FilteringTextInputFormatter.digitsOnly],
-                              textInputAction: TextInputAction.next,
-                              decoration:
-                                  appInputDeco(isFraction ? '0.000' : '0'),
-                              style:
-                                  getOutfitStyle(color: AppColors.textPrimary),
-                              validator: (v) {
-                                if (state.trackInventory &&
-                                    (v == null || v.trim().isEmpty)) {
-                                  return 'Stock is required';
-                                }
-                                return null;
-                              },
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Stock *
+                          Expanded(
+                            child: Opacity(
+                              opacity: isAllBranchesEdit ? 0.6 : 1.0,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  AppFieldLabel(
+                                      isFraction ? 'Stock * (kg)' : 'Stock *'),
+                                  TextFormField(
+                                    controller: _stockController,
+                                    readOnly: isAllBranchesEdit,
+                                    keyboardType: isFraction
+                                        ? const TextInputType.numberWithOptions(
+                                            decimal: true)
+                                        : TextInputType.number,
+                                    inputFormatters: isFraction
+                                        ? [
+                                            FilteringTextInputFormatter.allow(
+                                                RegExp(r'^\d*\.?\d{0,3}'))
+                                          ]
+                                        : [FilteringTextInputFormatter.digitsOnly],
+                                    textInputAction: TextInputAction.next,
+                                    decoration: appInputDeco(isFraction ? '0.000' : '0')
+                                        .copyWith(
+                                      filled: true,
+                                      fillColor: isAllBranchesEdit
+                                          ? AppColors.surfaceAlt
+                                          : AppColors.inputFill,
+                                    ),
+                                    style: getOutfitStyle(
+                                        color: AppColors.textPrimary),
+                                    validator: (v) {
+                                      if (!isAllBranchesEdit &&
+                                          state.trackInventory &&
+                                          (v == null || v.trim().isEmpty)) {
+                                        return 'Stock is required';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                ],
+                              ),
                             ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      // Low Stock Alert (optional)
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const AppFieldLabel('Low Stock Alert'),
-                            TextFormField(
-                              controller: _lowStockController,
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
+                          ),
+                          const SizedBox(width: 10),
+                          // Low Stock Alert (optional)
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const AppFieldLabel('Low Stock Alert'),
+                                TextFormField(
+                                  controller: _lowStockController,
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                  ],
+                                  textInputAction: TextInputAction.done,
+                                  decoration: appInputDeco('e.g. 5'),
+                                  style: getOutfitStyle(
+                                      color: AppColors.textPrimary),
+                                ),
                               ],
-                              textInputAction: TextInputAction.done,
-                              decoration: appInputDeco('e.g. 5'),
-                              style:
-                                  getOutfitStyle(color: AppColors.textPrimary),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
+                      if (isAllBranchesEdit) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: AppColors.infoSoft,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                                color: AppColors.info.withAlpha(60)),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(Icons.info_outline_rounded,
+                                  size: 15, color: AppColors.info),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Showing total stock across all branches. '
+                                  'To adjust stock for a specific branch, use the Inventory page.',
+                                  style: getOutfitStyle(
+                                      color: AppColors.info, fontSize: 12),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 )
@@ -769,6 +875,8 @@ class _AddProductsViewState extends State<_AddProductsView> {
   Widget _buildVariantsSection(
       ProductFormState state, ProductFormCubit cubit) {
     final isFraction = _sellBy == 'fraction';
+    final isAllBranchesEdit =
+        widget.productToEdit != null && cubit.selectedBranchId == null;
 
     return AppSectionCard(
       title: 'Variants',
@@ -880,9 +988,41 @@ class _AddProductsViewState extends State<_AddProductsView> {
                 v.dispose();
                 _variants.removeAt(i);
               }),
+              stockReadOnly: isAllBranchesEdit,
             ),
           );
         }),
+
+        if (isAllBranchesEdit && state.trackInventory) ...[
+          const SizedBox(height: 4),
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.infoSoft,
+              borderRadius: BorderRadius.circular(10),
+              border:
+                  Border.all(color: AppColors.info.withAlpha(60)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.info_outline_rounded,
+                    size: 15, color: AppColors.info),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Showing total stock across all branches. '
+                    'To adjust stock for a specific branch, use the Inventory page.',
+                    style: getOutfitStyle(
+                        color: AppColors.info, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
 
         // Add Variant button
         OutlinedButton.icon(
@@ -1215,6 +1355,184 @@ class _ModeChip extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Branch assignment bottom sheet ───────────────────────────────────────────
+
+class _BranchAssignmentSheet extends StatefulWidget {
+  final String businessId;
+  final VoidCallback onSkip;
+  final Future<void> Function(String branchId) onAssign;
+
+  const _BranchAssignmentSheet({
+    required this.businessId,
+    required this.onSkip,
+    required this.onAssign,
+  });
+
+  @override
+  State<_BranchAssignmentSheet> createState() => _BranchAssignmentSheetState();
+}
+
+class _BranchAssignmentSheetState extends State<_BranchAssignmentSheet> {
+  List<BranchesTableData>? _branches;
+  String? _selectedBranchId;
+  bool _assigning = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBranches();
+  }
+
+  Future<void> _loadBranches() async {
+    final branches = await sl<BranchesDao>().getByBusinessId(widget.businessId);
+    final active = branches.where((b) => b.isActive).toList();
+    if (!mounted) return;
+    setState(() {
+      _branches = active;
+      _selectedBranchId = active.isNotEmpty ? active.first.id : null;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: EdgeInsets.fromLTRB(
+        24, 16, 24, MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Handle bar
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.borderSoft,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Assign Opening Inventory',
+            style: AppTextStyles.title(context),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'You\'re viewing All Branches. Choose which branch should receive the initial inventory you entered.',
+            style: AppTextStyles.body(context)
+                .copyWith(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 20),
+          if (_branches == null)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: CircularProgressIndicator(
+                  color: AppColors.brand,
+                  strokeWidth: 2,
+                ),
+              ),
+            )
+          else if (_branches!.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Text(
+                'No active branches found.',
+                style: AppTextStyles.body(context)
+                    .copyWith(color: AppColors.textSecondary),
+              ),
+            )
+          else
+            RadioGroup<String>(
+              groupValue: _selectedBranchId,
+              onChanged: (v) => setState(() => _selectedBranchId = v),
+              child: Column(
+                children: _branches!
+                    .map(
+                      (branch) => RadioListTile<String>(
+                        value: branch.id,
+                        title: Text(
+                          branch.name,
+                          style: AppTextStyles.body(context).copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        activeColor: AppColors.brand,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: _assigning ? null : widget.onSkip,
+                  child: Text(
+                    'Skip',
+                    style: AppTextStyles.body(context).copyWith(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: (_selectedBranchId == null || _assigning)
+                      ? null
+                      : () async {
+                          setState(() => _assigning = true);
+                          await widget.onAssign(_selectedBranchId!);
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.brand,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor:
+                        AppColors.brand.withAlpha(80),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: _assigning
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Text(
+                          'Assign',
+                          style: getOutfitStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                            color: Colors.white,
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
