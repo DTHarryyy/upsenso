@@ -52,20 +52,17 @@ class InventoryRepository {
         rawBranches.where((b) => seenIds.add(b.id)).toList();
 
     // branchInfos always contains ALL branches so the dropdown can show
-    // every option regardless of which branch is currently selected for filtering.
+    // every option regardless of which branch is currently selected.
     final branchInfos =
         branches.map((b) => BranchInfo(id: b.id, name: b.name)).toList();
 
     // The branches actually used for computing per-item stock columns.
-    // When a branch filter is active only that branch is shown; otherwise all.
-    final visibleBranches = branchId != null
-        ? branches.where((b) => b.id == branchId).toList()
-        : branches;
-
     // Build a lookup: variantId -> { branchId -> quantity }
-    final levelMap = <String, Map<String?, int>>{};
+    // branchId is now non-nullable (no "global" rows exist post-v17).
+    final levelMap = <String, Map<String, int>>{};
     for (final level in levels) {
-      levelMap.putIfAbsent(level.variantId, () => <String?, int>{})[level.branchId] =
+      levelMap
+          .putIfAbsent(level.variantId, () => <String, int>{})[level.branchId] =
           level.quantity;
     }
 
@@ -89,22 +86,37 @@ class InventoryRepository {
 
       final branchStock = levelMap[v.id] ?? {};
 
-      // Compute per-branch stock for the visible (filtered) branches only.
+      // Always include ALL branches in stockByBranch so per-branch columns in
+      // the table show accurate data regardless of which branch is filtered.
+      // A missing inventory_levels row means 0 for that branch.
       final stockByBranch = <String, int>{};
-      for (final b in visibleBranches) {
+      for (final b in branches) {
         stockByBranch[b.id] = branchStock[b.id] ?? 0;
       }
 
-      // Total: sum of all known inventory_levels rows, or fall back to
-      // product_variants.stock if no levels exist yet
+      // Total stock: sum inventory_levels rows. A branch with no rows is 0.
+      // product_variants.stock is NOT used as a fallback — it is a sync/seed
+      // value only and must not be assigned as a branch's starting stock.
       final int total;
-      if (branchStock.isEmpty) {
-        total = v.stock;
-      } else if (branchId != null) {
+      if (branchId != null) {
         total = branchStock[branchId] ?? 0;
       } else {
         total = branchStock.values.fold(0, (s, q) => s + q);
       }
+
+      // Per-branch low stock threshold: check for override on the level row,
+      // fall back to the global threshold on the variant.
+      InventoryLevelsTableData? levelRow;
+      if (branchId != null) {
+        for (final l in levels) {
+          if (l.variantId == v.id && l.branchId == branchId) {
+            levelRow = l;
+            break;
+          }
+        }
+      }
+      final reorderLevel =
+          _levelsDao.getEffectiveLowStockAlert(levelRow, v.lowStockAlert);
 
       final displayName = v.name == 'Default' ? product.name : product.name;
       final variantLabel = v.name == 'Default' ? '' : v.name;
@@ -117,7 +129,8 @@ class InventoryRepository {
         sku: v.sku ?? product.sku,
         stockByBranch: stockByBranch,
         totalStock: total,
-        reorderLevel: v.lowStockAlert ?? 0,
+        reorderLevel: reorderLevel,
+        trackStock: v.trackStock,
       ));
     }
 
@@ -134,23 +147,39 @@ class InventoryRepository {
     required String productId,
     required String businessId,
     String? branchId,
-    required bool isIncoming, // true = IN, false = OUT
+    required bool isIncoming,
     required int quantity,
     required String reason,
     String? note,
   }) async {
     assert(quantity > 0, 'quantity must be positive');
 
-    // 1. Insert ledger entry (source of truth for history)
+    // Every stock movement must be traced to a branch. Without one, the
+    // inventory_levels row and ledger entry cannot be created correctly.
+    if (branchId == null) {
+      assert(false, 'adjustStock called without branchId — auth context must include a branch');
+      return;
+    }
+
+    final delta = isIncoming ? quantity : -quantity;
+
+    // Snapshot stock BEFORE the adjustment for the ledger audit trail.
+    final levelBefore = await _levelsDao.getLevel(variantId, branchId);
+    final double qtyBefore = levelBefore?.quantity.toDouble() ?? 0.0;
+    final double qtyAfter = (qtyBefore + delta.toDouble()).clamp(0.0, 999999.0);
+
+    // 1. Insert ledger entry (immutable source of truth)
     await _ledgerDao.insertEntry(
       StockLedgerTableCompanion.insert(
         id: _uuid.v4(),
         variantId: variantId,
         productId: productId,
-        branchId: Value(branchId),
+        branchId: branchId,
         businessId: businessId,
         changeType: isIncoming ? 'IN' : 'OUT',
-        quantity: quantity,
+        quantity: quantity.toDouble(),
+        quantityBefore: Value(qtyBefore),
+        quantityAfter: Value(qtyAfter),
         reason: reason,
         note: Value(note),
         createdAt: Value(DateTime.now()),
@@ -158,7 +187,6 @@ class InventoryRepository {
     );
 
     // 2. Update per-branch inventory_levels
-    final delta = isIncoming ? quantity : -quantity;
     await _levelsDao.adjustQuantity(
       variantId: variantId,
       branchId: branchId,
@@ -166,12 +194,11 @@ class InventoryRepository {
       delta: delta,
     );
 
-    // 3. Recalculate total and write directly to product_variants.stock
+    // 3. Recalculate global total and write to product_variants.stock
     final allLevels = await _levelsDao.getByVariantId(variantId);
     var newTotal = 0;
     for (final level in allLevels) {
-      // ignore: avoid_dynamic_calls
-      newTotal += (level as dynamic)?.quantity as int? ?? 0;
+      newTotal += level.quantity;
     }
 
     await _variantsDao.db.customUpdate(
@@ -189,21 +216,30 @@ class InventoryRepository {
   ///
   /// Only processes variants that have [trackStock] enabled.
   ///
-  /// Order matters: the variant's stock is captured BEFORE decrementing it so
-  /// that [adjustQuantity] seeds a new [inventory_levels] row from the correct
-  /// pre-sale quantity, avoiding double-deduction.
+  /// A branch with no existing inventory_levels row starts from 0 — there is
+  /// no seeding from product_variants.stock. The global total must not be used
+  /// as a single branch's starting stock.
   Future<void> recordSaleDeductions({
     required List<({String variantId, int qty})> items,
     required String businessId,
     required String? branchId,
   }) async {
+    // Every sale must be attributed to a branch for correct per-branch tracking.
+    if (branchId == null) {
+      assert(false, 'recordSaleDeductions called without branchId');
+      return;
+    }
+
     for (final item in items) {
       if (item.qty <= 0) continue;
 
       final variant = await _variantsDao.getById(item.variantId);
       if (variant == null) continue;
 
-      final originalStock = variant.stock;
+      // Snapshot stock BEFORE deduction for the ledger audit trail.
+      final levelBefore = await _levelsDao.getLevel(item.variantId, branchId);
+      final double qtyBefore = levelBefore?.quantity.toDouble() ?? 0.0;
+      final double qtyAfter = (qtyBefore - item.qty.toDouble()).clamp(0.0, 999999.0);
 
       // 1. Insert stock ledger entry
       await _ledgerDao.insertEntry(
@@ -211,23 +247,24 @@ class InventoryRepository {
           id: _uuid.v4(),
           variantId: item.variantId,
           productId: variant.productId,
-          branchId: Value(branchId),
+          branchId: branchId,
           businessId: businessId,
           changeType: 'OUT',
-          quantity: item.qty,
+          quantity: item.qty.toDouble(),
+          quantityBefore: Value(qtyBefore),
+          quantityAfter: Value(qtyAfter),
           reason: 'Sale',
           createdAt: Value(DateTime.now()),
         ),
       );
 
-      // 2. Deduct from inventory_levels; seed from pre-sale stock when no row
-      //    exists yet (first sale for this variant+branch combination).
+      // 2. Deduct from this branch's inventory_levels row.
+      //    A missing row starts from 0 — not from product_variants.stock.
       await _levelsDao.adjustQuantity(
         variantId: item.variantId,
         branchId: branchId,
         businessId: businessId,
         delta: -item.qty,
-        seedQuantity: originalStock,
       );
 
       // 3. Decrement product_variants.stock (only when trackStock=true)

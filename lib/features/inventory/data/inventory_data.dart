@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-enum StockStatus { inStock, warning, lowStock }
+enum StockStatus { inStock, warning, lowStock, notTracked }
 
 class BranchInfo extends Equatable {
   final String id;
@@ -29,6 +29,10 @@ class InventoryItem extends Equatable {
   /// Reorder threshold from product_variants.lowStockAlert (0 when unset).
   final int reorderLevel;
 
+  /// Whether stock is tracked for this variant. When false, stock numbers are
+  /// meaningless and the item should be displayed as "Not Tracked".
+  final bool trackStock;
+
   const InventoryItem({
     required this.variantId,
     required this.productId,
@@ -38,9 +42,11 @@ class InventoryItem extends Equatable {
     required this.stockByBranch,
     required this.totalStock,
     required this.reorderLevel,
+    this.trackStock = true,
   });
 
   StockStatus get status {
+    if (!trackStock) return StockStatus.notTracked;
     if (reorderLevel <= 0) {
       return totalStock <= 0 ? StockStatus.lowStock : StockStatus.inStock;
     }
@@ -50,7 +56,7 @@ class InventoryItem extends Equatable {
   }
 
   @override
-  List<Object?> get props => [variantId, stockByBranch, totalStock];
+  List<Object?> get props => [variantId, stockByBranch, totalStock, trackStock];
 }
 
 class InventoryData extends Equatable {
@@ -62,10 +68,12 @@ class InventoryData extends Equatable {
   static const empty = InventoryData(items: [], branches: []);
 
   int get totalProducts => items.length;
+  int get trackedCount => items.where((i) => i.trackStock).length;
+  int get notTrackedCount => items.where((i) => !i.trackStock).length;
   int get lowStockCount =>
-      items.where((i) => i.status == StockStatus.lowStock).length;
+      items.where((i) => i.trackStock && i.status == StockStatus.lowStock).length;
   int get warningCount =>
-      items.where((i) => i.status == StockStatus.warning).length;
+      items.where((i) => i.trackStock && i.status == StockStatus.warning).length;
 
   @override
   List<Object?> get props => [items, branches];

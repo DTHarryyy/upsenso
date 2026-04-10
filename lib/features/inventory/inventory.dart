@@ -189,13 +189,28 @@ class _InventoryState extends State<Inventory> {
                           else if (useTable)
                             InventoryDesktopTable(
                               items: items,
-                              branches: data.branches,
+                              // Hide per-branch columns when a specific branch
+                              // is selected — the filtered total already shows
+                              // the correct stock; individual columns are noise.
+                              branches: context
+                                          .read<BranchCubit>()
+                                          .state
+                                          .selectedBranchId ==
+                                      null
+                                  ? data.branches
+                                  : [],
                               onAdjust: _onAdjust,
                             )
                           else
                             _CardList(
                               items: items,
-                              branches: data.branches,
+                              branches: context
+                                          .read<BranchCubit>()
+                                          .state
+                                          .selectedBranchId ==
+                                      null
+                                  ? data.branches
+                                  : [],
                               onAdjust: _onAdjust,
                             ),
 
@@ -214,58 +229,11 @@ class _InventoryState extends State<Inventory> {
   }
 }
 
-/// Maps viewport width → horizontal padding.
-/// 320 lp → 12 dp, 1200+ lp → 32 dp. Scales smoothly in between.
 double _adaptivePad(double width) =>
     (12.0 + (width - 320).clamp(0.0, 880.0) / 880.0 * 20.0).clamp(12.0, 32.0);
 
 // ── Page header ─────────────────────────────────────────────────────────────
 
-class _PageHeader extends StatelessWidget {
-  final VoidCallback onRefresh;
-  const _PageHeader({required this.onRefresh});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Stock Levels',
-                style: getOutfitStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              Text(
-                'Monitor and manage inventory across branches',
-                style: getOutfitStyle(
-                    fontSize: 13, color: AppColors.textSecondary),
-              ),
-            ],
-          ),
-        ),
-        OutlinedButton.icon(
-          onPressed: onRefresh,
-          icon: const Icon(Icons.refresh, size: 16),
-          label: const Text('Refresh'),
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: AppColors.borderSoft),
-            foregroundColor: AppColors.textSecondary,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8)),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Search + view toggle ─────────────────────────────────────────────────────
 
 class _SearchAndFilter extends StatelessWidget {
   final TextEditingController searchController;
@@ -419,6 +387,7 @@ class _StatusChips extends StatelessWidget {
       (label: 'Low Stock', value: StockStatus.lowStock),
       (label: 'Warning', value: StockStatus.warning),
       (label: 'In Stock', value: StockStatus.inStock),
+      (label: 'Not Tracked', value: StockStatus.notTracked),
     ];
 
     return SingleChildScrollView(

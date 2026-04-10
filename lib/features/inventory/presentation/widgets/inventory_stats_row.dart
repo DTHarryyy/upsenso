@@ -40,6 +40,14 @@ class InventoryStatsRow extends StatelessWidget {
         iconColor: AppColors.warning,
         borderColor: AppColors.warning.withValues(alpha: 0.2),
       ),
+      _StatCard(
+        label: 'Not Tracked',
+        value: isLoading ? '—' : '${data.notTrackedCount}',
+        icon: Icons.remove_circle_outline_rounded,
+        iconBg: AppColors.surfaceAlt,
+        iconColor: AppColors.textMuted,
+        borderColor: AppColors.borderSoft,
+      ),
     ];
 
     // Wrap naturally: each card has a minimum width of 180.

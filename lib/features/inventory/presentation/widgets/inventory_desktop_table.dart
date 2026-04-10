@@ -203,6 +203,7 @@ class _TableRow extends StatelessWidget {
     return AppColors.textPrimary;
   }
 
+
   static const double _rowPadH = 16;
 
   @override
@@ -253,6 +254,11 @@ class _TableRow extends StatelessWidget {
           // Per-branch
           for (final b in branches)
             cell(() {
+              if (!item.trackStock) {
+                return Text('—',
+                    style: getOutfitStyle(
+                        fontSize: 13, color: AppColors.textMuted));
+              }
               final qty = item.stockByBranch[b.id] ?? 0;
               return Text(
                 '$qty',
@@ -265,19 +271,19 @@ class _TableRow extends StatelessWidget {
             }()),
           // Total
           cell(Text(
-            '${item.totalStock}',
+            item.trackStock ? '${item.totalStock}' : '—',
             style: getOutfitStyle(
               fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              fontWeight: item.trackStock ? FontWeight.w600 : FontWeight.w400,
+              color: item.trackStock ? AppColors.textPrimary : AppColors.textMuted,
             ),
           )),
           // Reorder
           cell(Text(
-            item.reorderLevel > 0 ? '${item.reorderLevel}' : '—',
+            (!item.trackStock || item.reorderLevel <= 0) ? '—' : '${item.reorderLevel}',
             style: getOutfitStyle(
               fontSize: 13,
-              color: item.reorderLevel > 0
+              color: (item.trackStock && item.reorderLevel > 0)
                   ? AppColors.textSecondary
                   : AppColors.textMuted,
             ),
@@ -287,25 +293,27 @@ class _TableRow extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: StockStatusBadge(status: item.status),
           )),
-          // Actions
-          cell(Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              _ActionButton(
-                label: '+ In',
-                color: AppColors.success,
-                bgColor: AppColors.successSoft,
-                onTap: () => onAdjust(item, true),
-              ),
-              const SizedBox(width: 6),
-              _ActionButton(
-                label: '− Out',
-                color: AppColors.error,
-                bgColor: AppColors.errorSoft,
-                onTap: () => onAdjust(item, false),
-              ),
-            ],
-          )),
+          // Actions — hidden for untracked items
+          cell(item.trackStock
+              ? Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    _ActionButton(
+                      label: '+ In',
+                      color: AppColors.success,
+                      bgColor: AppColors.successSoft,
+                      onTap: () => onAdjust(item, true),
+                    ),
+                    const SizedBox(width: 6),
+                    _ActionButton(
+                      label: '− Out',
+                      color: AppColors.error,
+                      bgColor: AppColors.errorSoft,
+                      onTap: () => onAdjust(item, false),
+                    ),
+                  ],
+                )
+              : const SizedBox.shrink()),
         ],
       ),
     );

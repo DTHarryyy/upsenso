@@ -99,59 +99,64 @@ class _StackedLayout extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // Stock chips — wraps naturally
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              if (branches.isNotEmpty)
-                ...branches.map((b) => _StockChip(
-                      label: b.name,
-                      qty: item.stockByBranch[b.id] ?? 0,
-                      reorderLevel: item.reorderLevel,
-                    )),
-              _StockChip(
-                label: branches.isNotEmpty ? 'Total' : 'Stock',
-                qty: item.totalStock,
-                reorderLevel: item.reorderLevel,
-                isHighlighted: true,
+          // Stock chips — wraps naturally; hidden for untracked items
+          if (item.trackStock) ...[
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (branches.isNotEmpty)
+                  ...branches.map((b) => _StockChip(
+                        label: b.name,
+                        qty: item.stockByBranch[b.id] ?? 0,
+                        reorderLevel: item.reorderLevel,
+                      )),
+                _StockChip(
+                  label: branches.isNotEmpty ? 'Total' : 'Stock',
+                  qty: item.totalStock,
+                  reorderLevel: item.reorderLevel,
+                  isHighlighted: true,
+                ),
+              ],
+            ),
+            if (item.reorderLevel > 0) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Reorder at ${item.reorderLevel}',
+                style: getOutfitStyle(
+                    fontSize: 12, color: AppColors.textSecondary),
               ),
             ],
-          ),
-
-          if (item.reorderLevel > 0) ...[
+            const SizedBox(height: 12),
+            // Action buttons full-width
+            Row(
+              children: [
+                Expanded(
+                  child: _CardActionBtn(
+                    label: '+ Stock In',
+                    color: AppColors.success,
+                    bgColor: AppColors.successSoft,
+                    onTap: () => onAdjust(item, true),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _CardActionBtn(
+                    label: '− Stock Out',
+                    color: AppColors.error,
+                    bgColor: AppColors.errorSoft,
+                    onTap: () => onAdjust(item, false),
+                  ),
+                ),
+              ],
+            ),
+          ] else ...[
             const SizedBox(height: 8),
             Text(
-              'Reorder at ${item.reorderLevel}',
-              style: getOutfitStyle(
-                  fontSize: 12, color: AppColors.textSecondary),
+              'Stock tracking is disabled for this product.',
+              style: getOutfitStyle(fontSize: 12, color: AppColors.textMuted),
             ),
           ],
-
-          const SizedBox(height: 12),
-
-          // Action buttons full-width
-          Row(
-            children: [
-              Expanded(
-                child: _CardActionBtn(
-                  label: '+ Stock In',
-                  color: AppColors.success,
-                  bgColor: AppColors.successSoft,
-                  onTap: () => onAdjust(item, true),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _CardActionBtn(
-                  label: '− Stock Out',
-                  color: AppColors.error,
-                  bgColor: AppColors.errorSoft,
-                  onTap: () => onAdjust(item, false),
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -216,24 +221,30 @@ class _HorizontalLayout extends StatelessWidget {
           // Stock chips — 35% of card width, wrap naturally
           Expanded(
             flex: 35,
-            child: Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                if (branches.isNotEmpty)
-                  ...branches.map((b) => _StockChip(
-                        label: b.name,
-                        qty: item.stockByBranch[b.id] ?? 0,
+            child: item.trackStock
+                ? Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      if (branches.isNotEmpty)
+                        ...branches.map((b) => _StockChip(
+                              label: b.name,
+                              qty: item.stockByBranch[b.id] ?? 0,
+                              reorderLevel: item.reorderLevel,
+                            )),
+                      _StockChip(
+                        label: branches.isNotEmpty ? 'Total' : 'Stock',
+                        qty: item.totalStock,
                         reorderLevel: item.reorderLevel,
-                      )),
-                _StockChip(
-                  label: branches.isNotEmpty ? 'Total' : 'Stock',
-                  qty: item.totalStock,
-                  reorderLevel: item.reorderLevel,
-                  isHighlighted: true,
-                ),
-              ],
-            ),
+                        isHighlighted: true,
+                      ),
+                    ],
+                  )
+                : Text(
+                    'Not tracked',
+                    style: getOutfitStyle(
+                        fontSize: 12, color: AppColors.textMuted),
+                  ),
           ),
           const SizedBox(width: 12),
 
@@ -244,29 +255,31 @@ class _HorizontalLayout extends StatelessWidget {
           ),
           const SizedBox(width: 8),
 
-          // Action buttons — 20%
+          // Action buttons — 20% (hidden for untracked items)
           Expanded(
             flex: 20,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                _CardActionBtn(
-                  label: '+ In',
-                  color: AppColors.success,
-                  bgColor: AppColors.successSoft,
-                  onTap: () => onAdjust(item, true),
-                  compact: true,
-                ),
-                const SizedBox(width: 6),
-                _CardActionBtn(
-                  label: '− Out',
-                  color: AppColors.error,
-                  bgColor: AppColors.errorSoft,
-                  onTap: () => onAdjust(item, false),
-                  compact: true,
-                ),
-              ],
-            ),
+            child: item.trackStock
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      _CardActionBtn(
+                        label: '+ In',
+                        color: AppColors.success,
+                        bgColor: AppColors.successSoft,
+                        onTap: () => onAdjust(item, true),
+                        compact: true,
+                      ),
+                      const SizedBox(width: 6),
+                      _CardActionBtn(
+                        label: '− Out',
+                        color: AppColors.error,
+                        bgColor: AppColors.errorSoft,
+                        onTap: () => onAdjust(item, false),
+                        compact: true,
+                      ),
+                    ],
+                  )
+                : const SizedBox.shrink(),
           ),
         ],
       ),
