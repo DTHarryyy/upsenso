@@ -48,14 +48,14 @@ class FraudAlertsCard extends StatelessWidget {
           const SizedBox(height: 16),
 
           _AlertRow(
-            title: 'Multiple refunds detected',
-            subtitle: 'User: Sarah M.',
+            title: 'Hawak mo ang beat alert',
+            subtitle: 'User: kinuha ni sara',
             severity: 'high',
           ),
           const SizedBox(height: 10),
           _AlertRow(
-            title: 'Price override threshold exceeded',
-            subtitle: 'User: Mike T.',
+            title: 'Malunggay pandesal',
+            subtitle: 'User: HAHAHA.',
             severity: 'medium',
           ),
 
@@ -83,7 +83,7 @@ class FraudAlertsCard extends StatelessWidget {
 class _AlertRow extends StatelessWidget {
   final String title;
   final String subtitle;
-  final String severity; // 'high' | 'medium' | 'low'
+  final String severity; 
 
   const _AlertRow({
     required this.title,

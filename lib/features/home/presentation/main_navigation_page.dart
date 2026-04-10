@@ -11,6 +11,7 @@ import 'package:pos/core/ui/widgets/app_bottom_nav.dart';
 import 'package:pos/core/ui/widgets/custom_app_bar.dart';
 import 'package:pos/features/dashboard/presentation/dashboard_page.dart';
 import 'package:pos/features/alert/presentation/alert_page.dart';
+import 'package:pos/features/inventory/inventory.dart';
 import 'package:pos/features/pos/presentation/pos_terminal_page.dart';
 import 'package:pos/features/more/presentation/more_page.dart';
 import 'package:pos/features/auth/domain/entities/app_user.dart';
@@ -26,6 +27,7 @@ class MainNavigationPage extends StatefulWidget {
 }
 
 class _MainNavigationPageState extends State<MainNavigationPage> {
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
   int _currentIndex = 0;
   int _previousIndex = 0;
   String? _lastUserContextKey;
@@ -139,6 +141,8 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
 
             final isPosTab = _currentIndex == 2;
             return Scaffold(
+              key: _scaffoldKey,
+              drawer: const Drawer(child: MorePage()),
               appBar: isPosTab
                   ? null
                   : CustomAppBar(
@@ -159,20 +163,20 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                       isOnline: _isOnline,
                       pendingSyncCount: _pendingSyncCount,
                       onNotificationTapped: () => _onNavTap(3),
-                      onMenuTapped: null,
+                      onMenuTapped: () => _scaffoldKey.currentState?.openDrawer(),
                       showThemeToggle: false,
                     ),
               body: IndexedStack(
                 index: _currentIndex,
                 children: [
-                  const DashboardPage(),
+                  DashboardPage(onNewSale: () => _onNavTap(2)),
                   const ProductsPage(),
                   PosTerminalPage(
                     isActive: _currentIndex == 2,
                     onClose: () => _onNavTap(_previousIndex),
                   ),
                   const AlertPage(),
-                  const MorePage(),
+                  const Inventory(),
                 ],
               ),
               bottomNavigationBar: isPosTab

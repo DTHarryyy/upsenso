@@ -36,11 +36,11 @@ class MorePage extends StatelessWidget {
                     child: Row(
                       children: [
                         CircleAvatar(
-                          radius: 32,
+                          radius: 28,
                           backgroundColor: AppColors.brandSoft,
                           child: Icon(
                             Icons.person,
-                            size: 32,
+                            size: 28,
                             color: AppColors.brand,
                           ),
                         ),
@@ -50,7 +50,7 @@ class MorePage extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                user?.email ?? 'Guest User',
+                                user?.fullName ?? 'Guest User',
                                 style: AppTextStyles.title(context).copyWith(
                                   color: AppColors.textPrimary,
                                   overflow: TextOverflow.ellipsis,
@@ -81,10 +81,87 @@ class MorePage extends StatelessWidget {
                         title: 'Sales History',
                         onTap: () => context.push(AppRoutes.saleshistory),
                       ),
+                    ],
+                  ),
+                  _buildMenuSection(
+                    context: context,
+                    title: 'Inventory',
+                    items: [
+                      // _MenuItem(
+                      //   icon: Icons.inventory_2,
+                      //   title: 'Products',
+                      //   onTap: () => context.push(AppRoutes.inventory),
+                      // ),
                       _MenuItem(
-                        icon: Icons.history,
+                        icon: Icons.stacked_bar_chart_outlined,
                         title: 'Stock Level',
                         onTap: () => context.push(AppRoutes.inventory),
+                      ),
+                      _MenuItem( 
+                        icon: Icons.assignment_outlined,
+                        title: 'Stock Leger',
+                        onTap: () {
+                          // TODO: Navigate to Stock eldger
+                        },
+                      ),
+                      _MenuItem(
+                        icon: Icons.refresh,
+                        title: 'Transfer Stock',
+                        onTap: () {
+                          // TODO: Navigate to Transfer stocks
+                        },
+                      ),
+                      _MenuItem(
+                        icon: Icons.local_shipping_outlined,
+                        title: 'Suppliers',
+                        onTap: () {
+                          // TODO: Navigate to Suppliers
+                        },
+                      ),
+                    ],
+                  ),
+                  _buildMenuSection(
+                    context: context,
+                    title: 'Finance',
+                    items: [
+                      _MenuItem(
+                        icon: Icons.request_page_outlined,
+                        title: 'Expenses',
+                        onTap: () => context.push(AppRoutes.expenses),
+                      ),
+                      _MenuItem(
+                        icon: Icons.bar_chart_outlined,
+                        title: 'Reports',
+                        onTap: () {
+                          // TODO: Navigate to reports
+                        },
+                      ),
+                    ],
+                  ),
+                  _buildMenuSection(
+                    context: context,
+                    title: 'AI & Security',
+                    items: [
+                      _MenuItem(
+                        icon: Icons.trending_up_outlined,
+                        title: 'Forecasting',
+                        onTap: () {
+                          // TODO: Navigate to Forecasting
+                        },
+                      ),
+                      _MenuItem(
+                        icon: Icons.warning_amber_rounded,
+                        title: 'Fraud Detection',
+                        onTap: () {
+                          // TODO: Navigate to Fraud Detection
+                        },
+                      ),
+                      _MenuItem(
+                        icon: Icons.shield_outlined,
+                        title: 'Audit Logs',
+                        onTap: () {
+                          // TODO: Navigate to audit logs
+                        },
                       ),
                     ],
                   ),

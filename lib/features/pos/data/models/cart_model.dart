@@ -1,3 +1,5 @@
+enum DiscountType { percentage, fixed }
+
 class CartItem {
   final String variantId;
   final String name;
