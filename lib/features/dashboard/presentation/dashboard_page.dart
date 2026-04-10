@@ -21,7 +21,9 @@ import 'package:pos/features/dashboard/presentation/widgets/stat_card.dart';
 import 'package:pos/features/dashboard/presentation/widgets/top_selling_items.dart';
 
 class DashboardPage extends StatefulWidget {
-  const DashboardPage({super.key});
+  final VoidCallback? onNewSale;
+
+  const DashboardPage({super.key, this.onNewSale});
 
   @override
   State<DashboardPage> createState() => _DashboardPageState();
@@ -109,10 +111,9 @@ class _DashboardPageState extends State<DashboardPage> {
                       _StatCardsRow(data: data, isLoading: isLoading),
 
                       const SizedBox(height: 16),
-                      const QuickActionsBar(),
+                      QuickActionsBar(onNewSale: widget.onNewSale),
                       const SizedBox(height: 16),
 
-                      // ── Sales Trend + Payment Methods ──
                       LayoutBuilder(
                         builder: (context, constraints) {
                           if (constraints.maxWidth > 800) {
@@ -143,7 +144,6 @@ class _DashboardPageState extends State<DashboardPage> {
 
                       const SizedBox(height: 16),
 
-                      // ── Category + Top Selling + AI Insights ──
                       LayoutBuilder(
                         builder: (context, constraints) {
                           if (constraints.maxWidth > 800) {
@@ -220,7 +220,6 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 }
 
-// ── Stat Cards helper ──────────────────────────────────────────────────────
 
 class _StatCardsRow extends StatelessWidget {
   final DashboardData data;

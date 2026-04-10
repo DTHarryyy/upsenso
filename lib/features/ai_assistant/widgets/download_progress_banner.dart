@@ -7,7 +7,7 @@ import 'package:pos/features/ai_assistant/services/model_download_service.dart';
 
 class DownloadProgressBanner extends StatelessWidget {
   final ModelDownloadProgress? progress;
-  const DownloadProgressBanner({super.key,this.progress});
+  const DownloadProgressBanner({super.key, this.progress});
 
   @override
   Widget build(BuildContext context) {
@@ -19,9 +19,9 @@ class DownloadProgressBanner extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.brandSoft,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
         border: Border(
           bottom: BorderSide(color: AppColors.borderSoft, width: 1),
         ),
@@ -31,58 +31,66 @@ class DownloadProgressBanner extends StatelessWidget {
         children: [
           Row(
             children: [
-              const SizedBox(
-                width: 18,
-                height: 18,
+              // Spinning indicator
+              SizedBox(
+                width: 16,
+                height: 16,
                 child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
+                  strokeWidth: 2,
+                  value: fraction > 0 ? fraction : null,
+                  backgroundColor: AppColors.brand.withAlpha(30),
                   color: AppColors.brand,
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Downloading AI model… $pct%',
+                  'Downloading AI Model  $pct%',
                   style: const TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w600,
-                    fontSize: 14,
+                    fontSize: 13.5,
                   ),
                 ),
               ),
-              // Cancel button
               GestureDetector(
-                onTap: () {
-                  context
-                      .read<AiChatBloc>()
-                      .add(const AiModelDownloadCancelled());
-                },
-                child: Text(
-                  'Cancel',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
+                onTap: () => context
+                    .read<AiChatBloc>()
+                    .add(const AiModelDownloadCancelled()),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.errorSoft,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(
+                      color: AppColors.error,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          // Progress bar
+          const SizedBox(height: 10),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(6),
             child: LinearProgressIndicator(
               value: fraction,
-              minHeight: 6,
-              backgroundColor: AppColors.brand.withAlpha(30),
-              color: AppColors.brand,
+              minHeight: 5,
+              backgroundColor: AppColors.brand.withAlpha(25),
+              valueColor:
+                  const AlwaysStoppedAnimation<Color>(AppColors.brand),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             '$downloaded MB / $total MB',
-            style: TextStyle(
+            style: const TextStyle(
               color: AppColors.textMuted,
               fontSize: 11,
             ),

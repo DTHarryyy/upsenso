@@ -346,7 +346,7 @@ class SyncService {
               barcode: record.barcode,
               stockDecimal: record.stockDecimal,
               trackExpiry: record.trackExpiry,
-              expiryDate: record.expiryDate,
+              expiryDate: record.expiryDate?.toIso8601String(),
               isActive: record.isActive,
             );
             await _productVariantsDao.updateSyncStatus(
@@ -366,7 +366,7 @@ class SyncService {
               sku: record.sku,
               barcode: record.barcode,
               trackExpiry: record.trackExpiry,
-              expiryDate: record.expiryDate,
+              expiryDate: record.expiryDate?.toIso8601String(),
               isActive: record.isActive,
             );
             await _productVariantsDao.updateSyncStatus(

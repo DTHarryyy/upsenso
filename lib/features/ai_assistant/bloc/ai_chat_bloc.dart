@@ -31,15 +31,7 @@ class AiChatBloc extends Bloc<AiChatEvent, AiChatState> {
   })  : _pipeline = pipeline,
         _downloadService = downloadService,
         _modelManager = modelManager,
-        super(AiChatState(messages: [
-          AiChatMessage(
-            id: const Uuid().v4(),
-            text: "Hi! I'm your Ledgify AI assistant. Ask me about your "
-                "sales, products, inventory — or tell me to add a transaction!",
-            isUser: false,
-            type: AiMessageType.text,
-          ),
-        ])) {
+        super(AiChatState(messages: [])) {
     on<AiChatInitialized>(_onInitialized);
     on<AiChatMessageSent>(_onMessageSent);
     on<AiChatTransactionConfirmed>(_onTransactionConfirmed);

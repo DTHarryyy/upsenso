@@ -6,6 +6,35 @@ import 'package:pos/features/pos/data/models/cart_model.dart';
 class CartService extends ChangeNotifier {
   final List<CartItem> _items = [];
 
+  // ── Discount ──────────────────────────────────────────────────────────────
+  DiscountType? _discountType;
+  double _discountValue = 0;
+
+  DiscountType? get discountType => _discountType;
+  double get discountValue => _discountValue;
+  bool get hasDiscount => _discountType != null && _discountValue > 0;
+
+  /// Returns the discount amount given a [subtotal].
+  double discountAmount(double subtotal) {
+    if (!hasDiscount) return 0;
+    if (_discountType == DiscountType.percentage) {
+      return (subtotal * _discountValue / 100).clamp(0, subtotal);
+    }
+    return _discountValue.clamp(0, subtotal);
+  }
+
+  void applyDiscount(DiscountType type, double value) {
+    _discountType = type;
+    _discountValue = value;
+    notifyListeners();
+  }
+
+  void clearDiscount() {
+    _discountType = null;
+    _discountValue = 0;
+    notifyListeners();
+  }
+
   List<CartItem> get items => List.unmodifiable(_items);
 
   bool get isEmpty => _items.isEmpty;
@@ -56,9 +85,11 @@ class CartService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Clears all cart items (call after successful checkout).
+  /// Clears all cart items and discount (call after successful checkout).
   void clear() {
     _items.clear();
+    _discountType = null;
+    _discountValue = 0;
     notifyListeners();
   }
 }

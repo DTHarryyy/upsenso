@@ -1,9 +1,12 @@
+import 'dart:convert';
+
 import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/core/database/daos/categories_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
 import 'package:pos/core/database/daos/products_dao.dart';
 import 'package:pos/core/database/daos/transactions_dao.dart';
 import 'package:pos/features/dashboard/data/dashboard_data.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class DashboardRepository {
   final TransactionsDao _txnDao;
@@ -24,10 +27,76 @@ class DashboardRepository {
         _categoriesDao = categoriesDao,
         _branchesDao = branchesDao;
 
-  /// Emits whenever the transactions table changes — used as a reload trigger.
+  // ─── Branch name cache ────────────────────────────────────────────────────
+
+  static String _cacheKey(String businessId) =>
+      'branch_names_cache_$businessId';
+
+  /// Key used by BranchCubit to persist branch options — we read it as a
+  /// fallback so branch names are always available even when the local
+  /// branches table hasn't synced yet.
+  static const String _branchCubitOptionsKey = 'cached_branch_options';
+
+  /// Persist branch id→name map so it survives offline sessions.
+  Future<void> _cacheBranchNames(
+      String businessId, Map<String, String> names) async {
+    if (names.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_cacheKey(businessId), jsonEncode(names));
+  }
+
+  /// Build a merged id→name map from every available offline source:
+  ///   1. BranchCubit's cached options (populated on every login)
+  ///   2. Dashboard's own persisted cache
+  /// Sources are merged in ascending priority so fresher data wins.
+  Future<Map<String, String>> _loadCachedBranchNames(
+      String businessId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final merged = <String, String>{};
+
+    // Layer 1 — BranchCubit cache: [{"name": "...", "id": "..."}]
+    try {
+      final raw = prefs.getString(_branchCubitOptionsKey);
+      if (raw != null) {
+        final list = jsonDecode(raw);
+        if (list is List) {
+          for (final item in list) {
+            if (item is! Map) continue;
+            final id = item['id']?.toString().trim();
+            final name = item['name']?.toString().trim();
+            if (id != null && id.isNotEmpty && name != null && name.isNotEmpty) {
+              merged[id] = name;
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    // Layer 2 — Dashboard's own cache: {"id": "name"}  (wins over layer 1)
+    try {
+      final raw = prefs.getString(_cacheKey(businessId));
+      if (raw != null) {
+        final map = jsonDecode(raw);
+        if (map is Map) {
+          map.forEach((k, v) {
+            final id = k.toString().trim();
+            final name = v.toString().trim();
+            if (id.isNotEmpty && name.isNotEmpty) merged[id] = name;
+          });
+        }
+      }
+    } catch (_) {}
+
+    return merged;
+  }
+
+  // ─── Stream trigger ───────────────────────────────────────────────────────
+
   Stream<void> watchChanges() {
     return _txnDao.watchTransactions().map((_) {});
   }
+
+  // ─── Main load ────────────────────────────────────────────────────────────
 
   Future<DashboardData> load({
     required String businessId,
@@ -45,11 +114,9 @@ class DashboardRepository {
       thirtyDaysAgo,
       branchId: branchId,
     );
+    final allBranchTxns =
+        await _txnDao.getAllTransactionsSince(thirtyDaysAgo);
 
-    // All-branch transactions for branch comparison (last 30 days)
-    final allBranchTxns = await _txnDao.getAllTransactionsSince(thirtyDaysAgo);
-
-    // Slice by period
     final todayTxns =
         monthTxns.where((t) => !t.createdAt.isBefore(today)).toList();
     final yesterdayTxns = monthTxns
@@ -86,7 +153,8 @@ class DashboardRepository {
       final day = today.subtract(Duration(days: i));
       final next = day.add(const Duration(days: 1));
       final total = monthTxns
-          .where((t) => !t.createdAt.isBefore(day) && t.createdAt.isBefore(next))
+          .where(
+              (t) => !t.createdAt.isBefore(day) && t.createdAt.isBefore(next))
           .fold(0.0, (s, t) => s + t.totalAmount);
       sevenDayTotals.add(total);
       sevenDayLabels.add(dayNames[day.weekday - 1]);
@@ -99,37 +167,36 @@ class DashboardRepository {
       final day = today.subtract(Duration(days: i));
       final next = day.add(const Duration(days: 1));
       final total = monthTxns
-          .where((t) => !t.createdAt.isBefore(day) && t.createdAt.isBefore(next))
+          .where(
+              (t) => !t.createdAt.isBefore(day) && t.createdAt.isBefore(next))
           .fold(0.0, (s, t) => s + t.totalAmount);
       thirtyDayTotals.add(total);
-      // Label every 5th day
       thirtyDayLabels.add(i % 5 == 0 ? '${day.month}/${day.day}' : '');
     }
 
-    // ── Transaction items for category + top items ─────────────────────
+    // ── Category + top items ──────────────────────────────────────────────
     final txnIds = monthTxns.map((t) => t.id).toList();
     final items = await _txnDao.getItemsForTransactions(txnIds);
 
-    // Top selling items by quantity
     final itemAgg = <String, _ItemAgg>{};
     for (final item in items) {
-      final agg = itemAgg.putIfAbsent(item.productName, () => _ItemAgg(item.productName));
+      final agg = itemAgg.putIfAbsent(
+          item.productName, () => _ItemAgg(item.productName));
       agg.qty += item.qty;
       agg.revenue += item.lineTotal;
     }
-    final topItems = (itemAgg.values.toList()..sort((a, b) => b.qty.compareTo(a.qty)))
-        .take(5)
-        .map((a) => TopItem(name: a.name, sold: a.qty.toInt(), revenue: a.revenue))
-        .toList();
+    final topItems =
+        (itemAgg.values.toList()..sort((a, b) => b.qty.compareTo(a.qty)))
+            .take(5)
+            .map((a) =>
+                TopItem(name: a.name, sold: a.qty.toInt(), revenue: a.revenue))
+            .toList();
 
     // ── Category performance ──────────────────────────────────────────────
-    final variants =
-        await _variantsDao.getByBusinessId(businessId);
+    final variants = await _variantsDao.getByBusinessId(businessId);
     final variantToProduct = {for (final v in variants) v.id: v.productId};
-
     final products = await _productsDao.getByBusinessId(businessId);
     final productToCategory = {for (final p in products) p.id: p.categoryId};
-
     final categories = await _categoriesDao.getByBusinessId(businessId);
     final categoryName = {for (final c in categories) c.id: c.name};
 
@@ -138,8 +205,9 @@ class DashboardRepository {
       final productId = variantToProduct[item.variantId];
       if (productId == null) continue;
       final catId = productToCategory[productId];
-      final name =
-          catId != null ? (categoryName[catId] ?? 'Uncategorized') : 'Uncategorized';
+      final name = catId != null
+          ? (categoryName[catId] ?? 'Uncategorized')
+          : 'Uncategorized';
       catAgg[name] = (catAgg[name] ?? 0.0) + item.lineTotal;
     }
     final categoryStats = (catAgg.entries
@@ -154,40 +222,71 @@ class DashboardRepository {
       payMap[method] = (payMap[method] ?? 0.0) + txn.totalAmount;
     }
 
-    // ── Low stock items ───────────────────────────────────────────────────
+    // ── Low stock ─────────────────────────────────────────────────────────
     final lowStockVariants =
         await _variantsDao.getLowStockByBusinessId(businessId);
     final productIdToName = {for (final p in products) p.id: p.name};
-
     final lowStockItems = (lowStockVariants.map((v) {
       final pName = productIdToName[v.productId] ?? 'Unknown';
       final display = v.name == 'Default' ? pName : '$pName (${v.name})';
       return LowStockItem(
         displayName: display,
         currentStock: v.stock,
-        reorderAt: v.lowStockAlert, // null = no threshold, stock just hit 0
+        reorderAt: v.lowStockAlert,
       );
     }).toList()
       ..sort((a, b) => a.currentStock.compareTo(b.currentStock)));
 
     // ── Branch comparison ─────────────────────────────────────────────────
-    final branches = await _branchesDao.getAll();
-    final branchIdToName = {for (final b in branches) b.id: b.name};
+    //
+    // Strategy (offline-safe):
+    //  1. Load branches filtered by businessId from local SQLite — works offline.
+    //  2. Merge with a SharedPreferences cache so previously-seen branch names
+    //     survive even if the branches table gets cleared or hasn't synced yet.
+    //  3. Any still-unknown branch ID gets a short readable fallback derived
+    //     from the ID itself (e.g. "Branch …a1b2") instead of "Unknown Branch".
+
+    final dbBranches =
+        await _branchesDao.getByBusinessId(businessId);
+    final dbIdToName = {for (final b in dbBranches) b.id: b.name};
+
+    // Persist fresh names to cache
+    if (dbIdToName.isNotEmpty) {
+      _cacheBranchNames(businessId, dbIdToName);
+    }
+
+    // Load previously-cached names as a fallback layer
+    final cachedIdToName = await _loadCachedBranchNames(businessId);
+
+    // Merge: DB wins over cache (DB is always fresher)
+    final branchIdToName = {...cachedIdToName, ...dbIdToName};
+
+    String resolveBranchName(String? bId) {
+      if (bId == null) return 'No Branch';
+      final name = branchIdToName[bId];
+      if (name != null && name.trim().isNotEmpty) return name.trim();
+      // Derive a short readable ID so the user sees something meaningful
+      final short = bId.length > 6 ? '…${bId.substring(bId.length - 6)}' : bId;
+      return 'Branch $short';
+    }
 
     final branchAgg = <String, _BranchAgg>{};
     for (final txn in allBranchTxns) {
       final bId = txn.branchId ?? '__none__';
-      final bName = txn.branchId != null
-          ? (branchIdToName[txn.branchId!] ?? 'Unknown Branch')
-          : 'No Branch';
+      final bName = resolveBranchName(txn.branchId);
       final agg = branchAgg.putIfAbsent(bId, () => _BranchAgg(bName));
+      // Keep the most resolved name in case first pass had partial data
+      if (!bName.startsWith('Branch ') || agg.name.startsWith('Branch ')) {
+        agg.name = bName;
+      }
       agg.txnCount++;
       agg.revenue += txn.totalAmount;
     }
 
     final branchList = branchAgg.values.toList()
       ..sort((a, b) => b.revenue.compareTo(a.revenue));
-    final topRevenue = branchList.isNotEmpty ? branchList.first.revenue : 0.0;
+    final topRevenue =
+        branchList.isNotEmpty ? branchList.first.revenue : 0.0;
 
     final branchStats = branchList
         .map((a) => BranchStat(
@@ -233,7 +332,9 @@ class DashboardRepository {
       case 'ewallet':
         return 'E-Wallet';
       default:
-        return method.isNotEmpty ? method[0].toUpperCase() + method.substring(1) : 'Other';
+        return method.isNotEmpty
+            ? method[0].toUpperCase() + method.substring(1)
+            : 'Other';
     }
   }
 }
@@ -246,7 +347,7 @@ class _ItemAgg {
 }
 
 class _BranchAgg {
-  final String name;
+  String name;
   int txnCount = 0;
   double revenue = 0;
   _BranchAgg(this.name);

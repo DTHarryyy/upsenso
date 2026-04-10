@@ -16,6 +16,8 @@ import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:pos/features/pos/data/models/cart_model.dart';
+import 'package:pos/features/pos/presentation/widgets/discount_sheet.dart';
 import 'package:pos/features/products/checkout/product_checkout_page.dart';
 
 class PosTerminalPage extends StatefulWidget {
@@ -97,7 +99,8 @@ class _PosTerminalPageState extends State<PosTerminalPage>
 
   double get _subtotal => _cartService.items.fold(0.0, (s, i) => s + i.total);
   double get _tax => _cartService.items.fold(0.0, (s, i) => s + i.taxAmount);
-  double get _grandTotal => _subtotal + _tax;
+  double get _discountAmount => _cartService.discountAmount(_subtotal);
+  double get _grandTotal => (_subtotal - _discountAmount + _tax).clamp(0.0, double.infinity);
 
   String _fmt(double v) => '₱${v.toStringAsFixed(2).replaceAllMapped(
         RegExp(r'(\d)(?=(\d{3})+\.)'),
@@ -159,12 +162,17 @@ class _PosTerminalPageState extends State<PosTerminalPage>
           subtotal: _subtotal,
           tax: _tax,
           total: _grandTotal,
+          discountAmount: _discountAmount,
           onPaymentConfirmed: () {
             if (mounted) _cartService.clear();
           },
         ),
       ),
     );
+  }
+
+  void _showDiscountSheet() {
+    showDiscountSheet(context, _cartService, _subtotal);
   }
 
   void _increment(int i) {
@@ -652,6 +660,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
   }
 
   Widget _buildCartFooter() {
+    final hasDiscount = _cartService.hasDiscount;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -664,6 +673,10 @@ class _PosTerminalPageState extends State<PosTerminalPage>
           child: Column(
             children: [
               _summaryRow('Subtotal', _fmt(_subtotal)),
+              if (hasDiscount) ...[
+                const SizedBox(height: 4),
+                _discountSummaryRow(),
+              ],
               if (_tax > 0) ...[
                 const SizedBox(height: 4),
                 _summaryRow('Tax', _fmt(_tax)),
@@ -675,6 +688,56 @@ class _PosTerminalPageState extends State<PosTerminalPage>
             ],
           ),
         ),
+        // Discount button
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+          child: GestureDetector(
+            onTap: _cartService.isEmpty ? null : _showDiscountSheet,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(
+                color: hasDiscount
+                    ? AppColors.successSoft
+                    : AppColors.surfaceAlt,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: hasDiscount
+                      ? AppColors.success
+                      : AppColors.borderSoft,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    hasDiscount
+                        ? Icons.local_offer_rounded
+                        : Icons.local_offer_outlined,
+                    size: 15,
+                    color: hasDiscount
+                        ? AppColors.success
+                        : AppColors.textSecondary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    hasDiscount
+                        ? 'Discount applied · tap to change'
+                        : 'Add Discount',
+                    style: getOutfitStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: hasDiscount
+                          ? AppColors.success
+                          : AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
           child: AppFilledButton(
@@ -683,6 +746,43 @@ class _PosTerminalPageState extends State<PosTerminalPage>
                 : 'Checkout · ${_fmt(_grandTotal)}',
             onPressed: _cartService.isEmpty ? null : _checkout,
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _discountSummaryRow() {
+    final cs = _cartService;
+    final label = cs.discountType == DiscountType.percentage
+        ? 'Discount (${cs.discountValue.toStringAsFixed(cs.discountValue % 1 == 0 ? 0 : 1)}%)'
+        : 'Discount (Fixed)';
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            Text(
+              label,
+              style: getOutfitStyle(
+                  color: AppColors.success, fontSize: 13),
+            ),
+            const SizedBox(width: 6),
+            GestureDetector(
+              onTap: _cartService.clearDiscount,
+              child: const Icon(
+                Icons.close_rounded,
+                size: 14,
+                color: AppColors.success,
+              ),
+            ),
+          ],
+        ),
+        Text(
+          '− ${_fmt(_discountAmount)}',
+          style: getOutfitStyle(
+              color: AppColors.success,
+              fontWeight: FontWeight.w600,
+              fontSize: 13),
         ),
       ],
     );
@@ -1112,5 +1212,4 @@ class _ScanFrame extends StatelessWidget {
 }
 
 // ── Cart Item model ───────────────────────────────────────────────────────────
-
 

@@ -35,6 +35,7 @@ class AppDropdown<T> extends FormField<T> {
   final String? hint;
   final List<AppDropdownItem<T>> items;
   final ValueChanged<T?>? onChanged;
+  final bool dense;
 
   /// Label for the inline "add new item" action shown at the top of the list.
   final String? addItemLabel;
@@ -48,6 +49,7 @@ class AppDropdown<T> extends FormField<T> {
     this.hint,
     required this.items,
     this.onChanged,
+    this.dense = false,
     this.addItemLabel,
     this.onAddItem,
     super.validator,
@@ -162,8 +164,8 @@ class _AppDropdownState<T> extends FormFieldState<T> {
             onTap: _toggle,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              padding: EdgeInsets.symmetric(
+                    horizontal: 12, vertical: _w.dense ? 8 : 14),
               decoration: BoxDecoration(
                 color: AppColors.inputFill,
                 borderRadius: BorderRadius.circular(10),
@@ -179,6 +181,10 @@ class _AppDropdownState<T> extends FormFieldState<T> {
                     child: Text(
                       _selected?.label ?? _w.hint ?? '',
                       style: getOutfitStyle(
+                        fontSize: _w.dense ? 13 : 14,
+                        fontWeight: _w.dense
+                            ? FontWeight.w500
+                            : FontWeight.normal,
                         color: _selected != null
                             ? AppColors.textPrimary
                             : AppColors.textMuted,

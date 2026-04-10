@@ -52,9 +52,9 @@ class AppBottomNav extends StatelessWidget {
                 index: 3,
               ),
               _buildNavItem(
-                icon: Icons.menu_rounded,
-                activeIcon: Icons.menu_rounded,
-                label: 'More',
+                icon: Icons.inventory_rounded,
+                activeIcon: Icons.inventory_rounded,
+                label: 'Inventory',
                 index: 4,
               ),
             ],

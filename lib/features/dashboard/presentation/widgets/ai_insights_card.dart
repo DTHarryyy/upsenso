@@ -31,17 +31,17 @@ class AiInsightsCard extends StatelessWidget {
           const SizedBox(height: 16),
           _InsightTile(
             text:
-                'Coffee sales peak between 8-10 AM. Consider additional staffing.',
+                'Hawak mo ang beat Hawak mo ang beat.',
           ),
           const SizedBox(height: 10),
           _InsightTile(
             text:
-                'Croissant inventory depletes faster on weekends. Increase order by 20%.',
+                'sa bawat galaw akoy nabibighani.',
           ),
           const SizedBox(height: 10),
           _InsightTile(
             text:
-                'Card payments have increased 15% this month. Ensure POS terminals are ready.',
+                'hawak mo ang beat hawak mo ang beat.',
           ),
           const SizedBox(height: 18),
           SizedBox(
