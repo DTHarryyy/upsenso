@@ -16,6 +16,14 @@ class ProductFormState {
   final String? error;
   final String? imagePath;
 
+  /// Set after a successful new-product save when "All Branches" was active
+  /// and the user entered opening stock > 0. The UI shows a branch-selection
+  /// dialog so the user can nominate which branch receives the stock.
+  final ({
+    List<({String variantId, int qty, double? qtyDecimal})> variants,
+    bool isFraction,
+  })? pendingBranchAssignment;
+
   const ProductFormState({
     required this.mode,
     required this.hasVariants,
@@ -29,6 +37,7 @@ class ProductFormState {
     required this.isSuccess,
     this.error,
     this.imagePath,
+    this.pendingBranchAssignment,
   });
 
   factory ProductFormState.initial() => const ProductFormState(
@@ -44,6 +53,7 @@ class ProductFormState {
         isSuccess: false,
         error: null,
         imagePath: null,
+        pendingBranchAssignment: null,
       );
 
   ProductFormState copyWith({
@@ -63,6 +73,11 @@ class ProductFormState {
     bool clearError = false,
     String? imagePath,
     bool clearImagePath = false,
+    ({
+      List<({String variantId, int qty, double? qtyDecimal})> variants,
+      bool isFraction,
+    })? pendingBranchAssignment,
+    bool clearPendingBranchAssignment = false,
   }) {
     return ProductFormState(
       mode: mode ?? this.mode,
@@ -79,6 +94,9 @@ class ProductFormState {
       isSuccess: isSuccess ?? this.isSuccess,
       error: clearError ? null : (error ?? this.error),
       imagePath: clearImagePath ? null : (imagePath ?? this.imagePath),
+      pendingBranchAssignment: clearPendingBranchAssignment
+          ? null
+          : (pendingBranchAssignment ?? this.pendingBranchAssignment),
     );
   }
 }

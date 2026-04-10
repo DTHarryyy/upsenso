@@ -14,12 +14,18 @@ class ProductCard extends StatelessWidget {
       onAddToCart;
   final VoidCallback? onEdit;
 
+  /// variantId → branch-filtered stock quantity.
+  /// Built by ProductsPage from inventory_levels for the selected branch.
+  /// Empty map = no inventory data loaded yet (no badge shown).
+  final Map<String, int> variantStock;
+
   const ProductCard({
     super.key,
     required this.product,
     required this.variants,
     this.onAddToCart,
     this.onEdit,
+    this.variantStock = const {},
   });
 
   double? _minPrice() {
@@ -77,6 +83,7 @@ class ProductCard extends StatelessWidget {
                     context,
                     product: product,
                     variants: variants,
+                    variantStock: variantStock,
                     onConfirm: onAddToCart,
                     onEdit: onEdit,
                   ),
@@ -129,32 +136,72 @@ class ProductCard extends StatelessWidget {
                           ),
                         ),
 
-                      if (product.hasVariants)
-                        Positioned(
-                          top: 5,
-                          right: 5,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 5,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.brandSoft,
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(
-                                color: AppColors.brand.withAlpha(60),
+                      Positioned(
+                        top: 5,
+                        right: 5,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            if (product.hasVariants)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 5,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.brandSoft,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                    color: AppColors.brand.withAlpha(60),
+                                  ),
+                                ),
+                                child: Text(
+                                  '${variants.length} vars',
+                                  style: getOutfitStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.brand,
+                                  ),
+                                ),
                               ),
-                            ),
-                            child: Text(
-                              '${variants.length} vars',
-                              style: getOutfitStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.brand,
-                              ),
-                            ),
-                          ),
+                            Builder(builder: (_) {
+                              final tracked = variants
+                                  .where((v) => v.trackStock && v.isActive)
+                                  .toList();
+                              if (tracked.isEmpty || variantStock.isEmpty) {
+                                return const SizedBox.shrink();
+                              }
+                              final total = tracked.fold(
+                                0,
+                                (s, v) => s + (variantStock[v.id] ?? 0),
+                              );
+                              final inStock = total > 0;
+                              const green = Color(0xFF2E7D32);
+                              const red = Color(0xFFC62828);
+                              return Padding(
+                                padding: EdgeInsets.only(
+                                    top: product.hasVariants ? 4 : 0),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 5, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: (inStock ? green : red).withAlpha(180),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    inStock ? '$total' : '0',
+                                    style: getOutfitStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }),
+                          ],
                         ),
+                      ),
                     ],
                   ),
                 ),
@@ -173,7 +220,7 @@ class ProductCard extends StatelessWidget {
 
                 const SizedBox(height: 2),
 
-               Text(
+                Text(
                   _priceLabel(),
                   style: AppTextStyles.body(context).copyWith(
                     color: AppColors.brand,
@@ -181,7 +228,6 @@ class ProductCard extends StatelessWidget {
                   ),
                 ),
 
-                
               ],
             ),
           ),

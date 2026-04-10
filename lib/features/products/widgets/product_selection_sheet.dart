@@ -8,6 +8,7 @@ void showProductSelectionSheet(
   BuildContext context, {
   required ProductsTableData product,
   required List<ProductVariantsTableData> variants,
+  Map<String, int> variantStock = const {},
   void Function(ProductVariantsTableData variant, double quantity)? onConfirm,
   VoidCallback? onEdit,
 }) {
@@ -19,6 +20,7 @@ void showProductSelectionSheet(
     builder: (_) => _ProductSelectionSheet(
       product: product,
       variants: variants,
+      variantStock: variantStock,
       onConfirm: onConfirm,
       onEdit: onEdit,
     ),
@@ -30,12 +32,14 @@ void showProductSelectionSheet(
 class _ProductSelectionSheet extends StatefulWidget {
   final ProductsTableData product;
   final List<ProductVariantsTableData> variants;
+  final Map<String, int> variantStock;
   final void Function(ProductVariantsTableData, double)? onConfirm;
   final VoidCallback? onEdit;
 
   const _ProductSelectionSheet({
     required this.product,
     required this.variants,
+    this.variantStock = const {},
     this.onConfirm,
     this.onEdit,
   });
@@ -281,20 +285,25 @@ class _ProductSelectionSheetState extends State<_ProductSelectionSheet> {
         ),
         const SizedBox(height: 10),
         ..._active.map(
-          (v) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: _VariantCard(
-              variant: v,
-              isSelected: _selected?.id == v.id,
-              isFraction: _isFraction,
-              onTap: v.stock <= 0 && !_isFraction
-                  ? null
-                  : () => setState(() {
-                        _selected = v;
-                        _qty = _isFraction ? 0.5 : 1;
-                      }),
-            ),
-          ),
+          (v) {
+            final branchQty = widget.variantStock[v.id] ?? 0;
+            final outOfStock = v.trackStock && !_isFraction && branchQty <= 0;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _VariantCard(
+                variant: v,
+                branchStock: branchQty,
+                isSelected: _selected?.id == v.id,
+                isFraction: _isFraction,
+                onTap: outOfStock
+                    ? null
+                    : () => setState(() {
+                          _selected = v;
+                          _qty = _isFraction ? 0.5 : 1;
+                        }),
+              ),
+            );
+          },
         ),
       ],
     );
@@ -306,8 +315,10 @@ class _ProductSelectionSheetState extends State<_ProductSelectionSheet> {
     final s = _selected;
     final isFraction = _isFraction;
 
-    // Stock info
-    final ({String label, Color color}) stockInfo = _resolveStockInfo(s, isFraction);
+    // Stock info — use branch-filtered stock when available
+    final branchQty = s != null ? (widget.variantStock[s.id] ?? 0) : 0;
+    final ({String label, Color color}) stockInfo =
+        _resolveStockInfo(s, isFraction, branchQty);
 
     final canDec = _qty > (isFraction ? 0.5 : 1);
     final canInc = _qty < 999;
@@ -394,43 +405,35 @@ class _ProductSelectionSheetState extends State<_ProductSelectionSheet> {
   ({String label, Color color}) _resolveStockInfo(
     ProductVariantsTableData? variant,
     bool isFraction,
+    int branchQty,
   ) {
     if (variant == null) return (label: '—', color: AppColors.textMuted);
 
-    // Simple products: never block with "Out of stock" — cashier can still add
+    // Not tracked — show no stock info
+    if (!variant.trackStock) return (label: '—', color: AppColors.textMuted);
+
+    // Simple products: never hard-block with "Out of stock"
     if (!widget.product.hasVariants) {
       if (isFraction) {
         final s = variant.stockDecimal ?? 0.0;
         if (s <= 0) return (label: '—', color: AppColors.textMuted);
-        if (s <= 2.0) {
-          return (label: '${s.toStringAsFixed(1)} available', color: AppColors.lowStock);
-        }
+        if (s <= 2.0) return (label: '${s.toStringAsFixed(1)} available', color: AppColors.lowStock);
         return (label: '${s.toStringAsFixed(1)} available', color: AppColors.inStock);
       }
-      final s = variant.stock;
-      if (s <= 0) return (label: '—', color: AppColors.textMuted);
-      if (s <= 5) return (label: '$s left', color: AppColors.lowStock);
-      return (label: '$s in stock', color: AppColors.inStock);
+      if (branchQty <= 0) return (label: '—', color: AppColors.textMuted);
+      if (branchQty <= 5) return (label: '$branchQty left', color: AppColors.lowStock);
+      return (label: '$branchQty in stock', color: AppColors.inStock);
     }
 
     if (isFraction) {
       final s = variant.stockDecimal ?? 0.0;
       if (s <= 0) return (label: 'Out of stock', color: AppColors.outOfStock);
-      if (s <= 2.0) {
-        return (
-          label: '${s.toStringAsFixed(1)} available',
-          color: AppColors.lowStock,
-        );
-      }
-      return (
-        label: '${s.toStringAsFixed(1)} available',
-        color: AppColors.inStock,
-      );
+      if (s <= 2.0) return (label: '${s.toStringAsFixed(1)} available', color: AppColors.lowStock);
+      return (label: '${s.toStringAsFixed(1)} available', color: AppColors.inStock);
     }
-    final s = variant.stock;
-    if (s == 0) return (label: 'Out of stock', color: AppColors.outOfStock);
-    if (s <= 5) return (label: '$s left', color: AppColors.lowStock);
-    return (label: '$s in stock', color: AppColors.inStock);
+    if (branchQty == 0) return (label: 'Out of stock', color: AppColors.outOfStock);
+    if (branchQty <= 5) return (label: '$branchQty left', color: AppColors.lowStock);
+    return (label: '$branchQty in stock', color: AppColors.inStock);
   }
 }
 
@@ -440,12 +443,14 @@ class _ProductSelectionSheetState extends State<_ProductSelectionSheet> {
 
 class _VariantCard extends StatelessWidget {
   final ProductVariantsTableData variant;
+  final int branchStock;
   final bool isSelected;
   final bool isFraction;
   final VoidCallback? onTap;
 
   const _VariantCard({
     required this.variant,
+    required this.branchStock,
     required this.isSelected,
     required this.isFraction,
     this.onTap,
@@ -453,7 +458,7 @@ class _VariantCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isOutOfStock = !isFraction && variant.stock <= 0;
+    final isOutOfStock = variant.trackStock && !isFraction && branchStock <= 0;
     final badge = _stockBadge();
 
     return Opacity(
@@ -556,18 +561,16 @@ class _VariantCard extends StatelessWidget {
   }
 
   ({String label, Color color}) _stockBadge() {
+    if (!variant.trackStock) return (label: '—', color: AppColors.textMuted);
     if (isFraction) {
       final s = variant.stockDecimal ?? 0.0;
       if (s <= 0) return (label: 'Out', color: AppColors.outOfStock);
-      if (s <= 2) {
-        return (label: '${s.toStringAsFixed(1)} left', color: AppColors.lowStock);
-      }
+      if (s <= 2) return (label: '${s.toStringAsFixed(1)} left', color: AppColors.lowStock);
       return (label: s.toStringAsFixed(1), color: AppColors.inStock);
     }
-    final s = variant.stock;
-    if (s == 0) return (label: 'Out of stock', color: AppColors.outOfStock);
-    if (s <= 5) return (label: '$s left', color: AppColors.lowStock);
-    return (label: '$s', color: AppColors.inStock);
+    if (branchStock == 0) return (label: 'Out of stock', color: AppColors.outOfStock);
+    if (branchStock <= 5) return (label: '$branchStock left', color: AppColors.lowStock);
+    return (label: '$branchStock', color: AppColors.inStock);
   }
 }
 

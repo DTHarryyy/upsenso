@@ -15,12 +15,16 @@ class ProductGrid extends StatelessWidget {
   )? onAddToCart;
   final void Function(ProductsTableData product)? onEditProduct;
 
+  /// variantId → branch-filtered stock (built from inventory_levels).
+  final Map<String, int> variantStock;
+
   const ProductGrid({
     super.key,
     required this.items,
     this.onAddProduct,
     this.onAddToCart,
     this.onEditProduct,
+    this.variantStock = const {},
   });
 
   @override
@@ -41,6 +45,7 @@ class ProductGrid extends StatelessWidget {
         return ProductCard(
           product: product,
           variants: variants,
+          variantStock: variantStock,
           onAddToCart: onAddToCart != null
               ? (variant, qty) => onAddToCart!(product, variant, qty)
               : null,
