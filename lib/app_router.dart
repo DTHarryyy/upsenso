@@ -36,10 +36,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:pos/features/onboarding/onboarding.dart';
 
-/// A [ChangeNotifier] that fires whenever the [AuthBloc] emits a new state.
-/// Passing this to [GoRouter.refreshListenable] makes the router re-evaluate
-/// its redirect every time auth state changes — so sign-out navigates
-/// immediately without waiting for any manual push.
+
 class _AuthRefreshNotifier extends ChangeNotifier {
   late final StreamSubscription<AuthState> _sub;
 
@@ -90,18 +87,14 @@ class AppRouter {
         return null;
       }
 
-      // ── Check current AuthBloc state first (fast path, no I/O) ──────────
       final authBloc = sl<AuthBloc>();
       final authState = authBloc.state;
 
-      // If bloc already knows the user is unauthenticated, redirect immediately.
       if (authState is AuthUnauthenticated) {
         if (goingToOnboarding || !isAuthRoute) return AppRoutes.signIn;
         return null;
       }
 
-      // If bloc is still loading/unknown, fall through to repository check.
-      // ── Repository check (reads local cache — works offline) ─────────────
       final authRepository = sl<AuthRepository>();
       final currentUser = authRepository.getCurrentUser();
 

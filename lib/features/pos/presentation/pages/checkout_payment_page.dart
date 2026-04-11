@@ -26,6 +26,7 @@ class CheckoutPaymentPage extends StatefulWidget {
   final double subtotal;
   final double tax;
   final double total;
+  final double discountAmount;
   final VoidCallback onPaymentConfirmed;
 
   const CheckoutPaymentPage({
@@ -34,6 +35,7 @@ class CheckoutPaymentPage extends StatefulWidget {
     required this.subtotal,
     required this.tax,
     required this.total,
+    this.discountAmount = 0,
     required this.onPaymentConfirmed,
   });
 
@@ -103,11 +105,12 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
         totalAmount: widget.total,
         taxAmount: widget.tax,
         subtotal: widget.subtotal,
+        discountAmount: Value(widget.discountAmount),
         customerName: Value(customerName.isEmpty ? null : customerName),
         paymentMethod: Value(_paymentMethod),
         amountReceived: Value(_isCash ? _amountReceived : null),
         changeDue: Value(_isCash ? _change : null),
-        itemCount: widget.items.length,
+        itemCount: widget.items.fold(0, (s, i) => s + i.qty.round()),
       );
 
       final txItems = widget.items

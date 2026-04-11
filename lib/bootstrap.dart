@@ -19,12 +19,11 @@ Future<Widget> bootstrap() async {
         .timeout(
           const Duration(seconds: 3),
           onTimeout: () {
-            debugPrint('.env load timeout - using system environment');
             return;
           },
         );
   } catch (e) {
-    debugPrint('.env load failed: $e - continuing with system environment');
+    debugPrint('Failed to load .env file: $e - environment variables may be missing');
   }
 
   try {
@@ -52,10 +51,8 @@ Future<Widget> bootstrap() async {
     rethrow;
   }
 
-  // Initialize NobodyWho LLM runtime (must be called exactly once)
   try {
     await nobodywho.NobodyWho.init();
-    debugPrint('NobodyWho LLM runtime initialized');
   } catch (e) {
     debugPrint('NobodyWho init failed: $e — rule-based parser will be used');
   }

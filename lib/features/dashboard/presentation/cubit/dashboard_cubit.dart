@@ -30,8 +30,8 @@ class DashboardCubit extends Cubit<DashboardState> {
     // Initial full load (shows spinner)
     await _doLoad(showSpinner: true);
 
-    // Watch for any transaction change → silent refresh
-    _watcher = _repository.watchChanges().listen((_) {
+    // Watch for any transaction or variant change → silent refresh
+    _watcher = _repository.watchChanges(businessId: businessId).listen((_) {
       _doLoad(showSpinner: false);
     });
   }

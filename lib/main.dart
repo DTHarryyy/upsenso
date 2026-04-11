@@ -9,7 +9,6 @@ import 'package:pos/core/const/app_colors.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ── Global error handlers (production safety) ────────────────────────────
   FlutterError.onError = (FlutterErrorDetails details) {
     // In debug, keep default red-screen behaviour. In release, log silently.
     if (kDebugMode) {
@@ -133,7 +132,7 @@ class _ErrorScreen extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.                                                                                                                                                                                                                                                                                                                                                         white,
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),

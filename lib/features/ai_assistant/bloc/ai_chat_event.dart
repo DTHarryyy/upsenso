@@ -64,3 +64,8 @@ class AiModelDownloadProgressUpdated extends AiChatEvent {
 class AiModelDownloadCancelled extends AiChatEvent {
   const AiModelDownloadCancelled();
 }
+
+/// User confirms clearing all chat messages.
+class AiChatMessagesCleared extends AiChatEvent {
+  const AiChatMessagesCleared();
+}

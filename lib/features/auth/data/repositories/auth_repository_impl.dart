@@ -11,34 +11,21 @@ class AuthRepositoryImpl implements AuthRepository {
   final AuthContextDao authContextDao;
   final String oauthRedirectUrl;
 
-  /// In-memory cache of current user context for fast offline access
   AppUser? _cachedUserInMemory;
 
   AuthRepositoryImpl(this.remote, this.authContextDao, this.oauthRedirectUrl);
 
-  /// Initialize in-memory cache from Drift on app startup
-  /// This ensures offline cold restart has access to cached business context
   Future<void> initializeCachedUser() async {
     final liveUser = remote.currentUser();
     if (liveUser != null) {
-      // Have live session - load cached context from Drift for this user
       final cached = await _getCachedUserContextFor(liveUser.id);
       if (cached != null) {
-        // Use cached context which includes businessId and other fields
         _cachedUserInMemory = cached;
-        debugPrint(
-          '💾 Loaded cached user context: businessId=${cached.businessId}, roleName=${cached.roleName}',
-        );
       } else {
-        // No cached context yet - use basic user from Supabase
         _cachedUserInMemory = AppUserModel.fromSupabaseUser(liveUser);
-        debugPrint('📝 No cached context - using basic Supabase user');
       }
     } else {
-      // No live session - try to load last cached user from Drift
-      // This helps with offline cold starts
-      // Note: For now we'll let it load on-demand in getCurrentUser()
-      debugPrint('🔌 No live session at startup');
+      debugPrint('No live session at startup');
     }
   }
 
@@ -46,10 +33,6 @@ class AuthRepositoryImpl implements AuthRepository {
   AppUser? getCurrentUser() {
     final liveUser = remote.currentUser();
     if (liveUser == null) {
-      // Fall back to in-memory cache when Supabase session is unavailable
-      debugPrint(
-        '🔌 No live session - using cached user (businessId: ${_cachedUserInMemory?.businessId})',
-      );
       return _cachedUserInMemory;
     }
 
@@ -60,9 +43,6 @@ class AuthRepositoryImpl implements AuthRepository {
     if (_cachedUserInMemory != null &&
         _cachedUserInMemory!.id == baseUser.id &&
         _cachedUserInMemory!.businessId != null) {
-      debugPrint(
-        '✅ Merging live user with cached context (businessId: ${_cachedUserInMemory!.businessId})',
-      );
       return AppUserModel(
         id: baseUser.id,
         email: baseUser.email ?? _cachedUserInMemory!.email,
@@ -78,7 +58,6 @@ class AuthRepositoryImpl implements AuthRepository {
       );
     }
 
-    debugPrint('📝 Returning base user (no cached business context)');
     return baseUser;
   }
 
@@ -203,7 +182,11 @@ class AuthRepositoryImpl implements AuthRepository {
     if (currentUser != null) {
       await authContextDao.clearContext(currentUser.id);
     }
-    await remote.signOut();
+    // Best-effort remote sign-out: local session is already cleared above,
+    // so an offline failure should not prevent the user from being signed out.
+    try {
+      await remote.signOut();
+    } catch (_) {}
   }
 
   @override
@@ -245,9 +228,6 @@ class AuthRepositoryImpl implements AuthRepository {
           .timeout(
             const Duration(seconds: 2),
             onTimeout: () {
-              debugPrint(
-                '⚠️ getUserBusinessContext timeout - using cached data',
-              );
               return null;
             },
           );

@@ -40,6 +40,7 @@ class AiChatBloc extends Bloc<AiChatEvent, AiChatState> {
     on<AiModelDownloadRequested>(_onDownloadRequested);
     on<AiModelDownloadProgressUpdated>(_onDownloadProgress);
     on<AiModelDownloadCancelled>(_onDownloadCancelled);
+    on<AiChatMessagesCleared>(_onMessagesCleared);
   }
 
   Future<void> _onInitialized(
@@ -48,13 +49,17 @@ class AiChatBloc extends Bloc<AiChatEvent, AiChatState> {
   ) async {
     // Check if model already exists
     final modelAvailable = await _modelManager.isModelAvailable();
-    if (modelAvailable) {
-      emit(state.copyWith(modelStatus: AiModelStatus.ready));
-      await _pipeline.initialize();
-    } else {
+    try {
+      if (modelAvailable) {
+        emit(state.copyWith(modelStatus: AiModelStatus.ready));
+        await _pipeline.initialize();
+      } else {
+        emit(state.copyWith(modelStatus: AiModelStatus.notDownloaded));
+        // Pipeline still works via rule-based fallback
+        await _pipeline.initialize();
+      }
+    } catch (e) {
       emit(state.copyWith(modelStatus: AiModelStatus.notDownloaded));
-      // Pipeline still works via rule-based fallback
-      await _pipeline.initialize();
     }
   }
 
@@ -83,8 +88,8 @@ class AiChatBloc extends Bloc<AiChatEvent, AiChatState> {
       ));
       // Reload the pipeline with the real LLM
       await _pipeline.initialize();
-    } else if (!_downloadService.progressStream.isBroadcast) {
-      // Download failed (not cancelled)
+    } else {
+      // Download failed or was cancelled — reset to notDownloaded
       emit(state.copyWith(
         modelStatus: AiModelStatus.notDownloaded,
         clearDownload: true,
@@ -151,31 +156,44 @@ class AiChatBloc extends Bloc<AiChatEvent, AiChatState> {
     ));
 
     // Process through AI pipeline
-    final result = await _pipeline.processMessage(
-      userMessage: text,
-      businessId: businessId,
-      cashierId: cashierId,
-      branchId: selectedBranchId(),
-    );
+    try {
+      final result = await _pipeline.processMessage(
+        userMessage: text,
+        businessId: businessId,
+        cashierId: cashierId,
+        branchId: selectedBranchId(),
+      );
 
-    // Remove loading message and add AI response
-    final aiMsg = AiChatMessage(
-      id: _uuid.v4(),
-      text: result.responseText,
-      isUser: false,
-      type: result.type == AiResponseType.transactionPreview
-          ? AiMessageType.transactionPreview
-          : result.type == AiResponseType.error
-              ? AiMessageType.error
-              : AiMessageType.text,
-      transactionPreview: result.preview,
-    );
+      // Remove loading message and add AI response
+      final aiMsg = AiChatMessage(
+        id: _uuid.v4(),
+        text: result.responseText,
+        isUser: false,
+        type: result.type == AiResponseType.transactionPreview
+            ? AiMessageType.transactionPreview
+            : result.type == AiResponseType.error
+                ? AiMessageType.error
+                : AiMessageType.text,
+        transactionPreview: result.preview,
+      );
 
-    emit(state.copyWith(
-      messages: [...updatedMessages, aiMsg],
-      isProcessing: false,
-      pendingPreview: result.preview,
-    ));
+      emit(state.copyWith(
+        messages: [...updatedMessages, aiMsg],
+        isProcessing: false,
+        pendingPreview: result.preview,
+      ));
+    } catch (e) {
+      final errorMsg = AiChatMessage(
+        id: _uuid.v4(),
+        text: 'Something went wrong. Please try again.',
+        isUser: false,
+        type: AiMessageType.error,
+      );
+      emit(state.copyWith(
+        messages: [...updatedMessages, errorMsg],
+        isProcessing: false,
+      ));
+    }
   }
 
   Future<void> _onTransactionConfirmed(
@@ -248,6 +266,13 @@ class AiChatBloc extends Bloc<AiChatEvent, AiChatState> {
       messages: updatedMessages,
       pendingPreview: event.updatedPreview,
     ));
+  }
+
+  void _onMessagesCleared(
+    AiChatMessagesCleared event,
+    Emitter<AiChatState> emit,
+  ) {
+    emit(state.copyWith(messages: [], clearPreview: true));
   }
 
   @override

@@ -110,11 +110,12 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
         totalAmount: widget.total,
         taxAmount: widget.tax,
         subtotal: widget.subtotal,
+        discountAmount: Value(widget.discountAmount),
         customerName: Value(customerName.isEmpty ? null : customerName),
         paymentMethod: Value(_paymentMethod),
         amountReceived: Value(_isCash ? _amountReceived : null),
         changeDue: Value(_isCash ? _change : null),
-        itemCount: widget.items.length,
+        itemCount: widget.items.fold(0, (s, i) => s + i.qty.round()),
       );
 
       final txItems = widget.items

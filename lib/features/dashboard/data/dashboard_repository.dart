@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:pos/core/database/daos/branches_dao.dart';
@@ -92,8 +93,24 @@ class DashboardRepository {
 
   // ─── Stream trigger ───────────────────────────────────────────────────────
 
-  Stream<void> watchChanges() {
-    return _txnDao.watchTransactions().map((_) {});
+  /// Emits whenever transactions OR product variants change so the dashboard
+  /// stays current after stock adjustments and product edits, not just sales.
+  Stream<void> watchChanges({required String businessId}) {
+    final controller = StreamController<void>.broadcast();
+    final subs = [
+      _txnDao.watchTransactions().listen((_) {
+        if (!controller.isClosed) controller.add(null);
+      }),
+      _variantsDao.watchByBusinessId(businessId).listen((_) {
+        if (!controller.isClosed) controller.add(null);
+      }),
+    ];
+    controller.onCancel = () {
+      for (final s in subs) {
+        s.cancel();
+      }
+    };
+    return controller.stream;
   }
 
   // ─── Main load ────────────────────────────────────────────────────────────

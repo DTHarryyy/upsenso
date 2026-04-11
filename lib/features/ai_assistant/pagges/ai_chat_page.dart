@@ -172,7 +172,10 @@ class _AiChatPageState extends State<AiChatPage> {
                 style: TextStyle(color: AppColors.textSecondary)),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              context.read<AiChatBloc>().add(const AiChatMessagesCleared());
+              Navigator.pop(context);
+            },
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.error,
               shape: RoundedRectangleBorder(
