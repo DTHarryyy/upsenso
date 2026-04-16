@@ -48,16 +48,7 @@ final class BarcodeUnknown extends BarcodeResult {
   const BarcodeUnknown();
 }
 
-// ── Use case ──────────────────────────────────────────────────────────────────
 
-/// Resolves a raw barcode string into a typed [BarcodeResult].
-///
-/// Lookup order:
-/// 1. Variant-level barcode (most specific).
-/// 2. Product-level barcode (fallback for simple products).
-///
-/// All database errors are caught and rethrown as [BarcodeResolutionException]
-/// so callers don't need to know about database internals.
 class ResolveBarcodeUseCase {
   final ProductVariantsDao _variantsDao;
   final ProductsDao _productsDao;

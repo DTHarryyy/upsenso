@@ -5,7 +5,7 @@ import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
 
 /// A record returned when the user confirms a branch selection.
-typedef BranchSelection = ({String name, String? id});
+typedef BranchSelection = ({String name, String id});
 
 /// Shows a bottom-sheet dialog asking the cashier which branch this sale
 /// belongs to. Returns [BranchSelection] on confirm, or `null` if cancelled.
@@ -105,7 +105,7 @@ class _BranchSaleSheetState extends State<_BranchSaleSheet> {
                           ),
                         ),
                         Text(
-                          'Choose where to record this sale',
+                          "You're currently viewing all branches. Choose where to record this sale:",
                           style: getOutfitStyle(
                             color: AppColors.textMuted,
                             fontSize: 13,

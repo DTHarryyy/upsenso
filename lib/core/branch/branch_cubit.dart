@@ -462,6 +462,15 @@ class BranchCubit extends Cubit<BranchState> {
     return id;
   }
 
+  /// Returns all real branch options that have a known ID (excludes
+  /// "All Branches" and any placeholder entries without an ID).
+  List<({String name, String id})> getAvailableBranchOptions() {
+    return _branchIdsByName.entries
+        .where((e) => e.key != allBranchesLabel && e.value != null && e.value!.trim().isNotEmpty)
+        .map((e) => (name: e.key, id: e.value!))
+        .toList(growable: false);
+  }
+
   /// Reset to initial state
   void reset() {
     _branchIdsByName = const {};

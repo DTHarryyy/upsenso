@@ -86,15 +86,34 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
   }
 
   Future<void> _confirm() async {
+    final authState = context.read<AuthBloc>().state;
+    if (authState is! AuthAuthenticated) return;
+
+    final branchCubit = context.read<BranchCubit>();
+    String? branchId = branchCubit.getSelectedBranchIdForFiltering() ??
+        authState.user.branchId;
+
+    // When no branch is resolved, prompt the cashier to pick one.
+    if (branchId == null) {
+      if (branchCubit.state.canSwitchBranches) {
+        final selection = await showBranchSaleDialog(context);
+        if (selection == null || !mounted) return;
+        branchId = selection.id;
+      } else {
+        if (mounted) {
+          StatusSnack.show(
+            context,
+            type: StatusType.error,
+            message: 'No branch assigned. Please contact your administrator.',
+          );
+        }
+        return;
+      }
+    }
+
     setState(() => _confirming = true);
     try {
-      final authState = context.read<AuthBloc>().state;
-      if (authState is! AuthAuthenticated) return;
-
       final cashierId = authState.user.id;
-      final branchId =
-          context.read<BranchCubit>().getSelectedBranchIdForFiltering() ??
-          authState.user.branchId;
       final txId = const Uuid().v4();
       final customerName = _customerController.text.trim();
 
