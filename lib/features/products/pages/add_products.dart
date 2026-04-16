@@ -483,49 +483,73 @@ class _AddProductsViewState extends State<_AddProductsView> {
                         )
                       : TextButton(
                           onPressed: _save,
+                          style: TextButton.styleFrom(
+                            backgroundColor: AppColors.brandSoft,
+                            foregroundColor: AppColors.brand,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 6),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8)),
+                          ),
                           child: Text(
-                            'Save',
+                            widget.productToEdit != null ? 'Update' : 'Save',
                             style: getOutfitStyle(
                               color: AppColors.brand,
                               fontWeight: FontWeight.w700,
-                              fontSize: 15,
+                              fontSize: 14,
                             ),
                           ),
                         ),
                 ),
               ],
             ),
+            // ── Sticky save bar ─────────────────────────────────────────────
+            bottomNavigationBar: SafeArea(
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                decoration: const BoxDecoration(
+                  color: AppColors.surface,
+                  border: Border(
+                    top: BorderSide(color: AppColors.borderSoft),
+                  ),
+                ),
+                child: AppFilledButton(
+                  label: widget.productToEdit != null
+                      ? 'Update Product'
+                      : 'Save Product',
+                  loading: state.isSaving,
+                  onPressed: state.isSaving ? null : _save,
+                ),
+              ),
+            ),
             body: Column(
               children: [
                 _ModeToggle(mode: state.mode, onChanged: cubit.switchMode),
+                _buildModeBanner(context, state.mode),
                 Expanded(
                   child: Form(
                     key: _formKey,
                     child: ListView(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 16),
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                       children: [
                         if (state.mode == ProductFormMode.simple) ...[
                           _buildSimpleSection(state, cubit),
+                          const SizedBox(height: 16),
+                          _buildMoreOptionsSection(state, cubit),
+                          const SizedBox(height: 8),
                         ] else ...[
                           _buildBasicInfoSection(state, cubit),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 16),
                           if (!state.hasVariants) ...[
                             _buildPricingSection(state, cubit),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 16),
                           ] else ...[
                             _buildVariantsSection(state, cubit),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 16),
                           ],
                           _buildMoreOptionsSection(state, cubit),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8),
                         ],
-                        AppFilledButton(
-                          label: 'Save Product',
-                          loading: state.isSaving,
-                          onPressed: state.isSaving ? null : _save,
-                        ),
-                        const SizedBox(height: 24),
                       ],
                     ),
                   ),
@@ -575,18 +599,6 @@ class _AddProductsViewState extends State<_AddProductsView> {
         ),
         const SizedBox(height: 14),
 
-        // Sell By
-        const AppFieldLabel('Sell By'),
-        AppDropdown<String>(
-          value: _sellBy,
-          items: const [
-            AppDropdownItem(value: 'unit', label: 'Unit  (piece, box, bottle…)'),
-            AppDropdownItem(value: 'fraction', label: 'Fraction  (per kg, litre…)'),
-          ],
-          onChanged: (v) => setState(() => _sellBy = v ?? 'unit'),
-        ),
-        const SizedBox(height: 14),
-
         // Price
         const AppFieldLabel('Price *'),
         TextFormField(
@@ -603,37 +615,6 @@ class _AddProductsViewState extends State<_AddProductsView> {
           ),
           validator: (v) =>
               (v == null || v.trim().isEmpty) ? 'Price is required' : null,
-        ),
-        const SizedBox(height: 10),
-
-        // Barcode (optional toggle)
-        BarcodeToggleField(controller: _simpleBarcodeController),
-        const SizedBox(height: 10),
-
-        // Product Image (optional, toggleable) — bottom of card
-        SwitchRow(
-          icon: Icons.image_outlined,
-          label: 'Product Image',
-          subtitle: 'Optional photo for this product',
-          value: _showImagePicker || state.imagePath != null,
-          onChanged: (v) {
-            setState(() => _showImagePicker = v);
-            if (!v) cubit.clearImage();
-          },
-        ),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          child: (_showImagePicker || state.imagePath != null)
-              ? Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: ImagePickerField(
-                    imagePath: state.imagePath,
-                    onPick: (source) => cubit.pickImage(source),
-                    onClear: cubit.clearImage,
-                  ),
-                )
-              : const SizedBox(width: double.infinity, height: 0),
         ),
       ],
     );
@@ -673,18 +654,6 @@ class _AddProductsViewState extends State<_AddProductsView> {
               .map((c) => AppDropdownItem(value: c.id, label: c.name))
               .toList(),
           onChanged: cubit.selectCategory,
-        ),
-        const SizedBox(height: 14),
-
-        // Sell By
-        const AppFieldLabel('Sell By'),
-        AppDropdown<String>(
-          value: _sellBy,
-          items: const [
-            AppDropdownItem(value: 'unit', label: 'Unit  (piece, box, bottle…)'),
-            AppDropdownItem(value: 'fraction', label: 'Fraction  (per kg, litre…)'),
-          ],
-          onChanged: (v) => setState(() => _sellBy = v ?? 'unit'),
         ),
         const SizedBox(height: 14),
 
@@ -1070,15 +1039,32 @@ class _AddProductsViewState extends State<_AddProductsView> {
                   const Icon(Icons.settings_outlined,
                       size: 17, color: AppColors.textMuted),
                   const SizedBox(width: 10),
-                  Text(
-                    'More Options',
-                    style: getOutfitStyle(
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'More Options',
+                          style: getOutfitStyle(
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                        if (!state.moreOptionsExpanded)
+                          Text(
+                            state.mode == ProductFormMode.simple
+                                ? 'Sell By · Image · Barcode'
+                                : 'Sell By · Image · Barcodes · SKU · Tax · Expiry',
+                            style: getOutfitStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 10,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                  const Spacer(),
                   AnimatedRotation(
                     turns: state.moreOptionsExpanded ? 0.5 : 0,
                     duration: const Duration(milliseconds: 200),
@@ -1093,7 +1079,9 @@ class _AddProductsViewState extends State<_AddProductsView> {
             duration: const Duration(milliseconds: 240),
             curve: Curves.easeInOut,
             child: state.moreOptionsExpanded
-                ? _buildMoreOptionsBody(state, cubit)
+                ? (state.mode == ProductFormMode.simple
+                    ? _buildSimpleMoreOptionsBody(state, cubit)
+                    : _buildMoreOptionsBody(state, cubit))
                 : const SizedBox(width: double.infinity, height: 0),
           ),
         ],
@@ -1101,11 +1089,79 @@ class _AddProductsViewState extends State<_AddProductsView> {
     );
   }
 
+  // ── Simple — More Options body (Sell By · Image · Barcode only) ─────────────
+
+  Widget _buildSimpleMoreOptionsBody(
+      ProductFormState state, ProductFormCubit cubit) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Divider(height: 1, color: AppColors.borderSoft),
+
+        // Sell by fraction
+        ToggleRow(
+          icon: Icons.straighten_rounded,
+          label: 'Sell by fraction',
+          subtitle: 'Price per kg, litre, or other weight/volume unit',
+          enabled: _sellBy == 'fraction',
+          onChanged: (v) => setState(() => _sellBy = v ? 'fraction' : 'unit'),
+        ),
+        const Divider(height: 1, color: AppColors.borderSoft),
+
+        // Product Image
+        ToggleRow(
+          icon: Icons.image_outlined,
+          label: 'Product Image',
+          subtitle: 'Add a photo for this product',
+          enabled: _showImagePicker || state.imagePath != null,
+          onChanged: (v) {
+            setState(() => _showImagePicker = v);
+            if (!v) cubit.clearImage();
+          },
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          child: (_showImagePicker || state.imagePath != null)
+              ? Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: ImagePickerField(
+                    imagePath: state.imagePath,
+                    onPick: (source) => cubit.pickImage(source),
+                    onClear: cubit.clearImage,
+                  ),
+                )
+              : const SizedBox(width: double.infinity, height: 0),
+        ),
+        const Divider(height: 1, color: AppColors.borderSoft),
+
+        // Barcode
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: BarcodeToggleField(controller: _simpleBarcodeController),
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  // ── Advanced — More Options body ──────────────────────────────────────────
+
   Widget _buildMoreOptionsBody(
       ProductFormState state, ProductFormCubit cubit) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        const Divider(height: 1, color: AppColors.borderSoft),
+
+        // Sell by fraction
+        ToggleRow(
+          icon: Icons.straighten_rounded,
+          label: 'Sell by fraction',
+          subtitle: 'Price per kg, litre, or other weight/volume unit',
+          enabled: _sellBy == 'fraction',
+          onChanged: (v) => setState(() => _sellBy = v ? 'fraction' : 'unit'),
+        ),
         const Divider(height: 1, color: AppColors.borderSoft),
 
         // Product Image (optional)
@@ -1277,6 +1333,50 @@ class _AddProductsViewState extends State<_AddProductsView> {
       ],
     );
   }
+
+  // ── Mode description banner ───────────────────────────────────────────────
+
+  Widget _buildModeBanner(BuildContext context, ProductFormMode mode) {
+    final isSimple = mode == ProductFormMode.simple;
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 220),
+      child: Container(
+        key: ValueKey(mode),
+        width: double.infinity,
+        color: AppColors.surface,
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.brandSoft,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                isSimple ? Icons.flash_on_rounded : Icons.tune_rounded,
+                size: 13,
+                color: AppColors.brand,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  isSimple
+                      ? 'Name, category, and price — perfect for a quick product setup.'
+                      : 'Full pricing, variants, barcodes, SKU, inventory tracking, and more.',
+                  style: getOutfitStyle(
+                    color: AppColors.brand,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // ── Mode Toggle ───────────────────────────────────────────────────────────────
@@ -1296,6 +1396,7 @@ class _ModeToggle extends StatelessWidget {
           Expanded(
             child: _ModeChip(
               label: 'Simple',
+              subtitle: 'Quick & easy',
               icon: Icons.flash_on_rounded,
               active: mode == ProductFormMode.simple,
               onTap: () => onChanged(ProductFormMode.simple),
@@ -1305,6 +1406,7 @@ class _ModeToggle extends StatelessWidget {
           Expanded(
             child: _ModeChip(
               label: 'Advanced',
+              subtitle: 'Full control',
               icon: Icons.tune_rounded,
               active: mode == ProductFormMode.advanced,
               onTap: () => onChanged(ProductFormMode.advanced),
@@ -1318,14 +1420,17 @@ class _ModeToggle extends StatelessWidget {
 
 class _ModeChip extends StatelessWidget {
   final String label;
+  final String subtitle;
   final IconData icon;
   final bool active;
   final VoidCallback onTap;
-  const _ModeChip(
-      {required this.label,
-      required this.icon,
-      required this.active,
-      required this.onTap});
+  const _ModeChip({
+    required this.label,
+    required this.subtitle,
+    required this.icon,
+    required this.active,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1333,24 +1438,40 @@ class _ModeChip extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(vertical: 11),
         decoration: BoxDecoration(
           color: active ? AppColors.brand : AppColors.inputFill,
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon,
-                size: 15,
-                color: active ? Colors.white : AppColors.textMuted),
-            const SizedBox(width: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon,
+                    size: 15,
+                    color: active ? Colors.white : AppColors.textMuted),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: getOutfitStyle(
+                    color: active ? Colors.white : AppColors.textMuted,
+                    fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
             Text(
-              label,
+              subtitle,
               style: getOutfitStyle(
-                color: active ? Colors.white : AppColors.textMuted,
-                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                fontSize: 14,
+                color: active
+                    ? Colors.white.withAlpha(178)
+                    : AppColors.textMuted,
+                fontSize: 10,
+                fontWeight: FontWeight.w400,
               ),
             ),
           ],
