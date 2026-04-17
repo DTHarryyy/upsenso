@@ -152,7 +152,7 @@ class _AppDropdownState<T> extends FormFieldState<T> {
         ? AppColors.error
         : _isOpen
             ? AppColors.brand
-            : Colors.transparent;
+            : AppColors.borderSoft;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -165,11 +165,11 @@ class _AppDropdownState<T> extends FormFieldState<T> {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               padding: EdgeInsets.symmetric(
-                    horizontal: 12, vertical: _w.dense ? 8 : 14),
+                    horizontal: 10, vertical: _w.dense ? 6 : 14),
               decoration: BoxDecoration(
-                color: AppColors.inputFill,
+                color: AppColors.surface,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: borderColor, width: 1.5),
+                border: Border.all(color: borderColor, width: 1),
               ),
               child: Row(
                 children: [
@@ -221,10 +221,6 @@ class _AppDropdownState<T> extends FormFieldState<T> {
   }
 }
 
-
-// ---------------------------------------------------------------------------
-// Overlay widget
-// ---------------------------------------------------------------------------
 
 class _OverlayDropdown<T> extends StatelessWidget {
   final LayerLink link;
@@ -356,10 +352,6 @@ class _OverlayDropdown<T> extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// _AddItemRow
-// ---------------------------------------------------------------------------
-
 class _AddItemRow extends StatefulWidget {
   final String label;
   final VoidCallback onTap;
@@ -417,10 +409,6 @@ class _AddItemRowState extends State<_AddItemRow> {
   }
 }
 
-
-// ---------------------------------------------------------------------------
-// _DropdownOption
-// ---------------------------------------------------------------------------
 
 class _DropdownOption<T> extends StatefulWidget {
   final AppDropdownItem<T> item;

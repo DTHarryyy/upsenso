@@ -46,9 +46,9 @@ class AppBottomNav extends StatelessWidget {
               // Center POS button
               _buildCenterPOSButton(),
               _buildNavItem(
-                icon: Icons.notifications_outlined,
-                activeIcon: Icons.notifications_rounded,
-                label: 'Alert',
+                icon: Icons.analytics,
+                activeIcon: Icons.analytics,
+                label: 'Reports',
                 index: 3,
               ),
               _buildNavItem(
