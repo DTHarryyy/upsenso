@@ -3,13 +3,17 @@ import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/auth_context_dao.dart';
 import 'package:pos/core/database/daos/businesses_dao.dart';
 import 'package:pos/core/database/daos/categories_dao.dart';
+import 'package:pos/core/database/daos/expenses_dao.dart';
+import 'package:pos/core/database/daos/inventory_levels_dao.dart';
 import 'package:pos/core/database/daos/products_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
+import 'package:pos/core/database/daos/stock_ledger_dao.dart';
 import 'package:pos/core/database/daos/transactions_dao.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_status.dart';
 import 'package:pos/features/business/data/datasources/business_remote_ds.dart';
 import 'package:pos/features/business/data/models/business_model.dart';
+import 'package:pos/features/expenses/data/datasources/expenses_remote_ds.dart';
 import 'package:pos/features/products/data/datasources/products_remote_ds.dart';
 import 'package:pos/features/pos/data/datasources/transactions_remote_ds.dart';
 
@@ -18,10 +22,14 @@ class SyncService {
   final AuthContextDao _authContextDao;
   final BusinessesDao _businessesDao;
   final CategoriesDao _categoriesDao;
+  final ExpensesDao _expensesDao;
+  final InventoryLevelsDao _inventoryLevelsDao;
   final ProductsDao _productsDao;
   final ProductVariantsDao _productVariantsDao;
+  final StockLedgerDao _stockLedgerDao;
   final TransactionsDao _transactionsDao;
   final BusinessRemoteDs _businessRemoteDs;
+  final ExpensesRemoteDs _expensesRemoteDs;
   final ProductsRemoteDs _productsRemoteDs;
   final TransactionsRemoteDs _transactionsRemoteDs;
   final ConnectivityService _connectivityService;
@@ -33,20 +41,28 @@ class SyncService {
     required AuthContextDao authContextDao,
     required BusinessesDao businessesDao,
     required CategoriesDao categoriesDao,
+    required ExpensesDao expensesDao,
+    required InventoryLevelsDao inventoryLevelsDao,
     required ProductsDao productsDao,
     required ProductVariantsDao productVariantsDao,
+    required StockLedgerDao stockLedgerDao,
     required TransactionsDao transactionsDao,
     required BusinessRemoteDs businessRemoteDs,
+    required ExpensesRemoteDs expensesRemoteDs,
     required ProductsRemoteDs productsRemoteDs,
     required TransactionsRemoteDs transactionsRemoteDs,
     required ConnectivityService connectivityService,
   }) : _authContextDao = authContextDao,
        _businessesDao = businessesDao,
        _categoriesDao = categoriesDao,
+       _expensesDao = expensesDao,
+       _inventoryLevelsDao = inventoryLevelsDao,
        _productsDao = productsDao,
        _productVariantsDao = productVariantsDao,
+       _stockLedgerDao = stockLedgerDao,
        _transactionsDao = transactionsDao,
        _businessRemoteDs = businessRemoteDs,
+       _expensesRemoteDs = expensesRemoteDs,
        _productsRemoteDs = productsRemoteDs,
        _transactionsRemoteDs = transactionsRemoteDs,
        _connectivityService = connectivityService;
@@ -130,17 +146,26 @@ class SyncService {
       final productResult = await _syncProducts();
       final variantResult = await _syncProductVariants();
       final orderResult = await _syncTransactions();
+      final expenseResult = await _syncExpenses();
+      final inventoryResult = await _syncInventoryLevels();
+      final ledgerResult = await _syncStockLedger();
 
       final int totalSynced = businessResult.syncedCount +
           categoryResult.syncedCount +
           productResult.syncedCount +
           variantResult.syncedCount +
-          orderResult.syncedCount;
+          orderResult.syncedCount +
+          expenseResult.syncedCount +
+          inventoryResult.syncedCount +
+          ledgerResult.syncedCount;
       final int totalFailed = businessResult.failedCount +
           categoryResult.failedCount +
           productResult.failedCount +
           variantResult.failedCount +
-          orderResult.failedCount;
+          orderResult.failedCount +
+          expenseResult.failedCount +
+          inventoryResult.failedCount +
+          ledgerResult.failedCount;
 
       // pull kapag may businessId (either provided or from auth context)
       final effectiveBusinessId = await _resolveBusinessId(businessId);
@@ -157,9 +182,12 @@ class SyncService {
             categoryResult.success &&
             productResult.success &&
             variantResult.success &&
+            expenseResult.success &&
+            inventoryResult.success &&
+            ledgerResult.success &&
             pullResult.success,
         message:
-            '${businessResult.message}; ${categoryResult.message}; ${productResult.message}; ${variantResult.message}; ${pullResult.message}',
+            '${businessResult.message}; ${categoryResult.message}; ${productResult.message}; ${variantResult.message}; ${expenseResult.message}; ${inventoryResult.message}; ${ledgerResult.message}; ${pullResult.message}',
         syncedCount: totalSynced + pullResult.syncedCount,
         failedCount: totalFailed + pullResult.failedCount,
         errors: [
@@ -167,6 +195,9 @@ class SyncService {
           ...categoryResult.errors,
           ...productResult.errors,
           ...variantResult.errors,
+          ...expenseResult.errors,
+          ...inventoryResult.errors,
+          ...ledgerResult.errors,
           ...pullResult.errors,
         ],
       );
@@ -416,11 +447,30 @@ class SyncService {
         await _transactionsRemoteDs.createTransaction(
           id: tx.id,
           cashierId: tx.cashierId,
+          businessId: tx.businessId,
           branchId: tx.branchId,
           totalAmount: tx.totalAmount,
+          discountAmount: tx.discountAmount,
           taxAmount: tx.taxAmount,
           createdAt: tx.createdAt,
         );
+        final items = await _transactionsDao.getItemsByTransactionId(tx.id);
+        if (items.isNotEmpty) {
+          await _transactionsRemoteDs.upsertTransactionItems(
+            items.map((i) => {
+              'id': i.id,
+              'transaction_id': i.transactionId,
+              'variant_id': i.variantId,
+              'product_name': i.productName,
+              'variant_name': i.variantName,
+              'unit_price': i.unitPrice,
+              'tax_rate': i.taxRate,
+              'qty': i.qty,
+              'line_total': i.lineTotal,
+              'line_tax': i.lineTax,
+            }).toList(),
+          );
+        }
         await _transactionsDao.updateSyncStatus(
           id: tx.id,
           status: SyncStatus.synced,
@@ -440,6 +490,171 @@ class SyncService {
     return SyncResult(
       success: failed == 0,
       message: 'Transactions: synced $synced, failed $failed',
+      syncedCount: synced,
+      failedCount: failed,
+      errors: errors,
+    );
+  }
+
+  Future<SyncResult> _syncExpenses() async {
+    final pending = await _expensesDao.getPendingSync();
+    int synced = 0;
+    int failed = 0;
+    final errors = <String>[];
+
+    for (final record in pending) {
+      final status = SyncStatusExtension.fromInt(record.syncStatus);
+      try {
+        switch (status) {
+          case SyncStatus.pendingUpload:
+          case SyncStatus.failed:
+            await _expensesRemoteDs.upsertExpense(
+              id: record.id,
+              businessId: record.businessId,
+              branchId: record.branchId,
+              branchName: record.branchName,
+              category: record.category,
+              vendor: record.vendor,
+              amount: record.amount,
+              status: record.status,
+              submittedById: record.submittedById,
+              submittedByName: record.submittedByName,
+              approvedById: record.approvedById,
+              approvedByName: record.approvedByName,
+              note: record.note,
+              expenseDate: record.expenseDate,
+              createdAt: record.createdAt,
+              updatedAt: record.updatedAt,
+            );
+            await _expensesDao.updateSyncStatus(
+              id: record.id,
+              status: SyncStatus.synced,
+            );
+            synced++;
+
+          case SyncStatus.pendingUpdate:
+            await _expensesRemoteDs.updateExpenseStatus(
+              id: record.id,
+              status: record.status,
+              approvedById: record.approvedById,
+              approvedByName: record.approvedByName,
+              updatedAt: record.updatedAt,
+            );
+            await _expensesDao.updateSyncStatus(
+              id: record.id,
+              status: SyncStatus.synced,
+            );
+            synced++;
+
+          case SyncStatus.pendingDelete:
+            await _expensesRemoteDs.deleteExpense(record.id);
+            await _expensesDao.hardDelete(record.id);
+            synced++;
+
+          case SyncStatus.synced:
+            break;
+        }
+      } catch (e) {
+        failed++;
+        errors.add('Expense ${record.id}: ${e.toString()}');
+        await _expensesDao.updateSyncStatus(
+          id: record.id,
+          status: SyncStatus.failed,
+          error: e.toString(),
+        );
+      }
+    }
+
+    return SyncResult(
+      success: failed == 0,
+      message: 'Expenses: synced $synced, failed $failed',
+      syncedCount: synced,
+      failedCount: failed,
+      errors: errors,
+    );
+  }
+
+  Future<SyncResult> _syncInventoryLevels() async {
+    final pending = await _inventoryLevelsDao.getPendingSync();
+    int synced = 0;
+    int failed = 0;
+    final errors = <String>[];
+
+    for (final record in pending) {
+      try {
+        await _productsRemoteDs.upsertInventoryLevel(
+          id: record.id,
+          variantId: record.variantId,
+          branchId: record.branchId,
+          businessId: record.businessId,
+          quantity: record.quantity,
+          quantityDecimal: record.quantityDecimal,
+          lowStockAlertOverride: record.lowStockAlertOverride,
+        );
+        await _inventoryLevelsDao.updateSyncStatus(
+          id: record.id,
+          status: SyncStatus.synced,
+        );
+        synced++;
+      } catch (e) {
+        failed++;
+        errors.add('InventoryLevel ${record.id}: ${e.toString()}');
+        await _inventoryLevelsDao.updateSyncStatus(
+          id: record.id,
+          status: SyncStatus.failed,
+        );
+      }
+    }
+
+    return SyncResult(
+      success: failed == 0,
+      message: 'InventoryLevels: synced $synced, failed $failed',
+      syncedCount: synced,
+      failedCount: failed,
+      errors: errors,
+    );
+  }
+
+  Future<SyncResult> _syncStockLedger() async {
+    final pending = await _stockLedgerDao.getPendingSync();
+    int synced = 0;
+    int failed = 0;
+    final errors = <String>[];
+
+    for (final record in pending) {
+      try {
+        await _productsRemoteDs.insertStockLedgerEntry(
+          id: record.id,
+          variantId: record.variantId,
+          productId: record.productId,
+          branchId: record.branchId,
+          businessId: record.businessId,
+          changeType: record.changeType,
+          quantity: record.quantity,
+          quantityBefore: record.quantityBefore,
+          quantityAfter: record.quantityAfter,
+          reason: record.reason,
+          note: record.note,
+          createdAt: record.createdAt,
+        );
+        await _stockLedgerDao.updateSyncStatus(
+          id: record.id,
+          status: SyncStatus.synced,
+        );
+        synced++;
+      } catch (e) {
+        failed++;
+        errors.add('StockLedger ${record.id}: ${e.toString()}');
+        await _stockLedgerDao.updateSyncStatus(
+          id: record.id,
+          status: SyncStatus.failed,
+        );
+      }
+    }
+
+    return SyncResult(
+      success: failed == 0,
+      message: 'StockLedger: synced $synced, failed $failed',
       syncedCount: synced,
       failedCount: failed,
       errors: errors,
@@ -568,6 +783,53 @@ class SyncService {
     } catch (e) {
       failed++;
       errors.add('Pull variants: ${e.toString()}');
+    }
+
+    try {
+      final levels =
+          await _productsRemoteDs.getInventoryLevelsByBusiness(businessId);
+      for (final row in levels) {
+        await _inventoryLevelsDao.upsertFromServer(row);
+        pulled++;
+      }
+    } catch (e) {
+      failed++;
+      errors.add('Pull inventory levels: ${e.toString()}');
+    }
+
+    try {
+      final ledger =
+          await _productsRemoteDs.getStockLedgerByBusiness(businessId);
+      for (final row in ledger) {
+        await _stockLedgerDao.upsertFromServer(row);
+        pulled++;
+      }
+    } catch (e) {
+      failed++;
+      errors.add('Pull stock ledger: ${e.toString()}');
+    }
+
+    try {
+      final transactions =
+          await _transactionsRemoteDs.getTransactionsByBusiness(businessId);
+      for (final row in transactions) {
+        await _transactionsDao.upsertFromServer(row);
+        pulled++;
+      }
+    } catch (e) {
+      failed++;
+      errors.add('Pull transactions: ${e.toString()}');
+    }
+
+    try {
+      final expenses = await _expensesRemoteDs.getExpensesByBusiness(businessId);
+      for (final row in expenses) {
+        await _expensesDao.upsertFromServer(row);
+        pulled++;
+      }
+    } catch (e) {
+      failed++;
+      errors.add('Pull expenses: ${e.toString()}');
     }
 
     return SyncResult(

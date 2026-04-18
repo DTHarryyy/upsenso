@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/widgets/user_avatar.dart';
 
 enum AppSidebarItem { inventory, profile }
 
 class AppSidebar extends StatelessWidget {
   final String userName;
   final String userRole;
+  final String? avatarUrl;
+  final String? userEmail;
   final AppSidebarItem activeItem;
   final VoidCallback onInventoryTap;
   final VoidCallback onProfileTap;
@@ -17,6 +20,8 @@ class AppSidebar extends StatelessWidget {
     super.key,
     required this.userName,
     required this.userRole,
+    this.avatarUrl,
+    this.userEmail,
     required this.activeItem,
     required this.onInventoryTap,
     required this.onProfileTap,
@@ -33,7 +38,12 @@ class AppSidebar extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
             child: Row(
               children: [
-                _SidebarAvatar(userName: userName),
+                UserAvatar(
+                  avatarUrl: avatarUrl,
+                  name: userName,
+                  email: userEmail,
+                  radius: 20,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -101,45 +111,6 @@ class AppSidebar extends StatelessWidget {
   }
 }
 
-class _SidebarAvatar extends StatelessWidget {
-  final String userName;
-
-  const _SidebarAvatar({required this.userName});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: AppColors.brandSoft,
-        shape: BoxShape.circle,
-        border: Border.all(color: AppColors.brand, width: 1.5),
-      ),
-      child: Center(
-        child: Text(
-          _getInitials(userName),
-          style: getOutfitStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: AppColors.brand,
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _getInitials(String name) {
-    final parts = name.trim().split(' ').where((e) => e.isNotEmpty).toList();
-    if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    }
-    if (parts.isEmpty) return 'U';
-    final first = parts.first;
-    final len = first.length > 1 ? 2 : 1;
-    return first.substring(0, len).toUpperCase();
-  }
-}
 
 class _SidebarNavTile extends StatelessWidget {
   final IconData icon;

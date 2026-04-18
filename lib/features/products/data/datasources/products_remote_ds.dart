@@ -153,4 +153,79 @@ class ProductsRemoteDs {
         .eq('business_id', businessId);
     return List<Map<String, dynamic>>.from(response);
   }
+
+  // ── INVENTORY LEVELS ────────────────────────────────────────────────────────
+
+  Future<void> upsertInventoryLevel({
+    required String id,
+    required String variantId,
+    required String branchId,
+    required String businessId,
+    required int quantity,
+    double? quantityDecimal,
+    int? lowStockAlertOverride,
+  }) async {
+    await client.from('inventory_levels').upsert({
+      'id': id,
+      'variant_id': variantId,
+      'branch_id': branchId,
+      'business_id': businessId,
+      'quantity': quantity,
+      'quantity_decimal': quantityDecimal,
+      'low_stock_alert_override': lowStockAlertOverride,
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> getInventoryLevelsByBusiness(
+    String businessId,
+  ) async {
+    final response = await client
+        .from('inventory_levels')
+        .select()
+        .eq('business_id', businessId);
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  // ── STOCK LEDGER ─────────────────────────────────────────────────────────────
+
+  Future<void> insertStockLedgerEntry({
+    required String id,
+    required String variantId,
+    required String productId,
+    required String branchId,
+    required String businessId,
+    required String changeType,
+    required double quantity,
+    double? quantityBefore,
+    double? quantityAfter,
+    required String reason,
+    String? note,
+    required DateTime createdAt,
+  }) async {
+    await client.from('stock_ledger').upsert({
+      'id': id,
+      'variant_id': variantId,
+      'product_id': productId,
+      'branch_id': branchId,
+      'business_id': businessId,
+      'change_type': changeType,
+      'quantity': quantity,
+      'quantity_before': quantityBefore,
+      'quantity_after': quantityAfter,
+      'reason': reason,
+      'note': note,
+      'created_at': createdAt.toIso8601String(),
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> getStockLedgerByBusiness(
+    String businessId,
+  ) async {
+    final response = await client
+        .from('stock_ledger')
+        .select()
+        .eq('business_id', businessId)
+        .order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(response);
+  }
 }
