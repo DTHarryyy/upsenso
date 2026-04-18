@@ -41,9 +41,7 @@ class QuickActionsBar extends StatelessWidget {
             _ActionChip(
               icon: Icons.attach_money,
               label: 'Expense',
-              onPressed: () {
-                // TODO: Navigate to Expense page
-              },
+              onPressed: () => context.push(AppRoutes.expenses),
             ),
             const SizedBox(width: 8),
             _ActionChip(

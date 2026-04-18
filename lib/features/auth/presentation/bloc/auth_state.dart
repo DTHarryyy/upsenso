@@ -36,6 +36,7 @@ class AuthAuthenticated extends AuthState {
     user.id,
     user.email,
     user.fullName,
+    user.avatarUrl,
     user.businessId,
     user.roleId,
     user.roleName,

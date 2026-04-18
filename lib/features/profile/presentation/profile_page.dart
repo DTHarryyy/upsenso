@@ -1,264 +1,725 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:pos/core/config/di.dart';
-import 'package:pos/core/const/breakpoint.dart';
-import 'package:pos/core/routes/app_routes.dart';
-import 'package:pos/core/theme/theme_controller.dart';
-import 'package:pos/core/ui/widgets/app_sidebar.dart';
+import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/widgets/app_field_label.dart';
+import 'package:pos/core/widgets/app_input_decoration.dart';
+import 'package:pos/core/widgets/dashboard_card.dart';
+import 'package:pos/core/widgets/user_avatar.dart';
+import 'package:pos/features/auth/domain/entities/app_user.dart';
+import 'package:pos/features/auth/domain/repositories/auth_repository.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 
-class ProfilePage extends StatefulWidget {
+class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
   @override
-  State<ProfilePage> createState() => _ProfilePageState();
+  Widget build(BuildContext context) {
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        final user =
+            state is AuthAuthenticated ? state.user : null;
+        return _ProfileView(user: user);
+      },
+    );
+  }
 }
 
-class _ProfilePageState extends State<ProfilePage> {
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+class _ProfileView extends StatefulWidget {
+  final AppUser? user;
+  const _ProfileView({required this.user});
 
-  bool _isMobileLayout(BuildContext context) => !Breakpoints.isTablet(context);
+  @override
+  State<_ProfileView> createState() => _ProfileViewState();
+}
 
-  Future<bool> _showLogoutConfirmation() async {
-    final shouldLogout = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Log out?'),
-          content: const Text(
-            'Are you sure you want to log out from this account?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Log out'),
-            ),
-          ],
-        );
-      },
-    );
+class _ProfileViewState extends State<_ProfileView> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameCtrl;
+  bool _saving = false;
+  bool _dirty = false;
 
-    return shouldLogout == true;
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl = TextEditingController(text: widget.user?.fullName ?? '');
+    _nameCtrl.addListener(_onNameChanged);
   }
 
-  Future<void> _confirmAndLogout() async {
-    final confirmed = await _showLogoutConfirmation();
-    if (!mounted || !confirmed) return;
-    context.read<AuthBloc>().add(AuthLogoutRequested());
+  void _onNameChanged() {
+    final isDirty = _nameCtrl.text.trim() != (widget.user?.fullName ?? '').trim();
+    if (isDirty != _dirty) setState(() => _dirty = isDirty);
   }
 
-  Future<void> _openSettingsSheet() async {
-    final themeController = sl<ThemeController>();
+  @override
+  void didUpdateWidget(_ProfileView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.user?.fullName != widget.user?.fullName) {
+      _nameCtrl.text = widget.user?.fullName ?? '';
+      setState(() => _dirty = false);
+    }
+  }
 
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: false,
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-            child: AnimatedBuilder(
-              animation: themeController,
-              builder: (context, _) {
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Settings',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SwitchListTile.adaptive(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Dark mode'),
-                      subtitle: const Text(
-                        'Use a darker appearance across the app.',
-                      ),
-                      value: themeController.isDarkMode,
-                      onChanged: (enabled) {
-                        themeController.setThemeMode(
-                          enabled ? ThemeMode.dark : ThemeMode.light,
-                        );
-                      },
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-        );
-      },
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    final newName = _nameCtrl.text.trim();
+    setState(() => _saving = true);
+    try {
+      final updated = await sl<AuthRepository>().updateProfile(fullName: newName);
+      if (!mounted) return;
+      context.read<AuthBloc>().add(AuthUserContextUpdated(updated));
+      setState(() {
+        _saving = false;
+        _dirty = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Profile updated', style: getOutfitStyle(color: Colors.white)),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update: $e',
+              style: getOutfitStyle(color: Colors.white)),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  static const _maxAvatarBytes = 5 * 1024 * 1024; // 5 MB
+
+  Future<void> _pickAndUploadAvatar() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+      maxHeight: 512,
+      imageQuality: 85,
     );
+    if (picked == null || !mounted) return;
+    final bytes = await picked.readAsBytes();
+    if (bytes.length > _maxAvatarBytes) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Image too large. Maximum size is 5 MB.',
+            style: getOutfitStyle(color: Colors.white)),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
+    final userId = widget.user?.id;
+    if (userId == null) return;
+    setState(() => _saving = true);
+    try {
+      final updated =
+          await sl<AuthRepository>().uploadAvatar(userId, bytes);
+      if (!mounted) return;
+      context.read<AuthBloc>().add(AuthUserContextUpdated(updated));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Upload failed: $e',
+              style: getOutfitStyle(color: Colors.white)),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _changePassword() async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const _ChangePasswordSheet(),
+    );
+  }
+
+  Future<void> _logout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Log out?',
+            style: getOutfitStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary)),
+        content: Text(
+          'Are you sure you want to log out from this account?',
+          style: getOutfitStyle(fontSize: 14, color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel',
+                style: getOutfitStyle(
+                    fontSize: 14, color: AppColors.textSecondary)),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            child: Text('Log out',
+                style: getOutfitStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true && mounted) {
+      context.read<AuthBloc>().add(AuthLogoutRequested());
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocConsumer<AuthBloc, AuthState>(
-      listenWhen: (previous, current) =>
-          current is AuthUnauthenticated || current is AuthError,
-      listener: (context, state) {
-        if (state is AuthUnauthenticated) {
-          context.go(AppRoutes.signIn);
-          return;
-        }
-
-        if (state is AuthError) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(state.message)));
-        }
-      },
-      builder: (context, state) {
-        String userName = 'User';
-        String userRole = 'Role not set';
-        String userEmail = 'N/A';
-        String businessName = 'N/A';
-        String branchName = 'N/A';
-        String userId = 'N/A';
-
-        if (state is AuthAuthenticated) {
-          userName = state.user.fullName ?? state.user.email ?? 'User';
-          userRole = state.user.roleName ?? state.user.roleId ?? 'Role not set';
-          userEmail = state.user.email ?? 'N/A';
-          businessName = state.user.businessName ?? 'N/A';
-          branchName = state.user.branchName ?? 'N/A';
-          userId = state.user.id;
-        }
-
-        final isMobile = _isMobileLayout(context);
-        final themeController = sl<ThemeController>();
-
-        return Scaffold(
-          key: _scaffoldKey,
-          drawer: isMobile
-              ? Drawer(
-                  child: AppSidebar(
-                    userName: userName,
-                    userRole: userRole,
-                    activeItem: AppSidebarItem.profile,
-                    onInventoryTap: () {
-                      Navigator.of(context).pop();
-                      context.go(AppRoutes.home);
-                    },
-                    onProfileTap: () => Navigator.of(context).pop(),
-                    onSettingsTap: () {
-                      Navigator.of(context).pop();
-                      _openSettingsSheet();
-                    },
-                    onLogoutTap: () {
-                      Navigator.of(context).pop();
-                      _confirmAndLogout();
-                    },
-                  ),
-                )
-              : null,
-          appBar: AppBar(
-            title: const Text('Profile'),
-            leading: isMobile
-                ? IconButton(
-                    icon: const Icon(Icons.menu),
-                    onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-                  )
-                : null,
-            actions: [
-              IconButton(
-                tooltip: 'Settings',
-                onPressed: _openSettingsSheet,
-                icon: const Icon(Icons.settings_outlined),
+    final user = widget.user;
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        title: Text(
+          'My Profile',
+          style: getOutfitStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary),
+        ),
+        actions: [
+          if (_dirty)
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: FilledButton(
+                onPressed: _saving ? null : _save,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.brand,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+                child: _saving
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      )
+                    : Text('Save',
+                        style: getOutfitStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white)),
               ),
-              IconButton(
-                tooltip: 'Log out',
-                onPressed: _confirmAndLogout,
-                icon: const Icon(Icons.logout),
+            ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 24, 16, 40),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Avatar ──────────────────────────────────────────────────
+              Center(
+                child: Column(
+                  children: [
+                    _saving
+                        ? const SizedBox(
+                            width: 84,
+                            height: 84,
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                  color: AppColors.brand, strokeWidth: 2),
+                            ),
+                          )
+                        : UserAvatar(
+                            avatarUrl: user?.avatarUrl,
+                            name: user?.fullName,
+                            email: user?.email,
+                            radius: 42,
+                            onTap: _pickAndUploadAvatar,
+                            showEditBadge: true,
+                          ),
+                    const SizedBox(height: 12),
+                    Text(
+                      user?.fullName ?? user?.email ?? 'User',
+                      style: getOutfitStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary),
+                    ),
+                    const SizedBox(height: 4),
+                    if (user?.roleName != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.brandSoft,
+                          borderRadius: BorderRadius.circular(100),
+                        ),
+                        child: Text(
+                          user!.roleName!,
+                          style: getOutfitStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.brand),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              // ── Personal Info ─────────────────────────────────────────
+              Text('Personal Info',
+                  style: getOutfitStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textMuted,
+                      letterSpacing: 0.4)),
+              const SizedBox(height: 8),
+              DashboardCard(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AppFieldLabel('Full Name'),
+                    TextFormField(
+                      controller: _nameCtrl,
+                      decoration: appInputDeco('Enter your full name'),
+                      style: getOutfitStyle(
+                          fontSize: 14, color: AppColors.textPrimary),
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Name cannot be empty'
+                          : null,
+                    ),
+                    const SizedBox(height: 14),
+                    AppFieldLabel('Email'),
+                    _ReadOnlyField(
+                      value: user?.email ?? '—',
+                      icon: Icons.lock_outline_rounded,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // ── Work Info ─────────────────────────────────────────────
+              Text('Work Info',
+                  style: getOutfitStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textMuted,
+                      letterSpacing: 0.4)),
+              const SizedBox(height: 8),
+              DashboardCard(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    _InfoRow(
+                      icon: Icons.badge_outlined,
+                      label: 'Role',
+                      value: user?.roleName ?? user?.roleId ?? '—',
+                    ),
+                    const Divider(height: 20, color: AppColors.borderSoft),
+                    _InfoRow(
+                      icon: Icons.business_outlined,
+                      label: 'Business',
+                      value: user?.businessName ?? '—',
+                    ),
+                    const Divider(height: 20, color: AppColors.borderSoft),
+                    _InfoRow(
+                      icon: Icons.store_outlined,
+                      label: 'Branch',
+                      value: user?.branchName ?? '—',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // ── Security ──────────────────────────────────────────────
+              Text('Security',
+                  style: getOutfitStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textMuted,
+                      letterSpacing: 0.4)),
+              const SizedBox(height: 8),
+              DashboardCard(
+                padding: EdgeInsets.zero,
+                child: _ActionRow(
+                  icon: Icons.lock_reset_rounded,
+                  iconBg: AppColors.warningSoft,
+                  iconColor: AppColors.warning,
+                  label: 'Change Password',
+                  onTap: _changePassword,
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // ── Preferences ───────────────────────────────────────────
+              // ── Logout ────────────────────────────────────────────────
+              DashboardCard(
+                padding: EdgeInsets.zero,
+                child: _ActionRow(
+                  icon: Icons.logout_rounded,
+                  iconBg: const Color(0xFFFFEDED),
+                  iconColor: AppColors.error,
+                  label: 'Log Out',
+                  labelColor: AppColors.error,
+                  onTap: _logout,
+                  showChevron: false,
+                ),
               ),
             ],
           ),
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+class _ReadOnlyField extends StatelessWidget {
+  final String value;
+  final IconData icon;
+  const _ReadOnlyField({required this.value, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.inputFill,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.borderSoft),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(value,
+                style: getOutfitStyle(
+                    fontSize: 14, color: AppColors.textSecondary)),
+          ),
+          Icon(icon, size: 16, color: AppColors.textMuted),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  const _InfoRow(
+      {required this.icon, required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            color: AppColors.inputFill,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 16, color: AppColors.textSecondary),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: getOutfitStyle(
+                      fontSize: 11, color: AppColors.textMuted)),
+              Text(value,
+                  style: getOutfitStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ActionRow extends StatelessWidget {
+  final IconData icon;
+  final Color iconBg;
+  final Color iconColor;
+  final String label;
+  final Color? labelColor;
+  final VoidCallback onTap;
+  final bool showChevron;
+  const _ActionRow({
+    required this.icon,
+    required this.iconBg,
+    required this.iconColor,
+    required this.label,
+    this.labelColor,
+    required this.onTap,
+    this.showChevron = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                  color: iconBg, borderRadius: BorderRadius.circular(10)),
+              child: Icon(icon, size: 18, color: iconColor),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(label,
+                  style: getOutfitStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: labelColor ?? AppColors.textPrimary)),
+            ),
+            if (showChevron)
+              const Icon(Icons.chevron_right_rounded,
+                  size: 20, color: AppColors.textMuted),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Change Password Sheet ─────────────────────────────────────────────────────
+
+class _ChangePasswordSheet extends StatefulWidget {
+  const _ChangePasswordSheet();
+
+  @override
+  State<_ChangePasswordSheet> createState() => _ChangePasswordSheetState();
+}
+
+class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _newCtrl = TextEditingController();
+  final _confirmCtrl = TextEditingController();
+  bool _obscureNew = true;
+  bool _obscureConfirm = true;
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _newCtrl.dispose();
+    _confirmCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _saving = true);
+    try {
+      await sl<AuthRepository>().changePassword(_newCtrl.text.trim());
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Password updated successfully',
+              style: getOutfitStyle(color: Colors.white)),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed: $e',
+              style: getOutfitStyle(color: Colors.white)),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 10),
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                  color: AppColors.borderSoft,
+                  borderRadius: BorderRadius.circular(100)),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(0, 14, 0, 16),
+            child: Row(
               children: [
-                const Text(
-                  'Account Information',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 12),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        _infoRow('Full Name', userName),
-                        _infoRow('Email', userEmail),
-                        _infoRow('User ID', userId),
-                        _infoRow('Role', userRole),
-                        _infoRow('Business', businessName),
-                        _infoRow('Branch', branchName),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: AnimatedBuilder(
-                      animation: themeController,
-                      builder: (context, _) {
-                        return SwitchListTile.adaptive(
-                          contentPadding: EdgeInsets.zero,
-                          title: const Text('Dark mode'),
-                          subtitle: const Text(
-                            'This is the same setting from the settings menu.',
-                          ),
-                          value: themeController.isDarkMode,
-                          onChanged: (enabled) {
-                            themeController.setThemeMode(
-                              enabled ? ThemeMode.dark : ThemeMode.light,
-                            );
-                          },
-                        );
-                      },
-                    ),
+                const Spacer(),
+                Text('Change Password',
+                    style: getOutfitStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary)),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                        color: AppColors.inputFill,
+                        borderRadius: BorderRadius.circular(8)),
+                    child: const Icon(Icons.close_rounded,
+                        size: 18, color: AppColors.textMuted),
                   ),
                 ),
               ],
             ),
           ),
-        );
-      },
-    );
-  }
-
-  Widget _infoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 110,
-            child: Text(
-              '$label:',
-              style: const TextStyle(fontWeight: FontWeight.w600),
+          Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppFieldLabel('New Password *'),
+                TextFormField(
+                  controller: _newCtrl,
+                  obscureText: _obscureNew,
+                  decoration: appInputDeco('Enter new password').copyWith(
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                          _obscureNew
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                          size: 18,
+                          color: AppColors.textMuted),
+                      onPressed: () =>
+                          setState(() => _obscureNew = !_obscureNew),
+                    ),
+                  ),
+                  style: getOutfitStyle(
+                      fontSize: 14, color: AppColors.textPrimary),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return 'Password is required';
+                    }
+                    if (v.trim().length < 8) {
+                      return 'At least 8 characters';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 14),
+                AppFieldLabel('Confirm Password *'),
+                TextFormField(
+                  controller: _confirmCtrl,
+                  obscureText: _obscureConfirm,
+                  decoration:
+                      appInputDeco('Confirm new password').copyWith(
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                          _obscureConfirm
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                          size: 18,
+                          color: AppColors.textMuted),
+                      onPressed: () =>
+                          setState(() => _obscureConfirm = !_obscureConfirm),
+                    ),
+                  ),
+                  style: getOutfitStyle(
+                      fontSize: 14, color: AppColors.textPrimary),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return 'Please confirm your password';
+                    }
+                    if (v.trim() != _newCtrl.text.trim()) {
+                      return 'Passwords do not match';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: _saving ? null : _submit,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.brand,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: _saving
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
+                          )
+                        : Text('Update Password',
+                            style: getOutfitStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white)),
+                  ),
+                ),
+              ],
             ),
           ),
-          Expanded(child: Text(value, style: const TextStyle(fontSize: 14))),
         ],
       ),
     );

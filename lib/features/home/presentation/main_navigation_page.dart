@@ -110,10 +110,12 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
         String branchName = 'Branch';
         String userEmail = 'N/A';
         String? userId;
+        String? userAvatar;
 
         _scheduleBranchLoad(authState.user);
 
         userId = authState.user.id;
+        userAvatar = authState.user.avatarUrl;
         userName = authState.user.fullName ?? authState.user.email ?? 'User';
 
         final roleName = authState.user.roleName?.trim();
@@ -159,6 +161,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                       userRole: userRole,
                       userEmail: userEmail,
                       userId: userId,
+                      userAvatar: userAvatar,
                       businessName: businessName,
                       isOnline: _isOnline,
                       pendingSyncCount: _pendingSyncCount,

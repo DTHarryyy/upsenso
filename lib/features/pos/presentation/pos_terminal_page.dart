@@ -1,5 +1,6 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show DeviceOrientation, SystemChrome;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -56,6 +57,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     if (widget.isActive) {
+      _unlockOrientation();
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _checkCameraPermission(),
       );
@@ -66,7 +68,10 @@ class _PosTerminalPageState extends State<PosTerminalPage>
   void didUpdateWidget(PosTerminalPage old) {
     super.didUpdateWidget(old);
     if (widget.isActive && !old.isActive) {
+      _unlockOrientation();
       _checkCameraPermission();
+    } else if (!widget.isActive && old.isActive) {
+      _lockToPortrait();
     }
   }
 
@@ -76,6 +81,26 @@ class _PosTerminalPageState extends State<PosTerminalPage>
     if (state == AppLifecycleState.resumed) {
       _checkCameraPermission();
     }
+  }
+
+  @override
+  void didChangeMetrics() {
+    if (!widget.isActive || _permissionDenied) return;
+    // Restart the camera so the native session picks up the new orientation.
+    _scannerController.stop().then((_) => _scannerController.start());
+  }
+
+  void _unlockOrientation() {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+  }
+
+  void _lockToPortrait() {
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   }
 
   Future<void> _checkCameraPermission() async {
@@ -89,6 +114,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
 
   @override
   void dispose() {
+    _lockToPortrait();
     WidgetsBinding.instance.removeObserver(this);
     _scannerController.dispose();
     _sheetController.dispose();
@@ -358,11 +384,15 @@ class _PosTerminalPageState extends State<PosTerminalPage>
           children: [
             // Full-screen camera background
             if (widget.isActive && !_permissionDenied)
-              MobileScanner(
-                controller: _scannerController,
-                onDetect: _onBarcodeDetected,
-                errorBuilder: (context, error, child) =>
-                    const ColoredBox(color: Colors.black),
+              OrientationBuilder(
+                builder: (ctx, orientation) => MobileScanner(
+                  key: ValueKey(orientation),
+                  controller: _scannerController,
+                  fit: BoxFit.cover,
+                  onDetect: _onBarcodeDetected,
+                  errorBuilder: (context, error, child) =>
+                      const ColoredBox(color: Colors.black),
+                ),
               )
             else
               const ColoredBox(color: Colors.black),
@@ -402,11 +432,15 @@ class _PosTerminalPageState extends State<PosTerminalPage>
             child: Stack(
               children: [
                 if (widget.isActive && !_permissionDenied)
-                  MobileScanner(
-                    controller: _scannerController,
-                    onDetect: _onBarcodeDetected,
-                    errorBuilder: (context, error, child) =>
-                        const ColoredBox(color: Colors.black),
+                  OrientationBuilder(
+                    builder: (ctx, orientation) => MobileScanner(
+                      key: ValueKey(orientation),
+                      controller: _scannerController,
+                      fit: BoxFit.cover,
+                      onDetect: _onBarcodeDetected,
+                      errorBuilder: (context, error, child) =>
+                          const ColoredBox(color: Colors.black),
+                    ),
                   )
                 else
                   const ColoredBox(color: Colors.black),

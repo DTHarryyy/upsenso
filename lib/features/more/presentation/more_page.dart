@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/widgets/user_avatar.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 
 class MorePage extends StatelessWidget {
@@ -19,216 +21,181 @@ class MorePage extends StatelessWidget {
           builder: (context, state) {
             final user = state is AuthAuthenticated ? state.user : null;
 
-            return SingleChildScrollView(
-              child: Column(
-                children: [
-                  Container(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 15,
-                      vertical: 10,
-                    ),
-                    padding: const EdgeInsets.all(15),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.borderSoft),
-                    ),
-                    child: Row(
+            return Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
                       children: [
-                        CircleAvatar(
-                          radius: 28,
-                          backgroundColor: AppColors.brandSoft,
-                          child: Icon(
-                            Icons.person,
-                            size: 28,
-                            color: AppColors.brand,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                user?.fullName ?? 'Guest User',
-                                style: AppTextStyles.title(context).copyWith(
-                                  color: AppColors.textPrimary,
-                                  overflow: TextOverflow.ellipsis,
+                        GestureDetector(
+                          onTap: () => context.push(AppRoutes.profile),
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 15,
+                              vertical: 10,
+                            ),
+                            padding: const EdgeInsets.all(15),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.borderSoft),
+                            ),
+                            child: Row(
+                              children: [
+                                UserAvatar(
+                                  avatarUrl: user?.avatarUrl,
+                                  name: user?.fullName,
+                                  email: user?.email,
+                                  radius: 28,
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'View Profile',
-                                style: AppTextStyles.caption(
-                                  context,
-                                ).copyWith(color: AppColors.brand),
-                              ),
-                            ],
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        user?.fullName ?? 'Guest User',
+                                        style: AppTextStyles.title(
+                                          context,
+                                        ).copyWith(
+                                          color: AppColors.textPrimary,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'View Profile',
+                                        style: AppTextStyles.caption(
+                                          context,
+                                        ).copyWith(color: AppColors.brand),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.chevron_right,
+                                  color: AppColors.textMuted,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                        Icon(Icons.chevron_right, color: AppColors.textMuted),
+
+                        _buildMenuSection(
+                          context: context,
+                          title: 'Main',
+                          items: [
+                            _MenuItem(
+                              icon: Icons.history,
+                              title: 'Sales History',
+                              onTap: () => context.push(AppRoutes.saleshistory),
+                            ),
+                          ],
+                        ),
+                        _buildMenuSection(
+                          context: context,
+                          title: 'Inventory',
+                          items: [
+                            _MenuItem(
+                              icon: Icons.stacked_bar_chart_outlined,
+                              title: 'Stock Level',
+                              onTap: () => context.push(AppRoutes.inventory),
+                            ),
+                          ],
+                        ),
+                        _buildMenuSection(
+                          context: context,
+                          title: 'Finance',
+                          items: [
+                            _MenuItem(
+                              icon: Icons.request_page_outlined,
+                              title: 'Expenses',
+                              onTap: () => context.push(AppRoutes.expenses),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 16),
                       ],
                     ),
                   ),
+                ),
 
-                  // Menu Items
-                  _buildMenuSection(
-                    context: context,
-                    title: 'Main',
-                    items: [
-                      _MenuItem(
-                        icon: Icons.history,
-                        title: 'Sales History',
-                        onTap: () => context.push(AppRoutes.saleshistory),
+                // Pinned logout button at bottom
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () async {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            backgroundColor: AppColors.surface,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            title: Text(
+                              'Log out?',
+                              style: AppTextStyles.title(ctx).copyWith(
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            content: Text(
+                              'Are you sure you want to log out?',
+                              style: AppTextStyles.body(ctx).copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, false),
+                                child: Text(
+                                  'Cancel',
+                                  style: AppTextStyles.body(ctx).copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                              FilledButton(
+                                onPressed: () => Navigator.pop(ctx, true),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: AppColors.error,
+                                ),
+                                child: Text(
+                                  'Log out',
+                                  style: AppTextStyles.body(ctx).copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirm == true && context.mounted) {
+                          context.read<AuthBloc>().add(AuthLogoutRequested());
+                        }
+                      },
+                      icon: const Icon(Icons.logout_rounded, size: 18),
+                      label: const Text('Log Out'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.error,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        textStyle: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                    ],
+                    ),
                   ),
-                  _buildMenuSection(
-                    context: context,
-                    title: 'Inventory',
-                    items: [
-                      // _MenuItem(
-                      //   icon: Icons.inventory_2,
-                      //   title: 'Products',
-                      //   onTap: () => context.push(AppRoutes.inventory),
-                      // ),
-                      _MenuItem(
-                        icon: Icons.stacked_bar_chart_outlined,
-                        title: 'Stock Level',
-                        onTap: () => context.push(AppRoutes.inventory),
-                      ),
-                      _MenuItem( 
-                        icon: Icons.assignment_outlined,
-                        title: 'Stock Leger',
-                        onTap: () {
-                          // TODO: Navigate to Stock eldger
-                        },
-                      ),
-                      _MenuItem(
-                        icon: Icons.refresh,
-                        title: 'Transfer Stock',
-                        onTap: () {
-                          // TODO: Navigate to Transfer stocks
-                        },
-                      ),
-                      _MenuItem(
-                        icon: Icons.local_shipping_outlined,
-                        title: 'Suppliers',
-                        onTap: () {
-                          // TODO: Navigate to Suppliers
-                        },
-                      ),
-                    ],
-                  ),
-                  _buildMenuSection(
-                    context: context,
-                    title: 'Finance',
-                    items: [
-                      _MenuItem(
-                        icon: Icons.request_page_outlined,
-                        title: 'Expenses',
-                        onTap: () => context.push(AppRoutes.expenses),
-                      ),
-                      _MenuItem(
-                        icon: Icons.bar_chart_outlined,
-                        title: 'Reports',
-                        onTap: () {
-                          // TODO: Navigate to reports
-                        },
-                      ),
-                    ],
-                  ),
-                  _buildMenuSection(
-                    context: context,
-                    title: 'AI & Security',
-                    items: [
-                      _MenuItem(
-                        icon: Icons.trending_up_outlined,
-                        title: 'Forecasting',
-                        onTap: () {
-                          // TODO: Navigate to Forecasting
-                        },
-                      ),
-                      _MenuItem(
-                        icon: Icons.warning_amber_rounded,
-                        title: 'Fraud Detection',
-                        onTap: () {
-                          // TODO: Navigate to Fraud Detection
-                        },
-                      ),
-                      _MenuItem(
-                        icon: Icons.shield_outlined,
-                        title: 'Audit Logs',
-                        onTap: () {
-                          // TODO: Navigate to audit logs
-                        },
-                      ),
-                    ],
-                  ),
-                  _buildMenuSection(
-                    context: context,
-                    title: 'Business',
-                    items: [
-                      _MenuItem(
-                        icon: Icons.business,
-                        title: 'Business Profile',
-                        onTap: () => context.push(AppRoutes.businessProfile),
-                      ),
-                      _MenuItem(
-                        icon: Icons.settings,
-                        title: 'Settings',
-                        onTap: () {
-                          // TODO: Navigate to settings
-                        },
-                      ),
-                    ],
-                  ),
-
-                  _buildMenuSection(
-                    context: context,
-                    title: 'Reports',
-                    items: [
-                      _MenuItem(
-                        icon: Icons.bar_chart,
-                        title: 'Sales Report',
-                        onTap: () {
-                          // TODO: Navigate to sales report
-                        },
-                      ),
-                      _MenuItem(
-                        icon: Icons.assessment,
-                        title: 'Analytics',
-                        onTap: () {
-                          // TODO: Navigate to analytics
-                        },
-                      ),
-                    ],
-                  ),
-
-                  _buildMenuSection(
-                    context: context,
-                    title: 'Support',
-                    items: [
-                      _MenuItem(
-                        icon: Icons.help_outline,
-                        title: 'Help & Support',
-                        onTap: () {
-                          // TODO: Navigate to help
-                        },
-                      ),
-                      _MenuItem(
-                        icon: Icons.info_outline,
-                        title: 'About',
-                        onTap: () {
-                          // TODO: Navigate to about
-                        },
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-                ],
-              ),
+                ),
+              ],
             );
           },
         ),
