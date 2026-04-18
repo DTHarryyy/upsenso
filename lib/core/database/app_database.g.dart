@@ -5144,6 +5144,17 @@ class $TransactionsTableTable extends TransactionsTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _branchIdMeta = const VerificationMeta(
     'branchId',
   );
@@ -5349,6 +5360,7 @@ class $TransactionsTableTable extends TransactionsTable
   @override
   List<GeneratedColumn> get $columns => [
     id,
+    businessId,
     branchId,
     cashierId,
     shiftId,
@@ -5384,6 +5396,12 @@ class $TransactionsTableTable extends TransactionsTable
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     } else if (isInserting) {
       context.missing(_idMeta);
+    }
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
     }
     if (data.containsKey('branch_id')) {
       context.handle(
@@ -5537,6 +5555,10 @@ class $TransactionsTableTable extends TransactionsTable
         DriftSqlType.string,
         data['${effectivePrefix}id'],
       )!,
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      ),
       branchId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}branch_id'],
@@ -5621,6 +5643,7 @@ class $TransactionsTableTable extends TransactionsTable
 class TransactionsTableData extends DataClass
     implements Insertable<TransactionsTableData> {
   final String id;
+  final String? businessId;
   final String? branchId;
   final String cashierId;
   final String? shiftId;
@@ -5643,6 +5666,7 @@ class TransactionsTableData extends DataClass
   final String? syncError;
   const TransactionsTableData({
     required this.id,
+    this.businessId,
     this.branchId,
     required this.cashierId,
     this.shiftId,
@@ -5666,6 +5690,9 @@ class TransactionsTableData extends DataClass
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
+    if (!nullToAbsent || businessId != null) {
+      map['business_id'] = Variable<String>(businessId);
+    }
     if (!nullToAbsent || branchId != null) {
       map['branch_id'] = Variable<String>(branchId);
     }
@@ -5706,6 +5733,9 @@ class TransactionsTableData extends DataClass
   TransactionsTableCompanion toCompanion(bool nullToAbsent) {
     return TransactionsTableCompanion(
       id: Value(id),
+      businessId: businessId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(businessId),
       branchId: branchId == null && nullToAbsent
           ? const Value.absent()
           : Value(branchId),
@@ -5750,6 +5780,7 @@ class TransactionsTableData extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return TransactionsTableData(
       id: serializer.fromJson<String>(json['id']),
+      businessId: serializer.fromJson<String?>(json['businessId']),
       branchId: serializer.fromJson<String?>(json['branchId']),
       cashierId: serializer.fromJson<String>(json['cashierId']),
       shiftId: serializer.fromJson<String?>(json['shiftId']),
@@ -5775,6 +5806,7 @@ class TransactionsTableData extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
+      'businessId': serializer.toJson<String?>(businessId),
       'branchId': serializer.toJson<String?>(branchId),
       'cashierId': serializer.toJson<String>(cashierId),
       'shiftId': serializer.toJson<String?>(shiftId),
@@ -5798,6 +5830,7 @@ class TransactionsTableData extends DataClass
 
   TransactionsTableData copyWith({
     String? id,
+    Value<String?> businessId = const Value.absent(),
     Value<String?> branchId = const Value.absent(),
     String? cashierId,
     Value<String?> shiftId = const Value.absent(),
@@ -5818,6 +5851,7 @@ class TransactionsTableData extends DataClass
     Value<String?> syncError = const Value.absent(),
   }) => TransactionsTableData(
     id: id ?? this.id,
+    businessId: businessId.present ? businessId.value : this.businessId,
     branchId: branchId.present ? branchId.value : this.branchId,
     cashierId: cashierId ?? this.cashierId,
     shiftId: shiftId.present ? shiftId.value : this.shiftId,
@@ -5846,6 +5880,9 @@ class TransactionsTableData extends DataClass
   TransactionsTableData copyWithCompanion(TransactionsTableCompanion data) {
     return TransactionsTableData(
       id: data.id.present ? data.id.value : this.id,
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
       branchId: data.branchId.present ? data.branchId.value : this.branchId,
       cashierId: data.cashierId.present ? data.cashierId.value : this.cashierId,
       shiftId: data.shiftId.present ? data.shiftId.value : this.shiftId,
@@ -5887,6 +5924,7 @@ class TransactionsTableData extends DataClass
   String toString() {
     return (StringBuffer('TransactionsTableData(')
           ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
           ..write('branchId: $branchId, ')
           ..write('cashierId: $cashierId, ')
           ..write('shiftId: $shiftId, ')
@@ -5912,6 +5950,7 @@ class TransactionsTableData extends DataClass
   @override
   int get hashCode => Object.hash(
     id,
+    businessId,
     branchId,
     cashierId,
     shiftId,
@@ -5936,6 +5975,7 @@ class TransactionsTableData extends DataClass
       identical(this, other) ||
       (other is TransactionsTableData &&
           other.id == this.id &&
+          other.businessId == this.businessId &&
           other.branchId == this.branchId &&
           other.cashierId == this.cashierId &&
           other.shiftId == this.shiftId &&
@@ -5959,6 +5999,7 @@ class TransactionsTableData extends DataClass
 class TransactionsTableCompanion
     extends UpdateCompanion<TransactionsTableData> {
   final Value<String> id;
+  final Value<String?> businessId;
   final Value<String?> branchId;
   final Value<String> cashierId;
   final Value<String?> shiftId;
@@ -5980,6 +6021,7 @@ class TransactionsTableCompanion
   final Value<int> rowid;
   const TransactionsTableCompanion({
     this.id = const Value.absent(),
+    this.businessId = const Value.absent(),
     this.branchId = const Value.absent(),
     this.cashierId = const Value.absent(),
     this.shiftId = const Value.absent(),
@@ -6002,6 +6044,7 @@ class TransactionsTableCompanion
   });
   TransactionsTableCompanion.insert({
     required String id,
+    this.businessId = const Value.absent(),
     this.branchId = const Value.absent(),
     required String cashierId,
     this.shiftId = const Value.absent(),
@@ -6029,6 +6072,7 @@ class TransactionsTableCompanion
        itemCount = Value(itemCount);
   static Insertable<TransactionsTableData> custom({
     Expression<String>? id,
+    Expression<String>? businessId,
     Expression<String>? branchId,
     Expression<String>? cashierId,
     Expression<String>? shiftId,
@@ -6051,6 +6095,7 @@ class TransactionsTableCompanion
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (businessId != null) 'business_id': businessId,
       if (branchId != null) 'branch_id': branchId,
       if (cashierId != null) 'cashier_id': cashierId,
       if (shiftId != null) 'shift_id': shiftId,
@@ -6075,6 +6120,7 @@ class TransactionsTableCompanion
 
   TransactionsTableCompanion copyWith({
     Value<String>? id,
+    Value<String?>? businessId,
     Value<String?>? branchId,
     Value<String>? cashierId,
     Value<String?>? shiftId,
@@ -6097,6 +6143,7 @@ class TransactionsTableCompanion
   }) {
     return TransactionsTableCompanion(
       id: id ?? this.id,
+      businessId: businessId ?? this.businessId,
       branchId: branchId ?? this.branchId,
       cashierId: cashierId ?? this.cashierId,
       shiftId: shiftId ?? this.shiftId,
@@ -6124,6 +6171,9 @@ class TransactionsTableCompanion
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<String>(id.value);
+    }
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
     }
     if (branchId.present) {
       map['branch_id'] = Variable<String>(branchId.value);
@@ -6189,6 +6239,7 @@ class TransactionsTableCompanion
   String toString() {
     return (StringBuffer('TransactionsTableCompanion(')
           ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
           ..write('branchId: $branchId, ')
           ..write('cashierId: $cashierId, ')
           ..write('shiftId: $shiftId, ')
@@ -10764,6 +10815,7 @@ typedef $$ProductVariantsTableTableProcessedTableManager =
 typedef $$TransactionsTableTableCreateCompanionBuilder =
     TransactionsTableCompanion Function({
       required String id,
+      Value<String?> businessId,
       Value<String?> branchId,
       required String cashierId,
       Value<String?> shiftId,
@@ -10787,6 +10839,7 @@ typedef $$TransactionsTableTableCreateCompanionBuilder =
 typedef $$TransactionsTableTableUpdateCompanionBuilder =
     TransactionsTableCompanion Function({
       Value<String> id,
+      Value<String?> businessId,
       Value<String?> branchId,
       Value<String> cashierId,
       Value<String?> shiftId,
@@ -10819,6 +10872,11 @@ class $$TransactionsTableTableFilterComposer
   });
   ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10927,6 +10985,11 @@ class $$TransactionsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get branchId => $composableBuilder(
     column: $table.branchId,
     builder: (column) => ColumnOrderings(column),
@@ -11029,6 +11092,11 @@ class $$TransactionsTableTableAnnotationComposer
   });
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get branchId =>
       $composableBuilder(column: $table.branchId, builder: (column) => column);
@@ -11142,6 +11210,7 @@ class $$TransactionsTableTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
+                Value<String?> businessId = const Value.absent(),
                 Value<String?> branchId = const Value.absent(),
                 Value<String> cashierId = const Value.absent(),
                 Value<String?> shiftId = const Value.absent(),
@@ -11163,6 +11232,7 @@ class $$TransactionsTableTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => TransactionsTableCompanion(
                 id: id,
+                businessId: businessId,
                 branchId: branchId,
                 cashierId: cashierId,
                 shiftId: shiftId,
@@ -11186,6 +11256,7 @@ class $$TransactionsTableTableTableManager
           createCompanionCallback:
               ({
                 required String id,
+                Value<String?> businessId = const Value.absent(),
                 Value<String?> branchId = const Value.absent(),
                 required String cashierId,
                 Value<String?> shiftId = const Value.absent(),
@@ -11207,6 +11278,7 @@ class $$TransactionsTableTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => TransactionsTableCompanion.insert(
                 id: id,
+                businessId: businessId,
                 branchId: branchId,
                 cashierId: cashierId,
                 shiftId: shiftId,

@@ -113,14 +113,18 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
     await delete(transactionsTable).go();
   }
 
-  /// Fetch all transactions since [cutoff], optionally filtered by branch.
+  /// Fetch all transactions since [cutoff], filtered by business.
+  /// Optionally further filtered by [branchId].
   Future<List<TransactionsTableData>> getTransactionsSince(
     DateTime cutoff, {
+    required String businessId,
     String? branchId,
   }) {
     final query = select(transactionsTable)
       ..where((t) {
-        Expression<bool> cond = t.createdAt.isBiggerOrEqualValue(cutoff);
+        Expression<bool> cond = t.createdAt.isBiggerOrEqualValue(cutoff) &
+            (t.businessId.equals(businessId) |
+                t.businessId.isNull()); // null rows = pre-v20 data, include them
         if (branchId != null) {
           cond = cond & t.branchId.equals(branchId);
         }
@@ -130,10 +134,16 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
     return query.get();
   }
 
-  /// Fetch ALL transactions (all branches) since [cutoff] – used for branch comparison.
-  Future<List<TransactionsTableData>> getAllTransactionsSince(DateTime cutoff) {
+  /// Fetch ALL transactions (all branches) for this business since [cutoff].
+  /// Used for branch comparison charts.
+  Future<List<TransactionsTableData>> getAllTransactionsSince(
+    DateTime cutoff, {
+    required String businessId,
+  }) {
     return (select(transactionsTable)
-          ..where((t) => t.createdAt.isBiggerOrEqualValue(cutoff))
+          ..where((t) =>
+              t.createdAt.isBiggerOrEqualValue(cutoff) &
+              (t.businessId.equals(businessId) | t.businessId.isNull()))
           ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
         .get();
   }
