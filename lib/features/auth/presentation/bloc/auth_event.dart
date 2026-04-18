@@ -70,6 +70,14 @@ class AuthUserChanged extends AuthEvent {
   List<Object?> get props => [isLoggedIn];
 }
 
+class AuthUpdateProfileRequested extends AuthEvent {
+  final String fullName;
+  const AuthUpdateProfileRequested(this.fullName);
+
+  @override
+  List<Object?> get props => [fullName];
+}
+
 // Password Reset Events
 class AuthForgotPasswordRequested extends AuthEvent {
   final String email;

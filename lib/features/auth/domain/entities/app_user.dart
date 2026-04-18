@@ -2,6 +2,7 @@ class AppUser {
   final String id;
   final String? email;
   final String? fullName;
+  final String? avatarUrl;
   final String? businessId;
   final String? roleId;
   final String? roleName;
@@ -15,6 +16,7 @@ class AppUser {
     required this.id,
     this.email,
     this.fullName,
+    this.avatarUrl,
     this.businessId,
     this.roleId,
     this.roleName,

@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -108,6 +109,25 @@ class AuthRemoteDs {
               : part[0].toUpperCase() + part.substring(1).toLowerCase(),
         )
         .join(' ');
+  }
+
+  /// Upload avatar image to Supabase Storage and return the public URL.
+  Future<String> uploadAvatar(List<int> bytes, String userId) async {
+    final path = '$userId/avatar.jpg';
+    await client.storage.from('avatars').uploadBinary(
+      path,
+      Uint8List.fromList(bytes),
+      fileOptions: const FileOptions(upsert: true, contentType: 'image/jpeg'),
+    );
+    final url = client.storage.from('avatars').getPublicUrl(path);
+    // Bust the cache by appending a timestamp query param
+    return '$url?t=${DateTime.now().millisecondsSinceEpoch}';
+  }
+
+  Future<void> updateAvatarUrl(String avatarUrl) async {
+    await client.auth.updateUser(
+      UserAttributes(data: {'avatar_url': avatarUrl}),
+    );
   }
 
   Future<void> signOut() => client.auth.signOut();

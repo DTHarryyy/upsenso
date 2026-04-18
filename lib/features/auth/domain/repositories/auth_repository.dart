@@ -21,6 +21,15 @@ abstract class AuthRepository {
   /// Fetch user's business context (businessId, roleId, businessName)
   Future<AppUser?> getUserBusinessContext(String userId);
 
+  /// Update the current user's display name
+  Future<AppUser> updateProfile({required String fullName});
+
+  /// Change password for the currently authenticated user
+  Future<void> changePassword(String newPassword);
+
+  /// Upload avatar image and persist the public URL
+  Future<AppUser> uploadAvatar(String userId, List<int> bytes);
+
   /// Password Reset
   Future<void> sendPasswordResetOtp(String email);
   Future<void> verifyPasswordResetOtp({

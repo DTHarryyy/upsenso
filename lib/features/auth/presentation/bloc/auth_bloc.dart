@@ -73,6 +73,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   bool _sameContext(AppUser a, AppUser b) {
     return a.id == b.id &&
+        a.fullName == b.fullName &&
+        a.avatarUrl == b.avatarUrl &&
         a.businessId == b.businessId &&
         a.roleId == b.roleId &&
         a.roleName == b.roleName &&

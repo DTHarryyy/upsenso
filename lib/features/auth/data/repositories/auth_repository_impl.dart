@@ -1,4 +1,9 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:pos/core/database/daos/auth_context_dao.dart';
 import 'package:pos/core/errors/supabase_error_mapper.dart';
 import 'package:pos/features/auth/data/datasources/auth_remote_ds.dart';
@@ -47,6 +52,7 @@ class AuthRepositoryImpl implements AuthRepository {
         id: baseUser.id,
         email: baseUser.email ?? _cachedUserInMemory!.email,
         fullName: baseUser.fullName ?? _cachedUserInMemory!.fullName,
+        avatarUrl: _cachedUserInMemory!.avatarUrl ?? baseUser.avatarUrl,
         businessId: _cachedUserInMemory!.businessId,
         roleId: _cachedUserInMemory!.roleId,
         roleName: _cachedUserInMemory!.roleName,
@@ -253,6 +259,7 @@ class AuthRepositoryImpl implements AuthRepository {
         fullName:
             _normalizeNullableString(userData['full_name']) ??
             baseUser?.fullName,
+        avatarUrl: _cachedUserInMemory?.avatarUrl ?? baseUser?.avatarUrl,
         businessId:
             _normalizeNullableString(userData['business_id']) ??
             baseUser?.businessId,
@@ -301,6 +308,7 @@ class AuthRepositoryImpl implements AuthRepository {
       id: user.id,
       email: user.email,
       fullName: user.fullName,
+      avatarUrl: user.avatarUrl,
       businessId: user.businessId,
       roleId: user.roleId,
       roleName: user.roleName,
@@ -316,6 +324,7 @@ class AuthRepositoryImpl implements AuthRepository {
       userId: user.id,
       email: user.email,
       fullName: user.fullName,
+      avatarUrl: user.avatarUrl,
       businessId: user.businessId,
       roleId: user.roleId,
       roleName: user.roleName,
@@ -338,6 +347,101 @@ class AuthRepositoryImpl implements AuthRepository {
       return entity;
     }
     return null;
+  }
+
+  @override
+  Future<AppUser> uploadAvatar(String userId, List<int> bytes) async {
+    // Save locally first so the UI updates instantly without network.
+    final dir = await getApplicationDocumentsDirectory();
+    final localPath = p.join(dir.path, '${userId}_avatar.jpg');
+    await File(localPath).writeAsBytes(bytes, flush: true);
+
+    final current = _cachedUserInMemory;
+    final localUser = AppUserModel(
+      id: userId,
+      email: current?.email,
+      fullName: current?.fullName,
+      avatarUrl: localPath,
+      businessId: current?.businessId,
+      roleId: current?.roleId,
+      roleName: current?.roleName,
+      businessName: current?.businessName,
+      branchId: current?.branchId,
+      branchName: current?.branchName,
+      businessTemplateId: current?.businessTemplateId,
+      businessTemplateName: current?.businessTemplateName,
+    );
+    await _cacheUserContext(localUser);
+
+    // Background sync to Supabase — does not block the caller.
+    unawaited(
+      _syncAvatarToRemote(userId, bytes, localPath).catchError((e) {
+        debugPrint('AuthRepo: background avatar sync failed: $e');
+      }),
+    );
+
+    return localUser;
+  }
+
+  Future<void> _syncAvatarToRemote(
+    String userId,
+    List<int> bytes,
+    String localPath,
+  ) async {
+    final remoteUrl = await remote.uploadAvatar(bytes, userId);
+    await remote.updateAvatarUrl(remoteUrl);
+
+    final current = _cachedUserInMemory;
+    // Only update if the user hasn't picked a newer avatar since.
+    if (current?.avatarUrl == localPath) {
+      final updated = AppUserModel(
+        id: userId,
+        email: current?.email,
+        fullName: current?.fullName,
+        avatarUrl: remoteUrl,
+        businessId: current?.businessId,
+        roleId: current?.roleId,
+        roleName: current?.roleName,
+        businessName: current?.businessName,
+        branchId: current?.branchId,
+        branchName: current?.branchName,
+        businessTemplateId: current?.businessTemplateId,
+        businessTemplateName: current?.businessTemplateName,
+      );
+      await _cacheUserContext(updated);
+    }
+  }
+
+  @override
+  Future<void> changePassword(String newPassword) async {
+    try {
+      await remote.updatePassword(newPassword);
+    } catch (e) {
+      throw SupabaseAuthErrorMapper.message(e);
+    }
+  }
+
+  @override
+  Future<AppUser> updateProfile({required String fullName}) async {
+    final current = _cachedUserInMemory;
+    final email = current?.email ?? remote.currentUser()?.email ?? '';
+    await remote.updateUserMetadata(email: email, fullName: fullName);
+    final updated = AppUserModel(
+      id: current?.id ?? remote.currentUser()!.id,
+      email: current?.email,
+      fullName: fullName,
+      avatarUrl: current?.avatarUrl,
+      businessId: current?.businessId,
+      roleId: current?.roleId,
+      roleName: current?.roleName,
+      businessName: current?.businessName,
+      branchId: current?.branchId,
+      branchName: current?.branchName,
+      businessTemplateId: current?.businessTemplateId,
+      businessTemplateName: current?.businessTemplateName,
+    );
+    await _cacheUserContext(updated);
+    return updated;
   }
 
   String? _normalizeNullableString(Object? value) {
