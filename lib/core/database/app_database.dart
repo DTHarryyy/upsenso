@@ -60,7 +60,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 19;
+  int get schemaVersion => 20;
 
   @override
   MigrationStrategy get migration {
@@ -216,6 +216,26 @@ class AppDatabase extends _$AppDatabase {
             FROM stock_ledger_old
           ''');
           await customStatement('DROP TABLE stock_ledger_old');
+        }
+        if (from < 20) {
+          // Add business_id column to transactions for proper multi-account isolation.
+          // Backfill via branch → business join; rows with null branch_id stay null
+          // (they predate branch support and belong to the only business on device).
+          try {
+            await customStatement(
+              'ALTER TABLE transactions ADD COLUMN business_id TEXT',
+            );
+          } catch (_) {}
+          try {
+            await customStatement('''
+              UPDATE transactions
+              SET business_id = (
+                SELECT b.business_id FROM branches b
+                WHERE b.id = transactions.branch_id
+              )
+              WHERE branch_id IS NOT NULL AND business_id IS NULL
+            ''');
+          } catch (_) {}
         }
         if (from < 19) {
           // Recreate product_variants:

@@ -23,17 +23,21 @@ class BranchCubit extends Cubit<BranchState> {
 
   Map<String, String?> _branchIdsByName = const {};
   String? _lastLoadContextKey;
+  String _currentBusinessId = '';
 
   BranchCubit() : super(BranchState.initial());
 
-  /// Load the last selected branch from local storage
-  Future<_CachedBranchSelection> _getLastSelectedBranch() async {
+  /// Load the last selected branch from local storage, scoped to [businessId].
+  Future<_CachedBranchSelection> _getLastSelectedBranch(String businessId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      final nameKey = '${_selectedBranchNameKey}_$businessId';
+      final idKey = '${_selectedBranchIdKey}_$businessId';
+      // Fall back to legacy (unscoped) key on first migration
       final selectedName =
-          prefs.getString(_selectedBranchNameKey) ??
+          prefs.getString(nameKey) ??
           prefs.getString(_legacySelectedBranchKey);
-      final selectedId = prefs.getString(_selectedBranchIdKey);
+      final selectedId = prefs.getString(idKey);
       return _CachedBranchSelection(name: selectedName, id: selectedId);
     } catch (e) {
       debugPrint('[BranchCubit] Error loading cached selection: $e');
@@ -41,30 +45,34 @@ class BranchCubit extends Cubit<BranchState> {
     }
   }
 
-  /// Save the selected branch to local storage
+  /// Save the selected branch to local storage, scoped to [businessId].
   Future<void> _saveSelectedBranch({
+    required String businessId,
     required String branchName,
     required String? branchId,
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_selectedBranchNameKey, branchName);
+      final nameKey = '${_selectedBranchNameKey}_$businessId';
+      final idKey = '${_selectedBranchIdKey}_$businessId';
+      await prefs.setString(nameKey, branchName);
+      // Keep legacy key so older app versions still read something sensible
       await prefs.setString(_legacySelectedBranchKey, branchName);
 
       if (branchId == null || branchId.trim().isEmpty) {
-        await prefs.remove(_selectedBranchIdKey);
+        await prefs.remove(idKey);
       } else {
-        await prefs.setString(_selectedBranchIdKey, branchId);
+        await prefs.setString(idKey, branchId);
       }
     } catch (e) {
       debugPrint('[BranchCubit] Error saving selection: $e');
     }
   }
 
-  Future<List<_BranchOption>> _getCachedBranchOptions() async {
+  Future<List<_BranchOption>> _getCachedBranchOptions(String businessId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_cachedBranchOptionsKey);
+      final raw = prefs.getString('${_cachedBranchOptionsKey}_$businessId');
       if (raw == null || raw.isEmpty) {
         return const [];
       }
@@ -97,34 +105,33 @@ class BranchCubit extends Cubit<BranchState> {
     }
   }
 
-  Future<void> _saveCachedBranchOptions(List<_BranchOption> options) async {
+  Future<void> _saveCachedBranchOptions(String businessId, List<_BranchOption> options) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final payload = options
           .map((option) => {'name': option.name, 'id': option.id})
           .toList(growable: false);
-      await prefs.setString(_cachedBranchOptionsKey, jsonEncode(payload));
+      await prefs.setString('${_cachedBranchOptionsKey}_$businessId', jsonEncode(payload));
     } catch (e) {
       debugPrint('[BranchCubit] Error saving cached options: $e');
     }
   }
 
-  /// Save whether the user can switch branches
-  Future<void> _saveCachedCanSwitch(bool canSwitch) async {
+  /// Save whether the user can switch branches, scoped to [businessId].
+  Future<void> _saveCachedCanSwitch(String businessId, bool canSwitch) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_cachedCanSwitchKey, canSwitch);
+      await prefs.setBool('${_cachedCanSwitchKey}_$businessId', canSwitch);
     } catch (e) {
       debugPrint('[BranchCubit] Error saving canSwitch: $e');
     }
   }
 
-  /// Load whether the user can switch branches
-  Future<bool?> _getCachedCanSwitch() async {
+  /// Load whether the user can switch branches, scoped to [businessId].
+  Future<bool?> _getCachedCanSwitch(String businessId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final cached = prefs.getBool(_cachedCanSwitchKey);
-      return cached;
+      return prefs.getBool('${_cachedCanSwitchKey}_$businessId');
     } catch (e) {
       debugPrint('[BranchCubit] Error loading cached canSwitch: $e');
       return null;
@@ -161,10 +168,11 @@ class BranchCubit extends Cubit<BranchState> {
     }
     _lastLoadContextKey = loadContextKey;
 
-    final cachedSelection = await _getLastSelectedBranch();
-    final cachedOptions = await _getCachedBranchOptions();
-    final cachedCanSwitch = await _getCachedCanSwitch();
-    final businessId = user.businessId?.trim();
+    final businessId = user.businessId?.trim() ?? '';
+    _currentBusinessId = businessId;
+    final cachedSelection = await _getLastSelectedBranch(businessId);
+    final cachedOptions = await _getCachedBranchOptions(businessId);
+    final cachedCanSwitch = await _getCachedCanSwitch(businessId);
     final canAccessAllBranches = _canAccessAllBranches(user);
     final branchOptions = <_BranchOption>[];
 
@@ -230,20 +238,20 @@ class BranchCubit extends Cubit<BranchState> {
 
       if (!persist) return;
 
-      await _saveSelectedBranch(branchName: selected, branchId: selectedId);
+      await _saveSelectedBranch(businessId: businessId, branchName: selected, branchId: selectedId);
 
       final cacheableOptions = idsByName.entries
           .where((entry) => entry.key != allBranchesLabel)
           .map((entry) => _BranchOption(name: entry.key, id: entry.value))
           .toList(growable: false);
-      await _saveCachedBranchOptions(cacheableOptions);
-      await _saveCachedCanSwitch(canSwitch);
+      await _saveCachedBranchOptions(businessId, cacheableOptions);
+      await _saveCachedCanSwitch(businessId, canSwitch);
     }
 
     // Always emit cached/fallback branch state immediately for responsive UI.
     await applyBranchState(persist: false);
 
-    if (businessId == null || businessId.isEmpty) {
+    if (businessId.isEmpty) {
       await applyBranchState();
       return;
     }
@@ -376,7 +384,7 @@ class BranchCubit extends Cubit<BranchState> {
       ),
     );
 
-    await _saveSelectedBranch(branchName: branchName, branchId: selectedId);
+    await _saveSelectedBranch(businessId: _currentBusinessId, branchName: branchName, branchId: selectedId);
   }
 
   /// Get the currently selected branch ID (for filtering)
@@ -451,13 +459,13 @@ class BranchCubit extends Cubit<BranchState> {
       roleName: state.roleName,
     ));
 
-    await _saveSelectedBranch(branchName: branch.name, branchId: id);
+    await _saveSelectedBranch(businessId: businessId, branchName: branch.name, branchId: id);
 
     final cacheableOptions = updatedIdsByName.entries
         .where((entry) => entry.key != allBranchesLabel)
         .map((entry) => _BranchOption(name: entry.key, id: entry.value))
         .toList(growable: false);
-    await _saveCachedBranchOptions(cacheableOptions);
+    await _saveCachedBranchOptions(businessId, cacheableOptions);
 
     return id;
   }

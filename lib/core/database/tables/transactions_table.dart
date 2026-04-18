@@ -9,6 +9,7 @@ class TransactionsTable extends Table {
   String get tableName => 'transactions';
 
   TextColumn get id => text()();
+  TextColumn get businessId => text().nullable()(); // → business_id (owner)
   TextColumn get branchId => text().nullable()(); // → branch_id
   TextColumn get cashierId => text()(); // → cashier_id (logged-in user)
   TextColumn get shiftId => text().nullable()(); // → shift_id (null for now)
