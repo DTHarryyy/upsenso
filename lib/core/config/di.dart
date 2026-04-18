@@ -52,8 +52,11 @@ import 'package:pos/features/ai_assistant/services/ai_tool_service.dart';
 import 'package:pos/features/ai_assistant/services/ai_pipeline.dart';
 import 'package:pos/features/dashboard/data/dashboard_repository.dart';
 import 'package:pos/features/reports/data/reports_repository.dart';
+import 'package:pos/core/database/daos/expenses_dao.dart';
 import 'package:pos/core/database/daos/inventory_levels_dao.dart';
 import 'package:pos/core/database/daos/stock_ledger_dao.dart';
+import 'package:pos/features/expenses/data/datasources/expenses_remote_ds.dart';
+import 'package:pos/features/expenses/data/expenses_repository.dart';
 import 'package:pos/features/inventory/data/inventory_repository.dart';
 
 final sl = GetIt.instance;
@@ -101,6 +104,12 @@ Future<void> initDI() async {
   );
   sl.registerLazySingleton<StockLedgerDao>(
     () => StockLedgerDao(sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<ExpensesDao>(
+    () => ExpensesDao(sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<ExpensesRepository>(
+    () => ExpensesRepository(expensesDao: sl<ExpensesDao>()),
   );
 
   sl.registerLazySingleton<CartService>(() => CartService());
@@ -161,6 +170,7 @@ Future<void> initDI() async {
   );
 
   sl.registerLazySingleton(() => BusinessRemoteDs(sl<SupabaseClient>()));
+  sl.registerLazySingleton(() => ExpensesRemoteDs(sl<SupabaseClient>()));
   sl.registerLazySingleton(() => ProductsRemoteDs(sl<SupabaseClient>()));
   sl.registerLazySingleton(() => TransactionsRemoteDs(sl<SupabaseClient>()));
 
@@ -188,10 +198,14 @@ Future<void> initDI() async {
       authContextDao: sl<AuthContextDao>(),
       businessesDao: sl<BusinessesDao>(),
       categoriesDao: sl<CategoriesDao>(),
+      expensesDao: sl<ExpensesDao>(),
+      inventoryLevelsDao: sl<InventoryLevelsDao>(),
       productsDao: sl<ProductsDao>(),
       productVariantsDao: sl<ProductVariantsDao>(),
+      stockLedgerDao: sl<StockLedgerDao>(),
       transactionsDao: sl<TransactionsDao>(),
       businessRemoteDs: sl<BusinessRemoteDs>(),
+      expensesRemoteDs: sl<ExpensesRemoteDs>(),
       productsRemoteDs: sl<ProductsRemoteDs>(),
       transactionsRemoteDs: sl<TransactionsRemoteDs>(),
       connectivityService: sl<ConnectivityService>(),

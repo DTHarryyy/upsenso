@@ -10,6 +10,7 @@ import 'package:pos/core/database/tables/business_templates_table.dart';
 import 'package:pos/core/database/tables/businesses_table.dart';
 import 'package:pos/core/database/tables/branches_table.dart';
 import 'package:pos/core/database/tables/categories_table.dart';
+import 'package:pos/core/database/tables/expenses_table.dart';
 import 'package:pos/core/database/tables/products_table.dart';
 import 'package:pos/core/database/tables/product_variants_table.dart';
 import 'package:pos/core/database/tables/transactions_table.dart';
@@ -21,6 +22,7 @@ import 'package:pos/core/database/daos/business_templates_dao.dart';
 import 'package:pos/core/database/daos/businesses_dao.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/core/database/daos/categories_dao.dart';
+import 'package:pos/core/database/daos/expenses_dao.dart';
 import 'package:pos/core/database/daos/products_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
 import 'package:pos/core/database/daos/transactions_dao.dart';
@@ -36,6 +38,7 @@ part 'app_database.g.dart';
     BusinessesTable,
     BranchesTable,
     CategoriesTable,
+    ExpensesTable,
     ProductsTable,
     ProductVariantsTable,
     TransactionsTable,
@@ -49,6 +52,7 @@ part 'app_database.g.dart';
     BusinessesDao,
     BranchesDao,
     CategoriesDao,
+    ExpensesDao,
     ProductsDao,
     ProductVariantsDao,
     TransactionsDao,
@@ -60,7 +64,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 20;
+  int get schemaVersion => 22;
 
   @override
   MigrationStrategy get migration {
@@ -264,6 +268,13 @@ class AppDatabase extends _$AppDatabase {
             FROM product_variants_old
           ''');
           await customStatement('DROP TABLE product_variants_old');
+        }
+        if (from < 21) {
+          await m.createTable(expensesTable);
+        }
+        if (from < 22) {
+          await customStatement(
+              'ALTER TABLE auth_context ADD COLUMN avatar_url TEXT;');
         }
       },
     );

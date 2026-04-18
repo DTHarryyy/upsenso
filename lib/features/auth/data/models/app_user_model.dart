@@ -6,6 +6,7 @@ class AppUserModel extends AppUser {
     required super.id,
     super.email,
     super.fullName,
+    super.avatarUrl,
     super.businessId,
     super.roleId,
     super.roleName,
@@ -21,6 +22,7 @@ class AppUserModel extends AppUser {
       id: user.id,
       email: user.email,
       fullName: user.userMetadata?['full_name'] as String?,
+      avatarUrl: user.userMetadata?['avatar_url'] as String?,
     );
   }
 
@@ -28,6 +30,7 @@ class AppUserModel extends AppUser {
     String? id,
     String? email,
     String? fullName,
+    String? avatarUrl,
     String? businessId,
     String? roleId,
     String? roleName,
@@ -41,6 +44,7 @@ class AppUserModel extends AppUser {
       id: id ?? this.id,
       email: email ?? this.email,
       fullName: fullName ?? this.fullName,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
       businessId: businessId ?? this.businessId,
       roleId: roleId ?? this.roleId,
       roleName: roleName ?? this.roleName,

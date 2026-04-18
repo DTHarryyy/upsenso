@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/tables/inventory_levels_table.dart';
+import 'package:pos/core/sync/sync_status.dart';
 
 part 'inventory_levels_dao.g.dart';
 
@@ -124,6 +125,48 @@ class InventoryLevelsDao extends DatabaseAccessor<AppDatabase>
     return (select(inventoryLevelsTable)
           ..where((t) => t.variantId.equals(variantId)))
         .get();
+  }
+
+  Future<List<InventoryLevelsTableData>> getPendingSync() {
+    return (select(inventoryLevelsTable)
+          ..where((t) => t.syncStatus.isIn([
+                SyncStatus.pendingUpload.toInt(),
+                SyncStatus.pendingUpdate.toInt(),
+                SyncStatus.failed.toInt(),
+              ])))
+        .get();
+  }
+
+  Future<void> updateSyncStatus({
+    required String id,
+    required SyncStatus status,
+    String? error,
+  }) {
+    return (update(inventoryLevelsTable)..where((t) => t.id.equals(id))).write(
+      InventoryLevelsTableCompanion(
+        syncStatus: Value(status.toInt()),
+        localUpdatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  Future<void> upsertFromServer(Map<String, dynamic> row) {
+    final variantId = row['variant_id'] as String;
+    final branchId = row['branch_id'] as String;
+    return into(inventoryLevelsTable).insertOnConflictUpdate(
+      InventoryLevelsTableCompanion.insert(
+        id: makeId(variantId, branchId),
+        variantId: variantId,
+        branchId: branchId,
+        businessId: row['business_id'] as String,
+        quantity: Value((row['quantity'] as int?) ?? 0),
+        quantityDecimal: Value((row['quantity_decimal'] as num?)?.toDouble()),
+        lowStockAlertOverride:
+            Value(row['low_stock_alert_override'] as int?),
+        syncStatus: Value(SyncStatus.synced.toInt()),
+        localUpdatedAt: Value(DateTime.now()),
+      ),
+    );
   }
 
   /// Clear all levels (e.g. on logout).

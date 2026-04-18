@@ -38,6 +38,17 @@ class $AuthContextTableTable extends AuthContextTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _avatarUrlMeta = const VerificationMeta(
+    'avatarUrl',
+  );
+  @override
+  late final GeneratedColumn<String> avatarUrl = GeneratedColumn<String>(
+    'avatar_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _businessIdMeta = const VerificationMeta(
     'businessId',
   );
@@ -142,6 +153,7 @@ class $AuthContextTableTable extends AuthContextTable
     userId,
     email,
     fullName,
+    avatarUrl,
     businessId,
     roleId,
     roleName,
@@ -182,6 +194,12 @@ class $AuthContextTableTable extends AuthContextTable
       context.handle(
         _fullNameMeta,
         fullName.isAcceptableOrUnknown(data['full_name']!, _fullNameMeta),
+      );
+    }
+    if (data.containsKey('avatar_url')) {
+      context.handle(
+        _avatarUrlMeta,
+        avatarUrl.isAcceptableOrUnknown(data['avatar_url']!, _avatarUrlMeta),
       );
     }
     if (data.containsKey('business_id')) {
@@ -271,6 +289,10 @@ class $AuthContextTableTable extends AuthContextTable
         DriftSqlType.string,
         data['${effectivePrefix}full_name'],
       ),
+      avatarUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}avatar_url'],
+      ),
       businessId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}business_id'],
@@ -327,6 +349,9 @@ class AuthContextTableData extends DataClass
   /// User's full name
   final String? fullName;
 
+  /// User's avatar URL (Supabase Storage public URL)
+  final String? avatarUrl;
+
   /// Associated business ID (from database trigger context)
   final String? businessId;
 
@@ -357,6 +382,7 @@ class AuthContextTableData extends DataClass
     required this.userId,
     this.email,
     this.fullName,
+    this.avatarUrl,
     this.businessId,
     this.roleId,
     this.roleName,
@@ -376,6 +402,9 @@ class AuthContextTableData extends DataClass
     }
     if (!nullToAbsent || fullName != null) {
       map['full_name'] = Variable<String>(fullName);
+    }
+    if (!nullToAbsent || avatarUrl != null) {
+      map['avatar_url'] = Variable<String>(avatarUrl);
     }
     if (!nullToAbsent || businessId != null) {
       map['business_id'] = Variable<String>(businessId);
@@ -414,6 +443,9 @@ class AuthContextTableData extends DataClass
       fullName: fullName == null && nullToAbsent
           ? const Value.absent()
           : Value(fullName),
+      avatarUrl: avatarUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(avatarUrl),
       businessId: businessId == null && nullToAbsent
           ? const Value.absent()
           : Value(businessId),
@@ -451,6 +483,7 @@ class AuthContextTableData extends DataClass
       userId: serializer.fromJson<String>(json['userId']),
       email: serializer.fromJson<String?>(json['email']),
       fullName: serializer.fromJson<String?>(json['fullName']),
+      avatarUrl: serializer.fromJson<String?>(json['avatarUrl']),
       businessId: serializer.fromJson<String?>(json['businessId']),
       roleId: serializer.fromJson<String?>(json['roleId']),
       roleName: serializer.fromJson<String?>(json['roleName']),
@@ -473,6 +506,7 @@ class AuthContextTableData extends DataClass
       'userId': serializer.toJson<String>(userId),
       'email': serializer.toJson<String?>(email),
       'fullName': serializer.toJson<String?>(fullName),
+      'avatarUrl': serializer.toJson<String?>(avatarUrl),
       'businessId': serializer.toJson<String?>(businessId),
       'roleId': serializer.toJson<String?>(roleId),
       'roleName': serializer.toJson<String?>(roleName),
@@ -489,6 +523,7 @@ class AuthContextTableData extends DataClass
     String? userId,
     Value<String?> email = const Value.absent(),
     Value<String?> fullName = const Value.absent(),
+    Value<String?> avatarUrl = const Value.absent(),
     Value<String?> businessId = const Value.absent(),
     Value<String?> roleId = const Value.absent(),
     Value<String?> roleName = const Value.absent(),
@@ -502,6 +537,7 @@ class AuthContextTableData extends DataClass
     userId: userId ?? this.userId,
     email: email.present ? email.value : this.email,
     fullName: fullName.present ? fullName.value : this.fullName,
+    avatarUrl: avatarUrl.present ? avatarUrl.value : this.avatarUrl,
     businessId: businessId.present ? businessId.value : this.businessId,
     roleId: roleId.present ? roleId.value : this.roleId,
     roleName: roleName.present ? roleName.value : this.roleName,
@@ -521,6 +557,7 @@ class AuthContextTableData extends DataClass
       userId: data.userId.present ? data.userId.value : this.userId,
       email: data.email.present ? data.email.value : this.email,
       fullName: data.fullName.present ? data.fullName.value : this.fullName,
+      avatarUrl: data.avatarUrl.present ? data.avatarUrl.value : this.avatarUrl,
       businessId: data.businessId.present
           ? data.businessId.value
           : this.businessId,
@@ -551,6 +588,7 @@ class AuthContextTableData extends DataClass
           ..write('userId: $userId, ')
           ..write('email: $email, ')
           ..write('fullName: $fullName, ')
+          ..write('avatarUrl: $avatarUrl, ')
           ..write('businessId: $businessId, ')
           ..write('roleId: $roleId, ')
           ..write('roleName: $roleName, ')
@@ -569,6 +607,7 @@ class AuthContextTableData extends DataClass
     userId,
     email,
     fullName,
+    avatarUrl,
     businessId,
     roleId,
     roleName,
@@ -586,6 +625,7 @@ class AuthContextTableData extends DataClass
           other.userId == this.userId &&
           other.email == this.email &&
           other.fullName == this.fullName &&
+          other.avatarUrl == this.avatarUrl &&
           other.businessId == this.businessId &&
           other.roleId == this.roleId &&
           other.roleName == this.roleName &&
@@ -601,6 +641,7 @@ class AuthContextTableCompanion extends UpdateCompanion<AuthContextTableData> {
   final Value<String> userId;
   final Value<String?> email;
   final Value<String?> fullName;
+  final Value<String?> avatarUrl;
   final Value<String?> businessId;
   final Value<String?> roleId;
   final Value<String?> roleName;
@@ -615,6 +656,7 @@ class AuthContextTableCompanion extends UpdateCompanion<AuthContextTableData> {
     this.userId = const Value.absent(),
     this.email = const Value.absent(),
     this.fullName = const Value.absent(),
+    this.avatarUrl = const Value.absent(),
     this.businessId = const Value.absent(),
     this.roleId = const Value.absent(),
     this.roleName = const Value.absent(),
@@ -630,6 +672,7 @@ class AuthContextTableCompanion extends UpdateCompanion<AuthContextTableData> {
     required String userId,
     this.email = const Value.absent(),
     this.fullName = const Value.absent(),
+    this.avatarUrl = const Value.absent(),
     this.businessId = const Value.absent(),
     this.roleId = const Value.absent(),
     this.roleName = const Value.absent(),
@@ -645,6 +688,7 @@ class AuthContextTableCompanion extends UpdateCompanion<AuthContextTableData> {
     Expression<String>? userId,
     Expression<String>? email,
     Expression<String>? fullName,
+    Expression<String>? avatarUrl,
     Expression<String>? businessId,
     Expression<String>? roleId,
     Expression<String>? roleName,
@@ -660,6 +704,7 @@ class AuthContextTableCompanion extends UpdateCompanion<AuthContextTableData> {
       if (userId != null) 'user_id': userId,
       if (email != null) 'email': email,
       if (fullName != null) 'full_name': fullName,
+      if (avatarUrl != null) 'avatar_url': avatarUrl,
       if (businessId != null) 'business_id': businessId,
       if (roleId != null) 'role_id': roleId,
       if (roleName != null) 'role_name': roleName,
@@ -679,6 +724,7 @@ class AuthContextTableCompanion extends UpdateCompanion<AuthContextTableData> {
     Value<String>? userId,
     Value<String?>? email,
     Value<String?>? fullName,
+    Value<String?>? avatarUrl,
     Value<String?>? businessId,
     Value<String?>? roleId,
     Value<String?>? roleName,
@@ -694,6 +740,7 @@ class AuthContextTableCompanion extends UpdateCompanion<AuthContextTableData> {
       userId: userId ?? this.userId,
       email: email ?? this.email,
       fullName: fullName ?? this.fullName,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
       businessId: businessId ?? this.businessId,
       roleId: roleId ?? this.roleId,
       roleName: roleName ?? this.roleName,
@@ -718,6 +765,9 @@ class AuthContextTableCompanion extends UpdateCompanion<AuthContextTableData> {
     }
     if (fullName.present) {
       map['full_name'] = Variable<String>(fullName.value);
+    }
+    if (avatarUrl.present) {
+      map['avatar_url'] = Variable<String>(avatarUrl.value);
     }
     if (businessId.present) {
       map['business_id'] = Variable<String>(businessId.value);
@@ -760,6 +810,7 @@ class AuthContextTableCompanion extends UpdateCompanion<AuthContextTableData> {
           ..write('userId: $userId, ')
           ..write('email: $email, ')
           ..write('fullName: $fullName, ')
+          ..write('avatarUrl: $avatarUrl, ')
           ..write('businessId: $businessId, ')
           ..write('roleId: $roleId, ')
           ..write('roleName: $roleName, ')
@@ -3109,6 +3160,1080 @@ class CategoriesTableCompanion extends UpdateCompanion<CategoriesTableData> {
           ..write('lastSyncAttempt: $lastSyncAttempt, ')
           ..write('syncError: $syncError, ')
           ..write('localUpdatedAt: $localUpdatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ExpensesTableTable extends ExpensesTable
+    with TableInfo<$ExpensesTableTable, ExpenseRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ExpensesTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _branchNameMeta = const VerificationMeta(
+    'branchName',
+  );
+  @override
+  late final GeneratedColumn<String> branchName = GeneratedColumn<String>(
+    'branch_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _vendorMeta = const VerificationMeta('vendor');
+  @override
+  late final GeneratedColumn<String> vendor = GeneratedColumn<String>(
+    'vendor',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<double> amount = GeneratedColumn<double>(
+    'amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  static const VerificationMeta _submittedByIdMeta = const VerificationMeta(
+    'submittedById',
+  );
+  @override
+  late final GeneratedColumn<String> submittedById = GeneratedColumn<String>(
+    'submitted_by_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _submittedByNameMeta = const VerificationMeta(
+    'submittedByName',
+  );
+  @override
+  late final GeneratedColumn<String> submittedByName = GeneratedColumn<String>(
+    'submitted_by_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _approvedByIdMeta = const VerificationMeta(
+    'approvedById',
+  );
+  @override
+  late final GeneratedColumn<String> approvedById = GeneratedColumn<String>(
+    'approved_by_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _approvedByNameMeta = const VerificationMeta(
+    'approvedByName',
+  );
+  @override
+  late final GeneratedColumn<String> approvedByName = GeneratedColumn<String>(
+    'approved_by_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _expenseDateMeta = const VerificationMeta(
+    'expenseDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> expenseDate = GeneratedColumn<DateTime>(
+    'expense_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+    'syncStatus',
+  );
+  @override
+  late final GeneratedColumn<int> syncStatus = GeneratedColumn<int>(
+    'sync_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastSyncAttemptMeta = const VerificationMeta(
+    'lastSyncAttempt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastSyncAttempt =
+      GeneratedColumn<DateTime>(
+        'last_sync_attempt',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _syncErrorMeta = const VerificationMeta(
+    'syncError',
+  );
+  @override
+  late final GeneratedColumn<String> syncError = GeneratedColumn<String>(
+    'sync_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    businessId,
+    branchId,
+    branchName,
+    category,
+    vendor,
+    amount,
+    status,
+    submittedById,
+    submittedByName,
+    approvedById,
+    approvedByName,
+    note,
+    expenseDate,
+    createdAt,
+    updatedAt,
+    syncStatus,
+    lastSyncAttempt,
+    syncError,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'expenses';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ExpenseRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    }
+    if (data.containsKey('branch_name')) {
+      context.handle(
+        _branchNameMeta,
+        branchName.isAcceptableOrUnknown(data['branch_name']!, _branchNameMeta),
+      );
+    }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_categoryMeta);
+    }
+    if (data.containsKey('vendor')) {
+      context.handle(
+        _vendorMeta,
+        vendor.isAcceptableOrUnknown(data['vendor']!, _vendorMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_vendorMeta);
+    }
+    if (data.containsKey('amount')) {
+      context.handle(
+        _amountMeta,
+        amount.isAcceptableOrUnknown(data['amount']!, _amountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_amountMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('submitted_by_id')) {
+      context.handle(
+        _submittedByIdMeta,
+        submittedById.isAcceptableOrUnknown(
+          data['submitted_by_id']!,
+          _submittedByIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_submittedByIdMeta);
+    }
+    if (data.containsKey('submitted_by_name')) {
+      context.handle(
+        _submittedByNameMeta,
+        submittedByName.isAcceptableOrUnknown(
+          data['submitted_by_name']!,
+          _submittedByNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_submittedByNameMeta);
+    }
+    if (data.containsKey('approved_by_id')) {
+      context.handle(
+        _approvedByIdMeta,
+        approvedById.isAcceptableOrUnknown(
+          data['approved_by_id']!,
+          _approvedByIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('approved_by_name')) {
+      context.handle(
+        _approvedByNameMeta,
+        approvedByName.isAcceptableOrUnknown(
+          data['approved_by_name']!,
+          _approvedByNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    if (data.containsKey('expense_date')) {
+      context.handle(
+        _expenseDateMeta,
+        expenseDate.isAcceptableOrUnknown(
+          data['expense_date']!,
+          _expenseDateMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_expenseDateMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('sync_status')) {
+      context.handle(
+        _syncStatusMeta,
+        syncStatus.isAcceptableOrUnknown(data['sync_status']!, _syncStatusMeta),
+      );
+    }
+    if (data.containsKey('last_sync_attempt')) {
+      context.handle(
+        _lastSyncAttemptMeta,
+        lastSyncAttempt.isAcceptableOrUnknown(
+          data['last_sync_attempt']!,
+          _lastSyncAttemptMeta,
+        ),
+      );
+    }
+    if (data.containsKey('sync_error')) {
+      context.handle(
+        _syncErrorMeta,
+        syncError.isAcceptableOrUnknown(data['sync_error']!, _syncErrorMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ExpenseRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ExpenseRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      ),
+      branchName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_name'],
+      ),
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      )!,
+      vendor: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}vendor'],
+      )!,
+      amount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}amount'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      submittedById: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}submitted_by_id'],
+      )!,
+      submittedByName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}submitted_by_name'],
+      )!,
+      approvedById: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}approved_by_id'],
+      ),
+      approvedByName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}approved_by_name'],
+      ),
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
+      expenseDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}expense_date'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      syncStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sync_status'],
+      )!,
+      lastSyncAttempt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_sync_attempt'],
+      ),
+      syncError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_error'],
+      ),
+    );
+  }
+
+  @override
+  $ExpensesTableTable createAlias(String alias) {
+    return $ExpensesTableTable(attachedDatabase, alias);
+  }
+}
+
+class ExpenseRow extends DataClass implements Insertable<ExpenseRow> {
+  final String id;
+  final String businessId;
+  final String? branchId;
+  final String? branchName;
+  final String category;
+  final String vendor;
+  final double amount;
+
+  /// 'pending' | 'approved' | 'rejected' | 'draft'
+  final String status;
+  final String submittedById;
+  final String submittedByName;
+  final String? approvedById;
+  final String? approvedByName;
+  final String? note;
+  final DateTime expenseDate;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  /// 0=pendingUpload, 1=pendingUpdate, 2=pendingDelete, 3=synced, 4=failed
+  final int syncStatus;
+  final DateTime? lastSyncAttempt;
+  final String? syncError;
+  const ExpenseRow({
+    required this.id,
+    required this.businessId,
+    this.branchId,
+    this.branchName,
+    required this.category,
+    required this.vendor,
+    required this.amount,
+    required this.status,
+    required this.submittedById,
+    required this.submittedByName,
+    this.approvedById,
+    this.approvedByName,
+    this.note,
+    required this.expenseDate,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.syncStatus,
+    this.lastSyncAttempt,
+    this.syncError,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['business_id'] = Variable<String>(businessId);
+    if (!nullToAbsent || branchId != null) {
+      map['branch_id'] = Variable<String>(branchId);
+    }
+    if (!nullToAbsent || branchName != null) {
+      map['branch_name'] = Variable<String>(branchName);
+    }
+    map['category'] = Variable<String>(category);
+    map['vendor'] = Variable<String>(vendor);
+    map['amount'] = Variable<double>(amount);
+    map['status'] = Variable<String>(status);
+    map['submitted_by_id'] = Variable<String>(submittedById);
+    map['submitted_by_name'] = Variable<String>(submittedByName);
+    if (!nullToAbsent || approvedById != null) {
+      map['approved_by_id'] = Variable<String>(approvedById);
+    }
+    if (!nullToAbsent || approvedByName != null) {
+      map['approved_by_name'] = Variable<String>(approvedByName);
+    }
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    map['expense_date'] = Variable<DateTime>(expenseDate);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['sync_status'] = Variable<int>(syncStatus);
+    if (!nullToAbsent || lastSyncAttempt != null) {
+      map['last_sync_attempt'] = Variable<DateTime>(lastSyncAttempt);
+    }
+    if (!nullToAbsent || syncError != null) {
+      map['sync_error'] = Variable<String>(syncError);
+    }
+    return map;
+  }
+
+  ExpensesTableCompanion toCompanion(bool nullToAbsent) {
+    return ExpensesTableCompanion(
+      id: Value(id),
+      businessId: Value(businessId),
+      branchId: branchId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(branchId),
+      branchName: branchName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(branchName),
+      category: Value(category),
+      vendor: Value(vendor),
+      amount: Value(amount),
+      status: Value(status),
+      submittedById: Value(submittedById),
+      submittedByName: Value(submittedByName),
+      approvedById: approvedById == null && nullToAbsent
+          ? const Value.absent()
+          : Value(approvedById),
+      approvedByName: approvedByName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(approvedByName),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      expenseDate: Value(expenseDate),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      syncStatus: Value(syncStatus),
+      lastSyncAttempt: lastSyncAttempt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSyncAttempt),
+      syncError: syncError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncError),
+    );
+  }
+
+  factory ExpenseRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ExpenseRow(
+      id: serializer.fromJson<String>(json['id']),
+      businessId: serializer.fromJson<String>(json['businessId']),
+      branchId: serializer.fromJson<String?>(json['branchId']),
+      branchName: serializer.fromJson<String?>(json['branchName']),
+      category: serializer.fromJson<String>(json['category']),
+      vendor: serializer.fromJson<String>(json['vendor']),
+      amount: serializer.fromJson<double>(json['amount']),
+      status: serializer.fromJson<String>(json['status']),
+      submittedById: serializer.fromJson<String>(json['submittedById']),
+      submittedByName: serializer.fromJson<String>(json['submittedByName']),
+      approvedById: serializer.fromJson<String?>(json['approvedById']),
+      approvedByName: serializer.fromJson<String?>(json['approvedByName']),
+      note: serializer.fromJson<String?>(json['note']),
+      expenseDate: serializer.fromJson<DateTime>(json['expenseDate']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      syncStatus: serializer.fromJson<int>(json['syncStatus']),
+      lastSyncAttempt: serializer.fromJson<DateTime?>(json['lastSyncAttempt']),
+      syncError: serializer.fromJson<String?>(json['syncError']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'businessId': serializer.toJson<String>(businessId),
+      'branchId': serializer.toJson<String?>(branchId),
+      'branchName': serializer.toJson<String?>(branchName),
+      'category': serializer.toJson<String>(category),
+      'vendor': serializer.toJson<String>(vendor),
+      'amount': serializer.toJson<double>(amount),
+      'status': serializer.toJson<String>(status),
+      'submittedById': serializer.toJson<String>(submittedById),
+      'submittedByName': serializer.toJson<String>(submittedByName),
+      'approvedById': serializer.toJson<String?>(approvedById),
+      'approvedByName': serializer.toJson<String?>(approvedByName),
+      'note': serializer.toJson<String?>(note),
+      'expenseDate': serializer.toJson<DateTime>(expenseDate),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'syncStatus': serializer.toJson<int>(syncStatus),
+      'lastSyncAttempt': serializer.toJson<DateTime?>(lastSyncAttempt),
+      'syncError': serializer.toJson<String?>(syncError),
+    };
+  }
+
+  ExpenseRow copyWith({
+    String? id,
+    String? businessId,
+    Value<String?> branchId = const Value.absent(),
+    Value<String?> branchName = const Value.absent(),
+    String? category,
+    String? vendor,
+    double? amount,
+    String? status,
+    String? submittedById,
+    String? submittedByName,
+    Value<String?> approvedById = const Value.absent(),
+    Value<String?> approvedByName = const Value.absent(),
+    Value<String?> note = const Value.absent(),
+    DateTime? expenseDate,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    int? syncStatus,
+    Value<DateTime?> lastSyncAttempt = const Value.absent(),
+    Value<String?> syncError = const Value.absent(),
+  }) => ExpenseRow(
+    id: id ?? this.id,
+    businessId: businessId ?? this.businessId,
+    branchId: branchId.present ? branchId.value : this.branchId,
+    branchName: branchName.present ? branchName.value : this.branchName,
+    category: category ?? this.category,
+    vendor: vendor ?? this.vendor,
+    amount: amount ?? this.amount,
+    status: status ?? this.status,
+    submittedById: submittedById ?? this.submittedById,
+    submittedByName: submittedByName ?? this.submittedByName,
+    approvedById: approvedById.present ? approvedById.value : this.approvedById,
+    approvedByName: approvedByName.present
+        ? approvedByName.value
+        : this.approvedByName,
+    note: note.present ? note.value : this.note,
+    expenseDate: expenseDate ?? this.expenseDate,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    syncStatus: syncStatus ?? this.syncStatus,
+    lastSyncAttempt: lastSyncAttempt.present
+        ? lastSyncAttempt.value
+        : this.lastSyncAttempt,
+    syncError: syncError.present ? syncError.value : this.syncError,
+  );
+  ExpenseRow copyWithCompanion(ExpensesTableCompanion data) {
+    return ExpenseRow(
+      id: data.id.present ? data.id.value : this.id,
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      branchName: data.branchName.present
+          ? data.branchName.value
+          : this.branchName,
+      category: data.category.present ? data.category.value : this.category,
+      vendor: data.vendor.present ? data.vendor.value : this.vendor,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      status: data.status.present ? data.status.value : this.status,
+      submittedById: data.submittedById.present
+          ? data.submittedById.value
+          : this.submittedById,
+      submittedByName: data.submittedByName.present
+          ? data.submittedByName.value
+          : this.submittedByName,
+      approvedById: data.approvedById.present
+          ? data.approvedById.value
+          : this.approvedById,
+      approvedByName: data.approvedByName.present
+          ? data.approvedByName.value
+          : this.approvedByName,
+      note: data.note.present ? data.note.value : this.note,
+      expenseDate: data.expenseDate.present
+          ? data.expenseDate.value
+          : this.expenseDate,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      syncStatus: data.syncStatus.present
+          ? data.syncStatus.value
+          : this.syncStatus,
+      lastSyncAttempt: data.lastSyncAttempt.present
+          ? data.lastSyncAttempt.value
+          : this.lastSyncAttempt,
+      syncError: data.syncError.present ? data.syncError.value : this.syncError,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ExpenseRow(')
+          ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
+          ..write('branchId: $branchId, ')
+          ..write('branchName: $branchName, ')
+          ..write('category: $category, ')
+          ..write('vendor: $vendor, ')
+          ..write('amount: $amount, ')
+          ..write('status: $status, ')
+          ..write('submittedById: $submittedById, ')
+          ..write('submittedByName: $submittedByName, ')
+          ..write('approvedById: $approvedById, ')
+          ..write('approvedByName: $approvedByName, ')
+          ..write('note: $note, ')
+          ..write('expenseDate: $expenseDate, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncAttempt: $lastSyncAttempt, ')
+          ..write('syncError: $syncError')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    businessId,
+    branchId,
+    branchName,
+    category,
+    vendor,
+    amount,
+    status,
+    submittedById,
+    submittedByName,
+    approvedById,
+    approvedByName,
+    note,
+    expenseDate,
+    createdAt,
+    updatedAt,
+    syncStatus,
+    lastSyncAttempt,
+    syncError,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ExpenseRow &&
+          other.id == this.id &&
+          other.businessId == this.businessId &&
+          other.branchId == this.branchId &&
+          other.branchName == this.branchName &&
+          other.category == this.category &&
+          other.vendor == this.vendor &&
+          other.amount == this.amount &&
+          other.status == this.status &&
+          other.submittedById == this.submittedById &&
+          other.submittedByName == this.submittedByName &&
+          other.approvedById == this.approvedById &&
+          other.approvedByName == this.approvedByName &&
+          other.note == this.note &&
+          other.expenseDate == this.expenseDate &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.syncStatus == this.syncStatus &&
+          other.lastSyncAttempt == this.lastSyncAttempt &&
+          other.syncError == this.syncError);
+}
+
+class ExpensesTableCompanion extends UpdateCompanion<ExpenseRow> {
+  final Value<String> id;
+  final Value<String> businessId;
+  final Value<String?> branchId;
+  final Value<String?> branchName;
+  final Value<String> category;
+  final Value<String> vendor;
+  final Value<double> amount;
+  final Value<String> status;
+  final Value<String> submittedById;
+  final Value<String> submittedByName;
+  final Value<String?> approvedById;
+  final Value<String?> approvedByName;
+  final Value<String?> note;
+  final Value<DateTime> expenseDate;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> syncStatus;
+  final Value<DateTime?> lastSyncAttempt;
+  final Value<String?> syncError;
+  final Value<int> rowid;
+  const ExpensesTableCompanion({
+    this.id = const Value.absent(),
+    this.businessId = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.branchName = const Value.absent(),
+    this.category = const Value.absent(),
+    this.vendor = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.status = const Value.absent(),
+    this.submittedById = const Value.absent(),
+    this.submittedByName = const Value.absent(),
+    this.approvedById = const Value.absent(),
+    this.approvedByName = const Value.absent(),
+    this.note = const Value.absent(),
+    this.expenseDate = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.lastSyncAttempt = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ExpensesTableCompanion.insert({
+    required String id,
+    required String businessId,
+    this.branchId = const Value.absent(),
+    this.branchName = const Value.absent(),
+    required String category,
+    required String vendor,
+    required double amount,
+    this.status = const Value.absent(),
+    required String submittedById,
+    required String submittedByName,
+    this.approvedById = const Value.absent(),
+    this.approvedByName = const Value.absent(),
+    this.note = const Value.absent(),
+    required DateTime expenseDate,
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.lastSyncAttempt = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       businessId = Value(businessId),
+       category = Value(category),
+       vendor = Value(vendor),
+       amount = Value(amount),
+       submittedById = Value(submittedById),
+       submittedByName = Value(submittedByName),
+       expenseDate = Value(expenseDate);
+  static Insertable<ExpenseRow> custom({
+    Expression<String>? id,
+    Expression<String>? businessId,
+    Expression<String>? branchId,
+    Expression<String>? branchName,
+    Expression<String>? category,
+    Expression<String>? vendor,
+    Expression<double>? amount,
+    Expression<String>? status,
+    Expression<String>? submittedById,
+    Expression<String>? submittedByName,
+    Expression<String>? approvedById,
+    Expression<String>? approvedByName,
+    Expression<String>? note,
+    Expression<DateTime>? expenseDate,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? syncStatus,
+    Expression<DateTime>? lastSyncAttempt,
+    Expression<String>? syncError,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (businessId != null) 'business_id': businessId,
+      if (branchId != null) 'branch_id': branchId,
+      if (branchName != null) 'branch_name': branchName,
+      if (category != null) 'category': category,
+      if (vendor != null) 'vendor': vendor,
+      if (amount != null) 'amount': amount,
+      if (status != null) 'status': status,
+      if (submittedById != null) 'submitted_by_id': submittedById,
+      if (submittedByName != null) 'submitted_by_name': submittedByName,
+      if (approvedById != null) 'approved_by_id': approvedById,
+      if (approvedByName != null) 'approved_by_name': approvedByName,
+      if (note != null) 'note': note,
+      if (expenseDate != null) 'expense_date': expenseDate,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (lastSyncAttempt != null) 'last_sync_attempt': lastSyncAttempt,
+      if (syncError != null) 'sync_error': syncError,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ExpensesTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? businessId,
+    Value<String?>? branchId,
+    Value<String?>? branchName,
+    Value<String>? category,
+    Value<String>? vendor,
+    Value<double>? amount,
+    Value<String>? status,
+    Value<String>? submittedById,
+    Value<String>? submittedByName,
+    Value<String?>? approvedById,
+    Value<String?>? approvedByName,
+    Value<String?>? note,
+    Value<DateTime>? expenseDate,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? syncStatus,
+    Value<DateTime?>? lastSyncAttempt,
+    Value<String?>? syncError,
+    Value<int>? rowid,
+  }) {
+    return ExpensesTableCompanion(
+      id: id ?? this.id,
+      businessId: businessId ?? this.businessId,
+      branchId: branchId ?? this.branchId,
+      branchName: branchName ?? this.branchName,
+      category: category ?? this.category,
+      vendor: vendor ?? this.vendor,
+      amount: amount ?? this.amount,
+      status: status ?? this.status,
+      submittedById: submittedById ?? this.submittedById,
+      submittedByName: submittedByName ?? this.submittedByName,
+      approvedById: approvedById ?? this.approvedById,
+      approvedByName: approvedByName ?? this.approvedByName,
+      note: note ?? this.note,
+      expenseDate: expenseDate ?? this.expenseDate,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      syncStatus: syncStatus ?? this.syncStatus,
+      lastSyncAttempt: lastSyncAttempt ?? this.lastSyncAttempt,
+      syncError: syncError ?? this.syncError,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
+    }
+    if (branchName.present) {
+      map['branch_name'] = Variable<String>(branchName.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (vendor.present) {
+      map['vendor'] = Variable<String>(vendor.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<double>(amount.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (submittedById.present) {
+      map['submitted_by_id'] = Variable<String>(submittedById.value);
+    }
+    if (submittedByName.present) {
+      map['submitted_by_name'] = Variable<String>(submittedByName.value);
+    }
+    if (approvedById.present) {
+      map['approved_by_id'] = Variable<String>(approvedById.value);
+    }
+    if (approvedByName.present) {
+      map['approved_by_name'] = Variable<String>(approvedByName.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (expenseDate.present) {
+      map['expense_date'] = Variable<DateTime>(expenseDate.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<int>(syncStatus.value);
+    }
+    if (lastSyncAttempt.present) {
+      map['last_sync_attempt'] = Variable<DateTime>(lastSyncAttempt.value);
+    }
+    if (syncError.present) {
+      map['sync_error'] = Variable<String>(syncError.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ExpensesTableCompanion(')
+          ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
+          ..write('branchId: $branchId, ')
+          ..write('branchName: $branchName, ')
+          ..write('category: $category, ')
+          ..write('vendor: $vendor, ')
+          ..write('amount: $amount, ')
+          ..write('status: $status, ')
+          ..write('submittedById: $submittedById, ')
+          ..write('submittedByName: $submittedByName, ')
+          ..write('approvedById: $approvedById, ')
+          ..write('approvedByName: $approvedByName, ')
+          ..write('note: $note, ')
+          ..write('expenseDate: $expenseDate, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncAttempt: $lastSyncAttempt, ')
+          ..write('syncError: $syncError, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -8296,6 +9421,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CategoriesTableTable categoriesTable = $CategoriesTableTable(
     this,
   );
+  late final $ExpensesTableTable expensesTable = $ExpensesTableTable(this);
   late final $ProductsTableTable productsTable = $ProductsTableTable(this);
   late final $ProductVariantsTableTable productVariantsTable =
       $ProductVariantsTableTable(this);
@@ -8317,6 +9443,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final BusinessesDao businessesDao = BusinessesDao(this as AppDatabase);
   late final BranchesDao branchesDao = BranchesDao(this as AppDatabase);
   late final CategoriesDao categoriesDao = CategoriesDao(this as AppDatabase);
+  late final ExpensesDao expensesDao = ExpensesDao(this as AppDatabase);
   late final ProductsDao productsDao = ProductsDao(this as AppDatabase);
   late final ProductVariantsDao productVariantsDao = ProductVariantsDao(
     this as AppDatabase,
@@ -8340,6 +9467,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     businessesTable,
     branchesTable,
     categoriesTable,
+    expensesTable,
     productsTable,
     productVariantsTable,
     transactionsTable,
@@ -8354,6 +9482,7 @@ typedef $$AuthContextTableTableCreateCompanionBuilder =
       required String userId,
       Value<String?> email,
       Value<String?> fullName,
+      Value<String?> avatarUrl,
       Value<String?> businessId,
       Value<String?> roleId,
       Value<String?> roleName,
@@ -8370,6 +9499,7 @@ typedef $$AuthContextTableTableUpdateCompanionBuilder =
       Value<String> userId,
       Value<String?> email,
       Value<String?> fullName,
+      Value<String?> avatarUrl,
       Value<String?> businessId,
       Value<String?> roleId,
       Value<String?> roleName,
@@ -8403,6 +9533,11 @@ class $$AuthContextTableTableFilterComposer
 
   ColumnFilters<String> get fullName => $composableBuilder(
     column: $table.fullName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get avatarUrl => $composableBuilder(
+    column: $table.avatarUrl,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8476,6 +9611,11 @@ class $$AuthContextTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get avatarUrl => $composableBuilder(
+    column: $table.avatarUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get businessId => $composableBuilder(
     column: $table.businessId,
     builder: (column) => ColumnOrderings(column),
@@ -8539,6 +9679,9 @@ class $$AuthContextTableTableAnnotationComposer
 
   GeneratedColumn<String> get fullName =>
       $composableBuilder(column: $table.fullName, builder: (column) => column);
+
+  GeneratedColumn<String> get avatarUrl =>
+      $composableBuilder(column: $table.avatarUrl, builder: (column) => column);
 
   GeneratedColumn<String> get businessId => $composableBuilder(
     column: $table.businessId,
@@ -8620,6 +9763,7 @@ class $$AuthContextTableTableTableManager
                 Value<String> userId = const Value.absent(),
                 Value<String?> email = const Value.absent(),
                 Value<String?> fullName = const Value.absent(),
+                Value<String?> avatarUrl = const Value.absent(),
                 Value<String?> businessId = const Value.absent(),
                 Value<String?> roleId = const Value.absent(),
                 Value<String?> roleName = const Value.absent(),
@@ -8634,6 +9778,7 @@ class $$AuthContextTableTableTableManager
                 userId: userId,
                 email: email,
                 fullName: fullName,
+                avatarUrl: avatarUrl,
                 businessId: businessId,
                 roleId: roleId,
                 roleName: roleName,
@@ -8650,6 +9795,7 @@ class $$AuthContextTableTableTableManager
                 required String userId,
                 Value<String?> email = const Value.absent(),
                 Value<String?> fullName = const Value.absent(),
+                Value<String?> avatarUrl = const Value.absent(),
                 Value<String?> businessId = const Value.absent(),
                 Value<String?> roleId = const Value.absent(),
                 Value<String?> roleName = const Value.absent(),
@@ -8664,6 +9810,7 @@ class $$AuthContextTableTableTableManager
                 userId: userId,
                 email: email,
                 fullName: fullName,
+                avatarUrl: avatarUrl,
                 businessId: businessId,
                 roleId: roleId,
                 roleName: roleName,
@@ -9883,6 +11030,490 @@ typedef $$CategoriesTableTableProcessedTableManager =
         >,
       ),
       CategoriesTableData,
+      PrefetchHooks Function()
+    >;
+typedef $$ExpensesTableTableCreateCompanionBuilder =
+    ExpensesTableCompanion Function({
+      required String id,
+      required String businessId,
+      Value<String?> branchId,
+      Value<String?> branchName,
+      required String category,
+      required String vendor,
+      required double amount,
+      Value<String> status,
+      required String submittedById,
+      required String submittedByName,
+      Value<String?> approvedById,
+      Value<String?> approvedByName,
+      Value<String?> note,
+      required DateTime expenseDate,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> syncStatus,
+      Value<DateTime?> lastSyncAttempt,
+      Value<String?> syncError,
+      Value<int> rowid,
+    });
+typedef $$ExpensesTableTableUpdateCompanionBuilder =
+    ExpensesTableCompanion Function({
+      Value<String> id,
+      Value<String> businessId,
+      Value<String?> branchId,
+      Value<String?> branchName,
+      Value<String> category,
+      Value<String> vendor,
+      Value<double> amount,
+      Value<String> status,
+      Value<String> submittedById,
+      Value<String> submittedByName,
+      Value<String?> approvedById,
+      Value<String?> approvedByName,
+      Value<String?> note,
+      Value<DateTime> expenseDate,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> syncStatus,
+      Value<DateTime?> lastSyncAttempt,
+      Value<String?> syncError,
+      Value<int> rowid,
+    });
+
+class $$ExpensesTableTableFilterComposer
+    extends Composer<_$AppDatabase, $ExpensesTableTable> {
+  $$ExpensesTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchName => $composableBuilder(
+    column: $table.branchName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get vendor => $composableBuilder(
+    column: $table.vendor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get submittedById => $composableBuilder(
+    column: $table.submittedById,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get submittedByName => $composableBuilder(
+    column: $table.submittedByName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get approvedById => $composableBuilder(
+    column: $table.approvedById,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get approvedByName => $composableBuilder(
+    column: $table.approvedByName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get expenseDate => $composableBuilder(
+    column: $table.expenseDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ExpensesTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $ExpensesTableTable> {
+  $$ExpensesTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchName => $composableBuilder(
+    column: $table.branchName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get vendor => $composableBuilder(
+    column: $table.vendor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get submittedById => $composableBuilder(
+    column: $table.submittedById,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get submittedByName => $composableBuilder(
+    column: $table.submittedByName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get approvedById => $composableBuilder(
+    column: $table.approvedById,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get approvedByName => $composableBuilder(
+    column: $table.approvedByName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get expenseDate => $composableBuilder(
+    column: $table.expenseDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ExpensesTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ExpensesTableTable> {
+  $$ExpensesTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
+
+  GeneratedColumn<String> get branchName => $composableBuilder(
+    column: $table.branchName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<String> get vendor =>
+      $composableBuilder(column: $table.vendor, builder: (column) => column);
+
+  GeneratedColumn<double> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get submittedById => $composableBuilder(
+    column: $table.submittedById,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get submittedByName => $composableBuilder(
+    column: $table.submittedByName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get approvedById => $composableBuilder(
+    column: $table.approvedById,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get approvedByName => $composableBuilder(
+    column: $table.approvedByName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get expenseDate => $composableBuilder(
+    column: $table.expenseDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get syncError =>
+      $composableBuilder(column: $table.syncError, builder: (column) => column);
+}
+
+class $$ExpensesTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ExpensesTableTable,
+          ExpenseRow,
+          $$ExpensesTableTableFilterComposer,
+          $$ExpensesTableTableOrderingComposer,
+          $$ExpensesTableTableAnnotationComposer,
+          $$ExpensesTableTableCreateCompanionBuilder,
+          $$ExpensesTableTableUpdateCompanionBuilder,
+          (
+            ExpenseRow,
+            BaseReferences<_$AppDatabase, $ExpensesTableTable, ExpenseRow>,
+          ),
+          ExpenseRow,
+          PrefetchHooks Function()
+        > {
+  $$ExpensesTableTableTableManager(_$AppDatabase db, $ExpensesTableTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ExpensesTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ExpensesTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ExpensesTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> businessId = const Value.absent(),
+                Value<String?> branchId = const Value.absent(),
+                Value<String?> branchName = const Value.absent(),
+                Value<String> category = const Value.absent(),
+                Value<String> vendor = const Value.absent(),
+                Value<double> amount = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String> submittedById = const Value.absent(),
+                Value<String> submittedByName = const Value.absent(),
+                Value<String?> approvedById = const Value.absent(),
+                Value<String?> approvedByName = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<DateTime> expenseDate = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> syncStatus = const Value.absent(),
+                Value<DateTime?> lastSyncAttempt = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ExpensesTableCompanion(
+                id: id,
+                businessId: businessId,
+                branchId: branchId,
+                branchName: branchName,
+                category: category,
+                vendor: vendor,
+                amount: amount,
+                status: status,
+                submittedById: submittedById,
+                submittedByName: submittedByName,
+                approvedById: approvedById,
+                approvedByName: approvedByName,
+                note: note,
+                expenseDate: expenseDate,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                syncStatus: syncStatus,
+                lastSyncAttempt: lastSyncAttempt,
+                syncError: syncError,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String businessId,
+                Value<String?> branchId = const Value.absent(),
+                Value<String?> branchName = const Value.absent(),
+                required String category,
+                required String vendor,
+                required double amount,
+                Value<String> status = const Value.absent(),
+                required String submittedById,
+                required String submittedByName,
+                Value<String?> approvedById = const Value.absent(),
+                Value<String?> approvedByName = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                required DateTime expenseDate,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> syncStatus = const Value.absent(),
+                Value<DateTime?> lastSyncAttempt = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ExpensesTableCompanion.insert(
+                id: id,
+                businessId: businessId,
+                branchId: branchId,
+                branchName: branchName,
+                category: category,
+                vendor: vendor,
+                amount: amount,
+                status: status,
+                submittedById: submittedById,
+                submittedByName: submittedByName,
+                approvedById: approvedById,
+                approvedByName: approvedByName,
+                note: note,
+                expenseDate: expenseDate,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                syncStatus: syncStatus,
+                lastSyncAttempt: lastSyncAttempt,
+                syncError: syncError,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ExpensesTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ExpensesTableTable,
+      ExpenseRow,
+      $$ExpensesTableTableFilterComposer,
+      $$ExpensesTableTableOrderingComposer,
+      $$ExpensesTableTableAnnotationComposer,
+      $$ExpensesTableTableCreateCompanionBuilder,
+      $$ExpensesTableTableUpdateCompanionBuilder,
+      (
+        ExpenseRow,
+        BaseReferences<_$AppDatabase, $ExpensesTableTable, ExpenseRow>,
+      ),
+      ExpenseRow,
       PrefetchHooks Function()
     >;
 typedef $$ProductsTableTableCreateCompanionBuilder =
@@ -12339,6 +13970,8 @@ class $AppDatabaseManager {
       $$BranchesTableTableTableManager(_db, _db.branchesTable);
   $$CategoriesTableTableTableManager get categoriesTable =>
       $$CategoriesTableTableTableManager(_db, _db.categoriesTable);
+  $$ExpensesTableTableTableManager get expensesTable =>
+      $$ExpensesTableTableTableManager(_db, _db.expensesTable);
   $$ProductsTableTableTableManager get productsTable =>
       $$ProductsTableTableTableManager(_db, _db.productsTable);
   $$ProductVariantsTableTableTableManager get productVariantsTable =>

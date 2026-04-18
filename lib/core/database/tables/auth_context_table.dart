@@ -15,6 +15,9 @@ class AuthContextTable extends Table {
   /// User's full name
   TextColumn get fullName => text().nullable()();
 
+  /// User's avatar URL (Supabase Storage public URL)
+  TextColumn get avatarUrl => text().nullable()();
+
   /// Associated business ID (from database trigger context)
   TextColumn get businessId => text().nullable()();
 

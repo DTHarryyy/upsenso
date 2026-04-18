@@ -30,7 +30,7 @@ import 'package:pos/features/inventory/inventory.dart';
 import 'package:pos/features/pos/presentation/pos_terminal_page.dart';
 import 'package:pos/features/products/pages/add_products.dart';
 import 'package:pos/features/profile/presentation/profile_page.dart';
-import 'package:pos/features/expenses/prensentation/expenses_page.dart';
+import 'package:pos/features/expenses/presentation/expenses_page.dart';
 import 'package:pos/features/sales/sales_history.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
