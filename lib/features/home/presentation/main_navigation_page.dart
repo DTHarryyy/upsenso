@@ -10,7 +10,6 @@ import 'package:pos/core/sync/sync_service.dart';
 import 'package:pos/core/ui/widgets/app_bottom_nav.dart';
 import 'package:pos/core/ui/widgets/custom_app_bar.dart';
 import 'package:pos/features/dashboard/presentation/dashboard_page.dart';
-import 'package:pos/features/alert/presentation/alert_page.dart';
 import 'package:pos/features/inventory/inventory.dart';
 import 'package:pos/features/pos/presentation/pos_terminal_page.dart';
 import 'package:pos/features/more/presentation/more_page.dart';
@@ -18,6 +17,7 @@ import 'package:pos/features/auth/domain/entities/app_user.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/products/products_page.dart';
+import 'package:pos/features/reports/presentation/pages/reports_and_analytics.dart';
 
 class MainNavigationPage extends StatefulWidget {
   const MainNavigationPage({super.key});
@@ -175,7 +175,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                     isActive: _currentIndex == 2,
                     onClose: () => _onNavTap(_previousIndex),
                   ),
-                  const AlertPage(),
+                  const ReportsAndAnalyticsPage(),
                   const Inventory(),
                 ],
               ),

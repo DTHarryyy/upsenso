@@ -360,6 +360,7 @@ class AiPipeline {
   Future<AiPipelineResult> confirmTransaction({
     required AiTransactionPreview preview,
     required String cashierId,
+    required String? businessId,
     required String? branchId,
   }) async {
     try {
@@ -376,6 +377,7 @@ class AiPipeline {
 
       final txId = await _toolService.createTransaction(
         cashierId: cashierId,
+        businessId: businessId,
         branchId: branchId,
         lineItems: lineItems,
       );

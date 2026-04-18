@@ -391,6 +391,7 @@ class AiToolService {
   /// ONLY called after user confirms the preview.
   Future<String> createTransaction({
     required String cashierId,
+    required String? businessId,
     required String? branchId,
     required List<TransactionLineItem> lineItems,
   }) async {
@@ -427,6 +428,7 @@ class AiToolService {
     final txCompanion = TransactionsTableCompanion.insert(
       id: txId,
       cashierId: cashierId,
+      businessId: Value(businessId),
       branchId: Value(branchId),
       totalAmount: totalAmount,
       taxAmount: totalTax,

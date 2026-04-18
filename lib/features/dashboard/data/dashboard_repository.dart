@@ -33,10 +33,8 @@ class DashboardRepository {
   static String _cacheKey(String businessId) =>
       'branch_names_cache_$businessId';
 
-  /// Key used by BranchCubit to persist branch options — we read it as a
-  /// fallback so branch names are always available even when the local
-  /// branches table hasn't synced yet.
-  static const String _branchCubitOptionsKey = 'cached_branch_options';
+  /// Key prefix used by BranchCubit to persist branch options (scoped by businessId).
+  static const String _branchCubitOptionsKeyPrefix = 'cached_branch_options';
 
   /// Persist branch id→name map so it survives offline sessions.
   Future<void> _cacheBranchNames(
@@ -55,9 +53,10 @@ class DashboardRepository {
     final prefs = await SharedPreferences.getInstance();
     final merged = <String, String>{};
 
-    // Layer 1 — BranchCubit cache: [{"name": "...", "id": "..."}]
+    // Layer 1 — BranchCubit cache (scoped by businessId): [{"name": "...", "id": "..."}]
     try {
-      final raw = prefs.getString(_branchCubitOptionsKey);
+      final scopedKey = '${_branchCubitOptionsKeyPrefix}_$businessId';
+      final raw = prefs.getString(scopedKey);
       if (raw != null) {
         final list = jsonDecode(raw);
         if (list is List) {
@@ -129,10 +128,13 @@ class DashboardRepository {
     // ── Transactions ──────────────────────────────────────────────────────
     final monthTxns = await _txnDao.getTransactionsSince(
       thirtyDaysAgo,
+      businessId: businessId,
       branchId: branchId,
     );
-    final allBranchTxns =
-        await _txnDao.getAllTransactionsSince(thirtyDaysAgo);
+    final allBranchTxns = await _txnDao.getAllTransactionsSince(
+      thirtyDaysAgo,
+      businessId: businessId,
+    );
 
     final todayTxns =
         monthTxns.where((t) => !t.createdAt.isBefore(today)).toList();

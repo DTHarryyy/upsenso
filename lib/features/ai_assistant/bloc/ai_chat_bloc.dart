@@ -206,6 +206,7 @@ class AiChatBloc extends Bloc<AiChatEvent, AiChatState> {
     final result = await _pipeline.confirmTransaction(
       preview: event.preview,
       cashierId: cashierId,
+      businessId: businessId,
       branchId: selectedBranchId(),
     );
 
