@@ -181,8 +181,12 @@ class _AddProductsViewState extends State<_AddProductsView> {
       // Simple or advanced no-variants
       final v = variants.firstOrNull;
       if (v != null) {
-        _simplePriceController.text = v.price.toStringAsFixed(2);
-        _sellingPriceController.text = v.price.toStringAsFixed(2);
+        // Reverse out any stored tax so the form shows the pre-tax base price.
+        // (On save we re-apply tax, so we must show base here to avoid double-taxing.)
+        final taxRate = (product.tax ?? 0.0) / 100.0;
+        final basePrice = taxRate > 0 ? v.price / (1 + taxRate) : v.price;
+        _simplePriceController.text = basePrice.toStringAsFixed(2);
+        _sellingPriceController.text = basePrice.toStringAsFixed(2);
         if (v.costPrice != null) _costPriceController.text = v.costPrice!.toStringAsFixed(2);
         if (v.barcode != null) {
           _simpleBarcodeController.text = v.barcode!;
@@ -191,11 +195,26 @@ class _AddProductsViewState extends State<_AddProductsView> {
         final qty = stockFor(v);
         if (qty > 0) _stockController.text = qty.toString();
         if (v.lowStockAlert != null) _lowStockController.text = v.lowStockAlert.toString();
+        // Retail price — must be loaded or it will be wiped on next save
+        if (v.retailPrice != null) {
+          _retailPriceController.text = v.retailPrice!.toStringAsFixed(2);
+          _showRetailPrice = true;
+        }
       }
     }
 
-    if (product.tax != null) _taxController.text = product.tax!.toString();
+    if (product.tax != null) {
+      _taxController.text = product.tax!.toString();
+      _showTax = true;
+    }
     if (product.sku != null) _skuController.text = product.sku!;
+
+    // Auto-expand More Options when the product already has any advanced fields
+    final hasMoreData =
+        _showRetailPrice || _showTax || product.sku?.isNotEmpty == true;
+    if (hasMoreData && !cubit.state.moreOptionsExpanded) {
+      cubit.toggleMoreOptions();
+    }
 
     setState(() {});
   }
@@ -696,6 +715,72 @@ class _AddProductsViewState extends State<_AddProductsView> {
           ),
           validator: (v) =>
               (v == null || v.trim().isEmpty) ? 'Selling price is required' : null,
+        ),
+        // Live tax-inclusive final price preview
+        ValueListenableBuilder<TextEditingValue>(
+          valueListenable: _sellingPriceController,
+          builder: (context, sellVal, child) =>
+              ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _taxController,
+            builder: (context, taxVal, child) {
+              final base = double.tryParse(sellVal.text.trim());
+              final taxPct = double.tryParse(taxVal.text.trim());
+              if (base == null || base <= 0 || taxPct == null || taxPct <= 0) {
+                return const SizedBox.shrink();
+              }
+              final taxAmt = base * taxPct / 100;
+              final finalPrice = base + taxAmt;
+              final taxStr = taxPct % 1 == 0
+                  ? taxPct.toInt().toString()
+                  : taxPct.toStringAsFixed(1);
+              return Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: AppColors.brandSoft,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: AppColors.brand.withAlpha(40)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.receipt_outlined,
+                          size: 14, color: AppColors.brand),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text.rich(
+                          TextSpan(children: [
+                            TextSpan(
+                              text: 'Customer pays  ',
+                              style: getOutfitStyle(
+                                  color: AppColors.brand, fontSize: 12),
+                            ),
+                            TextSpan(
+                              text: '₱${finalPrice.toStringAsFixed(2)}',
+                              style: getOutfitStyle(
+                                color: AppColors.brand,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            TextSpan(
+                              text:
+                                  '   ₱${base.toStringAsFixed(2)} + ₱${taxAmt.toStringAsFixed(2)} ($taxStr% tax)',
+                              style: getOutfitStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 11),
+                            ),
+                          ]),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
         ),
         const SizedBox(height: 12),
 
@@ -1212,10 +1297,13 @@ class _AddProductsViewState extends State<_AddProductsView> {
         // Retail Price (optional, toggleable)
         ToggleRow(
           icon: Icons.price_change_outlined,
-          label: 'Retail Price',
-          subtitle: 'Suggested customer / SRP price',
+          label: 'Retail Price (SRP)',
+          subtitle: 'The suggested / recommended selling price',
           enabled: _showRetailPrice,
-          onChanged: (v) => setState(() => _showRetailPrice = v),
+          onChanged: (v) => setState(() {
+            _showRetailPrice = v;
+            if (!v) _retailPriceController.clear();
+          }),
         ),
         AnimatedSize(
           duration: const Duration(milliseconds: 200),
@@ -1226,7 +1314,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const AppFieldLabel('Retail Price'),
+                      const AppFieldLabel('Retail Price (SRP)'),
                       TextFormField(
                         controller: _retailPriceController,
                         keyboardType: const TextInputType.numberWithOptions(
@@ -1239,6 +1327,73 @@ class _AddProductsViewState extends State<_AddProductsView> {
                         decoration: appInputDeco('0.00', prefixText: '₱ '),
                         style: getOutfitStyle(color: AppColors.textPrimary),
                       ),
+                      // Live SRP comparison indicator
+                      ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: _retailPriceController,
+                        builder: (context, retailVal, child) =>
+                            ValueListenableBuilder<TextEditingValue>(
+                          valueListenable: _sellingPriceController,
+                          builder: (context, sellVal, child) {
+                            final srp =
+                                double.tryParse(retailVal.text.trim());
+                            final sell =
+                                double.tryParse(sellVal.text.trim());
+                            if (srp == null || sell == null || srp <= 0) {
+                              return const SizedBox.shrink();
+                            }
+                            final diff = sell - srp;
+                            final pct = (diff / srp * 100).abs();
+                            final isAbove = diff > 0.005;
+                            final isBelow = diff < -0.005;
+                            final Color bg = isAbove
+                                ? AppColors.warningSoft
+                                : isBelow
+                                    ? AppColors.successSoft
+                                    : AppColors.surfaceAlt;
+                            final Color fg = isAbove
+                                ? AppColors.warning
+                                : isBelow
+                                    ? AppColors.success
+                                    : AppColors.textMuted;
+                            final String label = isAbove
+                                ? '${pct.toStringAsFixed(1)}% above SRP — selling above suggested price'
+                                : isBelow
+                                    ? '${pct.toStringAsFixed(1)}% below SRP'
+                                    : 'Selling at SRP';
+                            final IconData icon = isAbove
+                                ? Icons.arrow_upward_rounded
+                                : isBelow
+                                    ? Icons.arrow_downward_rounded
+                                    : Icons.horizontal_rule_rounded;
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: bg,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(icon, size: 12, color: fg),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      label,
+                                      style: getOutfitStyle(
+                                        color: fg,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
                     ],
                   ),
                 )
@@ -1250,9 +1405,12 @@ class _AddProductsViewState extends State<_AddProductsView> {
         ToggleRow(
           icon: Icons.receipt_long_outlined,
           label: 'Tax (%)',
-          subtitle: 'Already included in the selling price',
+          subtitle: 'Added on top of the selling price',
           enabled: _showTax,
-          onChanged: (v) => setState(() => _showTax = v),
+          onChanged: (v) => setState(() {
+            _showTax = v;
+            if (!v) _taxController.clear();
+          }),
         ),
         AnimatedSize(
           duration: const Duration(milliseconds: 200),

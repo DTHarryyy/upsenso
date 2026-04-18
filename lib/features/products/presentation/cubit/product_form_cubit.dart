@@ -246,6 +246,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       } else if (isAdvanced) {
         final id = const Uuid().v4();
         final price = double.tryParse(data.sellingPrice ?? '') ?? 0.0;
+        // Apply tax to get the tax-inclusive price stored & displayed to customers.
+        final taxRate = tax != null ? tax / 100.0 : 0.0;
+        final finalPrice = taxRate > 0 ? price * (1 + taxRate) : price;
         final cost = (data.costPrice?.trim().isNotEmpty == true)
             ? double.tryParse(data.costPrice!)
             : null;
@@ -267,7 +270,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             productId: productId,
             businessId: businessId,
             name: 'Default',
-            price: Value(price),
+            price: Value(finalPrice),
             costPrice: Value(cost),
             retailPrice: Value(retail),
             barcode: Value(variantBarcode.isNotEmpty ? variantBarcode : null),
@@ -438,6 +441,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         // Advanced + variants OFF: single "Default" variant.
         final id = const Uuid().v4();
         final price = double.tryParse(data.sellingPrice ?? '') ?? 0.0;
+        // Apply tax to get the tax-inclusive price stored & displayed to customers.
+        final taxRate = tax != null ? tax / 100.0 : 0.0;
+        final finalPrice = taxRate > 0 ? price * (1 + taxRate) : price;
         final cost = (data.costPrice?.trim().isNotEmpty == true)
             ? double.tryParse(data.costPrice!)
             : null;
@@ -459,7 +465,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             productId: productId,
             businessId: businessId,
             name: 'Default',
-            price: Value(price),
+            price: Value(finalPrice),
             costPrice: Value(cost),
             retailPrice: Value(retail),
             barcode: Value(variantBarcode.isNotEmpty ? variantBarcode : null),

@@ -125,6 +125,7 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
       final tx = TransactionsTableCompanion.insert(
         id: txId,
         cashierId: cashierId,
+        businessId: Value(authState.user.businessId),
         branchId: Value(branchId),
         totalAmount: widget.total,
         taxAmount: widget.tax,
