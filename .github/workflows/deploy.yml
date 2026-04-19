@@ -29,7 +29,7 @@ jobs:
         run: flutter pub get
 
       - name: Build App Bundle
-        run: flutter build appbundle --release
+        run: flutter build appbundle --release --build-number=${{ github.run_number }}
         env:
           KEYSTORE_PATH: android/app/keystore.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
