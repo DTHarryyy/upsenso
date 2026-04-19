@@ -23,7 +23,7 @@ jobs:
 
       - name: Decode keystore
         run: |
-          echo "${{ secrets.KEYSTORE_FILE }}" | base64 --decode > keystore.jks
+          echo "${{ secrets.KEYSTORE_FILE }}" | base64 --decode > android/app/keystore.jks
 
       - name: Create .env file
         run: echo "${{ secrets.ENV_FILE }}" > .env
@@ -35,6 +35,7 @@ jobs:
         run: flutter build appbundle --release --build-number=${{ github.run_number }}
         env:
           KEYSTORE_PATH: keystore.jks
+        # keystore.jks is relative to android/app/ where Gradle resolves files
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
