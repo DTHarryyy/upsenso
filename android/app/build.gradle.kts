@@ -31,7 +31,9 @@ android {
     }
     signingConfigs {
         create("release") {
-            storeFile = file(System.getenv("KEYSTORE_PATH") ?: "../../pos-keystore.jks")
+            storeFile = file(System.getenv("KEYSTORE_PATH") ?: "../../pos-keystore.jks").let {
+                if (it.isAbsolute) it else rootProject.file(System.getenv("KEYSTORE_PATH") ?: "../../pos-keystore.jks")
+            }
             storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "070625"
             keyAlias = System.getenv("KEY_ALIAS") ?: "pos-key"
             keyPassword = System.getenv("KEY_PASSWORD") ?: "070625"
