@@ -25,6 +25,9 @@ jobs:
         run: |
           echo "${{ secrets.KEYSTORE_FILE }}" | base64 --decode > android/app/keystore.jks
 
+      - name: Create .env file
+        run: echo "${{ secrets.ENV_FILE }}" > .env
+
       - name: Install dependencies
         run: flutter pub get
 
