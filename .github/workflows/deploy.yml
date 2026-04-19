@@ -47,4 +47,4 @@ jobs:
           packageName: com.ledgidy.pos
           releaseFiles: build/app/outputs/bundle/release/*.aab
           track: internal
-          status: completed
+          status: draft
