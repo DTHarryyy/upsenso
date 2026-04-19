@@ -127,6 +127,18 @@ class InventoryLevelsDao extends DatabaseAccessor<AppDatabase>
         .get();
   }
 
+  Stream<int> watchPendingSyncCount() {
+    final countExp = inventoryLevelsTable.id.count();
+    final query = selectOnly(inventoryLevelsTable)
+      ..addColumns([countExp])
+      ..where(inventoryLevelsTable.syncStatus.isIn([
+            SyncStatus.pendingUpload.toInt(),
+            SyncStatus.pendingUpdate.toInt(),
+            SyncStatus.failed.toInt(),
+          ]));
+    return query.watchSingle().map((row) => row.read(countExp) ?? 0);
+  }
+
   Future<List<InventoryLevelsTableData>> getPendingSync() {
     return (select(inventoryLevelsTable)
           ..where((t) => t.syncStatus.isIn([
@@ -150,19 +162,31 @@ class InventoryLevelsDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
-  Future<void> upsertFromServer(Map<String, dynamic> row) {
+  Future<void> upsertFromServer(Map<String, dynamic> row) async {
     final variantId = row['variant_id'] as String;
     final branchId = row['branch_id'] as String;
-    return into(inventoryLevelsTable).insertOnConflictUpdate(
+    final id = makeId(variantId, branchId);
+
+    // Never overwrite a row that has local changes not yet pushed to the
+    // server. If we did, a failed push followed by a pull would silently
+    // discard the user's offline edits.
+    final existing = await (select(inventoryLevelsTable)
+            ..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (existing != null &&
+        existing.syncStatus != SyncStatus.synced.toInt()) {
+      return;
+    }
+
+    await into(inventoryLevelsTable).insertOnConflictUpdate(
       InventoryLevelsTableCompanion.insert(
-        id: makeId(variantId, branchId),
+        id: id,
         variantId: variantId,
         branchId: branchId,
         businessId: row['business_id'] as String,
         quantity: Value((row['quantity'] as int?) ?? 0),
         quantityDecimal: Value((row['quantity_decimal'] as num?)?.toDouble()),
-        lowStockAlertOverride:
-            Value(row['low_stock_alert_override'] as int?),
+        lowStockAlertOverride: Value(row['low_stock_alert_override'] as int?),
         syncStatus: Value(SyncStatus.synced.toInt()),
         localUpdatedAt: Value(DateTime.now()),
       ),

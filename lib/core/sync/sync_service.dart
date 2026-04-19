@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/auth_context_dao.dart';
+import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/core/database/daos/businesses_dao.dart';
 import 'package:pos/core/database/daos/categories_dao.dart';
 import 'package:pos/core/database/daos/expenses_dao.dart';
@@ -20,6 +22,7 @@ import 'package:pos/features/pos/data/datasources/transactions_remote_ds.dart';
 /// Service to handle synchronization between local Drift DB and Supabase
 class SyncService {
   final AuthContextDao _authContextDao;
+  final BranchesDao _branchesDao;
   final BusinessesDao _businessesDao;
   final CategoriesDao _categoriesDao;
   final ExpensesDao _expensesDao;
@@ -39,6 +42,7 @@ class SyncService {
 
   SyncService({
     required AuthContextDao authContextDao,
+    required BranchesDao branchesDao,
     required BusinessesDao businessesDao,
     required CategoriesDao categoriesDao,
     required ExpensesDao expensesDao,
@@ -53,6 +57,7 @@ class SyncService {
     required TransactionsRemoteDs transactionsRemoteDs,
     required ConnectivityService connectivityService,
   }) : _authContextDao = authContextDao,
+       _branchesDao = branchesDao,
        _businessesDao = businessesDao,
        _categoriesDao = categoriesDao,
        _expensesDao = expensesDao,
@@ -97,29 +102,46 @@ class SyncService {
     _connectivitySubscription?.cancel();
   }
 
+  /// Wipe all business-specific local data on logout so the next account
+  /// starts with a clean slate. Called before emitting AuthUnauthenticated.
+  Future<void> clearLocalData() async {
+    await _inventoryLevelsDao.clearAll();
+    await _stockLedgerDao.clearAll();
+    await _expensesDao.clearAll();
+    await _transactionsDao.clearAll();
+    await _productVariantsDao.clearAll();
+    await _productsDao.clearAll();
+    await _categoriesDao.clearAll();
+    await _branchesDao.clearAll();
+    await _businessesDao.clearAll();
+    await _authContextDao.clearAll();
+  }
+
   /// check kapag may internet connection
   Future<bool> get isOnline => _connectivityService.isConnected;
 
-  /// reactive total couns ng pending sync records across all tables, for showing in UI.
-  /// emits new value kapag may local change or sync status update in any of the tables.
+  /// Reactive total count of pending sync records across ALL tables.
   Stream<int> watchTotalPendingSyncCount() {
-    int cat = 0, prod = 0, vars = 0, orders = 0;
+    int cat = 0, prod = 0, vars = 0, orders = 0, exp = 0, inv = 0, led = 0;
     final controller = StreamController<int>.broadcast();
 
     void emit() {
-      if (!controller.isClosed) controller.add(cat + prod + vars + orders);
+      if (!controller.isClosed) {
+        controller.add(cat + prod + vars + orders + exp + inv + led);
+      }
     }
 
     final s1 = _categoriesDao.watchPendingSyncCount().listen((n) { cat = n; emit(); });
     final s2 = _productsDao.watchPendingSyncCount().listen((n) { prod = n; emit(); });
     final s3 = _productVariantsDao.watchPendingSyncCount().listen((n) { vars = n; emit(); });
     final s4 = _transactionsDao.watchPendingSyncCount().listen((n) { orders = n; emit(); });
+    final s5 = _expensesDao.watchPendingSyncCount().listen((n) { exp = n; emit(); });
+    final s6 = _inventoryLevelsDao.watchPendingSyncCount().listen((n) { inv = n; emit(); });
+    final s7 = _stockLedgerDao.watchPendingSyncCount().listen((n) { led = n; emit(); });
 
     controller.onCancel = () {
-      s1.cancel();
-      s2.cancel();
-      s3.cancel();
-      s4.cancel();
+      s1.cancel(); s2.cancel(); s3.cancel(); s4.cancel();
+      s5.cancel(); s6.cancel(); s7.cancel();
       controller.close();
     };
 
@@ -254,6 +276,7 @@ class SyncService {
         }
       } catch (e) {
         failed++;
+        debugPrint('[SYNC] Category ${record.name} FAILED: $e');
         errors.add('Category ${record.name}: ${e.toString()}');
         await _categoriesDao.updateSyncStatus(
           id: record.id,
@@ -332,6 +355,7 @@ class SyncService {
         }
       } catch (e) {
         failed++;
+        debugPrint('[SYNC] Product ${record.name} FAILED: $e');
         errors.add('Product ${record.name}: ${e.toString()}');
         await _productsDao.updateSyncStatus(
           id: record.id,
@@ -416,6 +440,7 @@ class SyncService {
         }
       } catch (e) {
         failed++;
+        debugPrint('[SYNC] Variant ${record.name} FAILED: $e');
         errors.add('Variant ${record.name}: ${e.toString()}');
         await _productVariantsDao.updateSyncStatus(
           id: record.id,
@@ -478,6 +503,7 @@ class SyncService {
         synced++;
       } catch (e) {
         failed++;
+        debugPrint('[SYNC] Transaction ${tx.id} FAILED: $e');
         errors.add('Transaction ${tx.id}: ${e.toString()}');
         await _transactionsDao.updateSyncStatus(
           id: tx.id,
@@ -556,6 +582,7 @@ class SyncService {
         }
       } catch (e) {
         failed++;
+        debugPrint('[SYNC] Expense ${record.id} FAILED: $e');
         errors.add('Expense ${record.id}: ${e.toString()}');
         await _expensesDao.updateSyncStatus(
           id: record.id,
@@ -598,6 +625,7 @@ class SyncService {
         synced++;
       } catch (e) {
         failed++;
+        debugPrint('[SYNC] InventoryLevel ${record.id} FAILED: $e');
         errors.add('InventoryLevel ${record.id}: ${e.toString()}');
         await _inventoryLevelsDao.updateSyncStatus(
           id: record.id,
@@ -644,6 +672,7 @@ class SyncService {
         synced++;
       } catch (e) {
         failed++;
+        debugPrint('[SYNC] StockLedger ${record.id} FAILED: $e');
         errors.add('StockLedger ${record.id}: ${e.toString()}');
         await _stockLedgerDao.updateSyncStatus(
           id: record.id,

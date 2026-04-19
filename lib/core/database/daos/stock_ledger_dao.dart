@@ -39,6 +39,17 @@ class StockLedgerDao extends DatabaseAccessor<AppDatabase>
         .watch();
   }
 
+  Stream<int> watchPendingSyncCount() {
+    final countExp = stockLedgerTable.id.count();
+    final query = selectOnly(stockLedgerTable)
+      ..addColumns([countExp])
+      ..where(stockLedgerTable.syncStatus.isIn([
+            SyncStatus.pendingUpload.toInt(),
+            SyncStatus.failed.toInt(),
+          ]));
+    return query.watchSingle().map((row) => row.read(countExp) ?? 0);
+  }
+
   /// Get pending-upload entries for sync.
   Future<List<StockLedgerTableData>> getPendingSync() {
     return (select(stockLedgerTable)

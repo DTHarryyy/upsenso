@@ -124,6 +124,11 @@ class BranchesDao extends DatabaseAccessor<AppDatabase>
     await (delete(branchesTable)..where((t) => t.id.equals(id))).go();
   }
 
+  /// Clear all branches (e.g. on logout).
+  Future<void> clearAll() {
+    return delete(branchesTable).go();
+  }
+
   /// Convert table data to entity
   static Branch toEntity(BranchesTableData data) {
     return Branch(

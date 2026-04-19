@@ -323,14 +323,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onLogout(AuthLogoutRequested e, Emitter<AuthState> emit) async {
-    // Clear local state immediately so the router redirects to sign-in
-    // without waiting for the Supabase network call to complete.
     _pendingSignUpEmail = null;
     _pendingSignUpPassword = null;
+
+    // Clear all local data before redirecting so the next account cannot
+    // see the previous account's records.
+    await syncService?.clearLocalData();
+
     emit(AuthUnauthenticated());
 
-    // Fire-and-forget the server sign-out — even if it fails or times out
-    // the local session is already cleared and the user is logged out locally.
     unawaited(signOut().catchError((err) {
       debugPrint('AuthBloc: sign-out server call failed: $err');
     }));

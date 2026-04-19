@@ -140,8 +140,8 @@ class InventoryRepository {
   }
 
   /// Adjust stock for a variant at a branch.
-  /// Always creates a stock_ledger entry first, then updates inventory_levels
-  /// and product_variants.stock (total).
+  /// All three writes (ledger, inventory_levels, product_variants) are wrapped
+  /// in a single transaction so a crash mid-way leaves no partial state.
   Future<void> adjustStock({
     required String variantId,
     required String productId,
@@ -154,8 +154,6 @@ class InventoryRepository {
   }) async {
     assert(quantity > 0, 'quantity must be positive');
 
-    // Every stock movement must be traced to a branch. Without one, the
-    // inventory_levels row and ledger entry cannot be created correctly.
     if (branchId == null) {
       assert(false, 'adjustStock called without branchId — auth context must include a branch');
       return;
@@ -163,68 +161,66 @@ class InventoryRepository {
 
     final delta = isIncoming ? quantity : -quantity;
 
-    // Snapshot stock BEFORE the adjustment for the ledger audit trail.
-    final levelBefore = await _levelsDao.getLevel(variantId, branchId);
-    final double qtyBefore = levelBefore?.quantity.toDouble() ?? 0.0;
-    final double qtyAfter = (qtyBefore + delta.toDouble()).clamp(0.0, 999999.0);
+    await _ledgerDao.db.transaction(() async {
+      // Snapshot stock BEFORE the adjustment for the ledger audit trail.
+      final levelBefore = await _levelsDao.getLevel(variantId, branchId);
+      final double qtyBefore = levelBefore?.quantity.toDouble() ?? 0.0;
+      final double qtyAfter = (qtyBefore + delta.toDouble()).clamp(0.0, 999999.0);
 
-    // 1. Insert ledger entry (immutable source of truth)
-    await _ledgerDao.insertEntry(
-      StockLedgerTableCompanion.insert(
-        id: _uuid.v4(),
+      // 1. Insert ledger entry (immutable source of truth)
+      await _ledgerDao.insertEntry(
+        StockLedgerTableCompanion.insert(
+          id: _uuid.v4(),
+          variantId: variantId,
+          productId: productId,
+          branchId: branchId,
+          businessId: businessId,
+          changeType: isIncoming ? 'IN' : 'OUT',
+          quantity: quantity.toDouble(),
+          quantityBefore: Value(qtyBefore),
+          quantityAfter: Value(qtyAfter),
+          reason: reason,
+          note: Value(note),
+          createdAt: Value(DateTime.now()),
+        ),
+      );
+
+      // 2. Update per-branch inventory_levels
+      await _levelsDao.adjustQuantity(
         variantId: variantId,
-        productId: productId,
         branchId: branchId,
         businessId: businessId,
-        changeType: isIncoming ? 'IN' : 'OUT',
-        quantity: quantity.toDouble(),
-        quantityBefore: Value(qtyBefore),
-        quantityAfter: Value(qtyAfter),
-        reason: reason,
-        note: Value(note),
-        createdAt: Value(DateTime.now()),
-      ),
-    );
+        delta: delta,
+      );
 
-    // 2. Update per-branch inventory_levels
-    await _levelsDao.adjustQuantity(
-      variantId: variantId,
-      branchId: branchId,
-      businessId: businessId,
-      delta: delta,
-    );
+      // 3. Recalculate global total and write to product_variants.stock
+      final allLevels = await _levelsDao.getByVariantId(variantId);
+      var newTotal = 0;
+      for (final level in allLevels) {
+        newTotal += level.quantity;
+      }
 
-    // 3. Recalculate global total and write to product_variants.stock
-    final allLevels = await _levelsDao.getByVariantId(variantId);
-    var newTotal = 0;
-    for (final level in allLevels) {
-      newTotal += level.quantity;
-    }
-
-    await _variantsDao.db.customUpdate(
-      'UPDATE product_variants SET stock = ?, sync_status = 1, local_updated_at = ? WHERE id = ?',
-      variables: [
-        Variable.withInt(newTotal),
-        Variable.withDateTime(DateTime.now()),
-        Variable.withString(variantId),
-      ],
-    );
+      await _variantsDao.db.customUpdate(
+        'UPDATE product_variants SET stock = ?, sync_status = 1, local_updated_at = ? WHERE id = ?',
+        variables: [
+          Variable.withInt(newTotal),
+          Variable.withDateTime(DateTime.now()),
+          Variable.withString(variantId),
+        ],
+      );
+    });
   }
 
   /// Called at checkout to record each sold item in the ledger, deduct it
   /// from [inventory_levels], and decrement [product_variants.stock].
   ///
-  /// Only processes variants that have [trackStock] enabled.
-  ///
-  /// A branch with no existing inventory_levels row starts from 0 — there is
-  /// no seeding from product_variants.stock. The global total must not be used
-  /// as a single branch's starting stock.
+  /// Skips variants where [trackStock] is false. Each item's writes are
+  /// wrapped in a transaction so a crash mid-item leaves no partial state.
   Future<void> recordSaleDeductions({
     required List<({String variantId, int qty})> items,
     required String businessId,
     required String? branchId,
   }) async {
-    // Every sale must be attributed to a branch for correct per-branch tracking.
     if (branchId == null) {
       assert(false, 'recordSaleDeductions called without branchId');
       return;
@@ -234,42 +230,42 @@ class InventoryRepository {
       if (item.qty <= 0) continue;
 
       final variant = await _variantsDao.getById(item.variantId);
-      if (variant == null) continue;
+      if (variant == null || !variant.trackStock) continue;
 
-      // Snapshot stock BEFORE deduction for the ledger audit trail.
-      final levelBefore = await _levelsDao.getLevel(item.variantId, branchId);
-      final double qtyBefore = levelBefore?.quantity.toDouble() ?? 0.0;
-      final double qtyAfter = (qtyBefore - item.qty.toDouble()).clamp(0.0, 999999.0);
+      await _ledgerDao.db.transaction(() async {
+        // Snapshot stock BEFORE deduction for the ledger audit trail.
+        final levelBefore = await _levelsDao.getLevel(item.variantId, branchId);
+        final double qtyBefore = levelBefore?.quantity.toDouble() ?? 0.0;
+        final double qtyAfter = (qtyBefore - item.qty.toDouble()).clamp(0.0, 999999.0);
 
-      // 1. Insert stock ledger entry
-      await _ledgerDao.insertEntry(
-        StockLedgerTableCompanion.insert(
-          id: _uuid.v4(),
+        // 1. Insert stock ledger entry
+        await _ledgerDao.insertEntry(
+          StockLedgerTableCompanion.insert(
+            id: _uuid.v4(),
+            variantId: item.variantId,
+            productId: variant.productId,
+            branchId: branchId,
+            businessId: businessId,
+            changeType: 'OUT',
+            quantity: item.qty.toDouble(),
+            quantityBefore: Value(qtyBefore),
+            quantityAfter: Value(qtyAfter),
+            reason: 'Sale',
+            createdAt: Value(DateTime.now()),
+          ),
+        );
+
+        // 2. Deduct from this branch's inventory_levels row.
+        await _levelsDao.adjustQuantity(
           variantId: item.variantId,
-          productId: variant.productId,
           branchId: branchId,
           businessId: businessId,
-          changeType: 'OUT',
-          quantity: item.qty.toDouble(),
-          quantityBefore: Value(qtyBefore),
-          quantityAfter: Value(qtyAfter),
-          reason: 'Sale',
-          createdAt: Value(DateTime.now()),
-        ),
-      );
+          delta: -item.qty,
+        );
 
-      // 2. Deduct from this branch's inventory_levels row.
-      //    A missing row starts from 0 — not from product_variants.stock.
-      await _levelsDao.adjustQuantity(
-        variantId: item.variantId,
-        branchId: branchId,
-        businessId: businessId,
-        delta: -item.qty,
-      );
-
-      // 3. Decrement product_variants.stock (only when trackStock=true)
-      await _variantsDao.decrementStockIfTracked(
-          item.variantId, item.qty.toDouble());
+        // 3. Decrement product_variants.stock
+        await _variantsDao.decrementStockIfTracked(item.variantId, item.qty.toDouble());
+      });
     }
   }
 }

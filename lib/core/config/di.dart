@@ -196,6 +196,7 @@ Future<void> initDI() async {
   sl.registerLazySingleton<SyncService>(
     () => SyncService(
       authContextDao: sl<AuthContextDao>(),
+      branchesDao: sl<BranchesDao>(),
       businessesDao: sl<BusinessesDao>(),
       categoriesDao: sl<CategoriesDao>(),
       expensesDao: sl<ExpensesDao>(),

@@ -27,7 +27,9 @@ class ExpensesCubit extends Cubit<ExpensesState> {
 
   bool get canApprove {
     final normalized = _roleName?.trim().toLowerCase() ?? '';
-    return normalized.contains('admin');
+    return normalized == 'owner' ||
+        normalized == 'super admin' ||
+        normalized.contains('admin');
   }
 
   bool get _shouldAutoApprove => canApprove;
