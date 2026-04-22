@@ -27,17 +27,25 @@ Future<Widget> bootstrap() async {
   }
 
   try {
+    final supabaseUrl = dotenv.env['SUPABASE_URL'];
+    final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'];
+
+    if (supabaseUrl == null || supabaseUrl.isEmpty ||
+        supabaseAnonKey == null || supabaseAnonKey.isEmpty) {
+      throw Exception('Missing SUPABASE_URL or SUPABASE_ANON_KEY in .env');
+    }
+
     await Supabase.initialize(
-      url: dotenv.env['SUPABASE_URL']!,
-      anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
+      url: supabaseUrl,
+      anonKey: supabaseAnonKey,
     ).timeout(
-      const Duration(seconds: 5),
+      const Duration(seconds: 10),
       onTimeout: () {
-        throw Exception('Supabase initialization timeout');
+        throw Exception('Supabase initialization timed out');
       },
     );
   } catch (e) {
-    debugPrint('Supabase init failed: $e - app will run in offline mode');
+    debugPrint('Supabase init failed: $e — app will run in offline mode');
   }
 
   try {

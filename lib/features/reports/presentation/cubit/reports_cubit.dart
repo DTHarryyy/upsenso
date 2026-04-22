@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:pos/features/reports/data/reports_data.dart';
 import 'package:pos/features/reports/data/reports_repository.dart';
 import 'package:pos/features/reports/presentation/cubit/reports_state.dart';
@@ -75,7 +76,7 @@ class ReportsCubit extends Cubit<ReportsState> {
       );
       if (!isClosed) emit(ReportsLoaded(data));
     } catch (e) {
-      if (!isClosed) emit(ReportsError(e.toString()));
+      if (!isClosed) emit(ReportsError(AppErrorMapper.message(e)));
     } finally {
       _isLoading = false;
       if (_pendingReload && !isClosed) {

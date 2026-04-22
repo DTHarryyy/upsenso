@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 import 'package:pos/core/config/di.dart';
+import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/categories_dao.dart';
 import 'package:pos/core/database/daos/inventory_levels_dao.dart';
@@ -350,7 +351,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
       emit(state.copyWith(isSaving: false, isSuccess: true));
     } catch (e) {
-      emit(state.copyWith(isSaving: false, error: e.toString()));
+      emit(state.copyWith(isSaving: false, error: AppErrorMapper.message(e)));
     }
   }
 
@@ -524,7 +525,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
       emit(state.copyWith(isSaving: false, isSuccess: true));
     } catch (e) {
-      emit(state.copyWith(isSaving: false, error: e.toString()));
+      emit(state.copyWith(isSaving: false, error: AppErrorMapper.message(e)));
     }
   }
 

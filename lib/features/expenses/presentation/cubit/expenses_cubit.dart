@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:pos/features/expenses/data/expenses_repository.dart';
 import 'package:pos/features/expenses/domain/expense_item.dart';
 import 'package:pos/features/expenses/presentation/cubit/expenses_state.dart';
@@ -55,7 +56,7 @@ class ExpensesCubit extends Cubit<ExpensesState> {
         if (!isClosed) _onDataChanged(items);
       },
       onError: (e) {
-        if (!isClosed) emit(ExpensesError(e.toString()));
+        if (!isClosed) emit(ExpensesError(AppErrorMapper.message(e)));
       },
     );
   }

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:pos/features/inventory/data/inventory_data.dart';
 import 'package:pos/features/inventory/data/inventory_repository.dart';
 import 'package:pos/features/inventory/presentation/cubit/inventory_state.dart';
@@ -117,7 +118,7 @@ class InventoryCubit extends Cubit<InventoryState> {
         ));
       }
     } catch (e) {
-      if (!isClosed) emit(InventoryError(e.toString()));
+      if (!isClosed) emit(InventoryError(AppErrorMapper.message(e)));
     } finally {
       _isLoading = false;
       if (_pendingReload && !isClosed) {

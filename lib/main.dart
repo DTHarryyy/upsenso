@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pos/bootstrap.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/errors/app_error_mapper.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,6 +48,7 @@ class AppInitializer extends StatefulWidget {
 class _AppInitializerState extends State<AppInitializer> {
   Widget? _app;
   String? _error;
+  bool _retrying = false;
 
   @override
   void initState() {
@@ -55,26 +57,34 @@ class _AppInitializerState extends State<AppInitializer> {
   }
 
   Future<void> _initializeApp() async {
+    setState(() {
+      _error = null;
+      _retrying = true;
+    });
     try {
       final app = await bootstrap();
       if (mounted) {
-        setState(() => _app = app);
+        setState(() {
+          _app = app;
+          _retrying = false;
+        });
       }
     } catch (e, _) {
       if (mounted) {
-        setState(() => _error = e.toString());
+        setState(() {
+          _error = AppErrorMapper.message(e);
+          _retrying = false;
+        });
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_error != null) {
-      return _ErrorScreen(error: _error!);
+    if (_error != null && !_retrying) {
+      return _ErrorScreen(message: _error!, onRetry: _initializeApp);
     }
-    if (_app != null) {
-      return _app!;
-    }
+    if (_app != null) return _app!;
     return const _SplashScreen();
   }
 }
@@ -123,16 +133,17 @@ class _SplashScreen extends StatelessWidget {
 }
 
 class _ErrorScreen extends StatelessWidget {
-  final String error;
+  final String message;
+  final VoidCallback onRetry;
 
-  const _ErrorScreen({required this.error});
+  const _ErrorScreen({required this.message, required this.onRetry});
 
   @override
-   Widget build(BuildContext context) {
+  Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(
-        backgroundColor: Colors.                                                                                                                                                                                                                                                                                                                                                         white,
+        backgroundColor: Colors.white,
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -146,7 +157,7 @@ class _ErrorScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 const Text(
-                  'Failed to Initialize',
+                  'Failed to Start',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -155,21 +166,20 @@ class _ErrorScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Please check your connection and restart the app.',
+                  message,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 14,
                   ),
                 ),
-                const SizedBox(height: 24),
-                Text(
-                  'Error: $error',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                    fontFamily: 'monospace',
+                const SizedBox(height: 32),
+                FilledButton.icon(
+                  onPressed: onRetry,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Try Again'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.brand,
                   ),
                 ),
               ],

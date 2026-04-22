@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:pos/features/auth/domain/repositories/auth_repository.dart';
 import 'package:pos/features/business/domain/repositories/business_repository.dart';
 import 'package:pos/features/business/presentation/bloc/business_event.dart';
@@ -25,7 +26,7 @@ class BusinessBloc extends Bloc<BusinessEvent, BusinessState> {
       final templates = await businessRepository.getBusinessTemplates();
       emit(BusinessTemplatesLoaded(templates: templates));
     } catch (e) {
-      emit(BusinessError(e.toString()));
+      emit(BusinessError(AppErrorMapper.message(e)));
     }
   }
 
@@ -61,7 +62,7 @@ class BusinessBloc extends Bloc<BusinessEvent, BusinessState> {
 
       emit(BusinessCreated(business));
     } catch (e) {
-      emit(BusinessError(e.toString()));
+      emit(BusinessError(AppErrorMapper.message(e)));
       // Re-emit templates loaded state so user can retry
       emit(currentState);
     }

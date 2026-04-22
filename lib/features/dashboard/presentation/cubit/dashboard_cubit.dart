@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:pos/features/dashboard/data/dashboard_repository.dart';
 import 'package:pos/features/dashboard/presentation/cubit/dashboard_state.dart';
 
@@ -58,7 +59,7 @@ class DashboardCubit extends Cubit<DashboardState> {
       );
       if (!isClosed) emit(DashboardLoaded(data));
     } catch (e) {
-      if (!isClosed) emit(DashboardError(e.toString()));
+      if (!isClosed) emit(DashboardError(AppErrorMapper.message(e)));
     } finally {
       _isLoading = false;
       // If another change came in while we were loading, reload now
