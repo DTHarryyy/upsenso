@@ -26,16 +26,27 @@ jobs:
           echo "${{ secrets.KEYSTORE_FILE }}" | base64 --decode > android/app/keystore.jks
 
       - name: Create .env file
-        run: echo "${{ secrets.ENV_FILE }}" > .env
+        env:
+          ENV_FILE: ${{ secrets.ENV_FILE }}
+        run: |
+          printf '%s' "$ENV_FILE" > .env
+          grep -q "SUPABASE_URL" .env || (echo "ERROR: SUPABASE_URL missing from .env — check the ENV_FILE secret" && exit 1)
+          grep -q "SUPABASE_ANON_KEY" .env || (echo "ERROR: SUPABASE_ANON_KEY missing from .env — check the ENV_FILE secret" && exit 1)
 
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Compute version
+        run: |
+          BUILD_NUMBER=$(git rev-list --count HEAD)
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
+          echo "Build number: $BUILD_NUMBER"
+
       - name: Build App Bundle
         run: |
           flutter build appbundle --release \
-            --build-name=1.0.${{ github.run_number }} \
-            --build-number=${{ github.run_number }}
+            --build-name=1.0.$BUILD_NUMBER \
+            --build-number=$BUILD_NUMBER
         env:
           KEYSTORE_PATH: keystore.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -48,5 +59,5 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_JSON_KEY }}
           packageName: com.ledgidy.pos
           releaseFiles: build/app/outputs/bundle/release/*.aab
-          track: internal
-          status: draft
+          track: alpha
+          status: completed

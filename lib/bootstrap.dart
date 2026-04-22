@@ -26,26 +26,28 @@ Future<Widget> bootstrap() async {
     debugPrint('Failed to load .env file: $e - environment variables may be missing');
   }
 
+  final supabaseUrl = dotenv.env['SUPABASE_URL']?.trim();
+  final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY']?.trim();
+
+  if (supabaseUrl == null || supabaseUrl.isEmpty ||
+      supabaseAnonKey == null || supabaseAnonKey.isEmpty) {
+    throw Exception(
+      'App configuration is missing. Please reinstall the app or contact support.',
+    );
+  }
+
   try {
-    final supabaseUrl = dotenv.env['SUPABASE_URL'];
-    final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'];
-
-    if (supabaseUrl == null || supabaseUrl.isEmpty ||
-        supabaseAnonKey == null || supabaseAnonKey.isEmpty) {
-      throw Exception('Missing SUPABASE_URL or SUPABASE_ANON_KEY in .env');
-    }
-
-    await Supabase.initialize(
-      url: supabaseUrl,
-      anonKey: supabaseAnonKey,
-    ).timeout(
+    await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey)
+        .timeout(
       const Duration(seconds: 10),
-      onTimeout: () {
-        throw Exception('Supabase initialization timed out');
-      },
+      onTimeout: () => throw Exception(
+        'Connection timed out during startup. Please check your internet and try again.',
+      ),
     );
   } catch (e) {
-    debugPrint('Supabase init failed: $e — app will run in offline mode');
+    // Supabase.initialize() is lightweight — it doesn't make network calls.
+    // A failure here means the credentials are malformed, not a network issue.
+    rethrow;
   }
 
   try {

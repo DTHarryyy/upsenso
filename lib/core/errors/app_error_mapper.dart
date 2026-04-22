@@ -30,6 +30,16 @@ abstract final class AppErrorMapper {
       return 'This item already exists.';
     }
 
+    if (msg.contains('configuration is missing') || msg.contains('supabase_url') || msg.contains('supabase_anon_key')) {
+      return 'App configuration is missing. Please reinstall the app or contact support.';
+    }
+    if (msg.contains('supabase has not been initialized') || msg.contains('not been initialized')) {
+      return 'App failed to start. Please reinstall the app or contact support.';
+    }
+    if (msg.contains('timed out during startup')) {
+      return 'Connection timed out during startup. Please check your internet and try again.';
+    }
+
     if (kDebugMode) return error.toString();
     return 'Something went wrong. Please try again.';
   }
