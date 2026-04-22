@@ -15,6 +15,7 @@ import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_status.dart';
 import 'package:pos/features/business/data/datasources/business_remote_ds.dart';
 import 'package:pos/features/business/data/models/business_model.dart';
+import 'package:pos/features/business/domain/entities/branch.dart';
 import 'package:pos/features/expenses/data/datasources/expenses_remote_ds.dart';
 import 'package:pos/features/products/data/datasources/products_remote_ds.dart';
 import 'package:pos/features/pos/data/datasources/transactions_remote_ds.dart';
@@ -859,6 +860,22 @@ class SyncService {
     } catch (e) {
       failed++;
       errors.add('Pull expenses: ${e.toString()}');
+    }
+
+    try {
+      final branches = await _businessRemoteDs.getActiveBranchesByBusiness(businessId);
+      for (final row in branches) {
+        await _branchesDao.upsertFromServer(Branch(
+          id: row['id'] as String,
+          businessId: row['business_id'] as String,
+          name: row['name'] as String,
+          isActive: (row['is_active'] as bool?) ?? true,
+        ));
+        pulled++;
+      }
+    } catch (e) {
+      failed++;
+      errors.add('Pull branches: ${e.toString()}');
     }
 
     return SyncResult(

@@ -50,9 +50,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     return SupabaseAuthErrorMapper.message(err);
   }
 
-  /// Fire-and-forget pull sync after the user is authenticated.
-  /// Runs in the background so the UI is not blocked.
-  void _triggerPull(AppUser user) {
+  /// Blocking full pull — awaited on fresh login/signup so the home screen
+  /// opens with all data already in the local DB.
+  Future<void> _initialSync(AppUser user) async {
+    final id = user.businessId;
+    if (id == null || id.trim().isEmpty) return;
+    await syncService?.syncAll(businessId: id);
+  }
+
+  /// Fire-and-forget pull — used on app restart where cached data is already
+  /// present and we don't want to block the UI.
+  void _backgroundSync(AppUser user) {
     final id = user.businessId;
     if (id == null || id.trim().isEmpty) return;
     unawaited(syncService?.syncAll(businessId: id));
@@ -172,7 +180,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         'AuthBloc: Emitting cached user (${user.businessId != null ? "with" : "without"} business)',
       );
       emit(AuthAuthenticated(user));
-      _triggerPull(user);
+      _backgroundSync(user);
 
       // Skip background refresh when cached context is already complete.
       if (!_hasCompleteContext(user)) {
@@ -214,10 +222,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(const AuthLoading(type: AuthLoadingType.email));
     try {
       final user = await signIn(e.email, e.password);
-      final userWithContext = await _getUserContextWithRetry(user.id);
-      final authed = userWithContext ?? user;
+      final authed = (await _getUserContextWithRetry(user.id)) ?? user;
+      await _initialSync(authed);
       emit(AuthAuthenticated(authed));
-      _triggerPull(authed);
     } catch (err) {
       emit(AuthError(_errorMessage(err)));
       emit(AuthUnauthenticated());
@@ -299,10 +306,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       _pendingSignUpEmail = null;
       _pendingSignUpPassword = null;
 
-      final userWithContext = await _getUserContextWithRetry(user.id);
-      final authed = userWithContext ?? user;
+      final authed = (await _getUserContextWithRetry(user.id)) ?? user;
+      await _initialSync(authed);
       emit(AuthAuthenticated(authed));
-      _triggerPull(authed);
     } catch (err) {
       emit(AuthError(_errorMessage(err)));
     }
