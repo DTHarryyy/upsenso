@@ -95,30 +95,17 @@ class AppRouter {
         return null;
       }
 
-      final authRepository = sl<AuthRepository>();
-      final currentUser = authRepository.getCurrentUser();
+      // For any transient state (loading, OAuthInProgress, etc.) don't
+      // redirect — wait for the BLoC to settle into Authenticated or
+      // Unauthenticated before making a routing decision.
+      if (authState is! AuthAuthenticated) return null;
 
-      if (currentUser == null) {
-        if (goingToOnboarding || !isAuthRoute) return AppRoutes.signIn;
-        return null;
-      }
-
-      var hasBusiness = currentUser.businessId != null &&
-          currentUser.businessId!.trim().isNotEmpty;
-
-      if (!hasBusiness &&
-          !goingToBusinessProfileSetup &&
-          !isPasswordResetRoute) {
-        try {
-          final userWithContext = await authRepository
-              .getUserBusinessContext(currentUser.id)
-              .timeout(const Duration(milliseconds: 800), onTimeout: () => null);
-
-          if (userWithContext?.businessId != null) {
-            hasBusiness = true;
-          }
-        } catch (_) {}
-      }
+      // Use the user carried by the BLoC state as the single source of
+      // truth. The BLoC already ran getUserBusinessContext and populated
+      // businessId before emitting AuthAuthenticated, so we don't need to
+      // re-query the repository here.
+      final user = authState.user;
+      final hasBusiness = (user.businessId?.trim() ?? '').isNotEmpty;
 
       if (!hasBusiness && !goingToBusinessProfileSetup && !isPasswordResetRoute) {
         return AppRoutes.businessProfileSetup;

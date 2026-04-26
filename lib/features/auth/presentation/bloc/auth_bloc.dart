@@ -379,11 +379,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
 
     final userWithContext = await _getUserContextWithRetry(user.id);
-    emit(
-      userWithContext != null
-          ? AuthAuthenticated(userWithContext)
-          : AuthAuthenticated(user),
-    );
+    final resolved = userWithContext ?? user;
+
+    // Never downgrade: if we already have a complete context (businessId +
+    // role) in the current state but the freshly-fetched user is missing it
+    // (e.g. network hiccup during token refresh), keep the richer state.
+    final stateAfterFetch = state;
+    if (stateAfterFetch is AuthAuthenticated &&
+        _hasCompleteContext(stateAfterFetch.user) &&
+        !_hasCompleteContext(resolved)) {
+      return;
+    }
+
+    emit(AuthAuthenticated(resolved));
   }
 
   Future<void> _onForgotPassword(

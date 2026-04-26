@@ -88,7 +88,31 @@ class AuthRepositoryImpl implements AuthRepository {
     }
 
     final appUser = AppUserModel.fromSupabaseUser(user);
-    await _cacheUserContext(appUser);
+
+    // Preserve any businessId/role context from a previous session so that a
+    // slow or failing getUserBusinessContext fetch doesn't strip the context
+    // and send an existing user to businessProfileSetup.
+    final existing = await _getCachedUserContextFor(user.id);
+    final existingBusinessId = existing?.businessId;
+    if (existing != null && existingBusinessId != null) {
+      _cachedUserInMemory = AppUserModel(
+        id: appUser.id,
+        email: appUser.email ?? existing.email,
+        fullName: appUser.fullName ?? existing.fullName,
+        avatarUrl: existing.avatarUrl ?? appUser.avatarUrl,
+        businessId: existing.businessId,
+        roleId: existing.roleId,
+        roleName: existing.roleName,
+        businessName: existing.businessName,
+        branchId: existing.branchId,
+        branchName: existing.branchName,
+        businessTemplateId: existing.businessTemplateId,
+        businessTemplateName: existing.businessTemplateName,
+      );
+      // DB already has the correct context — no overwrite needed.
+    } else {
+      await _cacheUserContext(appUser);
+    }
 
     return appUser;
   }
@@ -183,11 +207,13 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<void> signOut() async {
+    // Clear only the in-memory cache. Keeping the DB auth context lets the
+    // same user re-login and immediately get their businessId from cache,
+    // avoiding the race where a slow getUserBusinessContext fetch returns a
+    // partial user that sends them back to businessProfileSetup.
+    // The cache is keyed by userId, so different users on the same device
+    // never see each other's records.
     _cachedUserInMemory = null;
-    final currentUser = getCurrentUser();
-    if (currentUser != null) {
-      await authContextDao.clearContext(currentUser.id);
-    }
     // Best-effort remote sign-out: local session is already cleared above,
     // so an offline failure should not prevent the user from being signed out.
     try {
