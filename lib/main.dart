@@ -55,7 +55,7 @@ class _AppInitializerState extends State<AppInitializer> {
     super.initState();
     _initializeApp();
   }
-
+ 
   Future<void> _initializeApp() async {
     setState(() {
       _error = null;

@@ -4,11 +4,14 @@ import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/ui/status/status_snack.dart';
+import 'package:pos/core/ui/status/status_type.dart';
 import 'package:pos/core/widgets/app_dropdown.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/reports/data/reports_data.dart';
 import 'package:pos/features/reports/data/reports_repository.dart';
+import 'package:pos/features/reports/pdf/report_pdf_exporter.dart';
 import 'package:pos/features/reports/presentation/cubit/reports_cubit.dart';
 import 'package:pos/features/reports/presentation/cubit/reports_state.dart';
 import 'package:pos/features/reports/presentation/widgets/branch_comparison.dart';
@@ -32,6 +35,7 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
 
   int _selectedTab = 0;
   ReportPeriod _period = ReportPeriod.last7Days;
+  bool _exporting = false;
 
   static const _tabs = [
     ReportTab(icon: Icons.bar_chart_rounded, label: 'Sales Report'),
@@ -73,6 +77,48 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
     _cubit.changePeriod(p);
   }
 
+  Future<void> _onExport(BuildContext context, ReportsData data) async {
+    if (_exporting) return;
+
+    // Capture context-dependent values before any async gap.
+    final authState = context.read<AuthBloc>().state;
+    final businessName = authState is AuthAuthenticated
+        ? (authState.user.businessName ?? '')
+        : '';
+    final branchLabel =
+        context.read<BranchCubit>().state.selectedBranch ?? 'All Branches';
+
+    setState(() => _exporting = true);
+    try {
+      await ReportPdfExporter.export(
+        data: data,
+        period: _period,
+        businessName: businessName,
+        branchLabel: branchLabel,
+      );
+      if (mounted) {
+        StatusSnack.show(
+          this.context,
+          type: StatusType.success,
+          title: 'PDF Ready',
+          message: 'Choose where to save from the share sheet.',
+          duration: const Duration(seconds: 3),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        StatusSnack.show(
+          this.context,
+          type: StatusType.error,
+          title: 'Export Failed',
+          message: e.toString(),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider.value(
@@ -103,7 +149,7 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildHeader(ctx),
+                      _buildHeader(ctx, data),
                       const SizedBox(height: 16),
                       ReportNavChipBar(
                         tabs: _tabs,
@@ -133,7 +179,7 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, ReportsData data) {
     return LayoutBuilder(builder: (_, constraints) {
       final narrow = constraints.maxWidth < 600;
       final periodPicker = SizedBox(
@@ -153,11 +199,10 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
           },
         ),
       );
-      final exportBtn = _ExportButton(onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('PDF export coming soon')),
-        );
-      });
+      final exportBtn = _ExportButton(
+        isLoading: _exporting,
+        onTap: () => _onExport(context, data),
+      );
 
       if (narrow) {
         return Column(
@@ -231,12 +276,13 @@ class _TitleSection extends StatelessWidget {
 
 class _ExportButton extends StatelessWidget {
   final VoidCallback onTap;
-  const _ExportButton({required this.onTap});
+  final bool isLoading;
+  const _ExportButton({required this.onTap, this.isLoading = false});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: isLoading ? null : onTap,
       child: Container(
         height: 36,
         padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -245,14 +291,25 @@ class _ExportButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: AppColors.borderSoft),
         ),
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.download_rounded, size: 15, color: AppColors.textSecondary),
-            SizedBox(width: 6),
+            if (isLoading)
+              const SizedBox(
+                width: 13,
+                height: 13,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.5,
+                  color: AppColors.textSecondary,
+                ),
+              )
+            else
+              const Icon(Icons.download_rounded,
+                  size: 15, color: AppColors.textSecondary),
+            const SizedBox(width: 6),
             Text(
-              'Export PDF',
-              style: TextStyle(
+              isLoading ? 'Exporting…' : 'Export PDF',
+              style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
                 color: AppColors.textPrimary,

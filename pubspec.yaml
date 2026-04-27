@@ -74,6 +74,8 @@ dependencies:
   audioplayers: ^6.4.0
   nobodywho: ^0.5.2
   fl_chart: ^0.70.2
+  pdf: ^3.11.1
+  printing: ^5.13.3
 
 dev_dependencies:
   flutter_test:

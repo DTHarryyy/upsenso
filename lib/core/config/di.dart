@@ -149,7 +149,7 @@ Future<void> initDI() async {
   sl.registerLazySingleton(() => ResetPassword(sl<AuthRepository>()));
   sl.registerLazySingleton(() => SignOut(sl<AuthRepository>()));
 
-  sl.registerFactory(
+  sl.registerLazySingleton<AuthBloc>(
     () => AuthBloc(
       getCurrentUser: sl(),
       getUserBusinessContext: sl(),
