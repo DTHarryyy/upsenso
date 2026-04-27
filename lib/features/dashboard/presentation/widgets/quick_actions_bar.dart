@@ -48,7 +48,7 @@ class QuickActionsBar extends StatelessWidget {
               icon: Icons.swap_horiz,
               label: 'Transfer',
               onPressed: () {
-                // TODO: Navigate to Transfer page
+                // TODO: Navigate to Transfer pa
               },
             ),
           ],

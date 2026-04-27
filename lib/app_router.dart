@@ -58,6 +58,12 @@ class AppRouter {
     // Re-run redirect whenever AuthBloc emits — critical for instant sign-out.
     refreshListenable: _AuthRefreshNotifier(sl<AuthBloc>().stream),
 
+    // The OAuth callback deep link (posauth://login-callback/) has no matching
+    // route. Redirect to sign-in; Supabase processes the code exchange via its
+    // own app_links listener and fires onAuthStateChange when done, which then
+    // triggers the redirect logic to forward the user home.
+    onException: (_, state, router) => router.go(AppRoutes.signIn),
+
     redirect: (context, state) async {
       final location = state.matchedLocation;
 
