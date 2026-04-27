@@ -415,7 +415,7 @@ class AuthRepositoryImpl implements AuthRepository {
     String localPath,
   ) async {
     final remoteUrl = await remote.uploadAvatar(bytes, userId);
-    await remote.updateAvatarUrl(remoteUrl);
+    await remote.updateAvatarUrl(userId, remoteUrl);
 
     final current = _cachedUserInMemory;
     // Only update if the user hasn't picked a newer avatar since.

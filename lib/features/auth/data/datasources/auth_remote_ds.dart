@@ -124,10 +124,20 @@ class AuthRemoteDs {
     return '$url?t=${DateTime.now().millisecondsSinceEpoch}';
   }
 
-  Future<void> updateAvatarUrl(String avatarUrl) async {
+  Future<void> updateAvatarUrl(String userId, String avatarUrl) async {
     await client.auth.updateUser(
       UserAttributes(data: {'avatar_url': avatarUrl}),
     );
+    // Best-effort: also persist to public.users so other parts of the app
+    // (staff lists, receipts, etc.) can read the avatar without going through auth.
+    try {
+      await client
+          .from('users')
+          .update({'avatar_url': avatarUrl})
+          .eq('id', userId);
+    } catch (_) {
+      // Non-fatal: public.users may not yet have the avatar_url column.
+    }
   }
 
   Future<void> signOut() => client.auth.signOut();
