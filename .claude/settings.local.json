@@ -7,7 +7,8 @@
       "Read(//c/Softwares/**)",
       "Bash(\"C:/Softwares/jdk-17.0.18+8/bin/java\" -version)",
       "Bash(\"/c/Users/boxde/flutter/bin/flutter\" config:*)",
-      "Read(//c/Users/boxde/.gradle/**)"
+      "Read(//c/Users/boxde/.gradle/**)",
+      "PowerShell(Set-Location \"C:\\\\DEVELOPMENT PROJECTS\\\\Flutter Projects\\\\pos\"; Get-ChildItem -Path . -Force | Select-Object Name, @{Name='Type';Expression={if\\($_.PSIsContainer\\){'DIR'}else{'FILE'}}} | Sort-Object Type, Name)"
     ]
   }
 }

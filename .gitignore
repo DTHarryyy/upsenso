@@ -12,6 +12,7 @@
 .swiftpm/
 migrate_working_dir/
 .env
+flavors/
 # IntelliJ related
 *.iml
 *.ipr

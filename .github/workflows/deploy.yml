@@ -27,13 +27,12 @@ jobs:
         run: |
           echo "${{ secrets.KEYSTORE_FILE }}" | base64 --decode > android/app/keystore.jks
 
-      - name: Create .env file
-        env:
-          ENV_FILE: ${{ secrets.ENV_FILE }}
+      - name: Create prod flavor config
         run: |
-          printf '%s' "$ENV_FILE" > .env
-          grep -q "SUPABASE_URL" .env || (echo "ERROR: SUPABASE_URL missing from .env — check the ENV_FILE secret" && exit 1)
-          grep -q "SUPABASE_ANON_KEY" .env || (echo "ERROR: SUPABASE_ANON_KEY missing from .env — check the ENV_FILE secret" && exit 1)
+          mkdir -p flavors
+          printf '%s' '${{ secrets.PROD_FLAVOR_JSON }}' > flavors/prod.json
+          grep -q "SUPABASE_URL" flavors/prod.json || (echo "ERROR: SUPABASE_URL missing from PROD_FLAVOR_JSON secret" && exit 1)
+          grep -q "SUPABASE_ANON_KEY" flavors/prod.json || (echo "ERROR: SUPABASE_ANON_KEY missing from PROD_FLAVOR_JSON secret" && exit 1)
 
       - name: Install dependencies
         run: flutter pub get
@@ -47,8 +46,11 @@ jobs:
       - name: Build App Bundle
         run: |
           flutter build appbundle --release \
+            --dart-define-from-file=flavors/prod.json \
             --build-name=1.0.$BUILD_NUMBER \
-            --build-number=$BUILD_NUMBER
+            --build-number=$BUILD_NUMBER \
+            --obfuscate \
+            --split-debug-info=build/debug-info/
         env:
           KEYSTORE_PATH: keystore.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}

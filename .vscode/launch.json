@@ -1,0 +1,12 @@
+{
+  "configurations": [
+    
+
+    {
+      "name": "POS (dev)",
+      "request": "launch",
+      "type": "dart",
+      "args": ["--dart-define-from-file=flavors/dev.json"]
+    }
+  ]
+}

@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 
-/// Centralized color system for Ledgify / POS app
-/// NO Color(...) should be used outside this file.
 class AppColors {
   AppColors._();
 
-  static const Color brand = Color(0xFF557FF4); // YOUR BLUE
+  static const Color brand = Color(0xFF557FF4);
   static const Color brandDark = Color(0xFF3B5BDB);
   static const Color brandSoft = Color(0xFFEAF0FF);
 
