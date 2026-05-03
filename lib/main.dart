@@ -154,8 +154,8 @@ class _ErrorScreen extends StatelessWidget {
                   Icons.error_outline,
                   size: 64,
                   color: AppColors.error,
-                         const SizedBox(height: 24),
-       ),
+                ),
+                const SizedBox(height: 24),
                 const Text(
                   'Failed to Start',
                   style: TextStyle(
