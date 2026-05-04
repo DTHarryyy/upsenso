@@ -21,6 +21,7 @@ class DashboardData {
   final Map<String, double> paymentBreakdown;
   final List<LowStockItem> lowStockItems;
   final List<BranchStat> branchStats;
+  final ExpenseSummary expenseSummary;
 
   const DashboardData({
     required this.todaySales,
@@ -40,6 +41,7 @@ class DashboardData {
     required this.paymentBreakdown,
     required this.lowStockItems,
     required this.branchStats,
+    required this.expenseSummary,
   });
 
   static DashboardData empty() => const DashboardData(
@@ -60,7 +62,54 @@ class DashboardData {
         paymentBreakdown: {},
         lowStockItems: [],
         branchStats: [],
+        expenseSummary: ExpenseSummary(
+          todayTotal: 0,
+          monthTotal: 0,
+          pendingTotal: 0,
+          pendingCount: 0,
+          recentExpenses: [],
+        ),
       );
+}
+
+class ExpenseSummary {
+  final double todayTotal;
+  final double monthTotal;
+  final double pendingTotal;
+  final int pendingCount;
+  final List<RecentExpense> recentExpenses;
+
+  const ExpenseSummary({
+    required this.todayTotal,
+    required this.monthTotal,
+    required this.pendingTotal,
+    required this.pendingCount,
+    required this.recentExpenses,
+  });
+
+  static ExpenseSummary empty() => const ExpenseSummary(
+        todayTotal: 0,
+        monthTotal: 0,
+        pendingTotal: 0,
+        pendingCount: 0,
+        recentExpenses: [],
+      );
+}
+
+class RecentExpense {
+  final String category;
+  final String vendor;
+  final double amount;
+  final bool isPending;
+  final DateTime date;
+
+  const RecentExpense({
+    required this.category,
+    required this.vendor,
+    required this.amount,
+    required this.isPending,
+    required this.date,
+  });
 }
 
 class CategoryStat {

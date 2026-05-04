@@ -12,12 +12,12 @@ import 'package:pos/features/dashboard/presentation/cubit/dashboard_state.dart';
 import 'package:pos/features/dashboard/presentation/widgets/ai_insights_card.dart';
 import 'package:pos/features/dashboard/presentation/widgets/branch_comparison_card.dart';
 import 'package:pos/features/dashboard/presentation/widgets/category_performance_chart.dart';
-import 'package:pos/features/dashboard/presentation/widgets/fraud_alerts_card.dart';
 import 'package:pos/features/dashboard/presentation/widgets/low_stock_alerts_card.dart';
 import 'package:pos/features/dashboard/presentation/widgets/payment_methods_chart.dart';
 import 'package:pos/features/dashboard/presentation/widgets/quick_actions_bar.dart';
 import 'package:pos/features/dashboard/presentation/widgets/sales_trend_chart.dart';
 import 'package:pos/features/dashboard/presentation/widgets/stat_card.dart';
+import 'package:pos/features/dashboard/presentation/widgets/expenses_summary_card.dart';
 import 'package:pos/features/dashboard/presentation/widgets/top_selling_items.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -167,8 +167,8 @@ class _DashboardPageState extends State<DashboardPage> {
                               CategoryPerformanceChart(stats: data.categoryStats),
                               const SizedBox(height: 16),
                               TopSellingItems(items: data.topItems),
-                              const SizedBox(height: 16),
-                              const AiInsightsCard(),
+                              // const SizedBox(height: 16),
+                              // const AiInsightsCard(),
                             ],
                           );
                         },
@@ -176,7 +176,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
                       const SizedBox(height: 16),
 
-                      // ── Low Stock + Fraud Alerts + Branch Comparison ──
+                      // ── Low Stock + Expenses + Branch Comparison ──
                       LayoutBuilder(
                         builder: (context, constraints) {
                           if (constraints.maxWidth > 800) {
@@ -187,7 +187,9 @@ class _DashboardPageState extends State<DashboardPage> {
                                     child: LowStockAlertsCard(
                                         items: data.lowStockItems)),
                                 const SizedBox(width: 16),
-                                const Expanded(child: FraudAlertsCard()),
+                                Expanded(
+                                    child: ExpensesSummaryCard(
+                                        summary: data.expenseSummary)),
                                 const SizedBox(width: 16),
                                 Expanded(
                                     child: BranchComparisonCard(
@@ -199,7 +201,8 @@ class _DashboardPageState extends State<DashboardPage> {
                             children: [
                               LowStockAlertsCard(items: data.lowStockItems),
                               const SizedBox(height: 16),
-                              const FraudAlertsCard(),
+                              ExpensesSummaryCard(
+                                  summary: data.expenseSummary),
                               const SizedBox(height: 16),
                               BranchComparisonCard(stats: data.branchStats),
                             ],

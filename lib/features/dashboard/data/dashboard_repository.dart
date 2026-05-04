@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/core/database/daos/categories_dao.dart';
+import 'package:pos/core/database/daos/expenses_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
 import 'package:pos/core/database/daos/products_dao.dart';
 import 'package:pos/core/database/daos/transactions_dao.dart';
@@ -15,6 +16,7 @@ class DashboardRepository {
   final ProductsDao _productsDao;
   final CategoriesDao _categoriesDao;
   final BranchesDao _branchesDao;
+  final ExpensesDao _expensesDao;
 
   DashboardRepository({
     required TransactionsDao txnDao,
@@ -22,11 +24,13 @@ class DashboardRepository {
     required ProductsDao productsDao,
     required CategoriesDao categoriesDao,
     required BranchesDao branchesDao,
+    required ExpensesDao expensesDao,
   })  : _txnDao = txnDao,
         _variantsDao = variantsDao,
         _productsDao = productsDao,
         _categoriesDao = categoriesDao,
-        _branchesDao = branchesDao;
+        _branchesDao = branchesDao,
+        _expensesDao = expensesDao;
 
   // ─── Branch name cache ────────────────────────────────────────────────────
 
@@ -92,8 +96,7 @@ class DashboardRepository {
 
   // ─── Stream trigger ───────────────────────────────────────────────────────
 
-  /// Emits whenever transactions OR product variants change so the dashboard
-  /// stays current after stock adjustments and product edits, not just sales.
+  /// Emits whenever transactions, product variants, or expenses change.
   Stream<void> watchChanges({required String businessId}) {
     final controller = StreamController<void>.broadcast();
     final subs = [
@@ -101,6 +104,9 @@ class DashboardRepository {
         if (!controller.isClosed) controller.add(null);
       }),
       _variantsDao.watchByBusinessId(businessId).listen((_) {
+        if (!controller.isClosed) controller.add(null);
+      }),
+      _expensesDao.watchByBusinessId(businessId).listen((_) {
         if (!controller.isClosed) controller.add(null);
       }),
     ];
@@ -316,6 +322,52 @@ class DashboardRepository {
             ))
         .toList();
 
+    // ── Expense summary ───────────────────────────────────────────────────
+    // Reads from local SQLite — fully offline-first.
+    final allExpenses = await _expensesDao.getByBusinessId(businessId);
+    final branchExpenses = branchId == null
+        ? allExpenses
+        : allExpenses.where((e) => e.branchId == branchId).toList();
+
+    double expToday = 0;
+    double expMonth = 0;
+    double expPending = 0;
+    int pendingCount = 0;
+
+    for (final e in branchExpenses) {
+      final isApproved = e.status == 'approved';
+      final isPending = e.status == 'pending';
+      if (isPending) {
+        expPending += e.amount;
+        pendingCount++;
+      }
+      if (!isApproved) continue;
+      if (!e.expenseDate.isBefore(thirtyDaysAgo)) expMonth += e.amount;
+      if (!e.expenseDate.isBefore(today)) expToday += e.amount;
+    }
+
+    // Most recent 5 expenses (approved + pending), already ordered by date desc
+    // from the DAO, so we just take the first 5 that match the branch filter.
+    final recentExpenses = branchExpenses
+        .where((e) => e.status == 'approved' || e.status == 'pending')
+        .take(5)
+        .map((e) => RecentExpense(
+              category: e.category,
+              vendor: e.vendor,
+              amount: e.amount,
+              isPending: e.status == 'pending',
+              date: e.expenseDate,
+            ))
+        .toList();
+
+    final expenseSummary = ExpenseSummary(
+      todayTotal: expToday,
+      monthTotal: expMonth,
+      pendingTotal: expPending,
+      pendingCount: pendingCount,
+      recentExpenses: recentExpenses,
+    );
+
     return DashboardData(
       todaySales: todaySales,
       weekSales: weekSales,
@@ -334,6 +386,7 @@ class DashboardRepository {
       paymentBreakdown: payMap,
       lowStockItems: lowStockItems,
       branchStats: branchStats,
+      expenseSummary: expenseSummary,
     );
   }
 
