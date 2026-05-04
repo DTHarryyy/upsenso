@@ -23,7 +23,7 @@ class _OnboardingState extends State<Onboarding> {
       lottieAsset: 'assets/lotties/Guy talking to Robot _ AI Help.json',
       title: 'Your Smart Business Assistant',
       description:
-          'Get AI-powered insights, instant answers, and real-time alerts. Ledgify helps you understand your sales, inventory, and expenses — and detects suspicious activity before it becomes fraud.',
+          'Get AI-powered insights, instant answers, and real-time alerts. Upsenso helps you understand your sales, inventory, and expenses — and detects suspicious activity before it becomes fraud.',
     ),
     _OnboardPageData(
       lottieAsset: 'assets/lotties/No Connection.json',

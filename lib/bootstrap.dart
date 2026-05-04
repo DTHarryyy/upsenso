@@ -37,14 +37,16 @@ Future<Widget> bootstrap() async {
   final authBloc = sl<AuthBloc>();
   authBloc.add(AuthStarted());
 
-  // Wait at most 2s for auth state to settle. The router handles unknown
-  // state gracefully so a timeout is safe.
+  // Wait at most 4s for auth state to settle. The router handles unknown
+  // state gracefully so a timeout is safe. 4 s (up from 2 s) gives the
+  // slow-path context fetch in _onStarted enough room to complete before
+  // the app widget tree renders, avoiding a brief flash of the sign-in page.
   await authBloc.stream
       .firstWhere(
         (state) => state is! AuthUnknown,
         orElse: () => authBloc.state,
       )
-      .timeout(const Duration(seconds: 2), onTimeout: () => authBloc.state);
+      .timeout(const Duration(seconds: 4), onTimeout: () => authBloc.state);
 
   return MultiBlocProvider(
     providers: [
@@ -72,20 +74,52 @@ Future<void> _initSupabase() async {
 }
 
 /// On web, Supabase recovers the session from localStorage asynchronously
-/// by emitting an [AuthChangeEvent.initialSession] event. We wait for that
-/// event so [currentUser()] is populated before DI runs.
+/// and emits one of several events depending on token state:
+///
+///   • [AuthChangeEvent.initialSession] — session found (access token may
+///     still be valid or may be in the middle of a background refresh).
+///   • [AuthChangeEvent.tokenRefreshed]  — fired *after* a silent token
+///     refresh completes. If the stored access token was expired this is the
+///     event that actually makes [currentUser] non-null.
+///   • [AuthChangeEvent.signedIn]        — fired after a full sign-in.
+///   • [AuthChangeEvent.signedOut]       — no valid session exists.
+///
+/// Without waiting for [tokenRefreshed], the startup can race ahead while
+/// the token-refresh network call is still in flight. In that window
+/// [currentUser()] returns null → [initializeCachedUser()] stores nothing
+/// → [AuthStarted] emits [AuthUnauthenticated] → user sees the sign-in
+/// screen and must log in again even though a valid session exists.
 Future<void> _waitForSessionRecovery() async {
+  final auth = Supabase.instance.client.auth;
   try {
-    await Supabase.instance.client.auth.onAuthStateChange
+    // ── Phase 1: wait for any terminal session event ─────────────────────
+    await auth.onAuthStateChange
         .firstWhere(
-          (state) =>
-              state.event == AuthChangeEvent.initialSession ||
-              state.event == AuthChangeEvent.signedIn ||
-              state.event == AuthChangeEvent.signedOut,
+          (s) =>
+              s.event == AuthChangeEvent.initialSession ||
+              s.event == AuthChangeEvent.signedIn ||
+              s.event == AuthChangeEvent.signedOut ||
+              s.event == AuthChangeEvent.tokenRefreshed,
         )
-        .timeout(const Duration(seconds: 3));
+        .timeout(const Duration(milliseconds: 3000));
+
+    // ── Phase 2: if the access token was expired, the first event may be
+    // an initialSession with no user yet (refresh still in flight).
+    // Wait for the tokenRefreshed/signedIn confirmation before proceeding.
+    if (auth.currentUser == null) {
+      await auth.onAuthStateChange
+          .firstWhere(
+            (s) =>
+                s.event == AuthChangeEvent.tokenRefreshed ||
+                s.event == AuthChangeEvent.signedIn ||
+                s.event == AuthChangeEvent.signedOut,
+          )
+          .timeout(const Duration(milliseconds: 4000));
+    }
   } catch (_) {
-    // Timeout is fine — no session in localStorage, user is logged out.
+    // Timeout is acceptable — either no session in localStorage or the
+    // network is too slow to refresh the token. The auth bloc will handle
+    // the unauthenticated state correctly.
   }
 }
 

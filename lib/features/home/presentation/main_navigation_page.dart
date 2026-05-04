@@ -74,7 +74,20 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
     return BlocProvider<SidebarNavCubit>(
       create: (_) => SidebarNavCubit(),
       child: BlocBuilder<AuthBloc, AuthState>(
-        buildWhen: (prev, curr) => prev.runtimeType != curr.runtimeType,
+        buildWhen: (prev, curr) {
+          if (prev.runtimeType != curr.runtimeType) return true;
+          // Rebuild when the user's display/role context improves so the
+          // sidebar and app bar reflect fresh data without a full restart.
+          if (prev is AuthAuthenticated && curr is AuthAuthenticated) {
+            return prev.user.businessId != curr.user.businessId ||
+                prev.user.businessName != curr.user.businessName ||
+                prev.user.roleName != curr.user.roleName ||
+                prev.user.branchId != curr.user.branchId ||
+                prev.user.fullName != curr.user.fullName ||
+                prev.user.avatarUrl != curr.user.avatarUrl;
+          }
+          return false;
+        },
         builder: (context, authState) {
           if (authState is! AuthAuthenticated) {
             return const Scaffold(

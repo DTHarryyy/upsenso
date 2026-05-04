@@ -35,44 +35,52 @@ class ResponsiveTypography {
 class AppTextStyles {
   AppTextStyles._();
 
+  // Rounds the scaled font size to the nearest whole number so that glyph
+  // positions inside the CanvasKit WebGL canvas land on integer physical
+  // pixels.  Fractional font sizes (e.g. 14 × 1.20 = 16.8 px) cause
+  // sub-pixel glyph placement which appears as text blur, especially at
+  // non-integer devicePixelRatio values common on Windows high-DPI displays.
+  static double _fs(BuildContext c, double base) =>
+      (base * ResponsiveTypography.scale(c)).roundToDouble();
+
   static TextStyle display(BuildContext c) => TextStyle(
-    fontSize: 30 * ResponsiveTypography.scale(c),
+    fontSize: _fs(c, 30),
     fontWeight: FontWeight.w700,
     height: 1.15,
   );
 
   static TextStyle headline(BuildContext c) => TextStyle(
-    fontSize: 24 * ResponsiveTypography.scale(c),
+    fontSize: _fs(c, 24),
     fontWeight: FontWeight.w700,
     height: 1.15,
   );
 
   static TextStyle title(BuildContext c) => TextStyle(
-    fontSize: 18 * ResponsiveTypography.scale(c),
+    fontSize: _fs(c, 18),
     fontWeight: FontWeight.w700,
     height: 1.20,
   );
 
   static TextStyle subtitle(BuildContext c) => TextStyle(
-    fontSize: 16 * ResponsiveTypography.scale(c),
+    fontSize: _fs(c, 16),
     fontWeight: FontWeight.w600,
     height: 1.25,
   );
 
   static TextStyle body(BuildContext c) => TextStyle(
-    fontSize: 14 * ResponsiveTypography.scale(c),
+    fontSize: _fs(c, 14),
     fontWeight: FontWeight.w400,
     height: 1.35,
   );
 
   static TextStyle caption(BuildContext c) => TextStyle(
-    fontSize: 12 * ResponsiveTypography.scale(c),
+    fontSize: _fs(c, 12),
     fontWeight: FontWeight.w400,
     height: 1.25,
   );
 
   static TextStyle money(BuildContext c) => TextStyle(
-    fontSize: 16 * ResponsiveTypography.scale(c),
+    fontSize: _fs(c, 16),
     fontWeight: FontWeight.w700,
     height: 1.15,
   );

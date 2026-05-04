@@ -1,5 +1,5 @@
 class AppStrings {
-  static const String appName = "Ledgify POS";
+  static const String appName = "Upsenso";
 
   static const String signUpHeadline = "Create your business account";
   static const String signUpSubHeadline =
@@ -10,7 +10,7 @@ class AppStrings {
       "Continue managing operations and tracking performance in real time.";
 
   static const String welcomeMessage =
-      "Welcome to Ledgify. Let’s keep your business running smart.";
+      "Welcome to Upsenso. Let's keep your business running smart.";
 
   static const String loginPrompt =
       "Sign in to access your dashboard and start managing.";
@@ -37,7 +37,7 @@ class AppStrings {
       "No results found. Try adjusting your search.";
 
   static const String networkError =
-      "You’re offline. Don’t worry — Ledgify will sync when you’re back online.";
+      "You're offline. Don't worry — Upsenso will sync when you're back online.";
 
   static const String successMessage =
       "All set! Your changes were saved successfully.";
@@ -47,12 +47,12 @@ class AppStrings {
   static const String forgotPassword = "Forgot password?";
   static const String alreadyHaveAccount = "Already have an account?";
 
-  static const String signUpPrompt = "New to Ledgify? Create your account";
+  static const String signUpPrompt = "New to Upsenso? Create your account";
 
   static const String termsAndConditions = "Terms & Conditions";
   static const String privacyPolicy = "Privacy Policy";
   static const String contactSupport = "Contact Support";
-  static const String aboutUs = "About Ledgify";
+  static const String aboutUs = "About Upsenso";
 
   static const String faqTitle = "Help & FAQs";
 

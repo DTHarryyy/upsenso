@@ -1,48 +1,148 @@
-<!DOCTYPE html><html><head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
+<!DOCTYPE html>
+<html>
+<head>
+  <!-- Base path — replaced by flutter build --base-href -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="Upsenso — Manage your business smarter">
 
-  <!-- iOS meta tags & icons -->
+  <!-- PWA / iOS meta -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="pos">
+  <meta name="apple-mobile-web-app-title" content="Upsenso">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
-
-  <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png">
 
-  <title>Ledgify POS</title>
+  <title>Upsenso</title>
   <link rel="manifest" href="manifest.json">
 
-  <!-- Preconnect to Supabase so the first API call doesn't wait for DNS -->
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+
+  <!-- ── Network hints ──────────────────────────────────────────────────── -->
+  <!-- DNS pre-connect for Supabase so the first API call skips DNS lookup -->
   <link rel="preconnect" href="https://ltcvjttxomshxaotrrki.supabase.co" crossorigin>
   <link rel="dns-prefetch" href="https://ltcvjttxomshxaotrrki.supabase.co">
 
-  <!-- Preload the Flutter bootstrap script so the browser fetches it ASAP -->
+  <!-- Preload Flutter bootstrap script (critical path) -->
   <link rel="preload" href="flutter_bootstrap.js" as="script">
 
-  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+  <!-- Preload Drift WASM assets so IndexedDB opens without a stall on first
+       DB query. The browser fetches these in parallel with the Flutter engine. -->
+  <link rel="preload" href="sqlite3.wasm" as="fetch" crossorigin>
+  <link rel="preload" href="drift_worker.js" as="script">
+
+  <!-- ── Styles ─────────────────────────────────────────────────────────── -->
   <style>
-    html { height: 100% }
-    body { margin: 0; min-height: 100%; background-color: #ffffff; }
+    html, body {
+      height: 100%;
+      margin: 0;
+      /* Match app scaffold background so there is no flash on first paint */
+      background-color: #F7F9FC;
+    }
+
+    /* ── HTML loading screen ─────────────────────────────────────────────
+       Rendered natively by the browser while the Flutter engine downloads.
+       Flutter's canvas paints on top once it's ready; we then fade this out.
+    ──────────────────────────────────────────────────────────────────────── */
+    #flutter-loading {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #ffffff;
+      z-index: 9999;
+      transition: opacity 0.25s ease;
+    }
+    #flutter-loading.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .fl-logo {
+      width: 80px;
+      height: 80px;
+      background: #EAF0FF;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .fl-spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid #EAF0FF;
+      border-top-color: #557FF4;
+      border-radius: 50%;
+      animation: fl-spin 0.7s linear infinite;
+    }
+    @keyframes fl-spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
+  <!-- Visible immediately — dismissed on flutter-first-frame event -->
+  <div id="flutter-loading" aria-label="Loading Upsenso" role="status">
+    <div class="fl-logo">
+      <!-- Store icon in brand colour — no external request needed -->
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none"
+           xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
+              stroke="#557FF4" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="9 22 9 12 15 12 15 22"
+                  stroke="#557FF4" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="fl-spinner"></div>
+  </div>
+
+  <!-- ── Device Pixel Ratio normalisation ──────────────────────────────────
+    On Windows with non-integer display scaling (e.g. 125 % → DPR 1.25) the
+    Flutter CanvasKit engine creates a WebGL canvas whose buffer size equals
+    cssSize × devicePixelRatio.  At non-standard window widths (e.g. 1537 px)
+    the product is fractional (1537 × 1.25 = 1921.25), so the browser must
+    interpolate the canvas during compositing → blur.  The blur appears mainly
+    at 100 % browser zoom because that is where the raw OS-level DPR is used
+    directly; other zoom levels happen to produce a different (sometimes
+    integer) effective DPR.
+
+    Fix: wrap the native getter so every caller (Flutter, browser paint) sees
+    Math.ceil(nativeDPR).  At 1.25 → 2, Flutter creates a 2 × canvas
+    (Retina-equivalent quality).  The browser composites correctly because
+    Math.ceil always returns a value ≥ actual DPR.  Using the live getter (not
+    a captured constant) means browser zoom changes are still reflected.
+  ──────────────────────────────────────────────────────────────────────── -->
+  <script>
+    (function () {
+      try {
+        var proto = Object.getPrototypeOf(window);
+        var desc  = Object.getOwnPropertyDescriptor(proto, 'devicePixelRatio');
+        if (desc && desc.get) {
+          Object.defineProperty(window, 'devicePixelRatio', {
+            get: function () { return Math.ceil(desc.get.call(this)); },
+            configurable: true,
+          });
+        }
+      } catch (e) { /* leave DPR unchanged on unsupported browsers */ }
+    })();
+  </script>
+
   <script src="flutter_bootstrap.js" async=""></script>
-</body></html>
+
+  <script>
+    // Flutter dispatches 'flutter-first-frame' when the first frame is painted.
+    // Use this to fade out and remove the HTML loading screen cleanly.
+    window.addEventListener('flutter-first-frame', function () {
+      var el = document.getElementById('flutter-loading');
+      if (!el) return;
+      el.classList.add('hidden');
+      // Remove from DOM after the fade transition completes.
+      setTimeout(function () { el.remove(); }, 300);
+    });
+  </script>
+</body>
+</html>

@@ -176,33 +176,45 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _onStarted(AuthStarted event, Emitter<AuthState> emit) async {
     var user = getCurrentUser();
 
-    // On web after an OAuth redirect, initializeCachedUser() may return a bare
-    // Supabase user with no businessId because the Drift/IndexedDB cache read
-    // hasn't completed yet. Fetch from the Drift cache directly as a fallback.
-    if (user != null && !_hasCompleteContext(user)) {
-      final cached = await getUserBusinessContext(user.id);
-      if (cached != null && _hasText(cached.businessId)) {
-        user = cached;
-      }
+    if (user == null) {
+      emit(AuthUnauthenticated());
+      return;
     }
 
-    if (user != null) {
-      if (_hasCompleteContext(user)) {
-        debugPrint('AuthBloc: Emitting cached user (with complete context)');
-        emit(AuthAuthenticated(user));
-        _backgroundSync(user);
-      } else {
-        // Context is incomplete (e.g. businessId missing because the local DB
-        // cache was cleared or the WASM DB is freshly initialised). Await the
-        // context fetch BEFORE emitting so the router never sees an
-        // AuthAuthenticated state without businessId and never prematurely
-        // redirects to /business-profile-setup.
-        debugPrint(
-          ' AuthBloc: Skipping refresh, cached context already complete',
-        );
-      }
-    } else {
-      emit(AuthUnauthenticated());
+    // Fast path: cached context is already complete — emit immediately and
+    // kick off a background sync without blocking the UI.
+    if (_hasCompleteContext(user)) {
+      debugPrint('AuthBloc: Emitting cached user (with complete context)');
+      emit(AuthAuthenticated(user));
+      _backgroundSync(user);
+      return;
+    }
+
+    // Slow path: context is incomplete (e.g. fresh WASM DB, OAuth redirect
+    // before IndexedDB was written, or first-ever login on this device).
+    // Fetch from remote/cache with a hard cap so we never block startup
+    // indefinitely. Emitting before the fetch would cause the router to
+    // redirect to /business-profile-setup for existing users.
+    debugPrint('AuthBloc: Context incomplete — fetching before emitting');
+    try {
+      final resolved = await _getUserContextWithRetry(user.id).timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          debugPrint('AuthBloc: Context fetch timed out — emitting partial user');
+          return null;
+        },
+      );
+      final authed = resolved ?? user;
+      debugPrint(
+        'AuthBloc: Emitting resolved user '
+        '(${authed.businessId != null ? "with" : "without"} business)',
+      );
+      emit(AuthAuthenticated(authed));
+      _backgroundSync(authed);
+    } catch (e) {
+      debugPrint('AuthBloc: Context fetch failed: $e — emitting partial user');
+      emit(AuthAuthenticated(user));
+      _backgroundSync(user);
     }
   }
 

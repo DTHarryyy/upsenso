@@ -1,6 +1,19 @@
 import 'package:flutter/material.dart';
 
-/// Safe text style getter that uses system font (no network dependency)
+/// Returns a [TextStyle] with no explicit [fontFamily].
+///
+/// Omitting [fontFamily] lets Flutter's theme system resolve the correct font
+/// per platform:
+///   • Android / Linux: Roboto (system font)
+///   • iOS / macOS: SF Pro (system font)
+///   • Web (CanvasKit / SkWasm): engine default (Noto-based fallback chain)
+///
+/// Specifying `fontFamily: 'Roboto'` on web causes CanvasKit to attempt to
+/// load Roboto from the app's asset bundle. Since Roboto is not declared in
+/// pubspec.yaml, CanvasKit falls back to Noto — but the mismatch between the
+/// requested and resolved font triggers sub-pixel placement differences that
+/// appear as blurry or slightly-off text. Removing the override eliminates
+/// this discrepancy and produces consistently sharp text on all platforms.
 TextStyle getOutfitStyle({
   double fontSize = 14,
   FontWeight fontWeight = FontWeight.normal,
@@ -8,15 +21,13 @@ TextStyle getOutfitStyle({
   double? letterSpacing,
   double? height,
 }) {
-  // Use Roboto directly to avoid any network calls to google_fonts
-  // This prevents font loading errors in offline scenarios
   return TextStyle(
     fontSize: fontSize,
     fontWeight: fontWeight,
     color: color,
     letterSpacing: letterSpacing,
     height: height,
-    fontFamily: 'Roboto',
+    // No fontFamily — resolved by the platform / engine default.
   );
 }
 
