@@ -17,7 +17,7 @@ cat > flavors/cf_build.json <<EOF
   "SUPABASE_URL": "${SUPABASE_URL}",
   "SUPABASE_ANON_KEY": "${SUPABASE_ANON_KEY}",
   "SUPABASE_OAUTH_REDIRECT_URL": "posauth://login-callback/",
-  "SUPABASE_WEB_OAUTH_REDIRECT_URL": "${CF_PAGES_URL:-https://your-project.pages.dev}",
+  "SUPABASE_WEB_OAUTH_REDIRECT_URL": "${SITE_URL:-${CF_PAGES_URL:-https://upsenso.pages.dev}}",
   "FLAVOR": "prod",
   "LOG_LEVEL": "warn",
   "ENABLE_ANALYTICS": "true"
