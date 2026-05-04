@@ -120,7 +120,7 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> signInWithGoogle() async {
     try {
-      await remote.signInWithGoogle(redirectTo: oauthRedirectUrl);
+      await remote.signInWithGoogle(mobileRedirectTo: oauthRedirectUrl);
     } catch (e) {
       throw SupabaseAuthErrorMapper.message(e);
     }
@@ -129,7 +129,7 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> signInWithFacebook() async {
     try {
-      await remote.signInWithFacebook(redirectTo: oauthRedirectUrl);
+      await remote.signInWithFacebook(mobileRedirectTo: oauthRedirectUrl);
     } catch (e) {
       throw SupabaseAuthErrorMapper.message(e);
     }
