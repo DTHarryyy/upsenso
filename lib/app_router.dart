@@ -30,13 +30,15 @@ import 'package:pos/core/database/app_database.dart';
 import 'package:pos/features/inventory/inventory.dart';
 import 'package:pos/features/pos/presentation/pos_terminal_page.dart';
 import 'package:pos/features/products/pages/add_products.dart';
+import 'package:pos/features/products/products_page.dart';
 import 'package:pos/features/profile/presentation/profile_page.dart';
 import 'package:pos/features/expenses/presentation/expenses_page.dart';
 import 'package:pos/features/sales/sales_history.dart';
 import 'package:pos/features/settings/presentation/receipt_settings_page.dart';
-import 'package:pos/features/settings/presentation/settings_page.dart';
+import 'package:pos/features/settings/presentation/settings_shell_page.dart';
+import 'package:pos/features/dashboard/presentation/dashboard_page.dart';
+import 'package:pos/features/reports/presentation/pages/reports_and_analytics.dart';
 import 'package:pos/features/onboarding/onboarding.dart';
-
 
 class _AuthRefreshNotifier extends ChangeNotifier {
   late final StreamSubscription<AuthState> _sub;
@@ -53,19 +55,13 @@ class _AuthRefreshNotifier extends ChangeNotifier {
 }
 
 class AppRouter {
-  // Cached after first read so redirect never hits disk on subsequent calls.
   static bool? _seenOnboarding;
 
   static final GoRouter router = GoRouter(
-    initialLocation: AppRoutes.onboarding,
+    initialLocation: AppRoutes.dashboard,
 
-    // Re-run redirect whenever AuthBloc emits — critical for instant sign-out.
     refreshListenable: _AuthRefreshNotifier(sl<AuthBloc>().stream),
 
-    // The OAuth callback deep link (posauth://login-callback/) has no matching
-    // route. Redirect to sign-in; Supabase processes the code exchange via its
-    // own app_links listener and fires onAuthStateChange when done, which then
-    // triggers the redirect logic to forward the user home.
     onException: (_, state, router) => router.go(AppRoutes.signIn),
 
     redirect: (context, state) async {
@@ -89,11 +85,10 @@ class AppRouter {
           goingToResetPassword;
       final isAuthRoute = isPublicAuthRoute || isPasswordResetRoute;
 
-      // Web browsers don't need the mobile onboarding carousel.
-      // Cache the result so we only hit SharedPreferences once per app session.
       if (_seenOnboarding == null) {
         final prefs = sl<SharedPreferences>();
-        _seenOnboarding = kIsWeb || (prefs.getBool(AppKey.seenOnboarding) ?? false);
+        _seenOnboarding =
+            kIsWeb || (prefs.getBool(AppKey.seenOnboarding) ?? false);
       }
       final seen = _seenOnboarding!;
 
@@ -110,15 +105,8 @@ class AppRouter {
         return null;
       }
 
-      // For any transient state (loading, OAuthInProgress, etc.) don't
-      // redirect — wait for the BLoC to settle into Authenticated or
-      // Unauthenticated before making a routing decision.
       if (authState is! AuthAuthenticated) return null;
 
-      // Use the user carried by the BLoC state as the single source of
-      // truth. The BLoC already ran getUserBusinessContext and populated
-      // businessId before emitting AuthAuthenticated, so we don't need to
-      // re-query the repository here.
       final user = authState.user;
       final hasBusiness = (user.businessId?.trim() ?? '').isNotEmpty;
 
@@ -127,42 +115,26 @@ class AppRouter {
       }
 
       if (hasBusiness && (goingToOnboarding || isPublicAuthRoute)) {
-        return AppRoutes.home;
+        return AppRoutes.dashboard;
       }
 
       return null;
     },
 
     routes: [
-      GoRoute(
-          path: AppRoutes.settings,
-          builder: (context, _) => const SettingsPage()),
-      GoRoute(
-          path: AppRoutes.receiptSettings,
-          builder: (context, _) => const ReceiptSettingsPage()),
-      GoRoute(
-          path: AppRoutes.saleshistory,
-          builder: (context, _) => const SalesHistory()),
-      GoRoute(
-          path: AppRoutes.expenses,
-          builder: (context, _) => const ExpensesPage()),
-      GoRoute(
-          path: AppRoutes.businessProfile,
-          builder: (context, _) => const BusinessProfilePage()),
-      GoRoute(
-          path: AppRoutes.posTerminal,
-          builder: (context, _) => const PosTerminalPage()),
+      // ── Auth & misc routes ───────────────────────────────────────────────
       GoRoute(
         path: AppRoutes.onboarding,
         builder: (context, _) => const Onboarding(),
       ),
       GoRoute(
-          path: AppRoutes.signIn, builder: (context, _) => const SignIn()),
+        path: AppRoutes.signIn,
+        builder: (context, _) => const SignIn(),
+      ),
       GoRoute(
-          path: AppRoutes.signUp, builder: (context, _) => const SignUp()),
-      GoRoute(
-          path: AppRoutes.inventory,
-          builder: (context, _) => const Inventory()),
+        path: AppRoutes.signUp,
+        builder: (context, _) => const SignUp(),
+      ),
       GoRoute(
         path: AppRoutes.verification,
         builder: (context, state) {
@@ -189,12 +161,8 @@ class AppRouter {
         },
       ),
       GoRoute(
-        path: AppRoutes.home,
-        builder: (context, _) => const MainNavigationPage(),
-      ),
-      GoRoute(
-        path: AppRoutes.profile,
-        builder: (context, _) => const ProfilePage(),
+        path: AppRoutes.businessProfile,
+        builder: (context, _) => const BusinessProfilePage(),
       ),
       GoRoute(
         path: AppRoutes.businessProfileSetup,
@@ -202,6 +170,14 @@ class AppRouter {
           create: (_) => sl<BusinessBloc>(),
           child: const BusinessProfileSetup(),
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.profile,
+        builder: (context, _) => const ProfilePage(),
+      ),
+      GoRoute(
+        path: AppRoutes.receiptSettings,
+        builder: (context, _) => const ReceiptSettingsPage(),
       ),
       GoRoute(
         path: AppRoutes.addProduct,
@@ -234,6 +210,96 @@ class AppRouter {
             child: const AiChatPage(),
           );
         },
+      ),
+
+      // ── Shell: tab routes each get their own URL ─────────────────────────
+      StatefulShellRoute.indexedStack(
+        builder: (context, _, navigationShell) =>
+            MainNavigationPage(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.dashboard,
+                builder: (context, _) => DashboardPage(
+                  onNewSale: () => context.go(AppRoutes.posTerminal),
+                ),
+              ),
+            ],
+          ),
+
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.products,
+                builder: (context, _) => const ProductsPage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.posTerminal,
+                builder: (context, _) => PosTerminalPage(
+                  isActive: true,
+                  onClose: () => context.go(AppRoutes.dashboard),
+                ),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.reports,
+                builder: (context, _) => const ReportsAndAnalyticsPage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.inventory,
+                builder: (context, _) => const Inventory(),
+              ),
+            ],
+          ),
+
+          // ── Branch 5: Sales History ──────────────────────────────────────
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.saleshistory,
+                builder: (context, _) => const SalesHistory(),
+              ),
+            ],
+          ),
+
+          // ── Branch 6: Expenses ───────────────────────────────────────────
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.expenses,
+                builder: (context, _) => const ExpensesPage(),
+              ),
+            ],
+          ),
+
+          // ── Branch 7: Settings (inline sub-module shell) ─────────────────
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.settings,
+                builder: (context, _) => const SettingsShellPage(),
+              ),
+            ],
+          ),
+        ],
+      ),
+
+      // Keep /home redirect for any saved links or old references
+      GoRoute(
+        path: AppRoutes.home,
+        redirect: (context, state) => AppRoutes.dashboard,
       ),
     ],
   );

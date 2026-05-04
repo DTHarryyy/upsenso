@@ -1,12 +1,13 @@
-// ignore: deprecated_member_use
-import 'package:drift/web.dart';
 import 'package:drift/drift.dart';
+import 'package:drift/wasm.dart';
 
 DatabaseConnection openDatabaseConnection() {
   return DatabaseConnection.delayed(Future(() async {
-    // ignore: deprecated_member_use
-    final storage = await DriftWebStorage.indexedDbIfSupported('pos_database');
-    // ignore: deprecated_member_use
-    return DatabaseConnection(WebDatabase.withStorage(storage));
+    final result = await WasmDatabase.open(
+      databaseName: 'pos_database',
+      sqlite3Uri: Uri.parse('sqlite3.wasm'),
+      driftWorkerUri: Uri.parse('drift_worker.js'),
+    );
+    return result.resolvedExecutor;
   }));
 }

@@ -16,10 +16,11 @@ class AppRoutes {
   static const String addProduct = '/home/add-product';
   static const String editProduct = '/home/edit-product';
 
-  // Navigation pages
+  // Shell tab routes (each gets its own URL)
   static const String dashboard = '/dashboard';
+  static const String products = '/products';
   static const String posTerminal = '/pos-terminal';
-  static const String scan = '/scan';
+  static const String reports = '/reports';
   static const String inventory = '/inventory';
   static const String more = '/more';
   static const String stockLevel = '/more/stock-level';
