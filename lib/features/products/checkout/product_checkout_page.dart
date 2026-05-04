@@ -173,12 +173,20 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
           transitionDuration: const Duration(milliseconds: 420),
           reverseTransitionDuration: const Duration(milliseconds: 300),
           pageBuilder: (_, _, _) => CheckoutSuccessPage(
+            transactionId: txId,
+            items: widget.items,
+            subtotal: widget.subtotal,
+            taxAmount: widget.tax,
+            discountAmount: widget.discountAmount,
             total: widget.total,
             amountReceived: _isCash ? _amountReceived : widget.total,
             change: _isCash ? _change : 0,
             paymentMethod: _paymentMethod,
+            cashierName: authState.user.fullName ?? authState.user.email ?? '',
             customerName: customerName,
             itemCount: widget.items.length,
+            dateTime: DateTime.now(),
+            businessId: authState.user.businessId ?? '',
           ),
           transitionsBuilder: (_, animation, _, child) {
             final slide = Tween<Offset>(
