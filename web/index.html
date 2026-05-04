@@ -27,10 +27,16 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png">
 
-  <title>pos</title>
+  <title>Ledgify POS</title>
   <link rel="manifest" href="manifest.json">
-  
-  
+
+  <!-- Preconnect to Supabase so the first API call doesn't wait for DNS -->
+  <link rel="preconnect" href="https://ltcvjttxomshxaotrrki.supabase.co" crossorigin>
+  <link rel="dns-prefetch" href="https://ltcvjttxomshxaotrrki.supabase.co">
+
+  <!-- Preload the Flutter bootstrap script so the browser fetches it ASAP -->
+  <link rel="preload" href="flutter_bootstrap.js" as="script">
+
   <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
   <style>
     html { height: 100% }

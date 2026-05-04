@@ -92,6 +92,8 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
         ],
         child: BlocBuilder<DashboardCubit, DashboardState>(
+          // Only rebuild when data or loading state actually changes.
+          buildWhen: (prev, curr) => prev != curr,
           builder: (context, state) {
             final data = state is DashboardLoaded
                 ? state.data

@@ -215,6 +215,9 @@ Future<void> initDI() async {
     ),
   );
 
+  // SyncService is constructed without calling init() here.
+  // init() is called from MainNavigationPage after the first frame renders,
+  // so that background sync never blocks the startup critical path.
   sl.registerLazySingleton<SyncService>(
     () => SyncService(
       authContextDao: sl<AuthContextDao>(),
@@ -233,7 +236,7 @@ Future<void> initDI() async {
       transactionsRemoteDs: sl<TransactionsRemoteDs>(),
       connectivityService: sl<ConnectivityService>(),
       receiptSettingsRepository: sl<ReceiptSettingsRepository>(),
-    )..init(),
+    ),
   );
 
   // ── AI Assistant services ──────────────────────────────────────────────

@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pos/core/const/app_key.dart';
 import 'package:pos/core/config/di.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/features/ai_assistant/pagges/ai_chat_page.dart';
@@ -34,8 +35,6 @@ import 'package:pos/features/expenses/presentation/expenses_page.dart';
 import 'package:pos/features/sales/sales_history.dart';
 import 'package:pos/features/settings/presentation/receipt_settings_page.dart';
 import 'package:pos/features/settings/presentation/settings_page.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
 import 'package:pos/features/onboarding/onboarding.dart';
 
 
@@ -54,6 +53,9 @@ class _AuthRefreshNotifier extends ChangeNotifier {
 }
 
 class AppRouter {
+  // Cached after first read so redirect never hits disk on subsequent calls.
+  static bool? _seenOnboarding;
+
   static final GoRouter router = GoRouter(
     initialLocation: AppRoutes.onboarding,
 
@@ -88,9 +90,12 @@ class AppRouter {
       final isAuthRoute = isPublicAuthRoute || isPasswordResetRoute;
 
       // Web browsers don't need the mobile onboarding carousel.
-      final prefs = await SharedPreferences.getInstance();
-      final seen =
-          kIsWeb || (prefs.getBool(AppKey.seenOnboarding) ?? false);
+      // Cache the result so we only hit SharedPreferences once per app session.
+      if (_seenOnboarding == null) {
+        final prefs = sl<SharedPreferences>();
+        _seenOnboarding = kIsWeb || (prefs.getBool(AppKey.seenOnboarding) ?? false);
+      }
+      final seen = _seenOnboarding!;
 
       if (!seen) {
         if (!goingToOnboarding) return AppRoutes.onboarding;

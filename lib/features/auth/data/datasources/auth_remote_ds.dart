@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:pos/core/env/app_env.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -17,16 +18,14 @@ class AuthRemoteDs {
   Future<void> signInWithGoogle({required String mobileRedirectTo}) async {
     await client.auth.signInWithOAuth(
       OAuthProvider.google,
-      // On web Supabase handles the callback itself via the current page URL.
-      // Passing a custom scheme on web causes ERR_CONNECTION_REFUSED.
-      redirectTo: kIsWeb ? null : mobileRedirectTo,
+      redirectTo: kIsWeb ? AppEnv.webOauthRedirectUrl : mobileRedirectTo,
     );
   }
 
   Future<void> signInWithFacebook({required String mobileRedirectTo}) async {
     await client.auth.signInWithOAuth(
       OAuthProvider.facebook,
-      redirectTo: kIsWeb ? null : mobileRedirectTo,
+      redirectTo: kIsWeb ? AppEnv.webOauthRedirectUrl : mobileRedirectTo,
     );
   }
 

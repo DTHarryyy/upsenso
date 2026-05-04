@@ -43,49 +43,25 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   int _previousIndex = 0;
   bool _sidebarExpanded = true;
   String? _lastUserContextKey;
-  bool _isOnline = true;
-  int _pendingSyncCount = 0;
-  late final ConnectivityService _connectivityService;
-  StreamSubscription<int>? _syncCountSub;
-  StreamSubscription<bool>? _connectivitySub;
+  bool _syncInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _connectivityService = sl<ConnectivityService>();
-    _setupConnectivityListener();
-    _syncCountSub =
-        sl<SyncService>().watchTotalPendingSyncCount().listen((count) {
-      if (mounted && _pendingSyncCount != count) {
-        setState(() => _pendingSyncCount = count);
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _syncCountSub?.cancel();
-    _connectivitySub?.cancel();
-    super.dispose();
-  }
-
-  void _setupConnectivityListener() {
-    _connectivitySub =
-        _connectivityService.onConnectivityChanged.listen((isConnected) {
-      if (mounted && _isOnline != isConnected) {
-        setState(() => _isOnline = isConnected);
-      }
-    });
-    _connectivityService.isConnected.then((isConnected) {
-      if (mounted && _isOnline != isConnected) {
-        setState(() => _isOnline = isConnected);
-      }
+    // Defer SyncService initialization until after first frame so it never
+    // blocks the initial render. Connectivity listening and background network
+    // calls start only once the UI is visible.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _syncInitialized) return;
+      _syncInitialized = true;
+      sl<SyncService>().init();
     });
   }
 
   void _onNavTap(int index) {
+    if (_currentIndex == index) return;
     setState(() {
-      if (_currentIndex != index) _previousIndex = _currentIndex;
+      _previousIndex = _currentIndex;
       _currentIndex = index;
     });
   }
@@ -104,6 +80,12 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<AuthBloc, AuthState>(
+      // Only rebuild when auth state transitions between meaningful states,
+      // not on every intermediate emission.
+      buildWhen: (prev, curr) {
+        if (prev.runtimeType == curr.runtimeType) return false;
+        return true;
+      },
       builder: (context, authState) {
         if (authState is! AuthAuthenticated) {
           return const Scaffold(
@@ -161,22 +143,26 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                 body: Row(
                   children: [
                     if (!isPosTab)
-                      _AppSidebar(
-                        expanded: _sidebarExpanded,
-                        currentIndex: _currentIndex,
-                        onNavTap: _onNavTap,
-                        onToggle: () => setState(
-                            () => _sidebarExpanded = !_sidebarExpanded),
-                        userName: userName,
-                        userRole: userRole,
-                        userEmail: userEmail,
-                        userAvatar: userAvatar,
-                        businessName: businessName,
-                        isOnline: _isOnline,
-                        pendingSyncCount: _pendingSyncCount,
-                        branches: visibleBranches,
-                        selectedBranch: selectedBranch,
-                        canSwitchBranches: branchState.canSwitchBranches,
+                      // _SyncStatusProvider isolates connectivity/sync rebuilds
+                      // from the main scaffold so tab switches don't cascade.
+                      _SyncStatusProvider(
+                        builder: (isOnline, pendingSyncCount) => _AppSidebar(
+                          expanded: _sidebarExpanded,
+                          currentIndex: _currentIndex,
+                          onNavTap: _onNavTap,
+                          onToggle: () => setState(
+                              () => _sidebarExpanded = !_sidebarExpanded),
+                          userName: userName,
+                          userRole: userRole,
+                          userEmail: userEmail,
+                          userAvatar: userAvatar,
+                          businessName: businessName,
+                          isOnline: isOnline,
+                          pendingSyncCount: pendingSyncCount,
+                          branches: visibleBranches,
+                          selectedBranch: selectedBranch,
+                          canSwitchBranches: branchState.canSwitchBranches,
+                        ),
                       ),
                     Expanded(child: pages),
                   ],
@@ -185,44 +171,102 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
             }
 
             // ── Mobile: original AppBar + BottomNav + Drawer ────────────
-            return Scaffold(
-              key: _scaffoldKey,
-              drawer: const Drawer(child: MorePage()),
-              appBar: isPosTab
-                  ? null
-                  : CustomAppBar(
-                      branches: visibleBranches,
-                      selectedBranch: selectedBranch,
-                      onBranchChanged: branchState.canSwitchBranches
-                          ? (branch) =>
-                              context.read<BranchCubit>().selectBranch(branch)
-                          : null,
-                      userName: userName,
-                      userRole: userRole,
-                      userEmail: userEmail,
-                      userId: userId,
-                      userAvatar: userAvatar,
-                      businessName: businessName,
-                      isOnline: _isOnline,
-                      pendingSyncCount: _pendingSyncCount,
-                      onNotificationTapped: () => _onNavTap(3),
-                      onMenuTapped: () =>
-                          _scaffoldKey.currentState?.openDrawer(),
-                      showThemeToggle: false,
-                    ),
-              body: pages,
-              bottomNavigationBar: isPosTab
-                  ? null
-                  : AppBottomNav(
-                      currentIndex: _currentIndex,
-                      onTap: _onNavTap,
-                    ),
+            return _SyncStatusProvider(
+              builder: (isOnline, pendingSyncCount) => Scaffold(
+                key: _scaffoldKey,
+                drawer: const Drawer(child: MorePage()),
+                appBar: isPosTab
+                    ? null
+                    : CustomAppBar(
+                        branches: visibleBranches,
+                        selectedBranch: selectedBranch,
+                        onBranchChanged: branchState.canSwitchBranches
+                            ? (branch) =>
+                                context.read<BranchCubit>().selectBranch(branch)
+                            : null,
+                        userName: userName,
+                        userRole: userRole,
+                        userEmail: userEmail,
+                        userId: userId,
+                        userAvatar: userAvatar,
+                        businessName: businessName,
+                        isOnline: isOnline,
+                        pendingSyncCount: pendingSyncCount,
+                        onNotificationTapped: () => _onNavTap(3),
+                        onMenuTapped: () =>
+                            _scaffoldKey.currentState?.openDrawer(),
+                        showThemeToggle: false,
+                      ),
+                body: pages,
+                bottomNavigationBar: isPosTab
+                    ? null
+                    : AppBottomNav(
+                        currentIndex: _currentIndex,
+                        onTap: _onNavTap,
+                      ),
+              ),
             );
           },
         );
       },
     );
   }
+}
+
+/// Listens to sync count and connectivity streams and rebuilds only its own
+/// subtree — keeping tab switches and auth changes in the parent isolated.
+class _SyncStatusProvider extends StatefulWidget {
+  final Widget Function(bool isOnline, int pendingSyncCount) builder;
+
+  const _SyncStatusProvider({required this.builder});
+
+  @override
+  State<_SyncStatusProvider> createState() => _SyncStatusProviderState();
+}
+
+class _SyncStatusProviderState extends State<_SyncStatusProvider> {
+  late final ConnectivityService _connectivityService;
+  StreamSubscription<int>? _syncCountSub;
+  StreamSubscription<bool>? _connectivitySub;
+  bool _isOnline = true;
+  int _pendingSyncCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _connectivityService = sl<ConnectivityService>();
+
+    _connectivityService.isConnected.then((isConnected) {
+      if (mounted && _isOnline != isConnected) {
+        setState(() => _isOnline = isConnected);
+      }
+    });
+
+    _connectivitySub =
+        _connectivityService.onConnectivityChanged.listen((isConnected) {
+      if (mounted && _isOnline != isConnected) {
+        setState(() => _isOnline = isConnected);
+      }
+    });
+
+    _syncCountSub =
+        sl<SyncService>().watchTotalPendingSyncCount().listen((count) {
+      if (mounted && _pendingSyncCount != count) {
+        setState(() => _pendingSyncCount = count);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _syncCountSub?.cancel();
+    _connectivitySub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      widget.builder(_isOnline, _pendingSyncCount);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -285,7 +329,6 @@ class _AppSidebar extends StatelessWidget {
             child: Row(
               children: [
                 const SizedBox(width: 12),
-                // App icon / logo
                 Container(
                   width: 32,
                   height: 32,
@@ -313,7 +356,6 @@ class _AppSidebar extends StatelessWidget {
                     ),
                   ),
                 ],
-                // Toggle button
                 Material(
                   color: Colors.transparent,
                   child: InkWell(
@@ -346,8 +388,7 @@ class _AppSidebar extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (expanded)
-                    _SectionLabel(label: 'MAIN'),
+                  if (expanded) const _SectionLabel(label: 'MAIN'),
                   _NavItem(
                     icon: Icons.dashboard_rounded,
                     label: 'Dashboard',
@@ -394,9 +435,7 @@ class _AppSidebar extends StatelessWidget {
                   const Divider(height: 1, color: AppColors.borderSoft),
                   const SizedBox(height: 8),
 
-                  // ── More / secondary items ─────────────────────────
-                  if (expanded)
-                    _SectionLabel(label: 'MORE'),
+                  if (expanded) const _SectionLabel(label: 'MORE'),
                   _LinkItem(
                     icon: Icons.history_rounded,
                     label: 'Sales History',
@@ -426,7 +465,6 @@ class _AppSidebar extends StatelessWidget {
             ),
           ),
 
-          // ── Status + user footer ───────────────────────────────────
           const Divider(height: 1, color: AppColors.borderSoft),
           _SidebarFooter(
             expanded: expanded,
@@ -538,7 +576,7 @@ class _NavItem extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Link item — pushes a GoRouter route (doesn't switch IndexedStack)
+// Link item — pushes a GoRouter route
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _LinkItem extends StatelessWidget {
@@ -662,7 +700,6 @@ class _SidebarFooter extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Column(
         children: [
-          // Online / sync status
           _StatusRow(
             expanded: expanded,
             isOnline: isOnline,
@@ -670,7 +707,6 @@ class _SidebarFooter extends StatelessWidget {
           ),
           const SizedBox(height: 6),
 
-          // User + logout
           Material(
             color: Colors.transparent,
             child: InkWell(
@@ -719,7 +755,7 @@ class _SidebarFooter extends StatelessWidget {
                           ],
                         ),
                       ),
-                      Icon(
+                      const Icon(
                         Icons.logout_rounded,
                         size: 16,
                         color: AppColors.textMuted,
@@ -812,12 +848,11 @@ class _StatusRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final onlineColor =
-        isOnline ? AppColors.synced : AppColors.offline;
-    final syncColor = pendingSyncCount > 0 ? AppColors.syncing : AppColors.synced;
+    final onlineColor = isOnline ? AppColors.synced : AppColors.offline;
+    final syncColor =
+        pendingSyncCount > 0 ? AppColors.syncing : AppColors.synced;
 
     if (!expanded) {
-      // Collapsed: single dot indicator
       return Tooltip(
         message: isOnline
             ? (pendingSyncCount > 0 ? 'Syncing...' : 'Online · Synced')
