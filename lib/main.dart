@@ -3,11 +3,16 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:pos/bootstrap.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/errors/app_error_mapper.dart';
 
 Future<void> main() async {
+  // Use real URL paths (/home) instead of hash fragments (/#/home).
+  // This prevents OAuth redirect URLs from having #/home appended after ?code=
+  if (kIsWeb) usePathUrlStrategy();
+
   WidgetsFlutterBinding.ensureInitialized();
 
   FlutterError.onError = (FlutterErrorDetails details) {
