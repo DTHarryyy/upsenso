@@ -11,6 +11,7 @@ flutter pub get
 # ── 2. Write dart-define file from Cloudflare environment variables ───────────
 # Cloudflare injects SUPABASE_URL and SUPABASE_ANON_KEY as env vars.
 # CF_PAGES_URL is auto-set by Cloudflare to the deployment URL.
+mkdir -p flavors
 cat > flavors/cf_build.json <<EOF
 {
   "SUPABASE_URL": "${SUPABASE_URL}",
