@@ -1,0 +1,129 @@
+import 'dart:async';
+import 'dart:typed_data';
+
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pos/features/settings/data/receipt_settings_repository.dart';
+import 'package:pos/features/settings/domain/receipt_settings.dart';
+import 'package:pos/features/settings/presentation/cubit/settings_state.dart';
+
+class SettingsCubit extends Cubit<SettingsState> {
+  final ReceiptSettingsRepository _repo;
+  StreamSubscription<ReceiptSettings?>? _sub;
+
+  SettingsCubit(this._repo) : super(const SettingsState());
+
+  /// Start watching local DB for this business.
+  /// [businessName] and [branchName] are used to pre-fill defaults on first run.
+  void startWatching({
+    required String businessId,
+    String? businessName,
+    String? branchName,
+  }) {
+    _sub?.cancel();
+    emit(const SettingsState(isLoading: true));
+
+    _sub = _repo.watch(businessId).listen(
+      (settings) {
+        // First time — no row yet: pre-fill with user's business info
+        final effective = settings ??
+            ReceiptSettings(
+              id: businessId,
+              businessId: businessId,
+              businessName: businessName ?? '',
+              storeName: branchName ?? '',
+              updatedAt: DateTime.now(),
+            );
+        emit(state.copyWith(
+          settings: effective,
+          isLoading: false,
+          saveStatus: SettingsSaveStatus.idle,
+        ));
+      },
+      onError: (e) {
+        emit(state.copyWith(
+          isLoading: false,
+          errorMessage: e.toString(),
+        ));
+      },
+    );
+  }
+
+  /// Patch the in-memory draft and auto-save to local DB.
+  Future<void> update(ReceiptSettings Function(ReceiptSettings) patch) async {
+    final current = state.settings;
+    if (current == null) return;
+
+    final updated = patch(current);
+    // Optimistic UI — emit updated state before save completes
+    emit(state.copyWith(
+      settings: updated,
+      saveStatus: SettingsSaveStatus.saving,
+    ));
+
+    try {
+      await _repo.save(updated);
+      if (!isClosed) {
+        emit(state.copyWith(saveStatus: SettingsSaveStatus.saved));
+        // Reset to idle after brief delay so UI can show a "Saved" indicator
+        await Future.delayed(const Duration(seconds: 2));
+        if (!isClosed) emit(state.copyWith(saveStatus: SettingsSaveStatus.idle));
+      }
+    } catch (e) {
+      if (!isClosed) {
+        emit(state.copyWith(
+          saveStatus: SettingsSaveStatus.error,
+          errorMessage: e.toString(),
+        ));
+      }
+    }
+  }
+
+  /// Upload logo from bytes (called after image_picker returns bytes).
+  Future<void> uploadLogo({
+    required String businessId,
+    required String fileName,
+    required Uint8List bytes,
+    required String mimeType,
+    String? localPath,
+  }) async {
+    emit(state.copyWith(isUploadingLogo: true));
+    try {
+      final url = await _repo.uploadLogo(
+        businessId: businessId,
+        fileName: fileName,
+        bytes: bytes,
+        mimeType: mimeType,
+      );
+      // Patch in-memory settings with both the local path and remote URL
+      final current = state.settings;
+      if (current != null && !isClosed) {
+        emit(state.copyWith(
+          isUploadingLogo: false,
+          settings: current.copyWith(
+            logoLocalPath: localPath ?? '',
+            logoUrl: url,
+          ),
+          saveStatus: SettingsSaveStatus.saved,
+        ));
+      }
+    } catch (e) {
+      if (!isClosed) {
+        emit(state.copyWith(
+          isUploadingLogo: false,
+          errorMessage: e.toString(),
+          saveStatus: SettingsSaveStatus.error,
+        ));
+      }
+    }
+  }
+
+  void dismissError() {
+    if (!isClosed) emit(state.clearError());
+  }
+
+  @override
+  Future<void> close() async {
+    await _sub?.cancel();
+    return super.close();
+  }
+}
