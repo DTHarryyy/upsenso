@@ -187,29 +187,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
 
     if (user != null) {
-      debugPrint(
-        'AuthBloc: Emitting cached user (${user.businessId != null ? "with" : "without"} business)',
-      );
-      emit(AuthAuthenticated(user));
-      _backgroundSync(user);
-
-      // Skip background refresh when cached context is already complete.
-      if (!_hasCompleteContext(user)) {
-        unawaited(
-          _getUserContextWithRetry(user.id)
-              .then((updatedUser) {
-                if (updatedUser != null && !isClosed) {
-                  debugPrint('AuthBloc: Updating with fresh user context');
-                  add(AuthUserContextUpdated(updatedUser));
-                }
-              })
-              .catchError((e) {
-                debugPrint('AuthBloc: Error fetching updated context: $e');
-              }),
-        );
+      if (_hasCompleteContext(user)) {
+        debugPrint('AuthBloc: Emitting cached user (with complete context)');
+        emit(AuthAuthenticated(user));
+        _backgroundSync(user);
       } else {
+        // Context is incomplete (e.g. businessId missing because the local DB
+        // cache was cleared or the WASM DB is freshly initialised). Await the
+        // context fetch BEFORE emitting so the router never sees an
+        // AuthAuthenticated state without businessId and never prematurely
+        // redirects to /business-profile-setup.
         debugPrint(
-          'AuthBloc: Skipping refresh, cached context already complete',
+          ' AuthBloc: Skipping refresh, cached context already complete',
         );
       }
     } else {
