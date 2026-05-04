@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/routes/app_routes.dart';
 
 class QuickActionsBar extends StatelessWidget {
@@ -10,76 +11,112 @@ class QuickActionsBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.borderSoft),
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            _ActionChip(
-              icon: Icons.shopping_cart_outlined,
-              label: 'New Sale',
-              onPressed: () => onNewSale?.call(),
-            ),
-            const SizedBox(width: 8),
-            _ActionChip(
-              icon: Icons.add_box_outlined,
-              label: 'Add Product',
-              onPressed: () => context.push(AppRoutes.addProduct),
-            ),
-            const SizedBox(width: 8),
-            _ActionChip(
-              icon: Icons.inventory_2_outlined,
-              label: 'Stock Adjust',
-              onPressed: () => context.push(AppRoutes.inventory),
-            ),
-            const SizedBox(width: 8),
-            _ActionChip(
-              icon: Icons.attach_money,
-              label: 'Expense',
-              onPressed: () => context.push(AppRoutes.expenses),
-            ),
-            const SizedBox(width: 8),
-            _ActionChip(
-              icon: Icons.swap_horiz,
-              label: 'Transfer',
-              onPressed: () {
-                // TODO: Navigate to Transfer pa
-              },
-            ),
-          ],
+      child: Row(
+      children: [
+        _QuickAction(
+          icon: Icons.shopping_cart_rounded,
+          label: 'New Sale',
+          iconColor: AppColors.brand,
+          bgColor: AppColors.brandSoft,
+          onTap: () => onNewSale?.call(),
         ),
+        _QuickAction(
+          icon: Icons.add_box_rounded,
+          label: 'Add Product',
+          iconColor: AppColors.success,
+          bgColor: AppColors.successSoft,
+          onTap: () => context.push(AppRoutes.addProduct),
+        ),
+        _QuickAction(
+          icon: Icons.inventory_2_rounded,
+          label: 'Stock Adjust',
+          iconColor: AppColors.warning,
+          bgColor: AppColors.warningSoft,
+          onTap: () => context.push(AppRoutes.inventory),
+        ),
+        _QuickAction(
+          icon: Icons.receipt_long_rounded,
+          label: 'Expense',
+          iconColor: AppColors.error,
+          bgColor: AppColors.errorSoft,
+          onTap: () => context.push(AppRoutes.expenses),
+        ),
+        // Transfer — not yet implemented
+        // _QuickAction(
+        //   icon: Icons.swap_horiz_rounded,
+        //   label: 'Transfer',
+        //   iconColor: AppColors.transfer,
+        //   bgColor: const Color(0xFFE0F2FE),
+        //   onTap: () {},
+        // ),
+      ],
       ),
     );
   }
 }
 
-class _ActionChip extends StatelessWidget {
+class _QuickAction extends StatelessWidget {
   final IconData icon;
   final String label;
-  final VoidCallback onPressed;
+  final Color iconColor;
+  final Color bgColor;
+  final VoidCallback onTap;
 
-  const _ActionChip({
+  const _QuickAction({
     required this.icon,
     required this.label,
-    required this.onPressed,
+    required this.iconColor,
+    required this.bgColor,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, size: 18),
-      label: Text(label),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: Colors.black87,
-        side: BorderSide(color: Colors.grey.shade300),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          splashColor: iconColor.withValues(alpha: 0.15),
+          highlightColor: iconColor.withValues(alpha: 0.08),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: bgColor,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: iconColor, size: 20),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textSecondary,
+                    height: 1.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
