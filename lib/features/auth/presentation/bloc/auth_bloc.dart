@@ -174,7 +174,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onStarted(AuthStarted event, Emitter<AuthState> emit) async {
-    final user = getCurrentUser();
+    var user = getCurrentUser();
+
+    // On web after an OAuth redirect, initializeCachedUser() may return a bare
+    // Supabase user with no businessId because the Drift/IndexedDB cache read
+    // hasn't completed yet. Fetch from the Drift cache directly as a fallback.
+    if (user != null && !_hasCompleteContext(user)) {
+      final cached = await getUserBusinessContext(user.id);
+      if (cached != null && _hasText(cached.businessId)) {
+        user = cached;
+      }
+    }
+
     if (user != null) {
       debugPrint(
         'AuthBloc: Emitting cached user (${user.businessId != null ? "with" : "without"} business)',
@@ -198,7 +209,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         );
       } else {
         debugPrint(
-          ' AuthBloc: Skipping refresh, cached context already complete',
+          'AuthBloc: Skipping refresh, cached context already complete',
         );
       }
     } else {
@@ -378,8 +389,26 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       return;
     }
 
+    // Before doing any async work, eagerly emit whatever cached context is
+    // already available. This prevents the router from redirecting to
+    // /business-profile-setup during the brief window between an OAuth
+    // redirect (where the Supabase session is fresh but businessId hasn't
+    // been fetched yet) and the getUserBusinessContext call completing.
+    final cachedContext = await getUserBusinessContext(user.id);
+    if (cachedContext != null && _hasCompleteContext(cachedContext)) {
+      emit(AuthAuthenticated(cachedContext));
+      return;
+    }
+
+    // Emit what we have so far (may have businessId from cache even without role).
+    // This ensures hasBusiness is true in the router so setup is not triggered.
+    final interim = cachedContext ?? user;
+    if (_hasText(interim.businessId)) {
+      emit(AuthAuthenticated(interim));
+    }
+
     final userWithContext = await _getUserContextWithRetry(user.id);
-    final resolved = userWithContext ?? user;
+    final resolved = userWithContext ?? interim;
 
     // Never downgrade: if we already have a complete context (businessId +
     // role) in the current state but the freshly-fetched user is missing it

@@ -13,7 +13,8 @@
       "Skill(update-config:*)",
       "PowerShell(Stop-Process -Id 8908 -Force -ErrorAction SilentlyContinue)",
       "PowerShell(Get-Process java, gradle -ErrorAction SilentlyContinue)",
-      "PowerShell(Stop-Process -Force)"
+      "PowerShell(Stop-Process -Force)",
+      "Bash(findstr /i \"drift\" pubspec.yaml)"
     ],
     "additionalDirectories": [
       "c:\\DEVELOPMENT PROJECTS\\Flutter Projects\\pos\\android\\.gradle\\noVersion"
