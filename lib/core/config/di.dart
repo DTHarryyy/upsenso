@@ -56,10 +56,15 @@ import 'package:pos/features/dashboard/data/dashboard_repository.dart';
 import 'package:pos/features/reports/data/reports_repository.dart';
 import 'package:pos/core/database/daos/expenses_dao.dart';
 import 'package:pos/core/database/daos/inventory_levels_dao.dart';
+import 'package:pos/core/database/daos/receipt_settings_dao.dart';
 import 'package:pos/core/database/daos/stock_ledger_dao.dart';
 import 'package:pos/features/expenses/data/datasources/expenses_remote_ds.dart';
 import 'package:pos/features/expenses/data/expenses_repository.dart';
 import 'package:pos/features/inventory/data/inventory_repository.dart';
+import 'package:pos/features/settings/data/datasources/receipt_settings_remote_ds.dart';
+import 'package:pos/features/settings/data/receipt_settings_repository.dart';
+import 'package:pos/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:pos/features/settings/services/receipt_printer_service.dart';
 
 final sl = GetIt.instance;
 
@@ -80,8 +85,10 @@ Future<void> initDI() async {
   );
   sl.registerLazySingleton<SecureStorageService>(() => SecureStorageService());
 
-  // OAuth redirect URL used by Google/Facebook sign-in callbacks.
-  const oauthRedirectUrl = AppEnv.oauthRedirectUrl;
+  // On web, OAuth must redirect back to an HTTP URL. On mobile, use the custom scheme.
+  final oauthRedirectUrl = kIsWeb
+      ? AppEnv.webOauthRedirectUrl
+      : AppEnv.oauthRedirectUrl;
 
   sl.registerLazySingleton<AppDatabase>(() => AppDatabase());
 
@@ -112,6 +119,19 @@ Future<void> initDI() async {
   );
   sl.registerLazySingleton<ExpensesRepository>(
     () => ExpensesRepository(expensesDao: sl<ExpensesDao>()),
+  );
+  sl.registerLazySingleton<ReceiptSettingsDao>(
+    () => ReceiptSettingsDao(sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<ReceiptSettingsRemoteDs>(
+    () => ReceiptSettingsRemoteDs(sl<SupabaseClient>()),
+  );
+  sl.registerLazySingleton<ReceiptSettingsRepository>(
+    () => ReceiptSettingsRepository(
+      dao: sl<ReceiptSettingsDao>(),
+      remote: sl<ReceiptSettingsRemoteDs>(),
+      connectivity: sl<ConnectivityService>(),
+    ),
   );
 
   sl.registerLazySingleton<CartService>(() => CartService());
@@ -212,6 +232,7 @@ Future<void> initDI() async {
       productsRemoteDs: sl<ProductsRemoteDs>(),
       transactionsRemoteDs: sl<TransactionsRemoteDs>(),
       connectivityService: sl<ConnectivityService>(),
+      receiptSettingsRepository: sl<ReceiptSettingsRepository>(),
     )..init(),
   );
 
@@ -239,6 +260,15 @@ Future<void> initDI() async {
     ),
   );
 
+  sl.registerLazySingleton<ReceiptPrinterService>(
+    () => const ReceiptPrinterService(),
+  );
+
+  // settings_page.dart resolves this via sl()
+  sl.registerFactory(
+    () => SettingsCubit(sl<ReceiptSettingsRepository>()),
+  );
+
   sl.registerLazySingleton<InventoryRepository>(
     () => InventoryRepository(
       productsDao: sl<ProductsDao>(),
@@ -256,6 +286,7 @@ Future<void> initDI() async {
       productsDao: sl<ProductsDao>(),
       categoriesDao: sl<CategoriesDao>(),
       branchesDao: sl<BranchesDao>(),
+      expensesDao: sl<ExpensesDao>(),
     ),
   );
 

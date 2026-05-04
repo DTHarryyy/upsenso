@@ -158,6 +158,7 @@ class _ErrorScreen extends StatelessWidget {
                 const SizedBox(height: 24),
                 const Text(
                   'Failed to Start',
+                  
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,

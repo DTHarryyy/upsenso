@@ -115,6 +115,17 @@ class MorePage extends StatelessWidget {
                             ),
                           ],
                         ),
+                        _buildMenuSection(
+                          context: context,
+                          title: 'App',
+                          items: [
+                            _MenuItem(
+                              icon: Icons.settings_rounded,
+                              title: 'Settings',
+                              onTap: () => context.push(AppRoutes.settings),
+                            ),
+                          ],
+                        ),
 
                         const SizedBox(height: 16),
                       ],

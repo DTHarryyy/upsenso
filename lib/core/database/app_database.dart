@@ -1,9 +1,6 @@
-import 'dart:io';
-
 import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
+
+import 'connection/connection.dart' as db_connect;
 
 import 'package:pos/core/database/tables/auth_context_table.dart';
 import 'package:pos/core/database/tables/business_templates_table.dart';
@@ -16,6 +13,7 @@ import 'package:pos/core/database/tables/product_variants_table.dart';
 import 'package:pos/core/database/tables/transactions_table.dart';
 import 'package:pos/core/database/tables/transaction_items_table.dart';
 import 'package:pos/core/database/tables/inventory_levels_table.dart';
+import 'package:pos/core/database/tables/receipt_settings_table.dart';
 import 'package:pos/core/database/tables/stock_ledger_table.dart';
 import 'package:pos/core/database/daos/auth_context_dao.dart';
 import 'package:pos/core/database/daos/business_templates_dao.dart';
@@ -27,6 +25,7 @@ import 'package:pos/core/database/daos/products_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
 import 'package:pos/core/database/daos/transactions_dao.dart';
 import 'package:pos/core/database/daos/inventory_levels_dao.dart';
+import 'package:pos/core/database/daos/receipt_settings_dao.dart';
 import 'package:pos/core/database/daos/stock_ledger_dao.dart';
 
 part 'app_database.g.dart';
@@ -45,6 +44,7 @@ part 'app_database.g.dart';
     TransactionItemsTable,
     InventoryLevelsTable,
     StockLedgerTable,
+    ReceiptSettingsTable,
   ],
   daos: [
     AuthContextDao,
@@ -58,13 +58,14 @@ part 'app_database.g.dart';
     TransactionsDao,
     InventoryLevelsDao,
     StockLedgerDao,
+    ReceiptSettingsDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  AppDatabase() : super(db_connect.openDatabaseConnection());
 
   @override
-  int get schemaVersion => 22;
+  int get schemaVersion => 23;
 
   @override
   MigrationStrategy get migration {
@@ -276,15 +277,11 @@ class AppDatabase extends _$AppDatabase {
           await customStatement(
               'ALTER TABLE auth_context ADD COLUMN avatar_url TEXT;');
         }
+        if (from < 23) {
+          await m.createTable(receiptSettingsTable);
+        }
       },
     );
   }
 }
 
-LazyDatabase _openConnection() {
-  return LazyDatabase(() async {
-    final dbFolder = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dbFolder.path, 'pos_database.sqlite'));
-    return NativeDatabase.createInBackground(file);
-  });
-}

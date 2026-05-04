@@ -9406,6 +9406,2173 @@ class StockLedgerTableCompanion extends UpdateCompanion<StockLedgerTableData> {
   }
 }
 
+class $ReceiptSettingsTableTable extends ReceiptSettingsTable
+    with TableInfo<$ReceiptSettingsTableTable, ReceiptSettingsRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ReceiptSettingsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _businessNameMeta = const VerificationMeta(
+    'businessName',
+  );
+  @override
+  late final GeneratedColumn<String> businessName = GeneratedColumn<String>(
+    'business_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _storeNameMeta = const VerificationMeta(
+    'storeName',
+  );
+  @override
+  late final GeneratedColumn<String> storeName = GeneratedColumn<String>(
+    'store_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _ownerNameMeta = const VerificationMeta(
+    'ownerName',
+  );
+  @override
+  late final GeneratedColumn<String> ownerName = GeneratedColumn<String>(
+    'owner_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _addressMeta = const VerificationMeta(
+    'address',
+  );
+  @override
+  late final GeneratedColumn<String> address = GeneratedColumn<String>(
+    'address',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _contactNumberMeta = const VerificationMeta(
+    'contactNumber',
+  );
+  @override
+  late final GeneratedColumn<String> contactNumber = GeneratedColumn<String>(
+    'contact_number',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _emailMeta = const VerificationMeta('email');
+  @override
+  late final GeneratedColumn<String> email = GeneratedColumn<String>(
+    'email',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _websiteMeta = const VerificationMeta(
+    'website',
+  );
+  @override
+  late final GeneratedColumn<String> website = GeneratedColumn<String>(
+    'website',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _tinNumberMeta = const VerificationMeta(
+    'tinNumber',
+  );
+  @override
+  late final GeneratedColumn<String> tinNumber = GeneratedColumn<String>(
+    'tin_number',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _permitNumberMeta = const VerificationMeta(
+    'permitNumber',
+  );
+  @override
+  late final GeneratedColumn<String> permitNumber = GeneratedColumn<String>(
+    'permit_number',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _headerTextMeta = const VerificationMeta(
+    'headerText',
+  );
+  @override
+  late final GeneratedColumn<String> headerText = GeneratedColumn<String>(
+    'header_text',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _footerTextMeta = const VerificationMeta(
+    'footerText',
+  );
+  @override
+  late final GeneratedColumn<String> footerText = GeneratedColumn<String>(
+    'footer_text',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('Thank you for your purchase!'),
+  );
+  static const VerificationMeta _returnPolicyMeta = const VerificationMeta(
+    'returnPolicy',
+  );
+  @override
+  late final GeneratedColumn<String> returnPolicy = GeneratedColumn<String>(
+    'return_policy',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _customNotesMeta = const VerificationMeta(
+    'customNotes',
+  );
+  @override
+  late final GeneratedColumn<String> customNotes = GeneratedColumn<String>(
+    'custom_notes',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _showLogoMeta = const VerificationMeta(
+    'showLogo',
+  );
+  @override
+  late final GeneratedColumn<bool> showLogo = GeneratedColumn<bool>(
+    'show_logo',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("show_logo" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _logoLocalPathMeta = const VerificationMeta(
+    'logoLocalPath',
+  );
+  @override
+  late final GeneratedColumn<String> logoLocalPath = GeneratedColumn<String>(
+    'logo_local_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _logoUrlMeta = const VerificationMeta(
+    'logoUrl',
+  );
+  @override
+  late final GeneratedColumn<String> logoUrl = GeneratedColumn<String>(
+    'logo_url',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _showQrCodeMeta = const VerificationMeta(
+    'showQrCode',
+  );
+  @override
+  late final GeneratedColumn<bool> showQrCode = GeneratedColumn<bool>(
+    'show_qr_code',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("show_qr_code" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _showTaxBreakdownMeta = const VerificationMeta(
+    'showTaxBreakdown',
+  );
+  @override
+  late final GeneratedColumn<bool> showTaxBreakdown = GeneratedColumn<bool>(
+    'show_tax_breakdown',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("show_tax_breakdown" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _showCashierNameMeta = const VerificationMeta(
+    'showCashierName',
+  );
+  @override
+  late final GeneratedColumn<bool> showCashierName = GeneratedColumn<bool>(
+    'show_cashier_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("show_cashier_name" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _showCustomerNameMeta = const VerificationMeta(
+    'showCustomerName',
+  );
+  @override
+  late final GeneratedColumn<bool> showCustomerName = GeneratedColumn<bool>(
+    'show_customer_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("show_customer_name" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _showDateTimeMeta = const VerificationMeta(
+    'showDateTime',
+  );
+  @override
+  late final GeneratedColumn<bool> showDateTime = GeneratedColumn<bool>(
+    'show_date_time',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("show_date_time" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _showOrderIdMeta = const VerificationMeta(
+    'showOrderId',
+  );
+  @override
+  late final GeneratedColumn<bool> showOrderId = GeneratedColumn<bool>(
+    'show_order_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("show_order_id" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _paperSizeMeta = const VerificationMeta(
+    'paperSize',
+  );
+  @override
+  late final GeneratedColumn<String> paperSize = GeneratedColumn<String>(
+    'paper_size',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('80mm'),
+  );
+  static const VerificationMeta _fontSizeMeta = const VerificationMeta(
+    'fontSize',
+  );
+  @override
+  late final GeneratedColumn<String> fontSize = GeneratedColumn<String>(
+    'font_size',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('medium'),
+  );
+  static const VerificationMeta _textAlignmentMeta = const VerificationMeta(
+    'textAlignment',
+  );
+  @override
+  late final GeneratedColumn<String> textAlignment = GeneratedColumn<String>(
+    'text_alignment',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('center'),
+  );
+  static const VerificationMeta _autoPrintAfterCheckoutMeta =
+      const VerificationMeta('autoPrintAfterCheckout');
+  @override
+  late final GeneratedColumn<bool> autoPrintAfterCheckout =
+      GeneratedColumn<bool>(
+        'auto_print_after_checkout',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("auto_print_after_checkout" IN (0, 1))',
+        ),
+        defaultValue: const Constant(false),
+      );
+  static const VerificationMeta _printDuplicateCopyMeta =
+      const VerificationMeta('printDuplicateCopy');
+  @override
+  late final GeneratedColumn<bool> printDuplicateCopy = GeneratedColumn<bool>(
+    'print_duplicate_copy',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("print_duplicate_copy" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _thermalPrinterEnabledMeta =
+      const VerificationMeta('thermalPrinterEnabled');
+  @override
+  late final GeneratedColumn<bool> thermalPrinterEnabled =
+      GeneratedColumn<bool>(
+        'thermal_printer_enabled',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("thermal_printer_enabled" IN (0, 1))',
+        ),
+        defaultValue: const Constant(false),
+      );
+  static const VerificationMeta _currencySymbolMeta = const VerificationMeta(
+    'currencySymbol',
+  );
+  @override
+  late final GeneratedColumn<String> currencySymbol = GeneratedColumn<String>(
+    'currency_symbol',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('₱'),
+  );
+  static const VerificationMeta _taxPercentageMeta = const VerificationMeta(
+    'taxPercentage',
+  );
+  @override
+  late final GeneratedColumn<double> taxPercentage = GeneratedColumn<double>(
+    'tax_percentage',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0.0),
+  );
+  static const VerificationMeta _serviceChargePercentageMeta =
+      const VerificationMeta('serviceChargePercentage');
+  @override
+  late final GeneratedColumn<double> serviceChargePercentage =
+      GeneratedColumn<double>(
+        'service_charge_percentage',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(0.0),
+      );
+  static const VerificationMeta _vatInclusiveMeta = const VerificationMeta(
+    'vatInclusive',
+  );
+  @override
+  late final GeneratedColumn<bool> vatInclusive = GeneratedColumn<bool>(
+    'vat_inclusive',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("vat_inclusive" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+    'syncStatus',
+  );
+  @override
+  late final GeneratedColumn<int> syncStatus = GeneratedColumn<int>(
+    'sync_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastSyncAttemptMeta = const VerificationMeta(
+    'lastSyncAttempt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastSyncAttempt =
+      GeneratedColumn<DateTime>(
+        'last_sync_attempt',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _syncErrorMeta = const VerificationMeta(
+    'syncError',
+  );
+  @override
+  late final GeneratedColumn<String> syncError = GeneratedColumn<String>(
+    'sync_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _localUpdatedAtMeta = const VerificationMeta(
+    'localUpdatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> localUpdatedAt =
+      GeneratedColumn<DateTime>(
+        'local_updated_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+        defaultValue: currentDateAndTime,
+      );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    businessId,
+    businessName,
+    storeName,
+    ownerName,
+    address,
+    contactNumber,
+    email,
+    website,
+    tinNumber,
+    permitNumber,
+    headerText,
+    footerText,
+    returnPolicy,
+    customNotes,
+    showLogo,
+    logoLocalPath,
+    logoUrl,
+    showQrCode,
+    showTaxBreakdown,
+    showCashierName,
+    showCustomerName,
+    showDateTime,
+    showOrderId,
+    paperSize,
+    fontSize,
+    textAlignment,
+    autoPrintAfterCheckout,
+    printDuplicateCopy,
+    thermalPrinterEnabled,
+    currencySymbol,
+    taxPercentage,
+    serviceChargePercentage,
+    vatInclusive,
+    createdAt,
+    updatedAt,
+    syncStatus,
+    lastSyncAttempt,
+    syncError,
+    localUpdatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'receipt_settings';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ReceiptSettingsRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('business_name')) {
+      context.handle(
+        _businessNameMeta,
+        businessName.isAcceptableOrUnknown(
+          data['business_name']!,
+          _businessNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('store_name')) {
+      context.handle(
+        _storeNameMeta,
+        storeName.isAcceptableOrUnknown(data['store_name']!, _storeNameMeta),
+      );
+    }
+    if (data.containsKey('owner_name')) {
+      context.handle(
+        _ownerNameMeta,
+        ownerName.isAcceptableOrUnknown(data['owner_name']!, _ownerNameMeta),
+      );
+    }
+    if (data.containsKey('address')) {
+      context.handle(
+        _addressMeta,
+        address.isAcceptableOrUnknown(data['address']!, _addressMeta),
+      );
+    }
+    if (data.containsKey('contact_number')) {
+      context.handle(
+        _contactNumberMeta,
+        contactNumber.isAcceptableOrUnknown(
+          data['contact_number']!,
+          _contactNumberMeta,
+        ),
+      );
+    }
+    if (data.containsKey('email')) {
+      context.handle(
+        _emailMeta,
+        email.isAcceptableOrUnknown(data['email']!, _emailMeta),
+      );
+    }
+    if (data.containsKey('website')) {
+      context.handle(
+        _websiteMeta,
+        website.isAcceptableOrUnknown(data['website']!, _websiteMeta),
+      );
+    }
+    if (data.containsKey('tin_number')) {
+      context.handle(
+        _tinNumberMeta,
+        tinNumber.isAcceptableOrUnknown(data['tin_number']!, _tinNumberMeta),
+      );
+    }
+    if (data.containsKey('permit_number')) {
+      context.handle(
+        _permitNumberMeta,
+        permitNumber.isAcceptableOrUnknown(
+          data['permit_number']!,
+          _permitNumberMeta,
+        ),
+      );
+    }
+    if (data.containsKey('header_text')) {
+      context.handle(
+        _headerTextMeta,
+        headerText.isAcceptableOrUnknown(data['header_text']!, _headerTextMeta),
+      );
+    }
+    if (data.containsKey('footer_text')) {
+      context.handle(
+        _footerTextMeta,
+        footerText.isAcceptableOrUnknown(data['footer_text']!, _footerTextMeta),
+      );
+    }
+    if (data.containsKey('return_policy')) {
+      context.handle(
+        _returnPolicyMeta,
+        returnPolicy.isAcceptableOrUnknown(
+          data['return_policy']!,
+          _returnPolicyMeta,
+        ),
+      );
+    }
+    if (data.containsKey('custom_notes')) {
+      context.handle(
+        _customNotesMeta,
+        customNotes.isAcceptableOrUnknown(
+          data['custom_notes']!,
+          _customNotesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('show_logo')) {
+      context.handle(
+        _showLogoMeta,
+        showLogo.isAcceptableOrUnknown(data['show_logo']!, _showLogoMeta),
+      );
+    }
+    if (data.containsKey('logo_local_path')) {
+      context.handle(
+        _logoLocalPathMeta,
+        logoLocalPath.isAcceptableOrUnknown(
+          data['logo_local_path']!,
+          _logoLocalPathMeta,
+        ),
+      );
+    }
+    if (data.containsKey('logo_url')) {
+      context.handle(
+        _logoUrlMeta,
+        logoUrl.isAcceptableOrUnknown(data['logo_url']!, _logoUrlMeta),
+      );
+    }
+    if (data.containsKey('show_qr_code')) {
+      context.handle(
+        _showQrCodeMeta,
+        showQrCode.isAcceptableOrUnknown(
+          data['show_qr_code']!,
+          _showQrCodeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('show_tax_breakdown')) {
+      context.handle(
+        _showTaxBreakdownMeta,
+        showTaxBreakdown.isAcceptableOrUnknown(
+          data['show_tax_breakdown']!,
+          _showTaxBreakdownMeta,
+        ),
+      );
+    }
+    if (data.containsKey('show_cashier_name')) {
+      context.handle(
+        _showCashierNameMeta,
+        showCashierName.isAcceptableOrUnknown(
+          data['show_cashier_name']!,
+          _showCashierNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('show_customer_name')) {
+      context.handle(
+        _showCustomerNameMeta,
+        showCustomerName.isAcceptableOrUnknown(
+          data['show_customer_name']!,
+          _showCustomerNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('show_date_time')) {
+      context.handle(
+        _showDateTimeMeta,
+        showDateTime.isAcceptableOrUnknown(
+          data['show_date_time']!,
+          _showDateTimeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('show_order_id')) {
+      context.handle(
+        _showOrderIdMeta,
+        showOrderId.isAcceptableOrUnknown(
+          data['show_order_id']!,
+          _showOrderIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('paper_size')) {
+      context.handle(
+        _paperSizeMeta,
+        paperSize.isAcceptableOrUnknown(data['paper_size']!, _paperSizeMeta),
+      );
+    }
+    if (data.containsKey('font_size')) {
+      context.handle(
+        _fontSizeMeta,
+        fontSize.isAcceptableOrUnknown(data['font_size']!, _fontSizeMeta),
+      );
+    }
+    if (data.containsKey('text_alignment')) {
+      context.handle(
+        _textAlignmentMeta,
+        textAlignment.isAcceptableOrUnknown(
+          data['text_alignment']!,
+          _textAlignmentMeta,
+        ),
+      );
+    }
+    if (data.containsKey('auto_print_after_checkout')) {
+      context.handle(
+        _autoPrintAfterCheckoutMeta,
+        autoPrintAfterCheckout.isAcceptableOrUnknown(
+          data['auto_print_after_checkout']!,
+          _autoPrintAfterCheckoutMeta,
+        ),
+      );
+    }
+    if (data.containsKey('print_duplicate_copy')) {
+      context.handle(
+        _printDuplicateCopyMeta,
+        printDuplicateCopy.isAcceptableOrUnknown(
+          data['print_duplicate_copy']!,
+          _printDuplicateCopyMeta,
+        ),
+      );
+    }
+    if (data.containsKey('thermal_printer_enabled')) {
+      context.handle(
+        _thermalPrinterEnabledMeta,
+        thermalPrinterEnabled.isAcceptableOrUnknown(
+          data['thermal_printer_enabled']!,
+          _thermalPrinterEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('currency_symbol')) {
+      context.handle(
+        _currencySymbolMeta,
+        currencySymbol.isAcceptableOrUnknown(
+          data['currency_symbol']!,
+          _currencySymbolMeta,
+        ),
+      );
+    }
+    if (data.containsKey('tax_percentage')) {
+      context.handle(
+        _taxPercentageMeta,
+        taxPercentage.isAcceptableOrUnknown(
+          data['tax_percentage']!,
+          _taxPercentageMeta,
+        ),
+      );
+    }
+    if (data.containsKey('service_charge_percentage')) {
+      context.handle(
+        _serviceChargePercentageMeta,
+        serviceChargePercentage.isAcceptableOrUnknown(
+          data['service_charge_percentage']!,
+          _serviceChargePercentageMeta,
+        ),
+      );
+    }
+    if (data.containsKey('vat_inclusive')) {
+      context.handle(
+        _vatInclusiveMeta,
+        vatInclusive.isAcceptableOrUnknown(
+          data['vat_inclusive']!,
+          _vatInclusiveMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('sync_status')) {
+      context.handle(
+        _syncStatusMeta,
+        syncStatus.isAcceptableOrUnknown(data['sync_status']!, _syncStatusMeta),
+      );
+    }
+    if (data.containsKey('last_sync_attempt')) {
+      context.handle(
+        _lastSyncAttemptMeta,
+        lastSyncAttempt.isAcceptableOrUnknown(
+          data['last_sync_attempt']!,
+          _lastSyncAttemptMeta,
+        ),
+      );
+    }
+    if (data.containsKey('sync_error')) {
+      context.handle(
+        _syncErrorMeta,
+        syncError.isAcceptableOrUnknown(data['sync_error']!, _syncErrorMeta),
+      );
+    }
+    if (data.containsKey('local_updated_at')) {
+      context.handle(
+        _localUpdatedAtMeta,
+        localUpdatedAt.isAcceptableOrUnknown(
+          data['local_updated_at']!,
+          _localUpdatedAtMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ReceiptSettingsRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ReceiptSettingsRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      businessName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_name'],
+      )!,
+      storeName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}store_name'],
+      )!,
+      ownerName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}owner_name'],
+      )!,
+      address: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}address'],
+      )!,
+      contactNumber: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}contact_number'],
+      )!,
+      email: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}email'],
+      )!,
+      website: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}website'],
+      )!,
+      tinNumber: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tin_number'],
+      )!,
+      permitNumber: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}permit_number'],
+      )!,
+      headerText: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}header_text'],
+      )!,
+      footerText: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}footer_text'],
+      )!,
+      returnPolicy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}return_policy'],
+      )!,
+      customNotes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}custom_notes'],
+      )!,
+      showLogo: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}show_logo'],
+      )!,
+      logoLocalPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}logo_local_path'],
+      )!,
+      logoUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}logo_url'],
+      )!,
+      showQrCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}show_qr_code'],
+      )!,
+      showTaxBreakdown: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}show_tax_breakdown'],
+      )!,
+      showCashierName: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}show_cashier_name'],
+      )!,
+      showCustomerName: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}show_customer_name'],
+      )!,
+      showDateTime: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}show_date_time'],
+      )!,
+      showOrderId: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}show_order_id'],
+      )!,
+      paperSize: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}paper_size'],
+      )!,
+      fontSize: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}font_size'],
+      )!,
+      textAlignment: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}text_alignment'],
+      )!,
+      autoPrintAfterCheckout: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}auto_print_after_checkout'],
+      )!,
+      printDuplicateCopy: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}print_duplicate_copy'],
+      )!,
+      thermalPrinterEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}thermal_printer_enabled'],
+      )!,
+      currencySymbol: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency_symbol'],
+      )!,
+      taxPercentage: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}tax_percentage'],
+      )!,
+      serviceChargePercentage: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}service_charge_percentage'],
+      )!,
+      vatInclusive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}vat_inclusive'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      syncStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sync_status'],
+      )!,
+      lastSyncAttempt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_sync_attempt'],
+      ),
+      syncError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_error'],
+      ),
+      localUpdatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}local_updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ReceiptSettingsTableTable createAlias(String alias) {
+    return $ReceiptSettingsTableTable(attachedDatabase, alias);
+  }
+}
+
+class ReceiptSettingsRow extends DataClass
+    implements Insertable<ReceiptSettingsRow> {
+  final String id;
+  final String businessId;
+  final String businessName;
+  final String storeName;
+  final String ownerName;
+  final String address;
+  final String contactNumber;
+  final String email;
+  final String website;
+  final String tinNumber;
+  final String permitNumber;
+  final String headerText;
+  final String footerText;
+  final String returnPolicy;
+  final String customNotes;
+  final bool showLogo;
+
+  /// Local file path (may be empty). Supabase public URL stored in logoUrl.
+  final String logoLocalPath;
+  final String logoUrl;
+  final bool showQrCode;
+  final bool showTaxBreakdown;
+  final bool showCashierName;
+  final bool showCustomerName;
+  final bool showDateTime;
+  final bool showOrderId;
+
+  /// '58mm' | '80mm'
+  final String paperSize;
+
+  /// 'small' | 'medium' | 'large'
+  final String fontSize;
+
+  /// 'left' | 'center' | 'right'
+  final String textAlignment;
+  final bool autoPrintAfterCheckout;
+  final bool printDuplicateCopy;
+  final bool thermalPrinterEnabled;
+  final String currencySymbol;
+  final double taxPercentage;
+  final double serviceChargePercentage;
+  final bool vatInclusive;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  /// 0=pendingUpload 1=pendingUpdate 2=pendingDelete 3=synced 4=failed
+  final int syncStatus;
+  final DateTime? lastSyncAttempt;
+  final String? syncError;
+  final DateTime localUpdatedAt;
+  const ReceiptSettingsRow({
+    required this.id,
+    required this.businessId,
+    required this.businessName,
+    required this.storeName,
+    required this.ownerName,
+    required this.address,
+    required this.contactNumber,
+    required this.email,
+    required this.website,
+    required this.tinNumber,
+    required this.permitNumber,
+    required this.headerText,
+    required this.footerText,
+    required this.returnPolicy,
+    required this.customNotes,
+    required this.showLogo,
+    required this.logoLocalPath,
+    required this.logoUrl,
+    required this.showQrCode,
+    required this.showTaxBreakdown,
+    required this.showCashierName,
+    required this.showCustomerName,
+    required this.showDateTime,
+    required this.showOrderId,
+    required this.paperSize,
+    required this.fontSize,
+    required this.textAlignment,
+    required this.autoPrintAfterCheckout,
+    required this.printDuplicateCopy,
+    required this.thermalPrinterEnabled,
+    required this.currencySymbol,
+    required this.taxPercentage,
+    required this.serviceChargePercentage,
+    required this.vatInclusive,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.syncStatus,
+    this.lastSyncAttempt,
+    this.syncError,
+    required this.localUpdatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['business_id'] = Variable<String>(businessId);
+    map['business_name'] = Variable<String>(businessName);
+    map['store_name'] = Variable<String>(storeName);
+    map['owner_name'] = Variable<String>(ownerName);
+    map['address'] = Variable<String>(address);
+    map['contact_number'] = Variable<String>(contactNumber);
+    map['email'] = Variable<String>(email);
+    map['website'] = Variable<String>(website);
+    map['tin_number'] = Variable<String>(tinNumber);
+    map['permit_number'] = Variable<String>(permitNumber);
+    map['header_text'] = Variable<String>(headerText);
+    map['footer_text'] = Variable<String>(footerText);
+    map['return_policy'] = Variable<String>(returnPolicy);
+    map['custom_notes'] = Variable<String>(customNotes);
+    map['show_logo'] = Variable<bool>(showLogo);
+    map['logo_local_path'] = Variable<String>(logoLocalPath);
+    map['logo_url'] = Variable<String>(logoUrl);
+    map['show_qr_code'] = Variable<bool>(showQrCode);
+    map['show_tax_breakdown'] = Variable<bool>(showTaxBreakdown);
+    map['show_cashier_name'] = Variable<bool>(showCashierName);
+    map['show_customer_name'] = Variable<bool>(showCustomerName);
+    map['show_date_time'] = Variable<bool>(showDateTime);
+    map['show_order_id'] = Variable<bool>(showOrderId);
+    map['paper_size'] = Variable<String>(paperSize);
+    map['font_size'] = Variable<String>(fontSize);
+    map['text_alignment'] = Variable<String>(textAlignment);
+    map['auto_print_after_checkout'] = Variable<bool>(autoPrintAfterCheckout);
+    map['print_duplicate_copy'] = Variable<bool>(printDuplicateCopy);
+    map['thermal_printer_enabled'] = Variable<bool>(thermalPrinterEnabled);
+    map['currency_symbol'] = Variable<String>(currencySymbol);
+    map['tax_percentage'] = Variable<double>(taxPercentage);
+    map['service_charge_percentage'] = Variable<double>(
+      serviceChargePercentage,
+    );
+    map['vat_inclusive'] = Variable<bool>(vatInclusive);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['sync_status'] = Variable<int>(syncStatus);
+    if (!nullToAbsent || lastSyncAttempt != null) {
+      map['last_sync_attempt'] = Variable<DateTime>(lastSyncAttempt);
+    }
+    if (!nullToAbsent || syncError != null) {
+      map['sync_error'] = Variable<String>(syncError);
+    }
+    map['local_updated_at'] = Variable<DateTime>(localUpdatedAt);
+    return map;
+  }
+
+  ReceiptSettingsTableCompanion toCompanion(bool nullToAbsent) {
+    return ReceiptSettingsTableCompanion(
+      id: Value(id),
+      businessId: Value(businessId),
+      businessName: Value(businessName),
+      storeName: Value(storeName),
+      ownerName: Value(ownerName),
+      address: Value(address),
+      contactNumber: Value(contactNumber),
+      email: Value(email),
+      website: Value(website),
+      tinNumber: Value(tinNumber),
+      permitNumber: Value(permitNumber),
+      headerText: Value(headerText),
+      footerText: Value(footerText),
+      returnPolicy: Value(returnPolicy),
+      customNotes: Value(customNotes),
+      showLogo: Value(showLogo),
+      logoLocalPath: Value(logoLocalPath),
+      logoUrl: Value(logoUrl),
+      showQrCode: Value(showQrCode),
+      showTaxBreakdown: Value(showTaxBreakdown),
+      showCashierName: Value(showCashierName),
+      showCustomerName: Value(showCustomerName),
+      showDateTime: Value(showDateTime),
+      showOrderId: Value(showOrderId),
+      paperSize: Value(paperSize),
+      fontSize: Value(fontSize),
+      textAlignment: Value(textAlignment),
+      autoPrintAfterCheckout: Value(autoPrintAfterCheckout),
+      printDuplicateCopy: Value(printDuplicateCopy),
+      thermalPrinterEnabled: Value(thermalPrinterEnabled),
+      currencySymbol: Value(currencySymbol),
+      taxPercentage: Value(taxPercentage),
+      serviceChargePercentage: Value(serviceChargePercentage),
+      vatInclusive: Value(vatInclusive),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      syncStatus: Value(syncStatus),
+      lastSyncAttempt: lastSyncAttempt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSyncAttempt),
+      syncError: syncError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncError),
+      localUpdatedAt: Value(localUpdatedAt),
+    );
+  }
+
+  factory ReceiptSettingsRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ReceiptSettingsRow(
+      id: serializer.fromJson<String>(json['id']),
+      businessId: serializer.fromJson<String>(json['businessId']),
+      businessName: serializer.fromJson<String>(json['businessName']),
+      storeName: serializer.fromJson<String>(json['storeName']),
+      ownerName: serializer.fromJson<String>(json['ownerName']),
+      address: serializer.fromJson<String>(json['address']),
+      contactNumber: serializer.fromJson<String>(json['contactNumber']),
+      email: serializer.fromJson<String>(json['email']),
+      website: serializer.fromJson<String>(json['website']),
+      tinNumber: serializer.fromJson<String>(json['tinNumber']),
+      permitNumber: serializer.fromJson<String>(json['permitNumber']),
+      headerText: serializer.fromJson<String>(json['headerText']),
+      footerText: serializer.fromJson<String>(json['footerText']),
+      returnPolicy: serializer.fromJson<String>(json['returnPolicy']),
+      customNotes: serializer.fromJson<String>(json['customNotes']),
+      showLogo: serializer.fromJson<bool>(json['showLogo']),
+      logoLocalPath: serializer.fromJson<String>(json['logoLocalPath']),
+      logoUrl: serializer.fromJson<String>(json['logoUrl']),
+      showQrCode: serializer.fromJson<bool>(json['showQrCode']),
+      showTaxBreakdown: serializer.fromJson<bool>(json['showTaxBreakdown']),
+      showCashierName: serializer.fromJson<bool>(json['showCashierName']),
+      showCustomerName: serializer.fromJson<bool>(json['showCustomerName']),
+      showDateTime: serializer.fromJson<bool>(json['showDateTime']),
+      showOrderId: serializer.fromJson<bool>(json['showOrderId']),
+      paperSize: serializer.fromJson<String>(json['paperSize']),
+      fontSize: serializer.fromJson<String>(json['fontSize']),
+      textAlignment: serializer.fromJson<String>(json['textAlignment']),
+      autoPrintAfterCheckout: serializer.fromJson<bool>(
+        json['autoPrintAfterCheckout'],
+      ),
+      printDuplicateCopy: serializer.fromJson<bool>(json['printDuplicateCopy']),
+      thermalPrinterEnabled: serializer.fromJson<bool>(
+        json['thermalPrinterEnabled'],
+      ),
+      currencySymbol: serializer.fromJson<String>(json['currencySymbol']),
+      taxPercentage: serializer.fromJson<double>(json['taxPercentage']),
+      serviceChargePercentage: serializer.fromJson<double>(
+        json['serviceChargePercentage'],
+      ),
+      vatInclusive: serializer.fromJson<bool>(json['vatInclusive']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      syncStatus: serializer.fromJson<int>(json['syncStatus']),
+      lastSyncAttempt: serializer.fromJson<DateTime?>(json['lastSyncAttempt']),
+      syncError: serializer.fromJson<String?>(json['syncError']),
+      localUpdatedAt: serializer.fromJson<DateTime>(json['localUpdatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'businessId': serializer.toJson<String>(businessId),
+      'businessName': serializer.toJson<String>(businessName),
+      'storeName': serializer.toJson<String>(storeName),
+      'ownerName': serializer.toJson<String>(ownerName),
+      'address': serializer.toJson<String>(address),
+      'contactNumber': serializer.toJson<String>(contactNumber),
+      'email': serializer.toJson<String>(email),
+      'website': serializer.toJson<String>(website),
+      'tinNumber': serializer.toJson<String>(tinNumber),
+      'permitNumber': serializer.toJson<String>(permitNumber),
+      'headerText': serializer.toJson<String>(headerText),
+      'footerText': serializer.toJson<String>(footerText),
+      'returnPolicy': serializer.toJson<String>(returnPolicy),
+      'customNotes': serializer.toJson<String>(customNotes),
+      'showLogo': serializer.toJson<bool>(showLogo),
+      'logoLocalPath': serializer.toJson<String>(logoLocalPath),
+      'logoUrl': serializer.toJson<String>(logoUrl),
+      'showQrCode': serializer.toJson<bool>(showQrCode),
+      'showTaxBreakdown': serializer.toJson<bool>(showTaxBreakdown),
+      'showCashierName': serializer.toJson<bool>(showCashierName),
+      'showCustomerName': serializer.toJson<bool>(showCustomerName),
+      'showDateTime': serializer.toJson<bool>(showDateTime),
+      'showOrderId': serializer.toJson<bool>(showOrderId),
+      'paperSize': serializer.toJson<String>(paperSize),
+      'fontSize': serializer.toJson<String>(fontSize),
+      'textAlignment': serializer.toJson<String>(textAlignment),
+      'autoPrintAfterCheckout': serializer.toJson<bool>(autoPrintAfterCheckout),
+      'printDuplicateCopy': serializer.toJson<bool>(printDuplicateCopy),
+      'thermalPrinterEnabled': serializer.toJson<bool>(thermalPrinterEnabled),
+      'currencySymbol': serializer.toJson<String>(currencySymbol),
+      'taxPercentage': serializer.toJson<double>(taxPercentage),
+      'serviceChargePercentage': serializer.toJson<double>(
+        serviceChargePercentage,
+      ),
+      'vatInclusive': serializer.toJson<bool>(vatInclusive),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'syncStatus': serializer.toJson<int>(syncStatus),
+      'lastSyncAttempt': serializer.toJson<DateTime?>(lastSyncAttempt),
+      'syncError': serializer.toJson<String?>(syncError),
+      'localUpdatedAt': serializer.toJson<DateTime>(localUpdatedAt),
+    };
+  }
+
+  ReceiptSettingsRow copyWith({
+    String? id,
+    String? businessId,
+    String? businessName,
+    String? storeName,
+    String? ownerName,
+    String? address,
+    String? contactNumber,
+    String? email,
+    String? website,
+    String? tinNumber,
+    String? permitNumber,
+    String? headerText,
+    String? footerText,
+    String? returnPolicy,
+    String? customNotes,
+    bool? showLogo,
+    String? logoLocalPath,
+    String? logoUrl,
+    bool? showQrCode,
+    bool? showTaxBreakdown,
+    bool? showCashierName,
+    bool? showCustomerName,
+    bool? showDateTime,
+    bool? showOrderId,
+    String? paperSize,
+    String? fontSize,
+    String? textAlignment,
+    bool? autoPrintAfterCheckout,
+    bool? printDuplicateCopy,
+    bool? thermalPrinterEnabled,
+    String? currencySymbol,
+    double? taxPercentage,
+    double? serviceChargePercentage,
+    bool? vatInclusive,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    int? syncStatus,
+    Value<DateTime?> lastSyncAttempt = const Value.absent(),
+    Value<String?> syncError = const Value.absent(),
+    DateTime? localUpdatedAt,
+  }) => ReceiptSettingsRow(
+    id: id ?? this.id,
+    businessId: businessId ?? this.businessId,
+    businessName: businessName ?? this.businessName,
+    storeName: storeName ?? this.storeName,
+    ownerName: ownerName ?? this.ownerName,
+    address: address ?? this.address,
+    contactNumber: contactNumber ?? this.contactNumber,
+    email: email ?? this.email,
+    website: website ?? this.website,
+    tinNumber: tinNumber ?? this.tinNumber,
+    permitNumber: permitNumber ?? this.permitNumber,
+    headerText: headerText ?? this.headerText,
+    footerText: footerText ?? this.footerText,
+    returnPolicy: returnPolicy ?? this.returnPolicy,
+    customNotes: customNotes ?? this.customNotes,
+    showLogo: showLogo ?? this.showLogo,
+    logoLocalPath: logoLocalPath ?? this.logoLocalPath,
+    logoUrl: logoUrl ?? this.logoUrl,
+    showQrCode: showQrCode ?? this.showQrCode,
+    showTaxBreakdown: showTaxBreakdown ?? this.showTaxBreakdown,
+    showCashierName: showCashierName ?? this.showCashierName,
+    showCustomerName: showCustomerName ?? this.showCustomerName,
+    showDateTime: showDateTime ?? this.showDateTime,
+    showOrderId: showOrderId ?? this.showOrderId,
+    paperSize: paperSize ?? this.paperSize,
+    fontSize: fontSize ?? this.fontSize,
+    textAlignment: textAlignment ?? this.textAlignment,
+    autoPrintAfterCheckout:
+        autoPrintAfterCheckout ?? this.autoPrintAfterCheckout,
+    printDuplicateCopy: printDuplicateCopy ?? this.printDuplicateCopy,
+    thermalPrinterEnabled: thermalPrinterEnabled ?? this.thermalPrinterEnabled,
+    currencySymbol: currencySymbol ?? this.currencySymbol,
+    taxPercentage: taxPercentage ?? this.taxPercentage,
+    serviceChargePercentage:
+        serviceChargePercentage ?? this.serviceChargePercentage,
+    vatInclusive: vatInclusive ?? this.vatInclusive,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    syncStatus: syncStatus ?? this.syncStatus,
+    lastSyncAttempt: lastSyncAttempt.present
+        ? lastSyncAttempt.value
+        : this.lastSyncAttempt,
+    syncError: syncError.present ? syncError.value : this.syncError,
+    localUpdatedAt: localUpdatedAt ?? this.localUpdatedAt,
+  );
+  ReceiptSettingsRow copyWithCompanion(ReceiptSettingsTableCompanion data) {
+    return ReceiptSettingsRow(
+      id: data.id.present ? data.id.value : this.id,
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      businessName: data.businessName.present
+          ? data.businessName.value
+          : this.businessName,
+      storeName: data.storeName.present ? data.storeName.value : this.storeName,
+      ownerName: data.ownerName.present ? data.ownerName.value : this.ownerName,
+      address: data.address.present ? data.address.value : this.address,
+      contactNumber: data.contactNumber.present
+          ? data.contactNumber.value
+          : this.contactNumber,
+      email: data.email.present ? data.email.value : this.email,
+      website: data.website.present ? data.website.value : this.website,
+      tinNumber: data.tinNumber.present ? data.tinNumber.value : this.tinNumber,
+      permitNumber: data.permitNumber.present
+          ? data.permitNumber.value
+          : this.permitNumber,
+      headerText: data.headerText.present
+          ? data.headerText.value
+          : this.headerText,
+      footerText: data.footerText.present
+          ? data.footerText.value
+          : this.footerText,
+      returnPolicy: data.returnPolicy.present
+          ? data.returnPolicy.value
+          : this.returnPolicy,
+      customNotes: data.customNotes.present
+          ? data.customNotes.value
+          : this.customNotes,
+      showLogo: data.showLogo.present ? data.showLogo.value : this.showLogo,
+      logoLocalPath: data.logoLocalPath.present
+          ? data.logoLocalPath.value
+          : this.logoLocalPath,
+      logoUrl: data.logoUrl.present ? data.logoUrl.value : this.logoUrl,
+      showQrCode: data.showQrCode.present
+          ? data.showQrCode.value
+          : this.showQrCode,
+      showTaxBreakdown: data.showTaxBreakdown.present
+          ? data.showTaxBreakdown.value
+          : this.showTaxBreakdown,
+      showCashierName: data.showCashierName.present
+          ? data.showCashierName.value
+          : this.showCashierName,
+      showCustomerName: data.showCustomerName.present
+          ? data.showCustomerName.value
+          : this.showCustomerName,
+      showDateTime: data.showDateTime.present
+          ? data.showDateTime.value
+          : this.showDateTime,
+      showOrderId: data.showOrderId.present
+          ? data.showOrderId.value
+          : this.showOrderId,
+      paperSize: data.paperSize.present ? data.paperSize.value : this.paperSize,
+      fontSize: data.fontSize.present ? data.fontSize.value : this.fontSize,
+      textAlignment: data.textAlignment.present
+          ? data.textAlignment.value
+          : this.textAlignment,
+      autoPrintAfterCheckout: data.autoPrintAfterCheckout.present
+          ? data.autoPrintAfterCheckout.value
+          : this.autoPrintAfterCheckout,
+      printDuplicateCopy: data.printDuplicateCopy.present
+          ? data.printDuplicateCopy.value
+          : this.printDuplicateCopy,
+      thermalPrinterEnabled: data.thermalPrinterEnabled.present
+          ? data.thermalPrinterEnabled.value
+          : this.thermalPrinterEnabled,
+      currencySymbol: data.currencySymbol.present
+          ? data.currencySymbol.value
+          : this.currencySymbol,
+      taxPercentage: data.taxPercentage.present
+          ? data.taxPercentage.value
+          : this.taxPercentage,
+      serviceChargePercentage: data.serviceChargePercentage.present
+          ? data.serviceChargePercentage.value
+          : this.serviceChargePercentage,
+      vatInclusive: data.vatInclusive.present
+          ? data.vatInclusive.value
+          : this.vatInclusive,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      syncStatus: data.syncStatus.present
+          ? data.syncStatus.value
+          : this.syncStatus,
+      lastSyncAttempt: data.lastSyncAttempt.present
+          ? data.lastSyncAttempt.value
+          : this.lastSyncAttempt,
+      syncError: data.syncError.present ? data.syncError.value : this.syncError,
+      localUpdatedAt: data.localUpdatedAt.present
+          ? data.localUpdatedAt.value
+          : this.localUpdatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReceiptSettingsRow(')
+          ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
+          ..write('businessName: $businessName, ')
+          ..write('storeName: $storeName, ')
+          ..write('ownerName: $ownerName, ')
+          ..write('address: $address, ')
+          ..write('contactNumber: $contactNumber, ')
+          ..write('email: $email, ')
+          ..write('website: $website, ')
+          ..write('tinNumber: $tinNumber, ')
+          ..write('permitNumber: $permitNumber, ')
+          ..write('headerText: $headerText, ')
+          ..write('footerText: $footerText, ')
+          ..write('returnPolicy: $returnPolicy, ')
+          ..write('customNotes: $customNotes, ')
+          ..write('showLogo: $showLogo, ')
+          ..write('logoLocalPath: $logoLocalPath, ')
+          ..write('logoUrl: $logoUrl, ')
+          ..write('showQrCode: $showQrCode, ')
+          ..write('showTaxBreakdown: $showTaxBreakdown, ')
+          ..write('showCashierName: $showCashierName, ')
+          ..write('showCustomerName: $showCustomerName, ')
+          ..write('showDateTime: $showDateTime, ')
+          ..write('showOrderId: $showOrderId, ')
+          ..write('paperSize: $paperSize, ')
+          ..write('fontSize: $fontSize, ')
+          ..write('textAlignment: $textAlignment, ')
+          ..write('autoPrintAfterCheckout: $autoPrintAfterCheckout, ')
+          ..write('printDuplicateCopy: $printDuplicateCopy, ')
+          ..write('thermalPrinterEnabled: $thermalPrinterEnabled, ')
+          ..write('currencySymbol: $currencySymbol, ')
+          ..write('taxPercentage: $taxPercentage, ')
+          ..write('serviceChargePercentage: $serviceChargePercentage, ')
+          ..write('vatInclusive: $vatInclusive, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncAttempt: $lastSyncAttempt, ')
+          ..write('syncError: $syncError, ')
+          ..write('localUpdatedAt: $localUpdatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hashAll([
+    id,
+    businessId,
+    businessName,
+    storeName,
+    ownerName,
+    address,
+    contactNumber,
+    email,
+    website,
+    tinNumber,
+    permitNumber,
+    headerText,
+    footerText,
+    returnPolicy,
+    customNotes,
+    showLogo,
+    logoLocalPath,
+    logoUrl,
+    showQrCode,
+    showTaxBreakdown,
+    showCashierName,
+    showCustomerName,
+    showDateTime,
+    showOrderId,
+    paperSize,
+    fontSize,
+    textAlignment,
+    autoPrintAfterCheckout,
+    printDuplicateCopy,
+    thermalPrinterEnabled,
+    currencySymbol,
+    taxPercentage,
+    serviceChargePercentage,
+    vatInclusive,
+    createdAt,
+    updatedAt,
+    syncStatus,
+    lastSyncAttempt,
+    syncError,
+    localUpdatedAt,
+  ]);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ReceiptSettingsRow &&
+          other.id == this.id &&
+          other.businessId == this.businessId &&
+          other.businessName == this.businessName &&
+          other.storeName == this.storeName &&
+          other.ownerName == this.ownerName &&
+          other.address == this.address &&
+          other.contactNumber == this.contactNumber &&
+          other.email == this.email &&
+          other.website == this.website &&
+          other.tinNumber == this.tinNumber &&
+          other.permitNumber == this.permitNumber &&
+          other.headerText == this.headerText &&
+          other.footerText == this.footerText &&
+          other.returnPolicy == this.returnPolicy &&
+          other.customNotes == this.customNotes &&
+          other.showLogo == this.showLogo &&
+          other.logoLocalPath == this.logoLocalPath &&
+          other.logoUrl == this.logoUrl &&
+          other.showQrCode == this.showQrCode &&
+          other.showTaxBreakdown == this.showTaxBreakdown &&
+          other.showCashierName == this.showCashierName &&
+          other.showCustomerName == this.showCustomerName &&
+          other.showDateTime == this.showDateTime &&
+          other.showOrderId == this.showOrderId &&
+          other.paperSize == this.paperSize &&
+          other.fontSize == this.fontSize &&
+          other.textAlignment == this.textAlignment &&
+          other.autoPrintAfterCheckout == this.autoPrintAfterCheckout &&
+          other.printDuplicateCopy == this.printDuplicateCopy &&
+          other.thermalPrinterEnabled == this.thermalPrinterEnabled &&
+          other.currencySymbol == this.currencySymbol &&
+          other.taxPercentage == this.taxPercentage &&
+          other.serviceChargePercentage == this.serviceChargePercentage &&
+          other.vatInclusive == this.vatInclusive &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.syncStatus == this.syncStatus &&
+          other.lastSyncAttempt == this.lastSyncAttempt &&
+          other.syncError == this.syncError &&
+          other.localUpdatedAt == this.localUpdatedAt);
+}
+
+class ReceiptSettingsTableCompanion
+    extends UpdateCompanion<ReceiptSettingsRow> {
+  final Value<String> id;
+  final Value<String> businessId;
+  final Value<String> businessName;
+  final Value<String> storeName;
+  final Value<String> ownerName;
+  final Value<String> address;
+  final Value<String> contactNumber;
+  final Value<String> email;
+  final Value<String> website;
+  final Value<String> tinNumber;
+  final Value<String> permitNumber;
+  final Value<String> headerText;
+  final Value<String> footerText;
+  final Value<String> returnPolicy;
+  final Value<String> customNotes;
+  final Value<bool> showLogo;
+  final Value<String> logoLocalPath;
+  final Value<String> logoUrl;
+  final Value<bool> showQrCode;
+  final Value<bool> showTaxBreakdown;
+  final Value<bool> showCashierName;
+  final Value<bool> showCustomerName;
+  final Value<bool> showDateTime;
+  final Value<bool> showOrderId;
+  final Value<String> paperSize;
+  final Value<String> fontSize;
+  final Value<String> textAlignment;
+  final Value<bool> autoPrintAfterCheckout;
+  final Value<bool> printDuplicateCopy;
+  final Value<bool> thermalPrinterEnabled;
+  final Value<String> currencySymbol;
+  final Value<double> taxPercentage;
+  final Value<double> serviceChargePercentage;
+  final Value<bool> vatInclusive;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> syncStatus;
+  final Value<DateTime?> lastSyncAttempt;
+  final Value<String?> syncError;
+  final Value<DateTime> localUpdatedAt;
+  final Value<int> rowid;
+  const ReceiptSettingsTableCompanion({
+    this.id = const Value.absent(),
+    this.businessId = const Value.absent(),
+    this.businessName = const Value.absent(),
+    this.storeName = const Value.absent(),
+    this.ownerName = const Value.absent(),
+    this.address = const Value.absent(),
+    this.contactNumber = const Value.absent(),
+    this.email = const Value.absent(),
+    this.website = const Value.absent(),
+    this.tinNumber = const Value.absent(),
+    this.permitNumber = const Value.absent(),
+    this.headerText = const Value.absent(),
+    this.footerText = const Value.absent(),
+    this.returnPolicy = const Value.absent(),
+    this.customNotes = const Value.absent(),
+    this.showLogo = const Value.absent(),
+    this.logoLocalPath = const Value.absent(),
+    this.logoUrl = const Value.absent(),
+    this.showQrCode = const Value.absent(),
+    this.showTaxBreakdown = const Value.absent(),
+    this.showCashierName = const Value.absent(),
+    this.showCustomerName = const Value.absent(),
+    this.showDateTime = const Value.absent(),
+    this.showOrderId = const Value.absent(),
+    this.paperSize = const Value.absent(),
+    this.fontSize = const Value.absent(),
+    this.textAlignment = const Value.absent(),
+    this.autoPrintAfterCheckout = const Value.absent(),
+    this.printDuplicateCopy = const Value.absent(),
+    this.thermalPrinterEnabled = const Value.absent(),
+    this.currencySymbol = const Value.absent(),
+    this.taxPercentage = const Value.absent(),
+    this.serviceChargePercentage = const Value.absent(),
+    this.vatInclusive = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.lastSyncAttempt = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.localUpdatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ReceiptSettingsTableCompanion.insert({
+    required String id,
+    required String businessId,
+    this.businessName = const Value.absent(),
+    this.storeName = const Value.absent(),
+    this.ownerName = const Value.absent(),
+    this.address = const Value.absent(),
+    this.contactNumber = const Value.absent(),
+    this.email = const Value.absent(),
+    this.website = const Value.absent(),
+    this.tinNumber = const Value.absent(),
+    this.permitNumber = const Value.absent(),
+    this.headerText = const Value.absent(),
+    this.footerText = const Value.absent(),
+    this.returnPolicy = const Value.absent(),
+    this.customNotes = const Value.absent(),
+    this.showLogo = const Value.absent(),
+    this.logoLocalPath = const Value.absent(),
+    this.logoUrl = const Value.absent(),
+    this.showQrCode = const Value.absent(),
+    this.showTaxBreakdown = const Value.absent(),
+    this.showCashierName = const Value.absent(),
+    this.showCustomerName = const Value.absent(),
+    this.showDateTime = const Value.absent(),
+    this.showOrderId = const Value.absent(),
+    this.paperSize = const Value.absent(),
+    this.fontSize = const Value.absent(),
+    this.textAlignment = const Value.absent(),
+    this.autoPrintAfterCheckout = const Value.absent(),
+    this.printDuplicateCopy = const Value.absent(),
+    this.thermalPrinterEnabled = const Value.absent(),
+    this.currencySymbol = const Value.absent(),
+    this.taxPercentage = const Value.absent(),
+    this.serviceChargePercentage = const Value.absent(),
+    this.vatInclusive = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.lastSyncAttempt = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.localUpdatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       businessId = Value(businessId);
+  static Insertable<ReceiptSettingsRow> custom({
+    Expression<String>? id,
+    Expression<String>? businessId,
+    Expression<String>? businessName,
+    Expression<String>? storeName,
+    Expression<String>? ownerName,
+    Expression<String>? address,
+    Expression<String>? contactNumber,
+    Expression<String>? email,
+    Expression<String>? website,
+    Expression<String>? tinNumber,
+    Expression<String>? permitNumber,
+    Expression<String>? headerText,
+    Expression<String>? footerText,
+    Expression<String>? returnPolicy,
+    Expression<String>? customNotes,
+    Expression<bool>? showLogo,
+    Expression<String>? logoLocalPath,
+    Expression<String>? logoUrl,
+    Expression<bool>? showQrCode,
+    Expression<bool>? showTaxBreakdown,
+    Expression<bool>? showCashierName,
+    Expression<bool>? showCustomerName,
+    Expression<bool>? showDateTime,
+    Expression<bool>? showOrderId,
+    Expression<String>? paperSize,
+    Expression<String>? fontSize,
+    Expression<String>? textAlignment,
+    Expression<bool>? autoPrintAfterCheckout,
+    Expression<bool>? printDuplicateCopy,
+    Expression<bool>? thermalPrinterEnabled,
+    Expression<String>? currencySymbol,
+    Expression<double>? taxPercentage,
+    Expression<double>? serviceChargePercentage,
+    Expression<bool>? vatInclusive,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? syncStatus,
+    Expression<DateTime>? lastSyncAttempt,
+    Expression<String>? syncError,
+    Expression<DateTime>? localUpdatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (businessId != null) 'business_id': businessId,
+      if (businessName != null) 'business_name': businessName,
+      if (storeName != null) 'store_name': storeName,
+      if (ownerName != null) 'owner_name': ownerName,
+      if (address != null) 'address': address,
+      if (contactNumber != null) 'contact_number': contactNumber,
+      if (email != null) 'email': email,
+      if (website != null) 'website': website,
+      if (tinNumber != null) 'tin_number': tinNumber,
+      if (permitNumber != null) 'permit_number': permitNumber,
+      if (headerText != null) 'header_text': headerText,
+      if (footerText != null) 'footer_text': footerText,
+      if (returnPolicy != null) 'return_policy': returnPolicy,
+      if (customNotes != null) 'custom_notes': customNotes,
+      if (showLogo != null) 'show_logo': showLogo,
+      if (logoLocalPath != null) 'logo_local_path': logoLocalPath,
+      if (logoUrl != null) 'logo_url': logoUrl,
+      if (showQrCode != null) 'show_qr_code': showQrCode,
+      if (showTaxBreakdown != null) 'show_tax_breakdown': showTaxBreakdown,
+      if (showCashierName != null) 'show_cashier_name': showCashierName,
+      if (showCustomerName != null) 'show_customer_name': showCustomerName,
+      if (showDateTime != null) 'show_date_time': showDateTime,
+      if (showOrderId != null) 'show_order_id': showOrderId,
+      if (paperSize != null) 'paper_size': paperSize,
+      if (fontSize != null) 'font_size': fontSize,
+      if (textAlignment != null) 'text_alignment': textAlignment,
+      if (autoPrintAfterCheckout != null)
+        'auto_print_after_checkout': autoPrintAfterCheckout,
+      if (printDuplicateCopy != null)
+        'print_duplicate_copy': printDuplicateCopy,
+      if (thermalPrinterEnabled != null)
+        'thermal_printer_enabled': thermalPrinterEnabled,
+      if (currencySymbol != null) 'currency_symbol': currencySymbol,
+      if (taxPercentage != null) 'tax_percentage': taxPercentage,
+      if (serviceChargePercentage != null)
+        'service_charge_percentage': serviceChargePercentage,
+      if (vatInclusive != null) 'vat_inclusive': vatInclusive,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (lastSyncAttempt != null) 'last_sync_attempt': lastSyncAttempt,
+      if (syncError != null) 'sync_error': syncError,
+      if (localUpdatedAt != null) 'local_updated_at': localUpdatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ReceiptSettingsTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? businessId,
+    Value<String>? businessName,
+    Value<String>? storeName,
+    Value<String>? ownerName,
+    Value<String>? address,
+    Value<String>? contactNumber,
+    Value<String>? email,
+    Value<String>? website,
+    Value<String>? tinNumber,
+    Value<String>? permitNumber,
+    Value<String>? headerText,
+    Value<String>? footerText,
+    Value<String>? returnPolicy,
+    Value<String>? customNotes,
+    Value<bool>? showLogo,
+    Value<String>? logoLocalPath,
+    Value<String>? logoUrl,
+    Value<bool>? showQrCode,
+    Value<bool>? showTaxBreakdown,
+    Value<bool>? showCashierName,
+    Value<bool>? showCustomerName,
+    Value<bool>? showDateTime,
+    Value<bool>? showOrderId,
+    Value<String>? paperSize,
+    Value<String>? fontSize,
+    Value<String>? textAlignment,
+    Value<bool>? autoPrintAfterCheckout,
+    Value<bool>? printDuplicateCopy,
+    Value<bool>? thermalPrinterEnabled,
+    Value<String>? currencySymbol,
+    Value<double>? taxPercentage,
+    Value<double>? serviceChargePercentage,
+    Value<bool>? vatInclusive,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? syncStatus,
+    Value<DateTime?>? lastSyncAttempt,
+    Value<String?>? syncError,
+    Value<DateTime>? localUpdatedAt,
+    Value<int>? rowid,
+  }) {
+    return ReceiptSettingsTableCompanion(
+      id: id ?? this.id,
+      businessId: businessId ?? this.businessId,
+      businessName: businessName ?? this.businessName,
+      storeName: storeName ?? this.storeName,
+      ownerName: ownerName ?? this.ownerName,
+      address: address ?? this.address,
+      contactNumber: contactNumber ?? this.contactNumber,
+      email: email ?? this.email,
+      website: website ?? this.website,
+      tinNumber: tinNumber ?? this.tinNumber,
+      permitNumber: permitNumber ?? this.permitNumber,
+      headerText: headerText ?? this.headerText,
+      footerText: footerText ?? this.footerText,
+      returnPolicy: returnPolicy ?? this.returnPolicy,
+      customNotes: customNotes ?? this.customNotes,
+      showLogo: showLogo ?? this.showLogo,
+      logoLocalPath: logoLocalPath ?? this.logoLocalPath,
+      logoUrl: logoUrl ?? this.logoUrl,
+      showQrCode: showQrCode ?? this.showQrCode,
+      showTaxBreakdown: showTaxBreakdown ?? this.showTaxBreakdown,
+      showCashierName: showCashierName ?? this.showCashierName,
+      showCustomerName: showCustomerName ?? this.showCustomerName,
+      showDateTime: showDateTime ?? this.showDateTime,
+      showOrderId: showOrderId ?? this.showOrderId,
+      paperSize: paperSize ?? this.paperSize,
+      fontSize: fontSize ?? this.fontSize,
+      textAlignment: textAlignment ?? this.textAlignment,
+      autoPrintAfterCheckout:
+          autoPrintAfterCheckout ?? this.autoPrintAfterCheckout,
+      printDuplicateCopy: printDuplicateCopy ?? this.printDuplicateCopy,
+      thermalPrinterEnabled:
+          thermalPrinterEnabled ?? this.thermalPrinterEnabled,
+      currencySymbol: currencySymbol ?? this.currencySymbol,
+      taxPercentage: taxPercentage ?? this.taxPercentage,
+      serviceChargePercentage:
+          serviceChargePercentage ?? this.serviceChargePercentage,
+      vatInclusive: vatInclusive ?? this.vatInclusive,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      syncStatus: syncStatus ?? this.syncStatus,
+      lastSyncAttempt: lastSyncAttempt ?? this.lastSyncAttempt,
+      syncError: syncError ?? this.syncError,
+      localUpdatedAt: localUpdatedAt ?? this.localUpdatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (businessName.present) {
+      map['business_name'] = Variable<String>(businessName.value);
+    }
+    if (storeName.present) {
+      map['store_name'] = Variable<String>(storeName.value);
+    }
+    if (ownerName.present) {
+      map['owner_name'] = Variable<String>(ownerName.value);
+    }
+    if (address.present) {
+      map['address'] = Variable<String>(address.value);
+    }
+    if (contactNumber.present) {
+      map['contact_number'] = Variable<String>(contactNumber.value);
+    }
+    if (email.present) {
+      map['email'] = Variable<String>(email.value);
+    }
+    if (website.present) {
+      map['website'] = Variable<String>(website.value);
+    }
+    if (tinNumber.present) {
+      map['tin_number'] = Variable<String>(tinNumber.value);
+    }
+    if (permitNumber.present) {
+      map['permit_number'] = Variable<String>(permitNumber.value);
+    }
+    if (headerText.present) {
+      map['header_text'] = Variable<String>(headerText.value);
+    }
+    if (footerText.present) {
+      map['footer_text'] = Variable<String>(footerText.value);
+    }
+    if (returnPolicy.present) {
+      map['return_policy'] = Variable<String>(returnPolicy.value);
+    }
+    if (customNotes.present) {
+      map['custom_notes'] = Variable<String>(customNotes.value);
+    }
+    if (showLogo.present) {
+      map['show_logo'] = Variable<bool>(showLogo.value);
+    }
+    if (logoLocalPath.present) {
+      map['logo_local_path'] = Variable<String>(logoLocalPath.value);
+    }
+    if (logoUrl.present) {
+      map['logo_url'] = Variable<String>(logoUrl.value);
+    }
+    if (showQrCode.present) {
+      map['show_qr_code'] = Variable<bool>(showQrCode.value);
+    }
+    if (showTaxBreakdown.present) {
+      map['show_tax_breakdown'] = Variable<bool>(showTaxBreakdown.value);
+    }
+    if (showCashierName.present) {
+      map['show_cashier_name'] = Variable<bool>(showCashierName.value);
+    }
+    if (showCustomerName.present) {
+      map['show_customer_name'] = Variable<bool>(showCustomerName.value);
+    }
+    if (showDateTime.present) {
+      map['show_date_time'] = Variable<bool>(showDateTime.value);
+    }
+    if (showOrderId.present) {
+      map['show_order_id'] = Variable<bool>(showOrderId.value);
+    }
+    if (paperSize.present) {
+      map['paper_size'] = Variable<String>(paperSize.value);
+    }
+    if (fontSize.present) {
+      map['font_size'] = Variable<String>(fontSize.value);
+    }
+    if (textAlignment.present) {
+      map['text_alignment'] = Variable<String>(textAlignment.value);
+    }
+    if (autoPrintAfterCheckout.present) {
+      map['auto_print_after_checkout'] = Variable<bool>(
+        autoPrintAfterCheckout.value,
+      );
+    }
+    if (printDuplicateCopy.present) {
+      map['print_duplicate_copy'] = Variable<bool>(printDuplicateCopy.value);
+    }
+    if (thermalPrinterEnabled.present) {
+      map['thermal_printer_enabled'] = Variable<bool>(
+        thermalPrinterEnabled.value,
+      );
+    }
+    if (currencySymbol.present) {
+      map['currency_symbol'] = Variable<String>(currencySymbol.value);
+    }
+    if (taxPercentage.present) {
+      map['tax_percentage'] = Variable<double>(taxPercentage.value);
+    }
+    if (serviceChargePercentage.present) {
+      map['service_charge_percentage'] = Variable<double>(
+        serviceChargePercentage.value,
+      );
+    }
+    if (vatInclusive.present) {
+      map['vat_inclusive'] = Variable<bool>(vatInclusive.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<int>(syncStatus.value);
+    }
+    if (lastSyncAttempt.present) {
+      map['last_sync_attempt'] = Variable<DateTime>(lastSyncAttempt.value);
+    }
+    if (syncError.present) {
+      map['sync_error'] = Variable<String>(syncError.value);
+    }
+    if (localUpdatedAt.present) {
+      map['local_updated_at'] = Variable<DateTime>(localUpdatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReceiptSettingsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
+          ..write('businessName: $businessName, ')
+          ..write('storeName: $storeName, ')
+          ..write('ownerName: $ownerName, ')
+          ..write('address: $address, ')
+          ..write('contactNumber: $contactNumber, ')
+          ..write('email: $email, ')
+          ..write('website: $website, ')
+          ..write('tinNumber: $tinNumber, ')
+          ..write('permitNumber: $permitNumber, ')
+          ..write('headerText: $headerText, ')
+          ..write('footerText: $footerText, ')
+          ..write('returnPolicy: $returnPolicy, ')
+          ..write('customNotes: $customNotes, ')
+          ..write('showLogo: $showLogo, ')
+          ..write('logoLocalPath: $logoLocalPath, ')
+          ..write('logoUrl: $logoUrl, ')
+          ..write('showQrCode: $showQrCode, ')
+          ..write('showTaxBreakdown: $showTaxBreakdown, ')
+          ..write('showCashierName: $showCashierName, ')
+          ..write('showCustomerName: $showCustomerName, ')
+          ..write('showDateTime: $showDateTime, ')
+          ..write('showOrderId: $showOrderId, ')
+          ..write('paperSize: $paperSize, ')
+          ..write('fontSize: $fontSize, ')
+          ..write('textAlignment: $textAlignment, ')
+          ..write('autoPrintAfterCheckout: $autoPrintAfterCheckout, ')
+          ..write('printDuplicateCopy: $printDuplicateCopy, ')
+          ..write('thermalPrinterEnabled: $thermalPrinterEnabled, ')
+          ..write('currencySymbol: $currencySymbol, ')
+          ..write('taxPercentage: $taxPercentage, ')
+          ..write('serviceChargePercentage: $serviceChargePercentage, ')
+          ..write('vatInclusive: $vatInclusive, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncAttempt: $lastSyncAttempt, ')
+          ..write('syncError: $syncError, ')
+          ..write('localUpdatedAt: $localUpdatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -9434,6 +11601,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $StockLedgerTableTable stockLedgerTable = $StockLedgerTableTable(
     this,
   );
+  late final $ReceiptSettingsTableTable receiptSettingsTable =
+      $ReceiptSettingsTableTable(this);
   late final AuthContextDao authContextDao = AuthContextDao(
     this as AppDatabase,
   );
@@ -9457,6 +11626,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final StockLedgerDao stockLedgerDao = StockLedgerDao(
     this as AppDatabase,
   );
+  late final ReceiptSettingsDao receiptSettingsDao = ReceiptSettingsDao(
+    this as AppDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -9474,6 +11646,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     transactionItemsTable,
     inventoryLevelsTable,
     stockLedgerTable,
+    receiptSettingsTable,
   ];
 }
 
@@ -13953,6 +16126,939 @@ typedef $$StockLedgerTableTableProcessedTableManager =
       StockLedgerTableData,
       PrefetchHooks Function()
     >;
+typedef $$ReceiptSettingsTableTableCreateCompanionBuilder =
+    ReceiptSettingsTableCompanion Function({
+      required String id,
+      required String businessId,
+      Value<String> businessName,
+      Value<String> storeName,
+      Value<String> ownerName,
+      Value<String> address,
+      Value<String> contactNumber,
+      Value<String> email,
+      Value<String> website,
+      Value<String> tinNumber,
+      Value<String> permitNumber,
+      Value<String> headerText,
+      Value<String> footerText,
+      Value<String> returnPolicy,
+      Value<String> customNotes,
+      Value<bool> showLogo,
+      Value<String> logoLocalPath,
+      Value<String> logoUrl,
+      Value<bool> showQrCode,
+      Value<bool> showTaxBreakdown,
+      Value<bool> showCashierName,
+      Value<bool> showCustomerName,
+      Value<bool> showDateTime,
+      Value<bool> showOrderId,
+      Value<String> paperSize,
+      Value<String> fontSize,
+      Value<String> textAlignment,
+      Value<bool> autoPrintAfterCheckout,
+      Value<bool> printDuplicateCopy,
+      Value<bool> thermalPrinterEnabled,
+      Value<String> currencySymbol,
+      Value<double> taxPercentage,
+      Value<double> serviceChargePercentage,
+      Value<bool> vatInclusive,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> syncStatus,
+      Value<DateTime?> lastSyncAttempt,
+      Value<String?> syncError,
+      Value<DateTime> localUpdatedAt,
+      Value<int> rowid,
+    });
+typedef $$ReceiptSettingsTableTableUpdateCompanionBuilder =
+    ReceiptSettingsTableCompanion Function({
+      Value<String> id,
+      Value<String> businessId,
+      Value<String> businessName,
+      Value<String> storeName,
+      Value<String> ownerName,
+      Value<String> address,
+      Value<String> contactNumber,
+      Value<String> email,
+      Value<String> website,
+      Value<String> tinNumber,
+      Value<String> permitNumber,
+      Value<String> headerText,
+      Value<String> footerText,
+      Value<String> returnPolicy,
+      Value<String> customNotes,
+      Value<bool> showLogo,
+      Value<String> logoLocalPath,
+      Value<String> logoUrl,
+      Value<bool> showQrCode,
+      Value<bool> showTaxBreakdown,
+      Value<bool> showCashierName,
+      Value<bool> showCustomerName,
+      Value<bool> showDateTime,
+      Value<bool> showOrderId,
+      Value<String> paperSize,
+      Value<String> fontSize,
+      Value<String> textAlignment,
+      Value<bool> autoPrintAfterCheckout,
+      Value<bool> printDuplicateCopy,
+      Value<bool> thermalPrinterEnabled,
+      Value<String> currencySymbol,
+      Value<double> taxPercentage,
+      Value<double> serviceChargePercentage,
+      Value<bool> vatInclusive,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> syncStatus,
+      Value<DateTime?> lastSyncAttempt,
+      Value<String?> syncError,
+      Value<DateTime> localUpdatedAt,
+      Value<int> rowid,
+    });
+
+class $$ReceiptSettingsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $ReceiptSettingsTableTable> {
+  $$ReceiptSettingsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessName => $composableBuilder(
+    column: $table.businessName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get storeName => $composableBuilder(
+    column: $table.storeName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ownerName => $composableBuilder(
+    column: $table.ownerName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get address => $composableBuilder(
+    column: $table.address,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get contactNumber => $composableBuilder(
+    column: $table.contactNumber,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get website => $composableBuilder(
+    column: $table.website,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tinNumber => $composableBuilder(
+    column: $table.tinNumber,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get permitNumber => $composableBuilder(
+    column: $table.permitNumber,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get headerText => $composableBuilder(
+    column: $table.headerText,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get footerText => $composableBuilder(
+    column: $table.footerText,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get returnPolicy => $composableBuilder(
+    column: $table.returnPolicy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get customNotes => $composableBuilder(
+    column: $table.customNotes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get showLogo => $composableBuilder(
+    column: $table.showLogo,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get logoLocalPath => $composableBuilder(
+    column: $table.logoLocalPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get logoUrl => $composableBuilder(
+    column: $table.logoUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get showQrCode => $composableBuilder(
+    column: $table.showQrCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get showTaxBreakdown => $composableBuilder(
+    column: $table.showTaxBreakdown,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get showCashierName => $composableBuilder(
+    column: $table.showCashierName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get showCustomerName => $composableBuilder(
+    column: $table.showCustomerName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get showDateTime => $composableBuilder(
+    column: $table.showDateTime,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get showOrderId => $composableBuilder(
+    column: $table.showOrderId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get paperSize => $composableBuilder(
+    column: $table.paperSize,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fontSize => $composableBuilder(
+    column: $table.fontSize,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get textAlignment => $composableBuilder(
+    column: $table.textAlignment,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get autoPrintAfterCheckout => $composableBuilder(
+    column: $table.autoPrintAfterCheckout,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get printDuplicateCopy => $composableBuilder(
+    column: $table.printDuplicateCopy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get thermalPrinterEnabled => $composableBuilder(
+    column: $table.thermalPrinterEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currencySymbol => $composableBuilder(
+    column: $table.currencySymbol,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get taxPercentage => $composableBuilder(
+    column: $table.taxPercentage,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get serviceChargePercentage => $composableBuilder(
+    column: $table.serviceChargePercentage,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get vatInclusive => $composableBuilder(
+    column: $table.vatInclusive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get localUpdatedAt => $composableBuilder(
+    column: $table.localUpdatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ReceiptSettingsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $ReceiptSettingsTableTable> {
+  $$ReceiptSettingsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessName => $composableBuilder(
+    column: $table.businessName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get storeName => $composableBuilder(
+    column: $table.storeName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ownerName => $composableBuilder(
+    column: $table.ownerName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get address => $composableBuilder(
+    column: $table.address,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get contactNumber => $composableBuilder(
+    column: $table.contactNumber,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get website => $composableBuilder(
+    column: $table.website,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tinNumber => $composableBuilder(
+    column: $table.tinNumber,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get permitNumber => $composableBuilder(
+    column: $table.permitNumber,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get headerText => $composableBuilder(
+    column: $table.headerText,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get footerText => $composableBuilder(
+    column: $table.footerText,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get returnPolicy => $composableBuilder(
+    column: $table.returnPolicy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get customNotes => $composableBuilder(
+    column: $table.customNotes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get showLogo => $composableBuilder(
+    column: $table.showLogo,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get logoLocalPath => $composableBuilder(
+    column: $table.logoLocalPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get logoUrl => $composableBuilder(
+    column: $table.logoUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get showQrCode => $composableBuilder(
+    column: $table.showQrCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get showTaxBreakdown => $composableBuilder(
+    column: $table.showTaxBreakdown,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get showCashierName => $composableBuilder(
+    column: $table.showCashierName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get showCustomerName => $composableBuilder(
+    column: $table.showCustomerName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get showDateTime => $composableBuilder(
+    column: $table.showDateTime,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get showOrderId => $composableBuilder(
+    column: $table.showOrderId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get paperSize => $composableBuilder(
+    column: $table.paperSize,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fontSize => $composableBuilder(
+    column: $table.fontSize,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get textAlignment => $composableBuilder(
+    column: $table.textAlignment,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get autoPrintAfterCheckout => $composableBuilder(
+    column: $table.autoPrintAfterCheckout,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get printDuplicateCopy => $composableBuilder(
+    column: $table.printDuplicateCopy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get thermalPrinterEnabled => $composableBuilder(
+    column: $table.thermalPrinterEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get currencySymbol => $composableBuilder(
+    column: $table.currencySymbol,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get taxPercentage => $composableBuilder(
+    column: $table.taxPercentage,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get serviceChargePercentage => $composableBuilder(
+    column: $table.serviceChargePercentage,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get vatInclusive => $composableBuilder(
+    column: $table.vatInclusive,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get localUpdatedAt => $composableBuilder(
+    column: $table.localUpdatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ReceiptSettingsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ReceiptSettingsTableTable> {
+  $$ReceiptSettingsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get businessName => $composableBuilder(
+    column: $table.businessName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get storeName =>
+      $composableBuilder(column: $table.storeName, builder: (column) => column);
+
+  GeneratedColumn<String> get ownerName =>
+      $composableBuilder(column: $table.ownerName, builder: (column) => column);
+
+  GeneratedColumn<String> get address =>
+      $composableBuilder(column: $table.address, builder: (column) => column);
+
+  GeneratedColumn<String> get contactNumber => $composableBuilder(
+    column: $table.contactNumber,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get email =>
+      $composableBuilder(column: $table.email, builder: (column) => column);
+
+  GeneratedColumn<String> get website =>
+      $composableBuilder(column: $table.website, builder: (column) => column);
+
+  GeneratedColumn<String> get tinNumber =>
+      $composableBuilder(column: $table.tinNumber, builder: (column) => column);
+
+  GeneratedColumn<String> get permitNumber => $composableBuilder(
+    column: $table.permitNumber,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get headerText => $composableBuilder(
+    column: $table.headerText,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get footerText => $composableBuilder(
+    column: $table.footerText,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get returnPolicy => $composableBuilder(
+    column: $table.returnPolicy,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get customNotes => $composableBuilder(
+    column: $table.customNotes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get showLogo =>
+      $composableBuilder(column: $table.showLogo, builder: (column) => column);
+
+  GeneratedColumn<String> get logoLocalPath => $composableBuilder(
+    column: $table.logoLocalPath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get logoUrl =>
+      $composableBuilder(column: $table.logoUrl, builder: (column) => column);
+
+  GeneratedColumn<bool> get showQrCode => $composableBuilder(
+    column: $table.showQrCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get showTaxBreakdown => $composableBuilder(
+    column: $table.showTaxBreakdown,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get showCashierName => $composableBuilder(
+    column: $table.showCashierName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get showCustomerName => $composableBuilder(
+    column: $table.showCustomerName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get showDateTime => $composableBuilder(
+    column: $table.showDateTime,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get showOrderId => $composableBuilder(
+    column: $table.showOrderId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get paperSize =>
+      $composableBuilder(column: $table.paperSize, builder: (column) => column);
+
+  GeneratedColumn<String> get fontSize =>
+      $composableBuilder(column: $table.fontSize, builder: (column) => column);
+
+  GeneratedColumn<String> get textAlignment => $composableBuilder(
+    column: $table.textAlignment,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get autoPrintAfterCheckout => $composableBuilder(
+    column: $table.autoPrintAfterCheckout,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get printDuplicateCopy => $composableBuilder(
+    column: $table.printDuplicateCopy,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get thermalPrinterEnabled => $composableBuilder(
+    column: $table.thermalPrinterEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get currencySymbol => $composableBuilder(
+    column: $table.currencySymbol,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get taxPercentage => $composableBuilder(
+    column: $table.taxPercentage,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get serviceChargePercentage => $composableBuilder(
+    column: $table.serviceChargePercentage,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get vatInclusive => $composableBuilder(
+    column: $table.vatInclusive,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get syncError =>
+      $composableBuilder(column: $table.syncError, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get localUpdatedAt => $composableBuilder(
+    column: $table.localUpdatedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$ReceiptSettingsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ReceiptSettingsTableTable,
+          ReceiptSettingsRow,
+          $$ReceiptSettingsTableTableFilterComposer,
+          $$ReceiptSettingsTableTableOrderingComposer,
+          $$ReceiptSettingsTableTableAnnotationComposer,
+          $$ReceiptSettingsTableTableCreateCompanionBuilder,
+          $$ReceiptSettingsTableTableUpdateCompanionBuilder,
+          (
+            ReceiptSettingsRow,
+            BaseReferences<
+              _$AppDatabase,
+              $ReceiptSettingsTableTable,
+              ReceiptSettingsRow
+            >,
+          ),
+          ReceiptSettingsRow,
+          PrefetchHooks Function()
+        > {
+  $$ReceiptSettingsTableTableTableManager(
+    _$AppDatabase db,
+    $ReceiptSettingsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ReceiptSettingsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ReceiptSettingsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$ReceiptSettingsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> businessId = const Value.absent(),
+                Value<String> businessName = const Value.absent(),
+                Value<String> storeName = const Value.absent(),
+                Value<String> ownerName = const Value.absent(),
+                Value<String> address = const Value.absent(),
+                Value<String> contactNumber = const Value.absent(),
+                Value<String> email = const Value.absent(),
+                Value<String> website = const Value.absent(),
+                Value<String> tinNumber = const Value.absent(),
+                Value<String> permitNumber = const Value.absent(),
+                Value<String> headerText = const Value.absent(),
+                Value<String> footerText = const Value.absent(),
+                Value<String> returnPolicy = const Value.absent(),
+                Value<String> customNotes = const Value.absent(),
+                Value<bool> showLogo = const Value.absent(),
+                Value<String> logoLocalPath = const Value.absent(),
+                Value<String> logoUrl = const Value.absent(),
+                Value<bool> showQrCode = const Value.absent(),
+                Value<bool> showTaxBreakdown = const Value.absent(),
+                Value<bool> showCashierName = const Value.absent(),
+                Value<bool> showCustomerName = const Value.absent(),
+                Value<bool> showDateTime = const Value.absent(),
+                Value<bool> showOrderId = const Value.absent(),
+                Value<String> paperSize = const Value.absent(),
+                Value<String> fontSize = const Value.absent(),
+                Value<String> textAlignment = const Value.absent(),
+                Value<bool> autoPrintAfterCheckout = const Value.absent(),
+                Value<bool> printDuplicateCopy = const Value.absent(),
+                Value<bool> thermalPrinterEnabled = const Value.absent(),
+                Value<String> currencySymbol = const Value.absent(),
+                Value<double> taxPercentage = const Value.absent(),
+                Value<double> serviceChargePercentage = const Value.absent(),
+                Value<bool> vatInclusive = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> syncStatus = const Value.absent(),
+                Value<DateTime?> lastSyncAttempt = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<DateTime> localUpdatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ReceiptSettingsTableCompanion(
+                id: id,
+                businessId: businessId,
+                businessName: businessName,
+                storeName: storeName,
+                ownerName: ownerName,
+                address: address,
+                contactNumber: contactNumber,
+                email: email,
+                website: website,
+                tinNumber: tinNumber,
+                permitNumber: permitNumber,
+                headerText: headerText,
+                footerText: footerText,
+                returnPolicy: returnPolicy,
+                customNotes: customNotes,
+                showLogo: showLogo,
+                logoLocalPath: logoLocalPath,
+                logoUrl: logoUrl,
+                showQrCode: showQrCode,
+                showTaxBreakdown: showTaxBreakdown,
+                showCashierName: showCashierName,
+                showCustomerName: showCustomerName,
+                showDateTime: showDateTime,
+                showOrderId: showOrderId,
+                paperSize: paperSize,
+                fontSize: fontSize,
+                textAlignment: textAlignment,
+                autoPrintAfterCheckout: autoPrintAfterCheckout,
+                printDuplicateCopy: printDuplicateCopy,
+                thermalPrinterEnabled: thermalPrinterEnabled,
+                currencySymbol: currencySymbol,
+                taxPercentage: taxPercentage,
+                serviceChargePercentage: serviceChargePercentage,
+                vatInclusive: vatInclusive,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                syncStatus: syncStatus,
+                lastSyncAttempt: lastSyncAttempt,
+                syncError: syncError,
+                localUpdatedAt: localUpdatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String businessId,
+                Value<String> businessName = const Value.absent(),
+                Value<String> storeName = const Value.absent(),
+                Value<String> ownerName = const Value.absent(),
+                Value<String> address = const Value.absent(),
+                Value<String> contactNumber = const Value.absent(),
+                Value<String> email = const Value.absent(),
+                Value<String> website = const Value.absent(),
+                Value<String> tinNumber = const Value.absent(),
+                Value<String> permitNumber = const Value.absent(),
+                Value<String> headerText = const Value.absent(),
+                Value<String> footerText = const Value.absent(),
+                Value<String> returnPolicy = const Value.absent(),
+                Value<String> customNotes = const Value.absent(),
+                Value<bool> showLogo = const Value.absent(),
+                Value<String> logoLocalPath = const Value.absent(),
+                Value<String> logoUrl = const Value.absent(),
+                Value<bool> showQrCode = const Value.absent(),
+                Value<bool> showTaxBreakdown = const Value.absent(),
+                Value<bool> showCashierName = const Value.absent(),
+                Value<bool> showCustomerName = const Value.absent(),
+                Value<bool> showDateTime = const Value.absent(),
+                Value<bool> showOrderId = const Value.absent(),
+                Value<String> paperSize = const Value.absent(),
+                Value<String> fontSize = const Value.absent(),
+                Value<String> textAlignment = const Value.absent(),
+                Value<bool> autoPrintAfterCheckout = const Value.absent(),
+                Value<bool> printDuplicateCopy = const Value.absent(),
+                Value<bool> thermalPrinterEnabled = const Value.absent(),
+                Value<String> currencySymbol = const Value.absent(),
+                Value<double> taxPercentage = const Value.absent(),
+                Value<double> serviceChargePercentage = const Value.absent(),
+                Value<bool> vatInclusive = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> syncStatus = const Value.absent(),
+                Value<DateTime?> lastSyncAttempt = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<DateTime> localUpdatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ReceiptSettingsTableCompanion.insert(
+                id: id,
+                businessId: businessId,
+                businessName: businessName,
+                storeName: storeName,
+                ownerName: ownerName,
+                address: address,
+                contactNumber: contactNumber,
+                email: email,
+                website: website,
+                tinNumber: tinNumber,
+                permitNumber: permitNumber,
+                headerText: headerText,
+                footerText: footerText,
+                returnPolicy: returnPolicy,
+                customNotes: customNotes,
+                showLogo: showLogo,
+                logoLocalPath: logoLocalPath,
+                logoUrl: logoUrl,
+                showQrCode: showQrCode,
+                showTaxBreakdown: showTaxBreakdown,
+                showCashierName: showCashierName,
+                showCustomerName: showCustomerName,
+                showDateTime: showDateTime,
+                showOrderId: showOrderId,
+                paperSize: paperSize,
+                fontSize: fontSize,
+                textAlignment: textAlignment,
+                autoPrintAfterCheckout: autoPrintAfterCheckout,
+                printDuplicateCopy: printDuplicateCopy,
+                thermalPrinterEnabled: thermalPrinterEnabled,
+                currencySymbol: currencySymbol,
+                taxPercentage: taxPercentage,
+                serviceChargePercentage: serviceChargePercentage,
+                vatInclusive: vatInclusive,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                syncStatus: syncStatus,
+                lastSyncAttempt: lastSyncAttempt,
+                syncError: syncError,
+                localUpdatedAt: localUpdatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ReceiptSettingsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ReceiptSettingsTableTable,
+      ReceiptSettingsRow,
+      $$ReceiptSettingsTableTableFilterComposer,
+      $$ReceiptSettingsTableTableOrderingComposer,
+      $$ReceiptSettingsTableTableAnnotationComposer,
+      $$ReceiptSettingsTableTableCreateCompanionBuilder,
+      $$ReceiptSettingsTableTableUpdateCompanionBuilder,
+      (
+        ReceiptSettingsRow,
+        BaseReferences<
+          _$AppDatabase,
+          $ReceiptSettingsTableTable,
+          ReceiptSettingsRow
+        >,
+      ),
+      ReceiptSettingsRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -13984,4 +17090,6 @@ class $AppDatabaseManager {
       $$InventoryLevelsTableTableTableManager(_db, _db.inventoryLevelsTable);
   $$StockLedgerTableTableTableManager get stockLedgerTable =>
       $$StockLedgerTableTableTableManager(_db, _db.stockLedgerTable);
+  $$ReceiptSettingsTableTableTableManager get receiptSettingsTable =>
+      $$ReceiptSettingsTableTableTableManager(_db, _db.receiptSettingsTable);
 }

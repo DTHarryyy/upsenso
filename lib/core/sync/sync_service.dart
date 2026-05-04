@@ -19,6 +19,7 @@ import 'package:pos/features/business/domain/entities/branch.dart';
 import 'package:pos/features/expenses/data/datasources/expenses_remote_ds.dart';
 import 'package:pos/features/products/data/datasources/products_remote_ds.dart';
 import 'package:pos/features/pos/data/datasources/transactions_remote_ds.dart';
+import 'package:pos/features/settings/data/receipt_settings_repository.dart';
 
 /// Service to handle synchronization between local Drift DB and Supabase
 class SyncService {
@@ -37,6 +38,7 @@ class SyncService {
   final ProductsRemoteDs _productsRemoteDs;
   final TransactionsRemoteDs _transactionsRemoteDs;
   final ConnectivityService _connectivityService;
+  final ReceiptSettingsRepository _receiptSettingsRepo;
 
   StreamSubscription<bool>? _connectivitySubscription;
   bool _isSyncing = false;
@@ -57,6 +59,7 @@ class SyncService {
     required ProductsRemoteDs productsRemoteDs,
     required TransactionsRemoteDs transactionsRemoteDs,
     required ConnectivityService connectivityService,
+    required ReceiptSettingsRepository receiptSettingsRepository,
   }) : _authContextDao = authContextDao,
        _branchesDao = branchesDao,
        _businessesDao = businessesDao,
@@ -71,7 +74,8 @@ class SyncService {
        _expensesRemoteDs = expensesRemoteDs,
        _productsRemoteDs = productsRemoteDs,
        _transactionsRemoteDs = transactionsRemoteDs,
-       _connectivityService = connectivityService;
+       _connectivityService = connectivityService,
+       _receiptSettingsRepo = receiptSettingsRepository;
 
   /// Returns [provided] if non-null, otherwise reads businessId from the
   /// locally cached auth context. This allows connectivity-triggered syncs
@@ -115,6 +119,7 @@ class SyncService {
     await _categoriesDao.clearAll();
     await _branchesDao.clearAll();
     await _businessesDao.clearAll();
+    await _receiptSettingsRepo.clearAll();
     await _authContextDao.clearAll();
   }
 
@@ -123,12 +128,12 @@ class SyncService {
 
   /// Reactive total count of pending sync records across ALL tables.
   Stream<int> watchTotalPendingSyncCount() {
-    int cat = 0, prod = 0, vars = 0, orders = 0, exp = 0, inv = 0, led = 0;
+    int cat = 0, prod = 0, vars = 0, orders = 0, exp = 0, inv = 0, led = 0, rcpt = 0;
     final controller = StreamController<int>.broadcast();
 
     void emit() {
       if (!controller.isClosed) {
-        controller.add(cat + prod + vars + orders + exp + inv + led);
+        controller.add(cat + prod + vars + orders + exp + inv + led + rcpt);
       }
     }
 
@@ -139,10 +144,12 @@ class SyncService {
     final s5 = _expensesDao.watchPendingSyncCount().listen((n) { exp = n; emit(); });
     final s6 = _inventoryLevelsDao.watchPendingSyncCount().listen((n) { inv = n; emit(); });
     final s7 = _stockLedgerDao.watchPendingSyncCount().listen((n) { led = n; emit(); });
+    // ignore: avoid_function_literals_in_foreach_calls — DAO doesn't expose stream directly
+    final s8 = _receiptSettingsRepo.watchPendingSyncCount().listen((n) { rcpt = n; emit(); });
 
     controller.onCancel = () {
       s1.cancel(); s2.cancel(); s3.cancel(); s4.cancel();
-      s5.cancel(); s6.cancel(); s7.cancel();
+      s5.cancel(); s6.cancel(); s7.cancel(); s8.cancel();
       controller.close();
     };
 
@@ -172,6 +179,7 @@ class SyncService {
       final expenseResult = await _syncExpenses();
       final inventoryResult = await _syncInventoryLevels();
       final ledgerResult = await _syncStockLedger();
+      await _syncReceiptSettings(); // fire-and-forget style; errors logged internally
 
       final int totalSynced = businessResult.syncedCount +
           categoryResult.syncedCount +
@@ -878,6 +886,14 @@ class SyncService {
       errors.add('Pull branches: ${e.toString()}');
     }
 
+    try {
+      await _receiptSettingsRepo.pullFromServer(businessId);
+      pulled++;
+    } catch (e) {
+      failed++;
+      errors.add('Pull receipt settings: ${e.toString()}');
+    }
+
     return SyncResult(
       success: failed == 0,
       message: 'Pull: $pulled records, $failed errors',
@@ -885,6 +901,14 @@ class SyncService {
       failedCount: failed,
       errors: errors,
     );
+  }
+
+  Future<void> _syncReceiptSettings() async {
+    try {
+      await _receiptSettingsRepo.syncPending();
+    } catch (e) {
+      debugPrint('[SYNC] Receipt settings push failed: $e');
+    }
   }
 
   /// Pull latest business data from server and update local DB.

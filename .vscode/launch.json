@@ -1,12 +1,20 @@
 {
   "configurations": [
-    
-
     {
       "name": "POS (dev)",
       "request": "launch",
       "type": "dart",
-      "args": ["--dart-define-from-file=flavors/dev.json"]
+      "args": ["--dart-define-from-file=${workspaceFolder}/flavors/dev.json"]
+    },
+    {
+      "name": "POS Web (dev)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "chrome",
+      "args": [
+        "--dart-define-from-file=${workspaceFolder}/flavors/dev.json",
+        "--web-port=3000"
+      ]
     }
   ]
 }

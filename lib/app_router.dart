@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pos/core/const/app_key.dart';
@@ -32,6 +32,8 @@ import 'package:pos/features/products/pages/add_products.dart';
 import 'package:pos/features/profile/presentation/profile_page.dart';
 import 'package:pos/features/expenses/presentation/expenses_page.dart';
 import 'package:pos/features/sales/sales_history.dart';
+import 'package:pos/features/settings/presentation/receipt_settings_page.dart';
+import 'package:pos/features/settings/presentation/settings_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:pos/features/onboarding/onboarding.dart';
@@ -85,8 +87,10 @@ class AppRouter {
           goingToResetPassword;
       final isAuthRoute = isPublicAuthRoute || isPasswordResetRoute;
 
+      // Web browsers don't need the mobile onboarding carousel.
       final prefs = await SharedPreferences.getInstance();
-      final seen = prefs.getBool(AppKey.seenOnboarding) ?? false;
+      final seen =
+          kIsWeb || (prefs.getBool(AppKey.seenOnboarding) ?? false);
 
       if (!seen) {
         if (!goingToOnboarding) return AppRoutes.onboarding;
@@ -125,6 +129,12 @@ class AppRouter {
     },
 
     routes: [
+      GoRoute(
+          path: AppRoutes.settings,
+          builder: (context, _) => const SettingsPage()),
+      GoRoute(
+          path: AppRoutes.receiptSettings,
+          builder: (context, _) => const ReceiptSettingsPage()),
       GoRoute(
           path: AppRoutes.saleshistory,
           builder: (context, _) => const SalesHistory()),

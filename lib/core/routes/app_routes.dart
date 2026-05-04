@@ -30,4 +30,8 @@ class AppRoutes {
 
   // Expenses
   static const String expenses = '/more/expenses';
+
+  // Settings
+  static const String settings = '/settings';
+  static const String receiptSettings = '/settings/receipt';
 }
