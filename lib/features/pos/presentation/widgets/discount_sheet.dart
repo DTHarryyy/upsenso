@@ -2,17 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/services/cart_service.dart';
+import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/features/pos/data/models/cart_model.dart';
 
 /// Shows the discount bottom sheet and applies the chosen discount to [cartService].
-void showDiscountSheet(BuildContext context, CartService cartService,
-    double subtotal) {
+void showDiscountSheet(
+  BuildContext context,
+  CartService cartService,
+  double subtotal,
+) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) =>
-        DiscountSheet(cartService: cartService, subtotal: subtotal),
+    builder: (_) => DiscountSheet(cartService: cartService, subtotal: subtotal),
   );
 }
 
@@ -65,8 +68,7 @@ class _DiscountSheetState extends State<DiscountSheet> {
 
   void _setPreset(double v) {
     setState(() => _value = v);
-    _controller.text =
-        v % 1 == 0 ? v.toInt().toString() : v.toStringAsFixed(2);
+    _controller.text = v % 1 == 0 ? v.toInt().toString() : v.toStringAsFixed(2);
   }
 
   double get _discountedAmount {
@@ -82,15 +84,11 @@ class _DiscountSheetState extends State<DiscountSheet> {
 
   bool get _canApply => _value > 0;
 
-  String _fmt(double v) => '₱${v.toStringAsFixed(2).replaceAllMapped(
-        RegExp(r'(\d)(?=(\d{3})+\.)'),
-        (m) => '${m[1]},',
-      )}';
-
   @override
   Widget build(BuildContext context) {
-    final presets =
-        _type == DiscountType.percentage ? _pctPresets : _fixedPresets;
+    final presets = _type == DiscountType.percentage
+        ? _pctPresets
+        : _fixedPresets;
     final bottomPad = MediaQuery.viewInsetsOf(context).bottom;
 
     return Container(
@@ -127,8 +125,11 @@ class _DiscountSheetState extends State<DiscountSheet> {
                   ),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.local_offer_rounded,
-                    color: Colors.white, size: 18),
+                child: const Icon(
+                  Icons.local_offer_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
               ),
               const SizedBox(width: 12),
               Text(
@@ -181,8 +182,7 @@ class _DiscountSheetState extends State<DiscountSheet> {
           TextField(
             controller: _controller,
             autofocus: true,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             style: getOutfitStyle(
               fontSize: 22,
               fontWeight: FontWeight.w700,
@@ -190,33 +190,39 @@ class _DiscountSheetState extends State<DiscountSheet> {
             ),
             decoration: InputDecoration(
               prefixText: _type == DiscountType.fixed ? '₱  ' : null,
-              suffixText:
-                  _type == DiscountType.percentage ? '%' : null,
+              suffixText: _type == DiscountType.percentage ? '%' : null,
               prefixStyle: getOutfitStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textMuted),
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textMuted,
+              ),
               suffixStyle: getOutfitStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textMuted),
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textMuted,
+              ),
               hintText: '0',
               hintStyle: getOutfitStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.borderSoft),
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: AppColors.borderSoft,
+              ),
               filled: true,
               fillColor: AppColors.inputFill,
               contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 14),
+                horizontal: 16,
+                vertical: 14,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide:
-                    const BorderSide(color: AppColors.brand, width: 1.5),
+                borderSide: const BorderSide(
+                  color: AppColors.brand,
+                  width: 1.5,
+                ),
               ),
             ),
           ),
@@ -236,11 +242,11 @@ class _DiscountSheetState extends State<DiscountSheet> {
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 140),
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 8),
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
-                    color: isSelected
-                        ? AppColors.brand
-                        : AppColors.inputFill,
+                    color: isSelected ? AppColors.brand : AppColors.inputFill,
                     borderRadius: BorderRadius.circular(100),
                     border: Border.all(
                       color: isSelected
@@ -278,11 +284,15 @@ class _DiscountSheetState extends State<DiscountSheet> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Discount',
-                          style: getOutfitStyle(
-                              fontSize: 12, color: AppColors.success)),
                       Text(
-                        '− ${_fmt(_discountedAmount)}',
+                        'Discount',
+                        style: getOutfitStyle(
+                          fontSize: 12,
+                          color: AppColors.success,
+                        ),
+                      ),
+                      Text(
+                        '− ${AppFormatters.currency(_discountedAmount)}',
                         style: getOutfitStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
@@ -294,12 +304,15 @@ class _DiscountSheetState extends State<DiscountSheet> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text('New Total',
-                          style: getOutfitStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary)),
                       Text(
-                        _fmt(_finalTotal),
+                        'New Total',
+                        style: getOutfitStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      Text(
+                        AppFormatters.currency(_finalTotal),
                         style: getOutfitStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
@@ -328,14 +341,16 @@ class _DiscountSheetState extends State<DiscountSheet> {
                       foregroundColor: AppColors.error,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     child: Text(
                       'Remove',
                       style: getOutfitStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.error),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.error,
+                      ),
                     ),
                   ),
                 ),
@@ -354,14 +369,16 @@ class _DiscountSheetState extends State<DiscountSheet> {
                     backgroundColor: AppColors.brand,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   child: Text(
                     'Apply Discount',
                     style: getOutfitStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -411,17 +428,18 @@ class DiscountTypeTab extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon,
-                  size: 15,
-                  color: selected ? AppColors.brand : AppColors.textMuted),
+              Icon(
+                icon,
+                size: 15,
+                color: selected ? AppColors.brand : AppColors.textMuted,
+              ),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: getOutfitStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color:
-                      selected ? AppColors.brand : AppColors.textSecondary,
+                  color: selected ? AppColors.brand : AppColors.textSecondary,
                 ),
               ),
             ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/features/dashboard/data/dashboard_data.dart';
 import 'package:pos/features/dashboard/presentation/widgets/dashboard_empty_state.dart';
 
@@ -65,22 +66,28 @@ class TopSellingItems extends StatelessWidget {
                           Text(
                             item.name,
                             style: const TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.w500),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
                             '${item.sold} sold',
                             style: TextStyle(
-                                fontSize: 12, color: Colors.grey.shade500),
+                              fontSize: 12,
+                              color: Colors.grey.shade500,
+                            ),
                           ),
                         ],
                       ),
                     ),
                     Text(
-                      '₱${item.revenue.toStringAsFixed(2)}',
+                      AppFormatters.currency(item.revenue),
                       style: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w600),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),

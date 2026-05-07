@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/features/expenses/domain/expense_item.dart';
 import 'package:pos/features/expenses/presentation/cubit/expenses_cubit.dart';
 import 'package:pos/features/expenses/presentation/widgets/expense_detail_sheet.dart';
@@ -138,54 +139,68 @@ class _TableRow extends StatelessWidget {
         children: [
           SizedBox(
             width: _colDate,
-            child: Text(dateStr,
-                style: getOutfitStyle(
-                    fontSize: 13, color: AppColors.textSecondary)),
+            child: Text(
+              dateStr,
+              style: getOutfitStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+            ),
           ),
           SizedBox(
             width: _colCategory,
-            child: Text(item.category,
-                style: getOutfitStyle(
-                    fontSize: 13, color: AppColors.textPrimary),
-                overflow: TextOverflow.ellipsis),
+            child: Text(
+              item.category,
+              style: getOutfitStyle(fontSize: 13, color: AppColors.textPrimary),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
           SizedBox(
             width: _colVendor,
-            child: Text(item.vendor,
-                style: getOutfitStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary),
-                overflow: TextOverflow.ellipsis),
+            child: Text(
+              item.vendor,
+              style: getOutfitStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
           SizedBox(
             width: _colBranch,
-            child: Text(item.branchName ?? 'All',
-                style: getOutfitStyle(
-                    fontSize: 13, color: AppColors.textSecondary),
-                overflow: TextOverflow.ellipsis),
+            child: Text(
+              item.branchName ?? 'All',
+              style: getOutfitStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
           SizedBox(
             width: _colAmount,
             child: Text(
-              '₱${item.amount.toStringAsFixed(2)}',
+              AppFormatters.currency(item.amount),
               textAlign: TextAlign.right,
               style: getOutfitStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary),
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
             ),
           ),
-          SizedBox(
-            width: _colStatus,
-            child: ExpenseStatusBadge(item.status),
-          ),
+          SizedBox(width: _colStatus, child: ExpenseStatusBadge(item.status)),
           SizedBox(
             width: _colSubmitted,
-            child: Text(item.submittedByName,
-                style: getOutfitStyle(
-                    fontSize: 13, color: AppColors.textSecondary),
-                overflow: TextOverflow.ellipsis),
+            child: Text(
+              item.submittedByName,
+              style: getOutfitStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
           SizedBox(
             width: _colActions,

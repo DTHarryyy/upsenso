@@ -12,6 +12,7 @@ import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/ui/status/status_snack.dart';
 import 'package:pos/core/ui/status/status_type.dart';
+import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/features/pos/domain/usecases/resolve_barcode_use_case.dart';
 import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
@@ -25,11 +26,7 @@ class PosTerminalPage extends StatefulWidget {
   final bool isActive;
   final VoidCallback? onClose;
 
-  const PosTerminalPage({
-    super.key,
-    this.isActive = true,
-    this.onClose,
-  });
+  const PosTerminalPage({super.key, this.isActive = true, this.onClose});
 
   @override
   State<PosTerminalPage> createState() => _PosTerminalPageState();
@@ -126,12 +123,8 @@ class _PosTerminalPageState extends State<PosTerminalPage>
   double get _subtotal => _cartService.items.fold(0.0, (s, i) => s + i.total);
   double get _tax => _cartService.items.fold(0.0, (s, i) => s + i.taxAmount);
   double get _discountAmount => _cartService.discountAmount(_subtotal);
-  double get _grandTotal => (_subtotal - _discountAmount + _tax).clamp(0.0, double.infinity);
-
-  String _fmt(double v) => '₱${v.toStringAsFixed(2).replaceAllMapped(
-        RegExp(r'(\d)(?=(\d{3})+\.)'),
-        (m) => '${m[1]},',
-      )}';
+  double get _grandTotal =>
+      (_subtotal - _discountAmount + _tax).clamp(0.0, double.infinity);
 
   void _toggleTorch() {
     _scannerController.toggleTorch();
@@ -320,8 +313,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
             const Text('No product matches this barcode.'),
             const SizedBox(height: 8),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
                 color: AppColors.surfaceAlt,
                 borderRadius: BorderRadius.circular(8),
@@ -338,8 +330,9 @@ class _PosTerminalPageState extends State<PosTerminalPage>
             const SizedBox(height: 8),
             Text(
               'Would you like to add it as a new product?',
-              style: AppTextStyles.body(context)
-                  .copyWith(color: AppColors.textSecondary),
+              style: AppTextStyles.body(
+                context,
+              ).copyWith(color: AppColors.textSecondary),
             ),
           ],
         ),
@@ -421,7 +414,6 @@ class _PosTerminalPageState extends State<PosTerminalPage>
     );
   }
 
-
   Widget _buildTablet(BuildContext context) {
     final panelWidth = Breakpoints.isDesktop(context) ? 400.0 : 340.0;
     return Scaffold(
@@ -457,17 +449,16 @@ class _PosTerminalPageState extends State<PosTerminalPage>
             width: panelWidth,
             decoration: const BoxDecoration(
               color: AppColors.surface,
-              border: Border(
-                left: BorderSide(color: AppColors.borderSoft),
-              ),
+              border: Border(left: BorderSide(color: AppColors.borderSoft)),
             ),
-            child: SafeArea(child: _buildCartPanelContent(_tabletScrollController)),
+            child: SafeArea(
+              child: _buildCartPanelContent(_tabletScrollController),
+            ),
           ),
         ],
       ),
     );
   }
-
 
   Widget _buildCartSheet(ScrollController sc) {
     return ClipRRect(
@@ -486,60 +477,13 @@ class _PosTerminalPageState extends State<PosTerminalPage>
         child: ListenableBuilder(
           listenable: _cartService,
           builder: (_, _) => _isCollapsed
-            ? SingleChildScrollView(
-                controller: sc,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    GestureDetector(
-                      onTap: _tapDragHandle,
-                      behavior: HitTestBehavior.opaque,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        child: Container(
-                          width: 36,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: AppColors.borderSoft,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                      ),
-                    ),
-                    _buildCollapsedStrip(),
-                  ],
-                ),
-              )
-            : LayoutBuilder(
-                builder: (ctx, constraints) {
-                  final showFooter =
-                      _cartService.isNotEmpty && constraints.maxHeight >= 340;
-                  return Column(
+              ? SingleChildScrollView(
+                  controller: sc,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       GestureDetector(
                         onTap: _tapDragHandle,
-                        onVerticalDragUpdate: (details) {
-                          if (!_sheetController.isAttached) return;
-                          final screenH = MediaQuery.sizeOf(context).height;
-                          final delta = -(details.primaryDelta ?? 0) / screenH;
-                          _sheetController.jumpTo(
-                            (_sheetController.size + delta).clamp(0.10, 0.76),
-                          );
-                        },
-                        onVerticalDragEnd: (details) {
-                          if (!_sheetController.isAttached) return;
-                          final current = _sheetController.size;
-                          const snapPoints = [0.10, 0.50, 0.76];
-                          final nearest = snapPoints.reduce((a, b) =>
-                              (a - current).abs() < (b - current).abs()
-                                  ? a
-                                  : b);
-                          _sheetController.animateTo(
-                            nearest,
-                            duration: const Duration(milliseconds: 250),
-                            curve: Curves.easeOut,
-                          );
-                        },
                         behavior: HitTestBehavior.opaque,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -553,29 +497,81 @@ class _PosTerminalPageState extends State<PosTerminalPage>
                           ),
                         ),
                       ),
-                      _buildCartHeader(),
-                      Expanded(
-                        child: _cartService.isEmpty
-                            ? _buildCartEmptyState()
-                            : ListView.separated(
-                                controller: sc,
-                                padding: const EdgeInsets.only(
-                                  left: 16,
-                                  right: 16,
-                                  bottom: 12,
-                                ),
-                                itemCount: _cartService.itemCount,
-                                separatorBuilder: (_, _) => const Divider(
-                                    height: 1, color: AppColors.borderSoft),
-                                itemBuilder: (_, i) =>
-                                    _buildDismissibleItemRow(i),
-                              ),
-                      ),
-                      if (showFooter) _buildCartFooter(),
+                      _buildCollapsedStrip(),
                     ],
-                  );
-                },
-              ),
+                  ),
+                )
+              : LayoutBuilder(
+                  builder: (ctx, constraints) {
+                    final showFooter =
+                        _cartService.isNotEmpty && constraints.maxHeight >= 340;
+                    return Column(
+                      children: [
+                        GestureDetector(
+                          onTap: _tapDragHandle,
+                          onVerticalDragUpdate: (details) {
+                            if (!_sheetController.isAttached) return;
+                            final screenH = MediaQuery.sizeOf(context).height;
+                            final delta =
+                                -(details.primaryDelta ?? 0) / screenH;
+                            _sheetController.jumpTo(
+                              (_sheetController.size + delta).clamp(0.10, 0.76),
+                            );
+                          },
+                          onVerticalDragEnd: (details) {
+                            if (!_sheetController.isAttached) return;
+                            final current = _sheetController.size;
+                            const snapPoints = [0.10, 0.50, 0.76];
+                            final nearest = snapPoints.reduce(
+                              (a, b) =>
+                                  (a - current).abs() < (b - current).abs()
+                                  ? a
+                                  : b,
+                            );
+                            _sheetController.animateTo(
+                              nearest,
+                              duration: const Duration(milliseconds: 250),
+                              curve: Curves.easeOut,
+                            );
+                          },
+                          behavior: HitTestBehavior.opaque,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            child: Container(
+                              width: 36,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: AppColors.borderSoft,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                          ),
+                        ),
+                        _buildCartHeader(),
+                        Expanded(
+                          child: _cartService.isEmpty
+                              ? _buildCartEmptyState()
+                              : ListView.separated(
+                                  controller: sc,
+                                  padding: const EdgeInsets.only(
+                                    left: 16,
+                                    right: 16,
+                                    bottom: 12,
+                                  ),
+                                  itemCount: _cartService.itemCount,
+                                  separatorBuilder: (_, _) => const Divider(
+                                    height: 1,
+                                    color: AppColors.borderSoft,
+                                  ),
+                                  itemBuilder: (_, i) =>
+                                      _buildDismissibleItemRow(i),
+                                ),
+                        ),
+                        if (showFooter) _buildCartFooter(),
+                      ],
+                    );
+                  },
+                ),
         ),
       ),
     );
@@ -609,7 +605,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
             ),
             const Spacer(),
             Text(
-              _fmt(_grandTotal),
+              AppFormatters.currency(_grandTotal),
               style: getOutfitStyle(
                 color: AppColors.brand,
                 fontWeight: FontWeight.w700,
@@ -679,11 +675,17 @@ class _PosTerminalPageState extends State<PosTerminalPage>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.qr_code_scanner, size: 44, color: AppColors.textMuted),
+          const Icon(
+            Icons.qr_code_scanner,
+            size: 44,
+            color: AppColors.textMuted,
+          ),
           const SizedBox(height: 10),
           Text(
             'Scan a barcode to add items',
-            style: AppTextStyles.body(context).copyWith(color: AppColors.textMuted),
+            style: AppTextStyles.body(
+              context,
+            ).copyWith(color: AppColors.textMuted),
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -706,19 +708,23 @@ class _PosTerminalPageState extends State<PosTerminalPage>
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
           child: Column(
             children: [
-              _summaryRow('Subtotal', _fmt(_subtotal)),
+              _summaryRow('Subtotal', AppFormatters.currency(_subtotal)),
               if (hasDiscount) ...[
                 const SizedBox(height: 4),
                 _discountSummaryRow(),
               ],
               if (_tax > 0) ...[
                 const SizedBox(height: 4),
-                _summaryRow('Tax', _fmt(_tax)),
+                _summaryRow('Tax', AppFormatters.currency(_tax)),
               ],
               const SizedBox(height: 10),
               const Divider(height: 1, color: AppColors.borderSoft),
               const SizedBox(height: 10),
-              _summaryRow('Total', _fmt(_grandTotal), isBig: true),
+              _summaryRow(
+                'Total',
+                AppFormatters.currency(_grandTotal),
+                isBig: true,
+              ),
             ],
           ),
         ),
@@ -729,17 +735,14 @@ class _PosTerminalPageState extends State<PosTerminalPage>
             onTap: _cartService.isEmpty ? null : _showDiscountSheet,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 160),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               decoration: BoxDecoration(
                 color: hasDiscount
                     ? AppColors.successSoft
                     : AppColors.surfaceAlt,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: hasDiscount
-                      ? AppColors.success
-                      : AppColors.borderSoft,
+                  color: hasDiscount ? AppColors.success : AppColors.borderSoft,
                 ),
               ),
               child: Row(
@@ -777,7 +780,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
           child: AppFilledButton(
             label: _cartService.isEmpty
                 ? 'Checkout'
-                : 'Checkout · ${_fmt(_grandTotal)}',
+                : 'Checkout · ${AppFormatters.currency(_grandTotal)}',
             onPressed: _cartService.isEmpty ? null : _checkout,
           ),
         ),
@@ -797,8 +800,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
           children: [
             Text(
               label,
-              style: getOutfitStyle(
-                  color: AppColors.success, fontSize: 13),
+              style: getOutfitStyle(color: AppColors.success, fontSize: 13),
             ),
             const SizedBox(width: 6),
             GestureDetector(
@@ -812,16 +814,16 @@ class _PosTerminalPageState extends State<PosTerminalPage>
           ],
         ),
         Text(
-          '− ${_fmt(_discountAmount)}',
+          '− ${AppFormatters.currency(_discountAmount)}',
           style: getOutfitStyle(
-              color: AppColors.success,
-              fontWeight: FontWeight.w600,
-              fontSize: 13),
+            color: AppColors.success,
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
         ),
       ],
     );
   }
-
 
   Widget _buildCartPanelContent(ScrollController sc) {
     return Column(
@@ -855,8 +857,9 @@ class _PosTerminalPageState extends State<PosTerminalPage>
                   color: AppColors.textPrimary,
                   fontWeight: FontWeight.w700,
                 )
-              : AppTextStyles.body(context)
-                  .copyWith(color: AppColors.textSecondary),
+              : AppTextStyles.body(
+                  context,
+                ).copyWith(color: AppColors.textSecondary),
         ),
         Text(
           value,
@@ -946,7 +949,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
           ),
           const SizedBox(width: 12),
           Text(
-            _fmt(item.total),
+            AppFormatters.currency(item.total),
             style: getOutfitStyle(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w600,
@@ -984,10 +987,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
                 const SizedBox(height: 8),
                 Text(
                   'Grant camera access to scan barcodes',
-                  style: getOutfitStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
+                  style: getOutfitStyle(color: Colors.white70, fontSize: 14),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
@@ -1047,80 +1047,78 @@ class _ScannerOverlay extends StatelessWidget {
     final screenH = MediaQuery.sizeOf(context).height;
     return SizedBox.expand(
       child: Stack(
-      children: [
-        // Top gradient for readability
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: Container(
-            height: 110,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xCC000000), Colors.transparent],
+        children: [
+          // Top gradient for readability
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              height: 110,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xCC000000), Colors.transparent],
+                ),
               ),
             ),
           ),
-        ),
 
-        // Title + torch button
-        SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            child: Row(
-              children: [
-                if (onClose != null)
-                  _OverlayIconButton(
-                    icon: Icons.arrow_back_rounded,
-                    onTap: onClose,
-                  )
-                else
-                  const SizedBox(width: 4),
-                const SizedBox(width: 8),
-                Text(
-                  'Scan Barcode',
-                  style: getOutfitStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
+          // Title + torch button
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              child: Row(
+                children: [
+                  if (onClose != null)
+                    _OverlayIconButton(
+                      icon: Icons.arrow_back_rounded,
+                      onTap: onClose,
+                    )
+                  else
+                    const SizedBox(width: 4),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Scan Barcode',
+                    style: getOutfitStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
                   ),
-                ),
-                const Spacer(),
-                Opacity(
-                  opacity: onToggleTorch == null ? 0.4 : 1.0,
-                  child: _OverlayIconButton(
-                    icon: torchEnabled
-                        ? Icons.flashlight_off_rounded
-                        : Icons.flashlight_on_rounded,
-                    onTap: onToggleTorch,
+                  const Spacer(),
+                  Opacity(
+                    opacity: onToggleTorch == null ? 0.4 : 1.0,
+                    child: _OverlayIconButton(
+                      icon: torchEnabled
+                          ? Icons.flashlight_off_rounded
+                          : Icons.flashlight_on_rounded,
+                      onTap: onToggleTorch,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
 
-        // Scan frame — dynamically centred in visible camera area
-        if (sheetController != null)
-          AnimatedBuilder(
-            animation: sheetController!,
-            builder: (ctx, _) {
-              final extent = sheetController!.isAttached
-                  ? sheetController!.size
-                  : 0.50;
-              return Positioned.fill(
-                bottom: screenH * extent,
-                child: const Center(child: _ScanFrame()),
-              );
-            },
-          )
-        else
-          const Positioned.fill(
-            child: Center(child: _ScanFrame()),
-          ),
-      ],
+          // Scan frame — dynamically centred in visible camera area
+          if (sheetController != null)
+            AnimatedBuilder(
+              animation: sheetController!,
+              builder: (ctx, _) {
+                final extent = sheetController!.isAttached
+                    ? sheetController!.size
+                    : 0.50;
+                return Positioned.fill(
+                  bottom: screenH * extent,
+                  child: const Center(child: _ScanFrame()),
+                );
+              },
+            )
+          else
+            const Positioned.fill(child: Center(child: _ScanFrame())),
+        ],
       ),
     );
   }
@@ -1246,4 +1244,3 @@ class _ScanFrame extends StatelessWidget {
 }
 
 // ── Cart Item model ───────────────────────────────────────────────────────────
-

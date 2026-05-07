@@ -1,9 +1,8 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
+import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
@@ -21,6 +20,8 @@ import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/products/checkout/product_cart_page.dart';
+import 'package:pos/features/products/presentation/cubit/products_cubit.dart';
+import 'package:pos/features/products/presentation/cubit/products_state.dart';
 import 'package:pos/features/products/widgets/product_category_chips.dart';
 import 'package:pos/features/products/widgets/product_grid.dart';
 
@@ -32,113 +33,41 @@ class ProductsPage extends StatefulWidget {
 }
 
 class _ProductsPageState extends State<ProductsPage> {
-  // ── Services / DAOs ───────────────────────────────────────────────────────
   final _cartService = sl<CartService>();
-  final _categoriesDao = sl<CategoriesDao>();
-  final _productsDao = sl<ProductsDao>();
-  final _variantsDao = sl<ProductVariantsDao>();
-  final _levelsDao = sl<InventoryLevelsDao>();
-
-  // ── Filter state ──────────────────────────────────────────────────────────
-  String? _selectedCategoryId;
-  String _searchQuery = '';
-
-  // ── Stream data ───────────────────────────────────────────────────────────
-  List<InventoryLevelsTableData> _levels = [];
-  List<ProductVariantsTableData> _allVariants = [];
-  List<CategoriesTableData> _categories = [];
-  List<ProductsTableData> _products = [];
-  bool _productsLoaded = false;
-
-  final List<StreamSubscription<dynamic>> _subs = [];
-
-  // ── Lifecycle ─────────────────────────────────────────────────────────────
+  late final ProductsCubit _cubit;
 
   @override
   void initState() {
     super.initState();
-    // Defer one frame so BuildContext is fully ready to read BLoC state.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _initStreams());
+    _cubit = ProductsCubit(
+      productsDao: sl<ProductsDao>(),
+      variantsDao: sl<ProductVariantsDao>(),
+      categoriesDao: sl<CategoriesDao>(),
+      levelsDao: sl<InventoryLevelsDao>(),
+    );
+    // Defer one frame so BLoC state is readable from context.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startWatching());
   }
 
-  void _initStreams() {
+  void _startWatching() {
     if (!mounted) return;
     final authState = context.read<AuthBloc>().state;
-    final businessId =
-        authState is AuthAuthenticated ? authState.user.businessId : null;
+    final businessId = authState is AuthAuthenticated
+        ? authState.user.businessId
+        : null;
+    if (businessId == null) return;
 
-    if (businessId == null) {
-      setState(() => _productsLoaded = true);
-      return;
-    }
-
-    _subs.addAll([
-      _levelsDao.watchByBusinessId(businessId).listen(
-        (data) { if (mounted) setState(() => _levels = data); },
-      ),
-      _variantsDao.watchByBusinessId(businessId).listen(
-        (data) { if (mounted) setState(() => _allVariants = data); },
-      ),
-      _categoriesDao.watchByBusinessId(businessId).listen((data) {
-        if (!mounted) return;
-        setState(() {
-          _categories = data;
-          // Auto-clear a category selection that was deleted.
-          if (_selectedCategoryId != null &&
-              !data.any((c) => c.id == _selectedCategoryId)) {
-            _selectedCategoryId = null;
-          }
-        });
-      }),
-      _productsDao.watchByBusinessId(businessId).listen((data) {
-        if (!mounted) return;
-        setState(() {
-          _products = data;
-          _productsLoaded = true;
-        });
-      }),
-    ]);
+    final branchId = context.read<BranchCubit>().state.selectedBranchId;
+    _cubit
+      ..startWatching(businessId)
+      ..setBranchFilter(branchId);
   }
 
   @override
   void dispose() {
-    for (final sub in _subs) {
-      sub.cancel();
-    }
+    _cubit.close();
     super.dispose();
   }
-
-  // ── Computed getters ──────────────────────────────────────────────────────
-
-  /// Stock per variant, optionally scoped to the selected branch.
-  Map<String, int> _variantStock(String? selectedBranchId) {
-    final map = <String, int>{};
-    for (final level in _levels) {
-      if (selectedBranchId == null || level.branchId == selectedBranchId) {
-        map[level.variantId] = (map[level.variantId] ?? 0) + level.quantity;
-      }
-    }
-    return map;
-  }
-
-  /// Variants grouped by productId.
-  Map<String, List<ProductVariantsTableData>> get _variantsMap {
-    final map = <String, List<ProductVariantsTableData>>{};
-    for (final v in _allVariants) {
-      map.putIfAbsent(v.productId, () => []).add(v);
-    }
-    return map;
-  }
-
-  List<ProductsTableData> get _filteredProducts => _products
-      .where((p) =>
-          _selectedCategoryId == null || p.categoryId == _selectedCategoryId)
-      .where((p) =>
-          _searchQuery.isEmpty ||
-          p.name.toLowerCase().contains(_searchQuery.toLowerCase()))
-      .toList();
-
-  // ── Cart helper ───────────────────────────────────────────────────────────
 
   void _addToCart(
     ProductsTableData product,
@@ -168,55 +97,69 @@ class _ProductsPageState extends State<ProductsPage> {
     }
   }
 
-  // ── Build ─────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
-    final selectedBranchId =
-        context.watch<BranchCubit>().state.selectedBranchId;
+    return BlocProvider.value(
+      value: _cubit,
+      child: BlocListener<BranchCubit, BranchState>(
+        listener: (context, branchState) =>
+            _cubit.setBranchFilter(branchState.selectedBranchId),
+        child: ListenableBuilder(
+          listenable: _cartService,
+          builder: (context, _) {
+            final cartNotEmpty = _cartService.isNotEmpty;
+            final subtotal = _cartService.items.fold(
+              0.0,
+              (s, i) => s + i.total,
+            );
+            final cartTotal =
+                (subtotal -
+                        _cartService.discountAmount(subtotal) +
+                        _cartService.items.fold(0.0, (s, i) => s + i.taxAmount))
+                    .clamp(0.0, double.infinity);
 
-    return ListenableBuilder(
-      listenable: _cartService,
-      builder: (context, _) {
-        final cartNotEmpty = _cartService.isNotEmpty;
-        final subtotal =
-            _cartService.items.fold(0.0, (s, i) => s + i.total);
-        final cartTotal = (subtotal -
-                _cartService.discountAmount(subtotal) +
-                _cartService.items.fold(0.0, (s, i) => s + i.taxAmount))
-            .clamp(0.0, double.infinity);
-
-        return Scaffold(
-          backgroundColor: AppColors.background,
-          body: Stack(
-            children: [
-              SafeArea(
-                child: !_productsLoaded
-                    ? const _LoadingState()
-                    : _buildContent(
-                        selectedBranchId: selectedBranchId,
+            return Scaffold(
+              backgroundColor: AppColors.background,
+              body: Stack(
+                children: [
+                  SafeArea(
+                    child: BlocBuilder<ProductsCubit, ProductsState>(
+                      builder: (context, state) => _buildContent(
+                        context,
+                        state: state,
                         cartNotEmpty: cartNotEmpty,
                       ),
+                    ),
+                  ),
+                  _CartBar(
+                    cartService: _cartService,
+                    cartTotal: cartTotal,
+                    visible: cartNotEmpty,
+                  ),
+                ],
               ),
-              _CartBar(
-                cartService: _cartService,
-                cartTotal: cartTotal,
-                visible: cartNotEmpty,
-              ),
-            ],
-          ),
-        );
-      },
+            );
+          },
+        ),
+      ),
     );
   }
 
-  Widget _buildContent({
-    required String? selectedBranchId,
+  Widget _buildContent(
+    BuildContext context, {
+    required ProductsState state,
     required bool cartNotEmpty,
   }) {
-    final filtered = _filteredProducts;
+    if (state is ProductsInitial || state is ProductsLoading) {
+      return const _LoadingState();
+    }
+
+    if (state is! ProductsLoaded) return const SizedBox.shrink();
+
+    final filtered = state.filteredProducts;
+    final variantsMap = state.variantsMap;
     final items = filtered
-        .map((p) => (p, _variantsMap[p.id] ?? <ProductVariantsTableData>[]))
+        .map((p) => (p, variantsMap[p.id] ?? <ProductVariantsTableData>[]))
         .toList();
 
     return Padding(
@@ -226,45 +169,42 @@ class _ProductsPageState extends State<ProductsPage> {
         children: [
           AppSearchBar(
             hint: 'Search products...',
-            onChanged: (v) => setState(() => _searchQuery = v),
+            onChanged: (v) => _cubit.setSearchQuery(v),
           ),
           const SizedBox(height: 12),
           ProductCategoryChips(
-            categories: _categories,
-            selectedCategoryId: _selectedCategoryId,
-            onCategorySelected: (id) =>
-                setState(() => _selectedCategoryId = id),
+            categories: state.categories,
+            selectedCategoryId: state.selectedCategoryId,
+            onCategorySelected: (id) => _cubit.setCategoryFilter(id),
           ),
           const SizedBox(height: 16),
-          Expanded(
-            child: _buildGrid(filtered, items, _variantStock(selectedBranchId)),
-          ),
+          Expanded(child: _buildGrid(context, state, filtered, items)),
         ],
       ),
     );
   }
 
   Widget _buildGrid(
+    BuildContext context,
+    ProductsLoaded state,
     List<ProductsTableData> filtered,
     List<(ProductsTableData, List<ProductVariantsTableData>)> items,
-    Map<String, int> variantStock,
   ) {
-    if (_products.isEmpty) {
+    if (state.products.isEmpty) {
       return _EmptyProductsState(
         onAdd: () => context.push(AppRoutes.addProduct),
       );
     }
     if (filtered.isEmpty) {
       return _NoResultsState(
-        onClear: () => setState(() {
-          _searchQuery = '';
-          _selectedCategoryId = null;
-        }),
+        onClear: () => _cubit
+          ..setSearchQuery('')
+          ..setCategoryFilter(null),
       );
     }
     return ProductGrid(
       items: items,
-      variantStock: variantStock,
+      variantStock: state.variantStock,
       onAddProduct: () => context.push(AppRoutes.addProduct),
       onAddToCart: _addToCart,
       onEditProduct: (p) => context.push(AppRoutes.editProduct, extra: p),
@@ -306,7 +246,9 @@ class _CartBar extends StatelessWidget {
               ),
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 14),
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.brand,
                   borderRadius: BorderRadius.circular(16),
@@ -322,7 +264,9 @@ class _CartBar extends StatelessWidget {
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
@@ -379,11 +323,8 @@ class _LoadingState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const Center(
-        child: CircularProgressIndicator(
-          color: AppColors.brand,
-          strokeWidth: 2.5,
-        ),
-      );
+    child: CircularProgressIndicator(color: AppColors.brand, strokeWidth: 2.5),
+  );
 }
 
 class _EmptyProductsState extends StatelessWidget {
@@ -421,8 +362,9 @@ class _EmptyProductsState extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'Tap "Add Product" to get started',
-            style: AppTextStyles.body(context)
-                .copyWith(color: AppColors.textSecondary),
+            style: AppTextStyles.body(
+              context,
+            ).copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 24),
           TextButton.icon(
@@ -430,10 +372,9 @@ class _EmptyProductsState extends StatelessWidget {
             icon: const Icon(Icons.add_rounded, color: AppColors.brand),
             label: Text(
               'Add Product',
-              style: AppTextStyles.body(context).copyWith(
-                color: AppColors.brand,
-                fontWeight: FontWeight.w600,
-              ),
+              style: AppTextStyles.body(
+                context,
+              ).copyWith(color: AppColors.brand, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -461,18 +402,18 @@ class _NoResultsState extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             'No products match your search',
-            style: AppTextStyles.body(context)
-                .copyWith(color: AppColors.textSecondary),
+            style: AppTextStyles.body(
+              context,
+            ).copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 8),
           TextButton(
             onPressed: onClear,
             child: Text(
               'Clear filters',
-              style: AppTextStyles.body(context).copyWith(
-                color: AppColors.brand,
-                fontWeight: FontWeight.w600,
-              ),
+              style: AppTextStyles.body(
+                context,
+              ).copyWith(color: AppColors.brand, fontWeight: FontWeight.w600),
             ),
           ),
         ],

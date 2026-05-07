@@ -6,6 +6,7 @@ import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/ui/status/status_snack.dart';
 import 'package:pos/core/ui/status/status_type.dart';
+import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/pos/data/models/cart_model.dart';
 import 'package:pos/features/settings/data/receipt_settings_repository.dart';
@@ -86,9 +87,11 @@ class _CheckoutSuccessPageState extends State<CheckoutSuccessPage> {
       final s = settings ?? await _loadSettings();
       if (s == null) {
         if (mounted) {
-          StatusSnack.show(context,
-              type: StatusType.warning,
-              message: 'No receipt settings found. Configure them in Settings.');
+          StatusSnack.show(
+            context,
+            type: StatusType.warning,
+            message: 'No receipt settings found. Configure them in Settings.',
+          );
         }
         return;
       }
@@ -110,19 +113,16 @@ class _CheckoutSuccessPageState extends State<CheckoutSuccessPage> {
       );
     } catch (e) {
       if (mounted) {
-        StatusSnack.show(context,
-            type: StatusType.error,
-            message: 'Print failed: $e');
+        StatusSnack.show(
+          context,
+          type: StatusType.error,
+          message: 'Print failed: $e',
+        );
       }
     } finally {
       if (mounted) setState(() => _printing = false);
     }
   }
-
-  String _fmt(double v) => '₱${v.toStringAsFixed(2).replaceAllMapped(
-        RegExp(r'(\d)(?=(\d{3})+\.)'),
-        (m) => '${m[1]},',
-      )}';
 
   @override
   Widget build(BuildContext context) {
@@ -153,13 +153,14 @@ class _CheckoutSuccessPageState extends State<CheckoutSuccessPage> {
               const SizedBox(height: 4),
               Text(
                 widget.customerName,
-                style: AppTextStyles.body(context)
-                    .copyWith(color: AppColors.textMuted),
+                style: AppTextStyles.body(
+                  context,
+                ).copyWith(color: AppColors.textMuted),
               ),
             ],
             const SizedBox(height: 6),
             Text(
-              _fmt(widget.total),
+              AppFormatters.currency(widget.total),
               style: getOutfitStyle(
                 color: AppColors.brand,
                 fontWeight: FontWeight.w700,
@@ -169,8 +170,9 @@ class _CheckoutSuccessPageState extends State<CheckoutSuccessPage> {
             const SizedBox(height: 4),
             Text(
               '${widget.itemCount} ${widget.itemCount == 1 ? 'item' : 'items'}',
-              style: AppTextStyles.body(context)
-                  .copyWith(color: AppColors.textMuted),
+              style: AppTextStyles.body(
+                context,
+              ).copyWith(color: AppColors.textMuted),
             ),
 
             // ── Cash change summary ───────────────────────────────────────
@@ -180,7 +182,9 @@ class _CheckoutSuccessPageState extends State<CheckoutSuccessPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 32),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 14),
+                    horizontal: 20,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.surfaceAlt,
                     borderRadius: BorderRadius.circular(12),
@@ -189,13 +193,13 @@ class _CheckoutSuccessPageState extends State<CheckoutSuccessPage> {
                     children: [
                       _ChangeRow(
                         label: 'Received',
-                        value: _fmt(widget.amountReceived),
+                        value: AppFormatters.currency(widget.amountReceived),
                         valueColor: AppColors.textPrimary,
                       ),
                       const Divider(height: 16, color: AppColors.borderSoft),
                       _ChangeRow(
                         label: 'Change',
-                        value: _fmt(widget.change),
+                        value: AppFormatters.currency(widget.change),
                         valueColor: AppColors.success,
                         bold: true,
                       ),
@@ -251,8 +255,7 @@ class _CheckoutSuccessPageState extends State<CheckoutSuccessPage> {
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed:
-                          _printing ? null : () => _doPrint(share: true),
+                      onPressed: _printing ? null : () => _doPrint(share: true),
                       icon: const Icon(Icons.share_rounded, size: 18),
                       label: Text(
                         'Share Receipt',
@@ -306,9 +309,12 @@ class _ChangeRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label,
-            style: AppTextStyles.body(context)
-                .copyWith(color: AppColors.textSecondary)),
+        Text(
+          label,
+          style: AppTextStyles.body(
+            context,
+          ).copyWith(color: AppColors.textSecondary),
+        ),
         Text(
           value,
           style: getOutfitStyle(

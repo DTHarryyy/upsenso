@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/features/expenses/domain/expense_item.dart';
 import 'package:pos/features/expenses/presentation/cubit/expenses_cubit.dart';
 import 'package:pos/features/expenses/presentation/widgets/expense_status_badge.dart';
 
 void showExpenseDetail(
-    BuildContext context, ExpenseItem item, bool canApprove) {
+  BuildContext context,
+  ExpenseItem item,
+  bool canApprove,
+) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -75,53 +79,73 @@ class _ExpenseDetailSheet extends StatelessWidget {
                       color: Colors.white.withValues(alpha: 0.18),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.receipt_long_rounded,
-                        color: Colors.white, size: 22),
+                    child: const Icon(
+                      Icons.receipt_long_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(item.id,
-                            style: getOutfitStyle(
-                                fontSize: 12,
-                                color: Colors.white.withValues(alpha: 0.75))),
+                        Text(
+                          item.id,
+                          style: getOutfitStyle(
+                            fontSize: 12,
+                            color: Colors.white.withValues(alpha: 0.75),
+                          ),
+                        ),
                         const SizedBox(height: 2),
-                        Text(item.vendor,
-                            style: getOutfitStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white)),
+                        Text(
+                          item.vendor,
+                          style: getOutfitStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
                         const SizedBox(height: 2),
-                        Text(item.category,
-                            style: getOutfitStyle(
-                                fontSize: 13,
-                                color: Colors.white.withValues(alpha: 0.8))),
+                        Text(
+                          item.category,
+                          style: getOutfitStyle(
+                            fontSize: 13,
+                            color: Colors.white.withValues(alpha: 0.8),
+                          ),
+                        ),
                       ],
                     ),
                   ),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text('₱${item.amount.toStringAsFixed(2)}',
-                          style: getOutfitStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white)),
+                      Text(
+                        AppFormatters.currency(item.amount),
+                        style: getOutfitStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
                       const SizedBox(height: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: statusBg,
                           borderRadius: BorderRadius.circular(100),
                         ),
-                        child: Text(statusLabel,
-                            style: getOutfitStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: statusText)),
+                        child: Text(
+                          statusLabel,
+                          style: getOutfitStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: statusText,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -133,58 +157,71 @@ class _ExpenseDetailSheet extends StatelessWidget {
                 controller: scrollController,
                 padding: const EdgeInsets.all(16),
                 children: [
-                  _DetailCard(children: [
-                    _DetailRow(
+                  _DetailCard(
+                    children: [
+                      _DetailRow(
                         icon: Icons.calendar_today_rounded,
                         label: 'Date',
-                        value: dateStr),
-                    const _DetailDivider(),
-                    _DetailRow(
+                        value: dateStr,
+                      ),
+                      const _DetailDivider(),
+                      _DetailRow(
                         icon: Icons.category_outlined,
                         label: 'Category',
-                        value: item.category),
-                    const _DetailDivider(),
-                    _DetailRow(
+                        value: item.category,
+                      ),
+                      const _DetailDivider(),
+                      _DetailRow(
                         icon: Icons.store_mall_directory_outlined,
                         label: 'Branch',
-                        value: item.branchName ?? 'All Branches'),
-                    const _DetailDivider(),
-                    _DetailRow(
+                        value: item.branchName ?? 'All Branches',
+                      ),
+                      const _DetailDivider(),
+                      _DetailRow(
                         icon: Icons.person_outline_rounded,
                         label: 'Submitted By',
-                        value: item.submittedByName),
-                    if (item.approvedByName != null) ...[
-                      const _DetailDivider(),
-                      _DetailRow(
+                        value: item.submittedByName,
+                      ),
+                      if (item.approvedByName != null) ...[
+                        const _DetailDivider(),
+                        _DetailRow(
                           icon: Icons.verified_outlined,
                           label: 'Approved By',
-                          value: item.approvedByName!),
-                    ],
-                    if (item.note != null && item.note!.isNotEmpty) ...[
-                      const _DetailDivider(),
-                      _DetailRow(
+                          value: item.approvedByName!,
+                        ),
+                      ],
+                      if (item.note != null && item.note!.isNotEmpty) ...[
+                        const _DetailDivider(),
+                        _DetailRow(
                           icon: Icons.notes_rounded,
                           label: 'Note',
-                          value: item.note!),
-                    ],
-                    const _DetailDivider(),
-                    _DetailRow(
+                          value: item.note!,
+                        ),
+                      ],
+                      const _DetailDivider(),
+                      _DetailRow(
                         icon: Icons.tag_rounded,
                         label: 'Reference ID',
-                        value: item.id),
-                  ]),
+                        value: item.id,
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 12),
-                  _DetailCard(children: [
-                    _AmountRow(label: 'Subtotal', value: item.amount),
-                    const _DetailDivider(),
-                    const _AmountRow(label: 'Tax (0%)', value: 0.0),
-                    const _DetailDivider(),
-                    _AmountRow(
-                        label: 'Total', value: item.amount, isTotal: true),
-                  ]),
+                  _DetailCard(
+                    children: [
+                      _AmountRow(label: 'Subtotal', value: item.amount),
+                      const _DetailDivider(),
+                      const _AmountRow(label: 'Tax (0%)', value: 0.0),
+                      const _DetailDivider(),
+                      _AmountRow(
+                        label: 'Total',
+                        value: item.amount,
+                        isTotal: true,
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 16),
-                  if (canApprove &&
-                      item.status == ExpenseStatus.pending) ...[
+                  if (canApprove && item.status == ExpenseStatus.pending) ...[
                     Row(
                       children: [
                         Expanded(
@@ -194,18 +231,21 @@ class _ExpenseDetailSheet extends StatelessWidget {
                               Navigator.pop(context);
                             },
                             icon: const Icon(Icons.close_rounded, size: 16),
-                            label: Text('Reject',
-                                style: getOutfitStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.error)),
+                            label: Text(
+                              'Reject',
+                              style: getOutfitStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.error,
+                              ),
+                            ),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.error,
                               side: const BorderSide(color: AppColors.error),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                           ),
                         ),
@@ -218,17 +258,20 @@ class _ExpenseDetailSheet extends StatelessWidget {
                               Navigator.pop(context);
                             },
                             icon: const Icon(Icons.check_rounded, size: 16),
-                            label: Text('Approve',
-                                style: getOutfitStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textInverse)),
+                            label: Text(
+                              'Approve',
+                              style: getOutfitStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textInverse,
+                              ),
+                            ),
                             style: FilledButton.styleFrom(
                               backgroundColor: AppColors.success,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                           ),
                         ),
@@ -243,13 +286,17 @@ class _ExpenseDetailSheet extends StatelessWidget {
                           side: const BorderSide(color: AppColors.borderSoft),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                        child: Text('Close',
-                            style: getOutfitStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textSecondary)),
+                        child: Text(
+                          'Close',
+                          style: getOutfitStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -292,8 +339,11 @@ class _DetailRow extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
-  const _DetailRow(
-      {required this.icon, required this.label, required this.value});
+  const _DetailRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -304,22 +354,27 @@ class _DetailRow extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(7),
             decoration: BoxDecoration(
-                color: AppColors.brandSoft,
-                borderRadius: BorderRadius.circular(8)),
+              color: AppColors.brandSoft,
+              borderRadius: BorderRadius.circular(8),
+            ),
             child: Icon(icon, size: 15, color: AppColors.brand),
           ),
           const SizedBox(width: 12),
-          Text(label,
-              style:
-                  getOutfitStyle(fontSize: 13, color: AppColors.textMuted)),
+          Text(
+            label,
+            style: getOutfitStyle(fontSize: 13, color: AppColors.textMuted),
+          ),
           const Spacer(),
           Flexible(
-            child: Text(value,
-                textAlign: TextAlign.end,
-                style: getOutfitStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary)),
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: getOutfitStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
           ),
         ],
       ),
@@ -331,8 +386,11 @@ class _AmountRow extends StatelessWidget {
   final String label;
   final double value;
   final bool isTotal;
-  const _AmountRow(
-      {required this.label, required this.value, this.isTotal = false});
+  const _AmountRow({
+    required this.label,
+    required this.value,
+    this.isTotal = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -340,23 +398,23 @@ class _AmountRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
-          Text(label,
-              style: getOutfitStyle(
-                  fontSize: isTotal ? 14 : 13,
-                  fontWeight:
-                      isTotal ? FontWeight.w700 : FontWeight.normal,
-                  color: isTotal
-                      ? AppColors.textPrimary
-                      : AppColors.textMuted)),
+          Text(
+            label,
+            style: getOutfitStyle(
+              fontSize: isTotal ? 14 : 13,
+              fontWeight: isTotal ? FontWeight.w700 : FontWeight.normal,
+              color: isTotal ? AppColors.textPrimary : AppColors.textMuted,
+            ),
+          ),
           const Spacer(),
-          Text('₱${value.toStringAsFixed(2)}',
-              style: getOutfitStyle(
-                  fontSize: isTotal ? 16 : 13,
-                  fontWeight:
-                      isTotal ? FontWeight.w800 : FontWeight.w600,
-                  color: isTotal
-                      ? AppColors.brand
-                      : AppColors.textSecondary)),
+          Text(
+            AppFormatters.currency(value),
+            style: getOutfitStyle(
+              fontSize: isTotal ? 16 : 13,
+              fontWeight: isTotal ? FontWeight.w800 : FontWeight.w600,
+              color: isTotal ? AppColors.brand : AppColors.textSecondary,
+            ),
+          ),
         ],
       ),
     );
@@ -368,9 +426,10 @@ class _DetailDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Divider(
-        height: 1,
-        color: AppColors.borderSoft,
-        indent: 16,
-        endIndent: 16);
+      height: 1,
+      color: AppColors.borderSoft,
+      indent: 16,
+      endIndent: 16,
+    );
   }
 }

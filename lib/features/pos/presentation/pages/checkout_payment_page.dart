@@ -13,6 +13,7 @@ import 'package:pos/core/database/daos/transactions_dao.dart';
 import 'package:pos/features/inventory/data/inventory_repository.dart';
 import 'package:pos/core/ui/status/status_snack.dart';
 import 'package:pos/core/ui/status/status_type.dart';
+import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
@@ -51,13 +52,20 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
   bool _confirming = false;
 
   static const _denoms = [
-    1.0, 5.0, 10.0, 20.0, 50.0, 100.0, 200.0, 500.0, 1000.0,
+    1.0,
+    5.0,
+    10.0,
+    20.0,
+    50.0,
+    100.0,
+    200.0,
+    500.0,
+    1000.0,
   ];
 
   bool get _isCash => _paymentMethod == 'cash';
   double get _change => _amountReceived - widget.total;
-  bool get _canConfirm =>
-      !_isCash || (_amountReceived > 0 && _change >= 0);
+  bool get _canConfirm => !_isCash || (_amountReceived > 0 && _change >= 0);
 
   @override
   void dispose() {
@@ -65,11 +73,6 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
     _amountController.dispose();
     super.dispose();
   }
-
-  String _fmt(double v) => '₱${v.toStringAsFixed(2).replaceAllMapped(
-        RegExp(r'(\d)(?=(\d{3})+\.)'),
-        (m) => '${m[1]},',
-      )}';
 
   void _addDenom(double denom) {
     setState(() {
@@ -90,7 +93,8 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
     if (authState is! AuthAuthenticated) return;
 
     final branchCubit = context.read<BranchCubit>();
-    String? branchId = branchCubit.getSelectedBranchIdForFiltering() ??
+    String? branchId =
+        branchCubit.getSelectedBranchIdForFiltering() ??
         authState.user.branchId;
 
     // When no branch is resolved, prompt the cashier to pick one.
@@ -184,13 +188,16 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
             businessId: authState.user.businessId ?? '',
           ),
           transitionsBuilder: (_, animation, _, child) {
-            final slide = Tween<Offset>(
-              begin: const Offset(0, 0.06),
-              end: Offset.zero,
-            ).animate(CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOutCubic,
-            ));
+            final slide =
+                Tween<Offset>(
+                  begin: const Offset(0, 0.06),
+                  end: Offset.zero,
+                ).animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ),
+                );
             final fade = CurvedAnimation(
               parent: animation,
               curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
@@ -307,10 +314,12 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
                         controller: _amountController,
                         autofocus: true,
                         keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
+                          decimal: true,
+                        ),
                         inputFormatters: [
                           FilteringTextInputFormatter.allow(
-                              RegExp(r'^\d*\.?\d{0,2}')),
+                            RegExp(r'^\d*\.?\d{0,2}'),
+                          ),
                         ],
                         decoration: appInputDeco('0.00', prefixText: '₱ '),
                         style: getOutfitStyle(
@@ -350,7 +359,9 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
                           duration: const Duration(milliseconds: 200),
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 14),
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
                           decoration: BoxDecoration(
                             color: _change >= 0
                                 ? AppColors.successSoft
@@ -372,8 +383,8 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
                               ),
                               Text(
                                 _change >= 0
-                                    ? _fmt(_change)
-                                    : _fmt(_change.abs()),
+                                    ? AppFormatters.currency(_change)
+                                    : AppFormatters.currency(_change.abs()),
                                 style: getOutfitStyle(
                                   color: _change >= 0
                                       ? AppColors.success

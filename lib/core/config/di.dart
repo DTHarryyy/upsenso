@@ -61,6 +61,7 @@ import 'package:pos/core/database/daos/stock_ledger_dao.dart';
 import 'package:pos/features/expenses/data/datasources/expenses_remote_ds.dart';
 import 'package:pos/features/expenses/data/expenses_repository.dart';
 import 'package:pos/features/inventory/data/inventory_repository.dart';
+import 'package:pos/features/sales/data/sales_repository.dart';
 import 'package:pos/features/settings/data/datasources/receipt_settings_remote_ds.dart';
 import 'package:pos/features/settings/data/receipt_settings_repository.dart';
 import 'package:pos/features/settings/presentation/cubit/settings_cubit.dart';
@@ -102,21 +103,23 @@ Future<void> initDI() async {
     () => BusinessesDao(sl<AppDatabase>()),
   );
   sl.registerLazySingleton<BranchesDao>(() => BranchesDao(sl<AppDatabase>()));
-  sl.registerLazySingleton<CategoriesDao>(() => CategoriesDao(sl<AppDatabase>()));
+  sl.registerLazySingleton<CategoriesDao>(
+    () => CategoriesDao(sl<AppDatabase>()),
+  );
   sl.registerLazySingleton<ProductsDao>(() => ProductsDao(sl<AppDatabase>()));
   sl.registerLazySingleton<ProductVariantsDao>(
     () => ProductVariantsDao(sl<AppDatabase>()),
   );
-  sl.registerLazySingleton<TransactionsDao>(() => TransactionsDao(sl<AppDatabase>()));
+  sl.registerLazySingleton<TransactionsDao>(
+    () => TransactionsDao(sl<AppDatabase>()),
+  );
   sl.registerLazySingleton<InventoryLevelsDao>(
     () => InventoryLevelsDao(sl<AppDatabase>()),
   );
   sl.registerLazySingleton<StockLedgerDao>(
     () => StockLedgerDao(sl<AppDatabase>()),
   );
-  sl.registerLazySingleton<ExpensesDao>(
-    () => ExpensesDao(sl<AppDatabase>()),
-  );
+  sl.registerLazySingleton<ExpensesDao>(() => ExpensesDao(sl<AppDatabase>()));
   sl.registerLazySingleton<ExpensesRepository>(
     () => ExpensesRepository(expensesDao: sl<ExpensesDao>()),
   );
@@ -268,9 +271,7 @@ Future<void> initDI() async {
   );
 
   // settings_page.dart resolves this via sl()
-  sl.registerFactory(
-    () => SettingsCubit(sl<ReceiptSettingsRepository>()),
-  );
+  sl.registerFactory(() => SettingsCubit(sl<ReceiptSettingsRepository>()));
 
   sl.registerLazySingleton<InventoryRepository>(
     () => InventoryRepository(
@@ -280,6 +281,10 @@ Future<void> initDI() async {
       levelsDao: sl<InventoryLevelsDao>(),
       ledgerDao: sl<StockLedgerDao>(),
     ),
+  );
+
+  sl.registerLazySingleton<SalesRepository>(
+    () => SalesRepository(sl<TransactionsDao>()),
   );
 
   sl.registerLazySingleton<DashboardRepository>(

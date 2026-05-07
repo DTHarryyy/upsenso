@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/features/expenses/domain/expense_item.dart';
 import 'package:pos/features/expenses/presentation/cubit/expenses_cubit.dart';
 import 'package:pos/features/expenses/presentation/widgets/expense_detail_sheet.dart';
@@ -23,10 +24,12 @@ class ExpenseCardView extends StatelessWidget {
     if (items.isEmpty) return const ExpenseEmptyState();
     return Column(
       children: items
-          .map((item) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _ExpenseCard(item: item, canApprove: canApprove),
-              ))
+          .map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _ExpenseCard(item: item, canApprove: canApprove),
+            ),
+          )
           .toList(),
     );
   }
@@ -70,33 +73,46 @@ class _ExpenseCard extends StatelessWidget {
                   color: AppColors.brandSoft,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.receipt_outlined,
-                    color: AppColors.brand, size: 18),
+                child: const Icon(
+                  Icons.receipt_outlined,
+                  color: AppColors.brand,
+                  size: 18,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.vendor,
-                        style: getOutfitStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary)),
-                    Text(item.category,
-                        style: getOutfitStyle(
-                            fontSize: 12, color: AppColors.textMuted)),
+                    Text(
+                      item.vendor,
+                      style: getOutfitStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      item.category,
+                      style: getOutfitStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
                   ],
                 ),
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('₱${item.amount.toStringAsFixed(2)}',
-                      style: getOutfitStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary)),
+                  Text(
+                    AppFormatters.currency(item.amount),
+                    style: getOutfitStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   ExpenseStatusBadge(item.status),
                 ],
@@ -111,12 +127,14 @@ class _ExpenseCard extends StatelessWidget {
               _Meta(icon: Icons.calendar_today_rounded, label: dateStr),
               const SizedBox(width: 8),
               _Meta(
-                  icon: Icons.store_mall_directory_outlined,
-                  label: item.branchName ?? 'All'),
+                icon: Icons.store_mall_directory_outlined,
+                label: item.branchName ?? 'All',
+              ),
               const SizedBox(width: 8),
               _Meta(
-                  icon: Icons.person_outline_rounded,
-                  label: item.submittedByName),
+                icon: Icons.person_outline_rounded,
+                label: item.submittedByName,
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -168,10 +186,14 @@ class _Meta extends StatelessWidget {
           Icon(icon, size: 12, color: AppColors.textMuted),
           const SizedBox(width: 4),
           Flexible(
-            child: Text(label,
-                style: getOutfitStyle(
-                    fontSize: 11, color: AppColors.textSecondary),
-                overflow: TextOverflow.ellipsis),
+            child: Text(
+              label,
+              style: getOutfitStyle(
+                fontSize: 11,
+                color: AppColors.textSecondary,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
@@ -203,8 +225,10 @@ class _CardAction extends StatelessWidget {
         child: Container(
           margin: const EdgeInsets.only(left: 6),
           padding: const EdgeInsets.all(7),
-          decoration:
-              BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(8),
+          ),
           child: Icon(icon, size: 15, color: color),
         ),
       ),

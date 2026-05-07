@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
@@ -7,8 +5,15 @@ import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
-import 'package:pos/core/database/daos/transactions_dao.dart';
 import 'package:pos/core/database/app_database.dart';
+import 'package:pos/core/utils/formatters.dart';
+import 'package:pos/features/sales/data/sales_repository.dart';
+import 'package:pos/features/sales/presentation/cubit/sales_cubit.dart';
+import 'package:pos/features/sales/presentation/cubit/sales_state.dart';
+
+// ---------------------------------------------------------------------------
+// Entry point — provides [SalesCubit] and bridges BranchCubit changes.
+// ---------------------------------------------------------------------------
 
 class SalesHistory extends StatefulWidget {
   const SalesHistory({super.key});
@@ -18,126 +23,61 @@ class SalesHistory extends StatefulWidget {
 }
 
 class _SalesHistoryState extends State<SalesHistory> {
-  late final TransactionsDao _txDao;
-  StreamSubscription<List<TransactionsTableData>>? _txSub;
-  List<TransactionsTableData> _transactions = [];
-  bool _loading = true;
-
-  // Detail expansion — holds the ID of the currently expanded transaction
-  String? _expandedTxId;
-  List<TransactionItemsTableData>? _expandedItems;
-  bool _loadingItems = false;
+  late final SalesCubit _cubit;
 
   @override
   void initState() {
     super.initState();
-    _txDao = sl<TransactionsDao>();
+    _cubit = SalesCubit(sl<SalesRepository>());
+    // Defer so BranchCubit is fully available in the widget tree.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _cubit.startWatching(
+        branchId: context.read<BranchCubit>().state.selectedBranchId,
+      );
+    });
   }
 
   @override
   void dispose() {
-    _txSub?.cancel();
+    _cubit.close();
     super.dispose();
   }
 
-  void _subscribe(String? branchId) {
-    _txSub?.cancel();
-    _txSub = _txDao.watchTransactions(branchId: branchId).listen((list) {
-      if (mounted)
-        setState(() {
-          _transactions = list;
-          _loading = false;
-        });
-    });
-  }
-
-  Future<void> _toggleExpand(String txId) async {
-    if (_expandedTxId == txId) {
-      setState(() {
-        _expandedTxId = null;
-        _expandedItems = null;
-      });
-      return;
-    }
-    setState(() {
-      _expandedTxId = txId;
-      _expandedItems = null;
-      _loadingItems = true;
-    });
-    final items = await _txDao.getItemsByTransactionId(txId);
-    if (mounted && _expandedTxId == txId) {
-      setState(() {
-        _expandedItems = items;
-        _loadingItems = false;
-      });
-    }
-  }
-
-  // ── Formatting helpers ──
-
-  String _fmt(double v) =>
-      '₱${v.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+\.)'), (m) => '${m[1]},')}';
-
-  String _fmtDate(DateTime d) {
-    const months = [
-      '',
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${months[d.month]} ${d.day}, ${d.year}';
-  }
-
-  String _fmtTime(DateTime d) {
-    final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
-    final m = d.minute.toString().padLeft(2, '0');
-    final p = d.hour >= 12 ? 'PM' : 'AM';
-    return '$h:$m $p';
-  }
-
-  String _fmtQty(double q) =>
-      q == q.roundToDouble() ? q.toInt().toString() : q.toStringAsFixed(2);
+  // ── Legacy formatting shims (kept for internal widgets below) ──
+  // All formatting now delegates to AppFormatters.
 
   @override
   Widget build(BuildContext context) {
-    return BlocConsumer<BranchCubit, BranchState>(
-      listener: (context, branchState) {
-        _subscribe(branchState.selectedBranchId);
-      },
-      builder: (context, branchState) {
-        // Subscribe on first build
-        if (_loading && _txSub == null) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _subscribe(branchState.selectedBranchId);
-          });
-        }
-
-        return Scaffold(
+    return BlocProvider.value(
+      value: _cubit,
+      child: BlocListener<BranchCubit, BranchState>(
+        listener: (context, branchState) =>
+            _cubit.startWatching(branchId: branchState.selectedBranchId),
+        child: Scaffold(
           backgroundColor: AppColors.background,
-
-          body: _buildBody(context),
-        );
-      },
+          body: BlocBuilder<SalesCubit, SalesState>(
+            builder: (context, state) => _buildBody(context, state),
+          ),
+        ),
+      ),
     );
   }
 
-  Widget _buildBody(BuildContext context) {
-    if (_loading) {
+  Widget _buildBody(BuildContext context, SalesState state) {
+    if (state is SalesInitial || state is SalesLoading) {
       return const Center(
         child: CircularProgressIndicator(color: AppColors.brand),
       );
     }
 
-    if (_transactions.isEmpty) {
+    if (state is SalesError) {
+      return Center(child: Text(state.message));
+    }
+
+    if (state is! SalesLoaded) return const SizedBox.shrink();
+
+    if (state.transactions.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -168,9 +108,10 @@ class _SalesHistoryState extends State<SalesHistory> {
 
     // Group transactions by date
     final grouped = <String, List<TransactionsTableData>>{};
-    for (final tx in _transactions) {
-      final key = _fmtDate(tx.createdAt);
-      grouped.putIfAbsent(key, () => []).add(tx);
+    for (final tx in state.transactions) {
+      grouped
+          .putIfAbsent(AppFormatters.shortDate(tx.createdAt), () => [])
+          .add(tx);
     }
     final dateKeys = grouped.keys.toList();
 
@@ -199,7 +140,7 @@ class _SalesHistoryState extends State<SalesHistory> {
                     ).copyWith(color: AppColors.textPrimary),
                   ),
                   Text(
-                    _fmt(dailyTotal),
+                    AppFormatters.currency(dailyTotal),
                     style: AppTextStyles.subtitle(context).copyWith(
                       color: AppColors.accent,
                       fontWeight: FontWeight.w700,
@@ -209,20 +150,24 @@ class _SalesHistoryState extends State<SalesHistory> {
               ),
             ),
             // Transaction cards for this date
-            ...txList.map((tx) => _buildTransactionCard(context, tx)),
+            ...txList.map((tx) => _buildTransactionCard(context, state, tx)),
           ],
         );
       },
     );
   }
 
-  Widget _buildTransactionCard(BuildContext context, TransactionsTableData tx) {
-    final isExpanded = _expandedTxId == tx.id;
+  Widget _buildTransactionCard(
+    BuildContext context,
+    SalesLoaded state,
+    TransactionsTableData tx,
+  ) {
+    final isExpanded = state.expandedTxId == tx.id;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: GestureDetector(
-        onTap: () => _toggleExpand(tx.id),
+        onTap: () => _cubit.toggleExpand(tx.id),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeInOut,
@@ -287,7 +232,7 @@ class _SalesHistoryState extends State<SalesHistory> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '${_fmtTime(tx.createdAt)}  •  ${tx.itemCount} item${tx.itemCount != 1 ? 's' : ''}  •  ${_capitalise(tx.paymentMethod)}',
+                            '${AppFormatters.time12h(tx.createdAt)}  •  ${tx.itemCount} item${tx.itemCount != 1 ? 's' : ''}  •  ${AppFormatters.capitalise(tx.paymentMethod)}',
                             style: AppTextStyles.caption(
                               context,
                             ).copyWith(color: AppColors.textMuted),
@@ -298,7 +243,7 @@ class _SalesHistoryState extends State<SalesHistory> {
                     const SizedBox(width: 8),
                     // Amount
                     Text(
-                      _fmt(tx.totalAmount),
+                      AppFormatters.currency(tx.totalAmount),
                       style: AppTextStyles.money(
                         context,
                       ).copyWith(color: AppColors.accent),
@@ -317,7 +262,7 @@ class _SalesHistoryState extends State<SalesHistory> {
                 ),
               ),
               // Expanded detail
-              if (isExpanded) _buildDetail(context, tx),
+              if (isExpanded) _buildDetail(context, state, tx),
             ],
           ),
         ),
@@ -325,13 +270,17 @@ class _SalesHistoryState extends State<SalesHistory> {
     );
   }
 
-  Widget _buildDetail(BuildContext context, TransactionsTableData tx) {
+  Widget _buildDetail(
+    BuildContext context,
+    SalesLoaded state,
+    TransactionsTableData tx,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Divider(height: 1, color: AppColors.borderSoft),
         // Line items
-        if (_loadingItems)
+        if (state.isLoadingItems)
           const Padding(
             padding: EdgeInsets.all(20),
             child: Center(
@@ -345,11 +294,11 @@ class _SalesHistoryState extends State<SalesHistory> {
               ),
             ),
           )
-        else if (_expandedItems != null && _expandedItems!.isNotEmpty)
+        else if (state.expandedItems != null && state.expandedItems!.isNotEmpty)
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 10, 14, 4),
             child: Column(
-              children: _expandedItems!.map((item) {
+              children: state.expandedItems!.map((item) {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Row(
@@ -367,7 +316,7 @@ class _SalesHistoryState extends State<SalesHistory> {
                               ).copyWith(color: AppColors.textPrimary),
                             ),
                             Text(
-                              '${_fmtQty(item.qty)} × ${_fmt(item.unitPrice)}',
+                              '${AppFormatters.quantity(item.qty)} × ${AppFormatters.currency(item.unitPrice)}',
                               style: AppTextStyles.caption(
                                 context,
                               ).copyWith(color: AppColors.textMuted),
@@ -376,7 +325,7 @@ class _SalesHistoryState extends State<SalesHistory> {
                         ),
                       ),
                       Text(
-                        _fmt(item.lineTotal),
+                        AppFormatters.currency(item.lineTotal),
                         style: AppTextStyles.body(context).copyWith(
                           color: AppColors.textPrimary,
                           fontWeight: FontWeight.w600,
@@ -400,11 +349,23 @@ class _SalesHistoryState extends State<SalesHistory> {
           ),
           child: Column(
             children: [
-              _summaryRow(context, 'Subtotal', _fmt(tx.subtotal)),
+              _summaryRow(
+                context,
+                'Subtotal',
+                AppFormatters.currency(tx.subtotal),
+              ),
               if (tx.taxAmount > 0)
-                _summaryRow(context, 'Tax', _fmt(tx.taxAmount)),
+                _summaryRow(
+                  context,
+                  'Tax',
+                  AppFormatters.currency(tx.taxAmount),
+                ),
               if (tx.discountAmount > 0)
-                _summaryRow(context, 'Discount', '-${_fmt(tx.discountAmount)}'),
+                _summaryRow(
+                  context,
+                  'Discount',
+                  '-${AppFormatters.currency(tx.discountAmount)}',
+                ),
               const SizedBox(height: 6),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -417,7 +378,7 @@ class _SalesHistoryState extends State<SalesHistory> {
                     ),
                   ),
                   Text(
-                    _fmt(tx.totalAmount),
+                    AppFormatters.currency(tx.totalAmount),
                     style: AppTextStyles.money(
                       context,
                     ).copyWith(color: AppColors.accent),
@@ -426,8 +387,16 @@ class _SalesHistoryState extends State<SalesHistory> {
               ),
               if (tx.amountReceived != null) ...[
                 const SizedBox(height: 6),
-                _summaryRow(context, 'Received', _fmt(tx.amountReceived!)),
-                _summaryRow(context, 'Change', _fmt(tx.changeDue ?? 0)),
+                _summaryRow(
+                  context,
+                  'Received',
+                  AppFormatters.currency(tx.amountReceived!),
+                ),
+                _summaryRow(
+                  context,
+                  'Change',
+                  AppFormatters.currency(tx.changeDue ?? 0),
+                ),
               ],
             ],
           ),
@@ -485,7 +454,4 @@ class _SalesHistoryState extends State<SalesHistory> {
         return AppColors.accent;
     }
   }
-
-  String _capitalise(String s) =>
-      s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
 }
