@@ -155,6 +155,60 @@
     Math.ceil always returns a value ≥ actual DPR.  Using the live getter (not
     a captured constant) means browser zoom changes are still reflected.
   ──────────────────────────────────────────────────────────────────────── -->
+  <!-- Convert history.pushState → replaceState during the initial page load so
+       GoRouter's programmatic navigation doesn't create a "skippable" history entry.
+       Once the user first interacts with the page, pushState is restored to normal. -->
+  <script>
+    (function () {
+      var _interacted = false;
+      var _origPush = history.pushState.bind(history);
+      history.pushState = function (state, title, url) {
+        if (!_interacted) return history.replaceState(state, title, url);
+        return _origPush(state, title, url);
+      };
+      ['click', 'keydown', 'pointerdown', 'touchstart'].forEach(function (e) {
+        window.addEventListener(e, function () {
+          _interacted = true;
+          history.pushState = _origPush;
+        }, { once: true, capture: true });
+      });
+    })();
+  </script>
+
+  <!-- Shim Intl.v8BreakIterator → Intl.Segmenter to suppress the Chrome
+       deprecation warning emitted by the Dart web SDK's text-segmentation code.
+       Defining an own property on Intl shadows the deprecated built-in so Chrome's
+       warning tracker never fires. Falls back gracefully when Segmenter is absent. -->
+  <script>
+    (function () {
+      if (typeof Intl === 'undefined' || typeof Intl.Segmenter === 'undefined') return;
+      function V8BreakIterator(locales, opts) {
+        var type = (opts && opts.type) || 'word';
+        var gran = type === 'character' ? 'grapheme'
+                 : type === 'sentence'  ? 'sentence' : 'word';
+        var seg = new Intl.Segmenter(locales, { granularity: gran });
+        var _breaks = [], _idx = 0;
+        return {
+          adoptText: function (text) {
+            _idx = 0; _breaks = [];
+            for (var s of seg.segment(text)) _breaks.push(s.index);
+            _breaks.push(text.length);
+          },
+          first:     function () { _idx = 0; return _breaks[0] != null ? _breaks[0] : 0; },
+          next:      function () { _idx++; return _idx < _breaks.length ? _breaks[_idx] : -1; },
+          current:   function () { return _breaks[_idx] != null ? _breaks[_idx] : 0; },
+          breakType: function () { return 'none'; },
+        };
+      }
+      V8BreakIterator.supportedLocalesOf = function () { return []; };
+      try {
+        Object.defineProperty(Intl, 'v8BreakIterator', {
+          value: V8BreakIterator, writable: true, configurable: true, enumerable: false,
+        });
+      } catch (e) { /* read-only in this browser — leave as-is */ }
+    })();
+  </script>
+
   <script>
     (function () {
       try {

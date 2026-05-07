@@ -44,8 +44,9 @@ class _InventoryState extends State<Inventory> {
     if (!mounted) return;
     final authState = context.read<AuthBloc>().state;
     if (authState is AuthAuthenticated) {
-      final branchId =
-          context.read<BranchCubit>().getSelectedBranchIdForFiltering();
+      final branchId = context
+          .read<BranchCubit>()
+          .getSelectedBranchIdForFiltering();
       _cubit.startWatching(
         businessId: authState.user.businessId ?? '',
         branchId: branchId,
@@ -81,8 +82,9 @@ class _InventoryState extends State<Inventory> {
             listenWhen: (_, curr) => curr is AuthAuthenticated,
             listener: (ctx, state) {
               if (state is AuthAuthenticated) {
-                final branchId =
-                    ctx.read<BranchCubit>().getSelectedBranchIdForFiltering();
+                final branchId = ctx
+                    .read<BranchCubit>()
+                    .getSelectedBranchIdForFiltering();
                 _cubit.startWatching(
                   businessId: state.user.businessId ?? '',
                   branchId: branchId,
@@ -113,32 +115,14 @@ class _InventoryState extends State<Inventory> {
                 ? state.displayItems
                 : <InventoryItem>[];
             final isLoading = state is InventoryLoading;
-            final statusFilter =
-                state is InventoryLoaded ? state.statusFilter : null;
+            final statusFilter = state is InventoryLoaded
+                ? state.statusFilter
+                : null;
             final viewMode = state is InventoryLoaded
                 ? state.viewMode
                 : InventoryViewMode.table;
 
             return Scaffold(
-              appBar: AppBar(
-                centerTitle: false,
-                title: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    
-                    const Text('Stock Levels'),
-                    Text(
-                      'Monitor and manage inventory across branches',
-                      style: getOutfitStyle(
-                          fontSize: 13, color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
-                
-                backgroundColor: AppColors.surface,
-                foregroundColor: AppColors.textPrimary,
-                elevation: 0,
-              ),
               backgroundColor: AppColors.background,
               body: RefreshIndicator(
                 onRefresh: () async => _triggerLoad(),
@@ -152,24 +136,22 @@ class _InventoryState extends State<Inventory> {
                     return SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: EdgeInsets.symmetric(
-                          horizontal: hPad, vertical: 20),
+                        horizontal: hPad,
+                        vertical: 20,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // _PageHeader(onRefresh: _triggerLoad),
                           // const SizedBox(height: 18),
-
-                          InventoryStatsRow(
-                              data: data, isLoading: isLoading),
+                          InventoryStatsRow(data: data, isLoading: isLoading),
                           const SizedBox(height: 16),
 
                           _SearchAndFilter(
                             searchController: _searchController,
                             viewMode: viewMode,
-                            onSearchChanged: (q) =>
-                                _cubit.setSearchQuery(q),
-                            onViewModeChanged: (m) =>
-                                _cubit.setViewMode(m),
+                            onSearchChanged: (q) => _cubit.setSearchQuery(q),
+                            onViewModeChanged: (m) => _cubit.setViewMode(m),
                           ),
                           const SizedBox(height: 12),
 
@@ -192,7 +174,8 @@ class _InventoryState extends State<Inventory> {
                               // Hide per-branch columns when a specific branch
                               // is selected — the filtered total already shows
                               // the correct stock; individual columns are noise.
-                              branches: context
+                              branches:
+                                  context
                                           .read<BranchCubit>()
                                           .state
                                           .selectedBranchId ==
@@ -204,7 +187,8 @@ class _InventoryState extends State<Inventory> {
                           else
                             _CardList(
                               items: items,
-                              branches: context
+                              branches:
+                                  context
                                           .read<BranchCubit>()
                                           .state
                                           .selectedBranchId ==
@@ -233,7 +217,6 @@ double _adaptivePad(double width) =>
     (12.0 + (width - 320).clamp(0.0, 880.0) / 880.0 * 20.0).clamp(12.0, 32.0);
 
 // ── Page header ─────────────────────────────────────────────────────────────
-
 
 class _SearchAndFilter extends StatelessWidget {
   final TextEditingController searchController;
@@ -271,11 +254,15 @@ class _SearchAndFilter extends StatelessWidget {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide:
-                    const BorderSide(color: AppColors.brand, width: 1.5),
+                borderSide: const BorderSide(
+                  color: AppColors.brand,
+                  width: 1.5,
+                ),
               ),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 13,
+              ),
             ),
           ),
         ),
@@ -413,9 +400,9 @@ class _StatusChips extends StatelessWidget {
                 color: isActive ? AppColors.brand : AppColors.borderSoft,
               ),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20)),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             ),
           );
         }).toList(),
@@ -453,21 +440,24 @@ class _CardList extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.inventory_2_outlined,
-                  size: 48, color: AppColors.textMuted),
+              Icon(
+                Icons.inventory_2_outlined,
+                size: 48,
+                color: AppColors.textMuted,
+              ),
               const SizedBox(height: 12),
               Text(
                 'No products found',
                 style: getOutfitStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 'Add products to start tracking inventory',
-                style:
-                    getOutfitStyle(fontSize: 13, color: AppColors.textMuted),
+                style: getOutfitStyle(fontSize: 13, color: AppColors.textMuted),
               ),
             ],
           ),
@@ -477,11 +467,13 @@ class _CardList extends StatelessWidget {
 
     return Column(
       children: items
-          .map((item) => InventoryItemCard(
-                item: item,
-                branches: branches,
-                onAdjust: onAdjust,
-              ))
+          .map(
+            (item) => InventoryItemCard(
+              item: item,
+              branches: branches,
+              onAdjust: onAdjust,
+            ),
+          )
           .toList(),
     );
   }

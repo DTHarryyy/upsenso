@@ -43,33 +43,56 @@ class _SalesHistoryState extends State<SalesHistory> {
   void _subscribe(String? branchId) {
     _txSub?.cancel();
     _txSub = _txDao.watchTransactions(branchId: branchId).listen((list) {
-      if (mounted) setState(() { _transactions = list; _loading = false; });
+      if (mounted)
+        setState(() {
+          _transactions = list;
+          _loading = false;
+        });
     });
   }
 
   Future<void> _toggleExpand(String txId) async {
     if (_expandedTxId == txId) {
-      setState(() { _expandedTxId = null; _expandedItems = null; });
+      setState(() {
+        _expandedTxId = null;
+        _expandedItems = null;
+      });
       return;
     }
-    setState(() { _expandedTxId = txId; _expandedItems = null; _loadingItems = true; });
+    setState(() {
+      _expandedTxId = txId;
+      _expandedItems = null;
+      _loadingItems = true;
+    });
     final items = await _txDao.getItemsByTransactionId(txId);
     if (mounted && _expandedTxId == txId) {
-      setState(() { _expandedItems = items; _loadingItems = false; });
+      setState(() {
+        _expandedItems = items;
+        _loadingItems = false;
+      });
     }
   }
 
   // ── Formatting helpers ──
 
-  String _fmt(double v) => '₱${v.toStringAsFixed(2).replaceAllMapped(
-        RegExp(r'(\d)(?=(\d{3})+\.)'),
-        (m) => '${m[1]},',
-      )}';
+  String _fmt(double v) =>
+      '₱${v.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+\.)'), (m) => '${m[1]},')}';
 
   String _fmtDate(DateTime d) {
     const months = [
-      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      '',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[d.month]} ${d.day}, ${d.year}';
   }
@@ -81,9 +104,8 @@ class _SalesHistoryState extends State<SalesHistory> {
     return '$h:$m $p';
   }
 
-  String _fmtQty(double q) => q == q.roundToDouble()
-      ? q.toInt().toString()
-      : q.toStringAsFixed(2);
+  String _fmtQty(double q) =>
+      q == q.roundToDouble() ? q.toInt().toString() : q.toStringAsFixed(2);
 
   @override
   Widget build(BuildContext context) {
@@ -101,27 +123,7 @@ class _SalesHistoryState extends State<SalesHistory> {
 
         return Scaffold(
           backgroundColor: AppColors.background,
-          appBar: AppBar(
-            backgroundColor: AppColors.surface,
-            surfaceTintColor: Colors.transparent,
-            elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-              color: AppColors.textPrimary,
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            title: Text(
-              'Sales History',
-              style: AppTextStyles.title(context).copyWith(
-                color: AppColors.textPrimary,
-              ),
-            ),
-            centerTitle: true,
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(1),
-              child: Container(height: 1, color: AppColors.borderSoft),
-            ),
-          ),
+
           body: _buildBody(context),
         );
       },
@@ -140,20 +142,24 @@ class _SalesHistoryState extends State<SalesHistory> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.receipt_long_outlined, size: 64, color: AppColors.textMuted),
+            Icon(
+              Icons.receipt_long_outlined,
+              size: 64,
+              color: AppColors.textMuted,
+            ),
             const SizedBox(height: 16),
             Text(
               'No transactions yet',
-              style: AppTextStyles.subtitle(context).copyWith(
-                color: AppColors.textSecondary,
-              ),
+              style: AppTextStyles.subtitle(
+                context,
+              ).copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 8),
             Text(
               'Completed sales will appear here',
-              style: AppTextStyles.body(context).copyWith(
-                color: AppColors.textMuted,
-              ),
+              style: AppTextStyles.body(
+                context,
+              ).copyWith(color: AppColors.textMuted),
             ),
           ],
         ),
@@ -188,9 +194,9 @@ class _SalesHistoryState extends State<SalesHistory> {
                 children: [
                   Text(
                     dateLabel,
-                    style: AppTextStyles.subtitle(context).copyWith(
-                      color: AppColors.textPrimary,
-                    ),
+                    style: AppTextStyles.subtitle(
+                      context,
+                    ).copyWith(color: AppColors.textPrimary),
                   ),
                   Text(
                     _fmt(dailyTotal),
@@ -224,10 +230,18 @@ class _SalesHistoryState extends State<SalesHistory> {
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: isExpanded ? AppColors.brand.withValues(alpha: 0.3) : AppColors.borderSoft,
+              color: isExpanded
+                  ? AppColors.brand.withValues(alpha: 0.3)
+                  : AppColors.borderSoft,
             ),
             boxShadow: isExpanded
-                ? [BoxShadow(color: AppColors.brand.withValues(alpha: 0.08), blurRadius: 8, offset: const Offset(0, 2))]
+                ? [
+                    BoxShadow(
+                      color: AppColors.brand.withValues(alpha: 0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
                 : [],
           ),
           child: Column(
@@ -243,7 +257,9 @@ class _SalesHistoryState extends State<SalesHistory> {
                       width: 42,
                       height: 42,
                       decoration: BoxDecoration(
-                        color: _paymentColor(tx.paymentMethod).withValues(alpha: 0.1),
+                        color: _paymentColor(
+                          tx.paymentMethod,
+                        ).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
@@ -272,9 +288,9 @@ class _SalesHistoryState extends State<SalesHistory> {
                           const SizedBox(height: 2),
                           Text(
                             '${_fmtTime(tx.createdAt)}  •  ${tx.itemCount} item${tx.itemCount != 1 ? 's' : ''}  •  ${_capitalise(tx.paymentMethod)}',
-                            style: AppTextStyles.caption(context).copyWith(
-                              color: AppColors.textMuted,
-                            ),
+                            style: AppTextStyles.caption(
+                              context,
+                            ).copyWith(color: AppColors.textMuted),
                           ),
                         ],
                       ),
@@ -283,9 +299,9 @@ class _SalesHistoryState extends State<SalesHistory> {
                     // Amount
                     Text(
                       _fmt(tx.totalAmount),
-                      style: AppTextStyles.money(context).copyWith(
-                        color: AppColors.accent,
-                      ),
+                      style: AppTextStyles.money(
+                        context,
+                      ).copyWith(color: AppColors.accent),
                     ),
                     const SizedBox(width: 4),
                     AnimatedRotation(
@@ -320,8 +336,12 @@ class _SalesHistoryState extends State<SalesHistory> {
             padding: EdgeInsets.all(20),
             child: Center(
               child: SizedBox(
-                width: 20, height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.brand),
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.brand,
+                ),
               ),
             ),
           )
@@ -342,15 +362,15 @@ class _SalesHistoryState extends State<SalesHistory> {
                               item.variantName != 'Default'
                                   ? '${item.productName} (${item.variantName})'
                                   : item.productName,
-                              style: AppTextStyles.body(context).copyWith(
-                                color: AppColors.textPrimary,
-                              ),
+                              style: AppTextStyles.body(
+                                context,
+                              ).copyWith(color: AppColors.textPrimary),
                             ),
                             Text(
                               '${_fmtQty(item.qty)} × ${_fmt(item.unitPrice)}',
-                              style: AppTextStyles.caption(context).copyWith(
-                                color: AppColors.textMuted,
-                              ),
+                              style: AppTextStyles.caption(
+                                context,
+                              ).copyWith(color: AppColors.textMuted),
                             ),
                           ],
                         ),
@@ -398,9 +418,9 @@ class _SalesHistoryState extends State<SalesHistory> {
                   ),
                   Text(
                     _fmt(tx.totalAmount),
-                    style: AppTextStyles.money(context).copyWith(
-                      color: AppColors.accent,
-                    ),
+                    style: AppTextStyles.money(
+                      context,
+                    ).copyWith(color: AppColors.accent),
                   ),
                 ],
               ),
@@ -424,9 +444,9 @@ class _SalesHistoryState extends State<SalesHistory> {
         children: [
           Text(
             label,
-            style: AppTextStyles.body(context).copyWith(
-              color: AppColors.textSecondary,
-            ),
+            style: AppTextStyles.body(
+              context,
+            ).copyWith(color: AppColors.textSecondary),
           ),
           Text(
             value,

@@ -487,50 +487,20 @@ class _AddProductsViewState extends State<_AddProductsView> {
                 icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
                 onPressed: () => context.pop(),
               ),
-              actions: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: state.isSaving
-                      ? const Center(
-                          child: SizedBox(
-                            width: 20, height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: AppColors.brand,
-                            ),
-                          ),
-                        )
-                      : TextButton(
-                          onPressed: _save,
-                          style: TextButton.styleFrom(
-                            backgroundColor: AppColors.brandSoft,
-                            foregroundColor: AppColors.brand,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 6),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8)),
-                          ),
-                          child: Text(
-                            widget.productToEdit != null ? 'Update' : 'Save',
-                            style: getOutfitStyle(
-                              color: AppColors.brand,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                ),
-              ],
             ),
-            // ── Sticky save bar ─────────────────────────────────────────────
+            // ── Sticky save bar with soft top shadow ────────────────────────
             bottomNavigationBar: SafeArea(
               child: Container(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                 decoration: const BoxDecoration(
                   color: AppColors.surface,
-                  border: Border(
-                    top: BorderSide(color: AppColors.borderSoft),
-                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0x0F101828),
+                      blurRadius: 24,
+                      offset: Offset(0, -8),
+                    ),
+                  ],
                 ),
                 child: AppFilledButton(
                   label: widget.productToEdit != null
@@ -544,12 +514,11 @@ class _AddProductsViewState extends State<_AddProductsView> {
             body: Column(
               children: [
                 _ModeToggle(mode: state.mode, onChanged: cubit.switchMode),
-                _buildModeBanner(context, state.mode),
                 Expanded(
                   child: Form(
                     key: _formKey,
                     child: ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                       children: [
                         if (state.mode == ProductFormMode.simple) ...[
                           _buildSimpleSection(state, cubit),
@@ -589,20 +558,22 @@ class _AddProductsViewState extends State<_AddProductsView> {
       icon: Icons.info_outline_rounded,
       children: [
         // Name
-        const AppFieldLabel('Product Name *'),
         TextFormField(
           controller: _nameController,
           focusNode: _nameFocusNode,
           autofocus: true,
           textCapitalization: TextCapitalization.words,
           textInputAction: TextInputAction.next,
-          decoration: appInputDeco('e.g. Espresso, White Rice 5kg...'),
-          style: getOutfitStyle(color: AppColors.textPrimary),
+          decoration: appInputDeco(
+            'e.g. Espresso, White Rice 5kg…',
+            label: 'Product name',
+          ),
+          style: getOutfitStyle(color: AppColors.textPrimary, fontSize: 16),
           validator: (v) => (v == null || v.trim().isEmpty)
               ? 'Product name is required'
               : null,
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
 
         // Category (optional)
         const AppFieldLabel('Category'),
@@ -616,10 +587,9 @@ class _AddProductsViewState extends State<_AddProductsView> {
               .toList(),
           onChanged: cubit.selectCategory,
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
 
         // Price
-        const AppFieldLabel('Price *'),
         TextFormField(
           controller: _simplePriceController,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -627,10 +597,11 @@ class _AddProductsViewState extends State<_AddProductsView> {
             FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
           ],
           textInputAction: TextInputAction.next,
-          decoration: appInputDeco('0.00', prefixText: '₱ '),
+          decoration: appInputDeco('0.00', label: 'Price', prefixText: '₱ '),
           style: getOutfitStyle(
             color: AppColors.textPrimary,
-            fontWeight: FontWeight.w600,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
           ),
           validator: (v) =>
               (v == null || v.trim().isEmpty) ? 'Price is required' : null,
@@ -648,19 +619,21 @@ class _AddProductsViewState extends State<_AddProductsView> {
       icon: Icons.info_outline_rounded,
       children: [
         // Name
-        const AppFieldLabel('Product Name *'),
         TextFormField(
           controller: _nameController,
           focusNode: _nameFocusNode,
           textCapitalization: TextCapitalization.words,
           textInputAction: TextInputAction.next,
-          decoration: appInputDeco('e.g. Espresso, White Rice 5kg...'),
-          style: getOutfitStyle(color: AppColors.textPrimary),
+          decoration: appInputDeco(
+            'e.g. Espresso, White Rice 5kg…',
+            label: 'Product name',
+          ),
+          style: getOutfitStyle(color: AppColors.textPrimary, fontSize: 16),
           validator: (v) => (v == null || v.trim().isEmpty)
               ? 'Product name is required'
               : null,
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
 
         // Category (optional)
         const AppFieldLabel('Category'),
@@ -674,13 +647,13 @@ class _AddProductsViewState extends State<_AddProductsView> {
               .toList(),
           onChanged: cubit.selectCategory,
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 8),
 
-        // Has Variants toggle
+        // Multiple sizes / options
         SwitchRow(
           icon: Icons.tune_rounded,
-          label: 'Has Variants',
-          subtitle: 'Each variant has its own price  (e.g. Small / Medium / Large)',
+          label: 'Multiple sizes or options',
+          subtitle: 'e.g. Small / Medium / Large — each with its own price',
           value: state.hasVariants,
           onChanged: cubit.setHasVariants,
         ),
@@ -700,7 +673,6 @@ class _AddProductsViewState extends State<_AddProductsView> {
       icon: Icons.attach_money_rounded,
       children: [
         // Selling Price *
-        const AppFieldLabel('Selling Price *'),
         TextFormField(
           controller: _sellingPriceController,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -708,10 +680,15 @@ class _AddProductsViewState extends State<_AddProductsView> {
             FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
           ],
           textInputAction: TextInputAction.next,
-          decoration: appInputDeco('0.00', prefixText: '₱ '),
+          decoration: appInputDeco(
+            '0.00',
+            label: 'Selling price',
+            prefixText: '₱ ',
+          ),
           style: getOutfitStyle(
             color: AppColors.textPrimary,
-            fontWeight: FontWeight.w600,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
           ),
           validator: (v) =>
               (v == null || v.trim().isEmpty) ? 'Selling price is required' : null,
@@ -753,7 +730,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
                         child: Text.rich(
                           TextSpan(children: [
                             TextSpan(
-                              text: 'Customer pays  ',
+                              text: 'Customer sees  ',
                               style: getOutfitStyle(
                                   color: AppColors.brand, fontSize: 12),
                             ),
@@ -785,7 +762,6 @@ class _AddProductsViewState extends State<_AddProductsView> {
         const SizedBox(height: 12),
 
         // Cost Price (full-width; Retail Price moved to More Options)
-        const AppFieldLabel('Cost Price'),
         TextFormField(
           controller: _costPriceController,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -793,16 +769,20 @@ class _AddProductsViewState extends State<_AddProductsView> {
             FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
           ],
           textInputAction: TextInputAction.next,
-          decoration: appInputDeco('0.00', prefixText: '₱ '),
-          style: getOutfitStyle(color: AppColors.textPrimary),
+          decoration: appInputDeco(
+            '0.00',
+            label: 'Cost price',
+            prefixText: '₱ ',
+          ),
+          style: getOutfitStyle(color: AppColors.textPrimary, fontSize: 16),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 8),
 
-        // Track Inventory
+        // Track stock
         SwitchRow(
           icon: Icons.inventory_2_outlined,
-          label: 'Track Inventory',
-          subtitle: 'Manage stock levels',
+          label: 'Track stock',
+          subtitle: 'Show stock counts and low-stock alerts',
           value: state.trackInventory,
           onChanged: cubit.setTrackInventory,
         ),
@@ -822,66 +802,56 @@ class _AddProductsViewState extends State<_AddProductsView> {
                           Expanded(
                             child: Opacity(
                               opacity: isAllBranchesEdit ? 0.6 : 1.0,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  AppFieldLabel(
-                                      isFraction ? 'Stock * (kg)' : 'Stock *'),
-                                  TextFormField(
-                                    controller: _stockController,
-                                    readOnly: isAllBranchesEdit,
-                                    keyboardType: isFraction
-                                        ? const TextInputType.numberWithOptions(
-                                            decimal: true)
-                                        : TextInputType.number,
-                                    inputFormatters: isFraction
-                                        ? [
-                                            FilteringTextInputFormatter.allow(
-                                                RegExp(r'^\d*\.?\d{0,3}'))
-                                          ]
-                                        : [FilteringTextInputFormatter.digitsOnly],
-                                    textInputAction: TextInputAction.next,
-                                    decoration: appInputDeco(isFraction ? '0.000' : '0')
-                                        .copyWith(
-                                      filled: true,
-                                      fillColor: isAllBranchesEdit
-                                          ? AppColors.surfaceAlt
-                                          : AppColors.inputFill,
-                                    ),
-                                    style: getOutfitStyle(
-                                        color: AppColors.textPrimary),
-                                    validator: (v) {
-                                      if (!isAllBranchesEdit &&
-                                          state.trackInventory &&
-                                          (v == null || v.trim().isEmpty)) {
-                                        return 'Stock is required';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                ],
+                              child: TextFormField(
+                                controller: _stockController,
+                                readOnly: isAllBranchesEdit,
+                                keyboardType: isFraction
+                                    ? const TextInputType.numberWithOptions(
+                                        decimal: true)
+                                    : TextInputType.number,
+                                inputFormatters: isFraction
+                                    ? [
+                                        FilteringTextInputFormatter.allow(
+                                            RegExp(r'^\d*\.?\d{0,3}'))
+                                      ]
+                                    : [FilteringTextInputFormatter.digitsOnly],
+                                textInputAction: TextInputAction.next,
+                                decoration: appInputDeco(
+                                  isFraction ? '0.000' : '0',
+                                  label: isFraction ? 'Stock (kg)' : 'Stock',
+                                  fillColor: isAllBranchesEdit
+                                      ? AppColors.surfaceAlt
+                                      : AppColors.surface,
+                                ),
+                                style: getOutfitStyle(
+                                    color: AppColors.textPrimary, fontSize: 16),
+                                validator: (v) {
+                                  if (!isAllBranchesEdit &&
+                                      state.trackInventory &&
+                                      (v == null || v.trim().isEmpty)) {
+                                    return 'Stock is required';
+                                  }
+                                  return null;
+                                },
                               ),
                             ),
                           ),
                           const SizedBox(width: 10),
                           // Low Stock Alert (optional)
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const AppFieldLabel('Low Stock Alert'),
-                                TextFormField(
-                                  controller: _lowStockController,
-                                  keyboardType: TextInputType.number,
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly,
-                                  ],
-                                  textInputAction: TextInputAction.done,
-                                  decoration: appInputDeco('e.g. 5'),
-                                  style: getOutfitStyle(
-                                      color: AppColors.textPrimary),
-                                ),
+                            child: TextFormField(
+                              controller: _lowStockController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
                               ],
+                              textInputAction: TextInputAction.done,
+                              decoration: appInputDeco(
+                                'e.g. 5',
+                                label: 'Low stock alert',
+                              ),
+                              style: getOutfitStyle(
+                                  color: AppColors.textPrimary, fontSize: 16),
                             ),
                           ),
                         ],
@@ -1006,8 +976,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Give each option a name, price, and optionally a barcode. '
-                  'Customers never see these — they\'re for your records.',
+                  'Give each option a name and price. Optionally add a barcode.',
                   style: getOutfitStyle(
                       color: AppColors.textSecondary, fontSize: 12),
                 ),
@@ -1019,8 +988,8 @@ class _AddProductsViewState extends State<_AddProductsView> {
         // Global Track Inventory
         SwitchRow(
           icon: Icons.inventory_2_outlined,
-          label: 'Track Inventory',
-          subtitle: 'Adds a stock field to every variant below',
+          label: 'Track stock',
+          subtitle: 'Adds a stock field to every option below',
           value: state.trackInventory,
           onChanged: cubit.setTrackInventory,
         ),
@@ -1113,40 +1082,42 @@ class _AddProductsViewState extends State<_AddProductsView> {
         mainAxisSize: MainAxisSize.min,
         children: [
           // Header toggle
-          GestureDetector(
+          InkWell(
             onTap: cubit.toggleMoreOptions,
-            behavior: HitTestBehavior.opaque,
+            borderRadius: BorderRadius.circular(14),
             child: Padding(
               padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               child: Row(
                 children: [
-                  const Icon(Icons.settings_outlined,
-                      size: 17, color: AppColors.textMuted),
-                  const SizedBox(width: 10),
+                  const Icon(Icons.tune_rounded,
+                      size: 18, color: AppColors.textSecondary),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'More Options',
+                          'More options',
                           style: getOutfitStyle(
-                            color: AppColors.textSecondary,
+                            color: AppColors.textPrimary,
                             fontWeight: FontWeight.w600,
                             fontSize: 14,
                           ),
                         ),
-                        if (!state.moreOptionsExpanded)
+                        if (!state.moreOptionsExpanded) ...[
+                          const SizedBox(height: 2),
                           Text(
                             state.mode == ProductFormMode.simple
-                                ? 'Sell By · Image · Barcode'
-                                : 'Sell By · Image · Barcodes · SKU · Tax · Expiry',
+                                ? 'Photo · Barcode · Sold by weight'
+                                : 'Photo · Barcode · SKU · Tax · Expiry',
                             style: getOutfitStyle(
                               color: AppColors.textMuted,
-                              fontSize: 10,
+                              fontSize: 12,
                             ),
                           ),
+                        ],
                       ],
                     ),
                   ),
@@ -1181,23 +1152,20 @@ class _AddProductsViewState extends State<_AddProductsView> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Divider(height: 1, color: AppColors.borderSoft),
-
-        // Sell by fraction
+        // Sold by weight
         ToggleRow(
           icon: Icons.straighten_rounded,
-          label: 'Sell by fraction',
-          subtitle: 'Price per kg, litre, or other weight/volume unit',
+          label: 'Sold by weight',
+          subtitle: 'Price per kg, litre, or other unit',
           enabled: _sellBy == 'fraction',
           onChanged: (v) => setState(() => _sellBy = v ? 'fraction' : 'unit'),
         ),
-        const Divider(height: 1, color: AppColors.borderSoft),
 
         // Product Image
         ToggleRow(
           icon: Icons.image_outlined,
-          label: 'Product Image',
-          subtitle: 'Add a photo for this product',
+          label: 'Product photo',
+          subtitle: 'Add a photo for faster recognition',
           enabled: _showImagePicker || state.imagePath != null,
           onChanged: (v) {
             setState(() => _showImagePicker = v);
@@ -1218,7 +1186,6 @@ class _AddProductsViewState extends State<_AddProductsView> {
                 )
               : const SizedBox(width: double.infinity, height: 0),
         ),
-        const Divider(height: 1, color: AppColors.borderSoft),
 
         // Barcode
         Padding(
@@ -1237,23 +1204,20 @@ class _AddProductsViewState extends State<_AddProductsView> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Divider(height: 1, color: AppColors.borderSoft),
-
-        // Sell by fraction
+        // Sold by weight
         ToggleRow(
           icon: Icons.straighten_rounded,
-          label: 'Sell by fraction',
-          subtitle: 'Price per kg, litre, or other weight/volume unit',
+          label: 'Sold by weight',
+          subtitle: 'Price per kg, litre, or other unit',
           enabled: _sellBy == 'fraction',
           onChanged: (v) => setState(() => _sellBy = v ? 'fraction' : 'unit'),
         ),
-        const Divider(height: 1, color: AppColors.borderSoft),
 
         // Product Image (optional)
         ToggleRow(
           icon: Icons.image_outlined,
-          label: 'Product Image',
-          subtitle: 'Add a photo for this product',
+          label: 'Product photo',
+          subtitle: 'Add a photo for faster recognition',
           enabled: _showImagePicker || state.imagePath != null,
           onChanged: (v) {
             setState(() => _showImagePicker = v);
@@ -1274,7 +1238,6 @@ class _AddProductsViewState extends State<_AddProductsView> {
                 )
               : const SizedBox(width: double.infinity, height: 0),
         ),
-        const Divider(height: 1, color: AppColors.borderSoft),
 
         // Barcodes
         BarcodesSectionToggle(
@@ -1282,7 +1245,6 @@ class _AddProductsViewState extends State<_AddProductsView> {
           onAdd: _addBarcode,
           onRemove: _removeBarcode,
         ),
-        const Divider(height: 1, color: AppColors.borderSoft),
 
         // SKU
         SkuSectionToggle(
@@ -1292,13 +1254,12 @@ class _AddProductsViewState extends State<_AddProductsView> {
             if (sku.isNotEmpty) setState(() => _skuController.text = sku);
           },
         ),
-        const Divider(height: 1, color: AppColors.borderSoft),
 
         // Retail Price (optional, toggleable)
         ToggleRow(
           icon: Icons.price_change_outlined,
-          label: 'Retail Price (SRP)',
-          subtitle: 'The suggested / recommended selling price',
+          label: 'Suggested retail price',
+          subtitle: 'The recommended selling price (SRP)',
           enabled: _showRetailPrice,
           onChanged: (v) => setState(() {
             _showRetailPrice = v;
@@ -1314,7 +1275,6 @@ class _AddProductsViewState extends State<_AddProductsView> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const AppFieldLabel('Retail Price (SRP)'),
                       TextFormField(
                         controller: _retailPriceController,
                         keyboardType: const TextInputType.numberWithOptions(
@@ -1324,8 +1284,13 @@ class _AddProductsViewState extends State<_AddProductsView> {
                               RegExp(r'^\d*\.?\d{0,2}')),
                         ],
                         textInputAction: TextInputAction.done,
-                        decoration: appInputDeco('0.00', prefixText: '₱ '),
-                        style: getOutfitStyle(color: AppColors.textPrimary),
+                        decoration: appInputDeco(
+                          '0.00',
+                          label: 'Suggested retail price',
+                          prefixText: '₱ ',
+                        ),
+                        style: getOutfitStyle(
+                            color: AppColors.textPrimary, fontSize: 16),
                       ),
                       // Live SRP comparison indicator
                       ValueListenableBuilder<TextEditingValue>(
@@ -1399,13 +1364,12 @@ class _AddProductsViewState extends State<_AddProductsView> {
                 )
               : const SizedBox(width: double.infinity, height: 0),
         ),
-        const Divider(height: 1, color: AppColors.borderSoft),
 
         // Tax % (optional, toggleable)
         ToggleRow(
           icon: Icons.receipt_long_outlined,
-          label: 'Tax (%)',
-          subtitle: 'Added on top of the selling price',
+          label: 'VAT or sales tax',
+          subtitle: 'Added at checkout',
           enabled: _showTax,
           onChanged: (v) => setState(() {
             _showTax = v;
@@ -1418,41 +1382,39 @@ class _AddProductsViewState extends State<_AddProductsView> {
           child: _showTax
               ? Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const AppFieldLabel('Tax (%)'),
-                      TextFormField(
-                        controller: _taxController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                              RegExp(r'^\d*\.?\d{0,2}')),
-                        ],
-                        textInputAction: TextInputAction.done,
-                        decoration: appInputDeco('e.g. 12', prefixText: '% '),
-                        style: getOutfitStyle(color: AppColors.textPrimary),
-                        validator: (v) {
-                          if (v != null && v.trim().isNotEmpty) {
-                            final p = double.tryParse(v);
-                            if (p == null) return 'Enter a valid percentage';
-                            if (p < 0 || p > 100) return 'Must be 0–100';
-                          }
-                          return null;
-                        },
-                      ),
+                  child: TextFormField(
+                    controller: _taxController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                          RegExp(r'^\d*\.?\d{0,2}')),
                     ],
+                    textInputAction: TextInputAction.done,
+                    decoration: appInputDeco(
+                      'e.g. 12',
+                      label: 'Tax rate (%)',
+                      prefixText: '% ',
+                    ),
+                    style: getOutfitStyle(
+                        color: AppColors.textPrimary, fontSize: 16),
+                    validator: (v) {
+                      if (v != null && v.trim().isNotEmpty) {
+                        final p = double.tryParse(v);
+                        if (p == null) return 'Enter a valid percentage';
+                        if (p < 0 || p > 100) return 'Must be 0–100';
+                      }
+                      return null;
+                    },
                   ),
                 )
               : const SizedBox(width: double.infinity, height: 0),
         ),
-        const Divider(height: 1, color: AppColors.borderSoft),
 
         // Track Expiry
         ToggleRow(
           icon: Icons.event_rounded,
-          label: 'Track Expiry',
+          label: 'Track expiry',
           subtitle: 'Enable for perishable or dated items',
           enabled: state.trackExpiry,
           onChanged: cubit.setTrackExpiry,
@@ -1463,27 +1425,25 @@ class _AddProductsViewState extends State<_AddProductsView> {
           child: state.trackExpiry
               ? Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const AppFieldLabel('Expiry Date'),
-                      TextFormField(
-                        controller: _expiryController,
-                        readOnly: true,
-                        onTap: _pickExpiryDate,
-                        decoration: appInputDeco('dd/mm/yyyy').copyWith(
-                          suffixIcon: const Icon(
-                              Icons.calendar_today_rounded,
-                              size: 17,
-                              color: AppColors.textMuted),
-                        ),
-                        style: getOutfitStyle(color: AppColors.textPrimary),
-                        validator: (_) =>
-                            (state.trackExpiry && state.expiryDate == null)
-                                ? 'Please select an expiry date'
-                                : null,
-                      ),
-                    ],
+                  child: TextFormField(
+                    controller: _expiryController,
+                    readOnly: true,
+                    onTap: _pickExpiryDate,
+                    decoration: appInputDeco(
+                      'dd/mm/yyyy',
+                      label: 'Expiry date',
+                    ).copyWith(
+                      suffixIcon: const Icon(
+                          Icons.calendar_today_rounded,
+                          size: 17,
+                          color: AppColors.textMuted),
+                    ),
+                    style: getOutfitStyle(
+                        color: AppColors.textPrimary, fontSize: 16),
+                    validator: (_) =>
+                        (state.trackExpiry && state.expiryDate == null)
+                            ? 'Please select an expiry date'
+                            : null,
                   ),
                 )
               : const SizedBox(width: double.infinity, height: 0),
@@ -1492,52 +1452,10 @@ class _AddProductsViewState extends State<_AddProductsView> {
     );
   }
 
-  // ── Mode description banner ───────────────────────────────────────────────
-
-  Widget _buildModeBanner(BuildContext context, ProductFormMode mode) {
-    final isSimple = mode == ProductFormMode.simple;
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 220),
-      child: Container(
-        key: ValueKey(mode),
-        width: double.infinity,
-        color: AppColors.surface,
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: AppColors.brandSoft,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                isSimple ? Icons.flash_on_rounded : Icons.tune_rounded,
-                size: 13,
-                color: AppColors.brand,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  isSimple
-                      ? 'Name, category, and price — perfect for a quick product setup.'
-                      : 'Full pricing, variants, barcodes, SKU, inventory tracking, and more.',
-                  style: getOutfitStyle(
-                    color: AppColors.brand,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 // ── Mode Toggle ───────────────────────────────────────────────────────────────
+// Slim 36px iOS-style segmented control with a sliding white pill.
 
 class _ModeToggle extends StatelessWidget {
   final ProductFormMode mode;
@@ -1546,31 +1464,72 @@ class _ModeToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isSimple = mode == ProductFormMode.simple;
     return Container(
       color: AppColors.surface,
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-      child: Row(
-        children: [
-          Expanded(
-            child: _ModeChip(
-              label: 'Simple',
-              subtitle: 'Quick & easy',
-              icon: Icons.flash_on_rounded,
-              active: mode == ProductFormMode.simple,
-              onTap: () => onChanged(ProductFormMode.simple),
+      child: LayoutBuilder(
+        builder: (ctx, c) {
+          final pillWidth = (c.maxWidth - 8) / 2; // 4px padding each side
+          return Container(
+            height: 36,
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(10),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _ModeChip(
-              label: 'Advanced',
-              subtitle: 'Full control',
-              icon: Icons.tune_rounded,
-              active: mode == ProductFormMode.advanced,
-              onTap: () => onChanged(ProductFormMode.advanced),
+            child: Stack(
+              children: [
+                // Sliding white pill
+                AnimatedAlign(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  alignment:
+                      isSimple ? Alignment.centerLeft : Alignment.centerRight,
+                  child: Container(
+                    width: pillWidth,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x14101828),
+                          blurRadius: 3,
+                          offset: Offset(0, 1),
+                        ),
+                        BoxShadow(
+                          color: Color(0x0F101828),
+                          blurRadius: 2,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // Labels
+                Row(
+                  children: [
+                    Expanded(
+                      child: _ModeChip(
+                        label: 'Simple',
+                        active: isSimple,
+                        onTap: () => onChanged(ProductFormMode.simple),
+                      ),
+                    ),
+                    Expanded(
+                      child: _ModeChip(
+                        label: 'Advanced',
+                        active: !isSimple,
+                        onTap: () => onChanged(ProductFormMode.advanced),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -1578,61 +1537,33 @@ class _ModeToggle extends StatelessWidget {
 
 class _ModeChip extends StatelessWidget {
   final String label;
-  final String subtitle;
-  final IconData icon;
   final bool active;
   final VoidCallback onTap;
   const _ModeChip({
     required this.label,
-    required this.subtitle,
-    required this.icon,
     required this.active,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(vertical: 11),
-        decoration: BoxDecoration(
-          color: active ? AppColors.brand : AppColors.inputFill,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon,
-                    size: 15,
-                    color: active ? Colors.white : AppColors.textMuted),
-                const SizedBox(width: 6),
-                Text(
-                  label,
-                  style: getOutfitStyle(
-                    color: active ? Colors.white : AppColors.textMuted,
-                    fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
+    return Semantics(
+      button: true,
+      selected: active,
+      label: label,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Center(
+          child: AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 180),
+            style: getOutfitStyle(
+              color: active ? AppColors.textPrimary : AppColors.textSecondary,
+              fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+              fontSize: 14,
             ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              style: getOutfitStyle(
-                color: active
-                    ? Colors.white.withAlpha(178)
-                    : AppColors.textMuted,
-                fontSize: 10,
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ],
+            child: Text(label),
+          ),
         ),
       ),
     );

@@ -51,12 +51,12 @@ class _ExpensesViewState extends State<_ExpensesView> {
     final branchState = context.read<BranchCubit>().state;
 
     context.read<ExpensesCubit>().startWatching(
-          businessId: user.businessId ?? '',
-          branchId: branchState.selectedBranchId,
-          roleName: branchState.roleName,
-          userId: user.id,
-          userName: user.fullName,
-        );
+      businessId: user.businessId ?? '',
+      branchId: branchState.selectedBranchId,
+      roleName: branchState.roleName,
+      userId: user.id,
+      userName: user.fullName,
+    );
   }
 
   @override
@@ -65,19 +65,7 @@ class _ExpensesViewState extends State<_ExpensesView> {
       listener: (ctx, s) => _startWatching(),
       child: Scaffold(
         backgroundColor: AppColors.background,
-        appBar: AppBar(
-          backgroundColor: AppColors.surface,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          title: Text(
-            'Expenses',
-            style: getOutfitStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-            ),
-          ),
-        ),
+
         floatingActionButton: const _AddFab(),
         body: BlocBuilder<ExpensesCubit, ExpensesState>(
           builder: (context, state) {
@@ -191,13 +179,18 @@ class _ErrorView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline_rounded,
-                size: 40, color: AppColors.error),
+            const Icon(
+              Icons.error_outline_rounded,
+              size: 40,
+              color: AppColors.error,
+            ),
             const SizedBox(height: 12),
             Text(
               message,
               style: getOutfitStyle(
-                  fontSize: 14, color: AppColors.textSecondary),
+                fontSize: 14,
+                color: AppColors.textSecondary,
+              ),
               textAlign: TextAlign.center,
             ),
           ],

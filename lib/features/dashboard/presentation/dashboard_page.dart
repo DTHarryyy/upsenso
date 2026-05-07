@@ -16,7 +16,7 @@ import 'package:pos/features/dashboard/presentation/widgets/low_stock_alerts_car
 import 'package:pos/features/dashboard/presentation/widgets/payment_methods_chart.dart';
 import 'package:pos/features/dashboard/presentation/widgets/quick_actions_bar.dart';
 import 'package:pos/features/dashboard/presentation/widgets/sales_trend_chart.dart';
-import 'package:pos/features/dashboard/presentation/widgets/stat_card.dart';
+import 'package:pos/core/widgets/stat_card.dart';
 import 'package:pos/features/dashboard/presentation/widgets/expenses_summary_card.dart';
 import 'package:pos/features/dashboard/presentation/widgets/top_selling_items.dart';
 
@@ -276,74 +276,47 @@ class _StatCardsRow extends StatelessWidget {
     final avgChange = _pctChange(avgOrder, data.yesterdayAvgOrderValue);
 
     final cards = [
-      StatCard(
+      AppStatCard(
         title: "Today's Sales",
         value: isLoading ? '—' : _fmtCurrency(todaySales),
-        change: isLoading ? '' : _changeLabel(salesChange, 'from yesterday'),
+        changeLabel: isLoading ? null : _changeLabel(salesChange, 'from yesterday'),
         isPositive: salesChange >= 0,
         icon: Icons.attach_money,
-        iconBgColor: const Color(0xFFDCFCE7),
+        iconBg: const Color(0xFFDCFCE7),
         iconColor: const Color(0xFF22C55E),
       ),
-      StatCard(
+      AppStatCard(
         title: 'This Week',
         value: isLoading ? '—' : _fmtCurrency(weekSales),
-        change: isLoading ? '' : _changeLabel(weekChange, 'from last week'),
+        changeLabel: isLoading ? null : _changeLabel(weekChange, 'from last week'),
         isPositive: weekChange >= 0,
         icon: Icons.trending_up,
-        iconBgColor: const Color(0xFFDCFCE7),
+        iconBg: const Color(0xFFDCFCE7),
         iconColor: const Color(0xFF22C55E),
       ),
-      StatCard(
+      AppStatCard(
         title: 'Transactions',
         value: isLoading ? '—' : '$todayCount',
-        change: isLoading
-            ? ''
+        changeLabel: isLoading
+            ? null
             : '${countDiff >= 0 ? '+' : ''}$countDiff from yesterday',
         isPositive: countDiff >= 0,
         icon: Icons.shopping_cart_outlined,
-        iconBgColor: const Color(0xFFDBEAFE),
+        iconBg: const Color(0xFFDBEAFE),
         iconColor: const Color(0xFF3B82F6),
       ),
-      StatCard(
+      AppStatCard(
         title: 'Avg. Order Value',
         value: isLoading ? '—' : _fmtCurrency(avgOrder),
-        change: isLoading ? '' : _changeLabel(avgChange, 'from yesterday'),
+        changeLabel: isLoading ? null : _changeLabel(avgChange, 'from yesterday'),
         isPositive: avgChange >= 0,
         icon: Icons.bar_chart,
-        iconBgColor: const Color(0xFFF3E8FF),
+        iconBg: const Color(0xFFF3E8FF),
         iconColor: const Color(0xFF7C3AED),
       ),
     ];
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth > 800) {
-          return Row(
-            children: cards
-                .map((c) => Expanded(child: c))
-                .expand((w) => [w, const SizedBox(width: 12)])
-                .toList()
-              ..removeLast(),
-          );
-        }
-        return Column(
-          children: [
-            Row(children: [
-              Expanded(child: cards[0]),
-              const SizedBox(width: 12),
-              Expanded(child: cards[1]),
-            ]),
-            const SizedBox(height: 12),
-            Row(children: [
-              Expanded(child: cards[2]),
-              const SizedBox(width: 12),
-              Expanded(child: cards[3]),
-            ]),
-          ],
-        );
-      },
-    );
+    return StatCardsRow(cards: cards);
   }
 
   double _pctChange(double current, double previous) {
