@@ -38,6 +38,19 @@
   <link rel="preload" href="sqlite3.wasm" as="fetch" crossorigin type="application/wasm">
   <link rel="preload" href="drift_worker.js" as="worker">
 
+  <!-- ── Web Renderer ───────────────────────────────────────────────────────
+    Flutter ≥ 3.24 defaults to SkWasm on Chrome/Edge (fastest, sharpest text).
+    CanvasKit is the fallback for unsupported browsers.
+    The renderer is baked into flutter_bootstrap.js at build time — it CANNOT
+    be changed from index.html.  To choose at build time:
+      SkWasm  (default, recommended): flutter build web --web-renderer skwasm
+      CanvasKit (wider browser support): flutter build web --web-renderer canvaskit
+    Both renderers draw entirely inside a <canvas> / WebGL surface; CSS
+    font-smoothing does NOT affect Flutter canvas content directly.  However the
+    rules below improve the loading-screen text, any HTML-mode fallback content,
+    and help the browser composite the canvas cleanly.
+  ──────────────────────────────────────────────────────────────────────────── -->
+
   <!-- ── Styles ─────────────────────────────────────────────────────────── -->
   <style>
     html, body {
@@ -45,6 +58,27 @@
       margin: 0;
       /* Match app scaffold background so there is no flash on first paint */
       background-color: #F7F9FC;
+
+      /* ── Text rendering ────────────────────────────────────────────────
+         antialiased  → subpixel AA off; single-channel AA on.  Looks sharper
+                        on high-DPI displays and matches how native web apps render.
+         grayscale    → macOS equivalent of antialiased for -moz-.
+         optimizeLegibility → enables kerning & ligatures; small perf cost but
+                              measurable readability improvement for UI text.
+         font-feature-settings → OpenType kerning + standard ligatures + contextual
+                                  alternates; aligns with Inter's intended rendering.
+      ──────────────────────────────────────────────────────────────────── */
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+      font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+    }
+
+    /* Prevent the browser from applying extra text-size inflation on mobile
+       (iOS Safari does this when the element has a small font-size).          */
+    html {
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
     }
 
     /* ── HTML loading screen ─────────────────────────────────────────────

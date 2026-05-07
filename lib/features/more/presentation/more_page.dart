@@ -2,282 +2,531 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pos/core/const/app_colors.dart';
-import 'package:pos/core/widgets/user_avatar.dart';
-import 'package:pos/core/const/app_typography.dart';
+import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/routes/app_routes.dart';
+import 'package:pos/core/widgets/user_avatar.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 
-class MorePage extends StatelessWidget {
+class MorePage extends StatefulWidget {
   const MorePage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: BlocBuilder<AuthBloc, AuthState>(
-          builder: (context, state) {
-            final user = state is AuthAuthenticated ? state.user : null;
+  State<MorePage> createState() => _MorePageState();
+}
 
-            return Column(
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        GestureDetector(
-                          onTap: () => context.push(AppRoutes.profile),
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 15,
-                              vertical: 10,
-                            ),
-                            padding: const EdgeInsets.all(15),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.borderSoft),
-                            ),
-                            child: Row(
-                              children: [
-                                UserAvatar(
-                                  avatarUrl: user?.avatarUrl,
-                                  name: user?.fullName,
-                                  email: user?.email,
-                                  radius: 28,
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        user?.fullName ?? 'Guest User',
-                                        style: AppTextStyles.title(
-                                          context,
-                                        ).copyWith(
-                                          color: AppColors.textPrimary,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'View Profile',
-                                        style: AppTextStyles.caption(
-                                          context,
-                                        ).copyWith(color: AppColors.brand),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Icon(
-                                  Icons.chevron_right,
-                                  color: AppColors.textMuted,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+class _MorePageState extends State<MorePage>
+    with SingleTickerProviderStateMixin {
+  bool _settingsExpanded = false;
+  late final AnimationController _animCtrl;
+  late final Animation<double> _expandAnim;
 
-                        _buildMenuSection(
-                          context: context,
-                          title: 'Main',
-                          items: [
-                            _MenuItem(
-                              icon: Icons.history,
-                              title: 'Sales History',
-                              onTap: () => context.push(AppRoutes.saleshistory),
-                            ),
-                          ],
-                        ),
-                        _buildMenuSection(
-                          context: context,
-                          title: 'Inventory',
-                          items: [
-                            _MenuItem(
-                              icon: Icons.stacked_bar_chart_outlined,
-                              title: 'Stock Level',
-                              onTap: () => context.push(AppRoutes.inventory),
-                            ),
-                          ],
-                        ),
-                        _buildMenuSection(
-                          context: context,
-                          title: 'Finance',
-                          items: [
-                            _MenuItem(
-                              icon: Icons.request_page_outlined,
-                              title: 'Expenses',
-                              onTap: () => context.push(AppRoutes.expenses),
-                            ),
-                          ],
-                        ),
-                        _buildMenuSection(
-                          context: context,
-                          title: 'App',
-                          items: [
-                            _MenuItem(
-                              icon: Icons.settings_rounded,
-                              title: 'Settings',
-                              onTap: () => context.push(AppRoutes.settings),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 16),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // Pinned logout button at bottom
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: () async {
-                        final confirm = await showDialog<bool>(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            backgroundColor: AppColors.surface,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            title: Text(
-                              'Log out?',
-                              style: AppTextStyles.title(ctx).copyWith(
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            content: Text(
-                              'Are you sure you want to log out?',
-                              style: AppTextStyles.body(ctx).copyWith(
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(ctx, false),
-                                child: Text(
-                                  'Cancel',
-                                  style: AppTextStyles.body(ctx).copyWith(
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ),
-                              FilledButton(
-                                onPressed: () => Navigator.pop(ctx, true),
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: AppColors.error,
-                                ),
-                                child: Text(
-                                  'Log out',
-                                  style: AppTextStyles.body(ctx).copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                        if (confirm == true && context.mounted) {
-                          context.read<AuthBloc>().add(AuthLogoutRequested());
-                        }
-                      },
-                      icon: const Icon(Icons.logout_rounded, size: 18),
-                      label: const Text('Log Out'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.error,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        textStyle: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
+  @override
+  void initState() {
+    super.initState();
+    _animCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 240),
     );
+    _expandAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeInOut);
   }
 
-  Widget _buildMenuSection({
-    required BuildContext context,
-    required String title,
-    required List<_MenuItem> items,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Text(
-            title,
-            style: AppTextStyles.caption(context).copyWith(
-              color: AppColors.textMuted,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
+  @override
+  void dispose() {
+    _animCtrl.dispose();
+    super.dispose();
+  }
+
+  void _toggleSettings() {
+    setState(() => _settingsExpanded = !_settingsExpanded);
+    _settingsExpanded ? _animCtrl.forward() : _animCtrl.reverse();
+  }
+
+  void _navigate(String route) {
+    Navigator.of(context).pop(); // close drawer
+    context.push(route);
+  }
+
+  void _showLogoutDialog() {
+    showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Log out?',
+          style: getOutfitStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to log out?',
+          style: getOutfitStyle(fontSize: 14, color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              'Cancel',
+              style: getOutfitStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
             ),
           ),
-        ),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.borderSoft),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.error,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: Text(
+              'Log out',
+              style: getOutfitStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
           ),
-          child: Column(
-            children: items.asMap().entries.map((entry) {
-              final index = entry.key;
-              final item = entry.value;
-              final isLast = index == items.length - 1;
+        ],
+      ),
+    ).then((confirm) {
+      if (confirm == true && mounted) {
+        context.read<AuthBloc>().add(AuthLogoutRequested());
+      }
+    });
+  }
 
-              return Column(
-                children: [
-                  ListTile(
-                    leading: Icon(item.icon, color: AppColors.textSecondary),
-                    title: Text(
-                      item.title,
-                      style: AppTextStyles.body(
-                        context,
-                      ).copyWith(color: AppColors.textPrimary),
-                    ),
-                    trailing: Icon(
-                      Icons.chevron_right,
-                      color: AppColors.textMuted,
-                    ),
-                    onTap: item.onTap,
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        final user = state is AuthAuthenticated ? state.user : null;
+        final name = user?.fullName ?? user?.email ?? 'User';
+        final role = user?.roleName ?? '';
+        final business = user?.businessName ?? '';
+
+        return SafeArea(
+          child: Column(
+            children: [
+              // ── Header ────────────────────────────────────────────────
+              _DrawerHeader(
+                name: name,
+                role: role,
+                business: business,
+                avatarUrl: user?.avatarUrl,
+                email: user?.email,
+                onTap: () => _navigate(AppRoutes.profile),
+              ),
+
+              // ── Nav list ──────────────────────────────────────────────
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // OPERATIONS
+                      _SectionLabel('OPERATIONS'),
+                      _DrawerTile(
+                        icon: Icons.history_rounded,
+                        label: 'Sales History',
+                        onTap: () => _navigate(AppRoutes.saleshistory),
+                      ),
+                      _DrawerTile(
+                        icon: Icons.stacked_bar_chart_outlined,
+                        label: 'Stock Level',
+                        onTap: () => _navigate(AppRoutes.inventory),
+                      ),
+                      _DrawerTile(
+                        icon: Icons.request_page_outlined,
+                        label: 'Expenses',
+                        onTap: () => _navigate(AppRoutes.expenses),
+                      ),
+
+                      const SizedBox(height: 4),
+                      _Divider(),
+                      const SizedBox(height: 4),
+
+                      // SETTINGS (expandable)
+                      _SectionLabel('SETTINGS'),
+                      _SettingsTile(
+                        isExpanded: _settingsExpanded,
+                        onTap: _toggleSettings,
+                      ),
+                      SizeTransition(
+                        sizeFactor: _expandAnim,
+                        axisAlignment: -1,
+                        child: _SettingsSubItems(onNavigate: _navigate),
+                      ),
+                    ],
                   ),
-                  if (!isLast)
-                    const Divider(height: 1, indent: 56, endIndent: 16),
-                ],
-              );
-            }).toList(),
+                ),
+              ),
+
+              // ── Logout ────────────────────────────────────────────────
+              _LogoutButton(onTap: _showLogoutDialog),
+            ],
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 }
 
-class _MenuItem {
-  final IconData icon;
-  final String title;
+// ── Header ─────────────────────────────────────────────────────────────────
+
+class _DrawerHeader extends StatelessWidget {
+  final String name;
+  final String role;
+  final String business;
+  final String? avatarUrl;
+  final String? email;
   final VoidCallback onTap;
 
-  _MenuItem({required this.icon, required this.title, required this.onTap});
+  const _DrawerHeader({
+    required this.name,
+    required this.role,
+    required this.business,
+    required this.avatarUrl,
+    required this.email,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: AppColors.borderSoft)),
+        ),
+        child: Row(
+          children: [
+            UserAvatar(
+              avatarUrl: avatarUrl,
+              name: name,
+              email: email,
+              radius: 26,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: getOutfitStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  if (role.isNotEmpty || business.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      [
+                        if (role.isNotEmpty) role,
+                        if (business.isNotEmpty) business,
+                      ].join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: getOutfitStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.arrow_outward_rounded,
+              size: 18,
+              color: AppColors.textMuted,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Standard drawer tile ───────────────────────────────────────────────────
+
+class _DrawerTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _DrawerTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+            child: Row(
+              children: [
+                Icon(icon, size: 20, color: AppColors.textSecondary),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: getOutfitStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                const Icon(
+                  Icons.arrow_outward_rounded,
+                  size: 14,
+                  color: AppColors.textMuted,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Settings expandable header tile ────────────────────────────────────────
+
+class _SettingsTile extends StatelessWidget {
+  final bool isExpanded;
+  final VoidCallback onTap;
+
+  const _SettingsTile({required this.isExpanded, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: isExpanded ? AppColors.brandSoft : Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        splashColor: AppColors.brand.withValues(alpha: 0.08),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.settings_rounded,
+                  size: 20,
+                  color: isExpanded ? AppColors.brand : AppColors.textSecondary,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    'Settings',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: getOutfitStyle(
+                      fontSize: 14,
+                      fontWeight: isExpanded
+                          ? FontWeight.w600
+                          : FontWeight.w500,
+                      color: isExpanded
+                          ? AppColors.textPrimary
+                          : AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                AnimatedRotation(
+                  turns: isExpanded ? 0.5 : 0.0,
+                  duration: const Duration(milliseconds: 240),
+                  child: const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 20,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Settings sub-items ─────────────────────────────────────────────────────
+
+class _SettingsSubItems extends StatelessWidget {
+  final void Function(String route) onNavigate;
+
+  const _SettingsSubItems({required this.onNavigate});
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      (
+        icon: Icons.receipt_long_rounded,
+        label: 'Receipt Settings',
+        route: AppRoutes.receiptSettings,
+      ),
+      (
+        icon: Icons.business_rounded,
+        label: 'Business Profile',
+        route: AppRoutes.businessProfile,
+      ),
+      (
+        icon: Icons.person_rounded,
+        label: 'My Profile',
+        route: AppRoutes.profile,
+      ),
+    ];
+
+    return Container(
+      margin: const EdgeInsets.only(left: 20, right: 12, bottom: 4),
+      decoration: BoxDecoration(
+        border: Border(
+          left: BorderSide(
+            color: AppColors.brand.withValues(alpha: 0.25),
+            width: 2,
+          ),
+        ),
+      ),
+      child: Column(
+        children: items.map((item) {
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => onNavigate(item.route),
+              borderRadius: BorderRadius.circular(8),
+              splashColor: AppColors.brand.withValues(alpha: 0.08),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                child: Row(
+                  children: [
+                    Icon(item.icon, size: 18, color: AppColors.brand),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        item.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: getOutfitStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right,
+                      size: 16,
+                      color: AppColors.textMuted,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+// ── Section label ──────────────────────────────────────────────────────────
+
+class _SectionLabel extends StatelessWidget {
+  final String text;
+  const _SectionLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 12, 16, 4),
+      child: Text(
+        text,
+        style: getOutfitStyle(
+          fontSize: 10.5,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textMuted,
+          letterSpacing: 0.8,
+        ),
+      ),
+    );
+  }
+}
+
+class _Divider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return const Divider(
+      height: 1,
+      indent: 16,
+      endIndent: 16,
+      color: AppColors.borderSoft,
+    );
+  }
+}
+
+// ── Logout ─────────────────────────────────────────────────────────────────
+
+class _LogoutButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _LogoutButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: AppColors.borderSoft)),
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      child: SizedBox(
+        width: double.infinity,
+        child: FilledButton.icon(
+          onPressed: onTap,
+          icon: const Icon(Icons.logout_rounded, size: 18),
+          label: const Text('Log Out'),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.error,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            textStyle: getOutfitStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

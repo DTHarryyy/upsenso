@@ -73,53 +73,41 @@ Future<void> _initSupabase() async {
   );
 }
 
-/// On web, Supabase recovers the session from localStorage asynchronously
-/// and emits one of several events depending on token state:
+/// On web, Supabase recovers the session from localStorage.
 ///
-///   • [AuthChangeEvent.initialSession] — session found (access token may
-///     still be valid or may be in the middle of a background refresh).
-///   • [AuthChangeEvent.tokenRefreshed]  — fired *after* a silent token
-///     refresh completes. If the stored access token was expired this is the
-///     event that actually makes [currentUser] non-null.
-///   • [AuthChangeEvent.signedIn]        — fired after a full sign-in.
-///   • [AuthChangeEvent.signedOut]       — no valid session exists.
+/// The tricky part: [AuthChangeEvent.initialSession] fires **synchronously
+/// inside** [Supabase.initialize], so by the time we subscribe to
+/// [onAuthStateChange] it has already been emitted and is gone (broadcast
+/// streams don't replay). A two-phase listen therefore routinely misses it
+/// and wastes 3 s waiting for an event that never comes.
 ///
-/// Without waiting for [tokenRefreshed], the startup can race ahead while
-/// the token-refresh network call is still in flight. In that window
-/// [currentUser()] returns null → [initializeCachedUser()] stores nothing
-/// → [AuthStarted] emits [AuthUnauthenticated] → user sees the sign-in
-/// screen and must log in again even though a valid session exists.
+/// Strategy:
+///   1. Fast path — if [currentUser] is already set after [initialize]
+///      returns (valid non-expired token), return immediately.
+///   2. Slow path — token is expired and a network refresh is in flight.
+///      Listen for the decisive event with a single generous timeout so
+///      slow networks don't cause a false sign-out.
 Future<void> _waitForSessionRecovery() async {
   final auth = Supabase.instance.client.auth;
+
+  // Fast path: session was fully recovered synchronously during initialize().
+  if (auth.currentUser != null) return;
+
+  // Slow path: the stored access token is expired and Supabase is refreshing
+  // it via a background network call. Wait for the result.
   try {
-    // ── Phase 1: wait for any terminal session event ─────────────────────
     await auth.onAuthStateChange
         .firstWhere(
           (s) =>
-              s.event == AuthChangeEvent.initialSession ||
+              s.event == AuthChangeEvent.tokenRefreshed ||
               s.event == AuthChangeEvent.signedIn ||
               s.event == AuthChangeEvent.signedOut ||
-              s.event == AuthChangeEvent.tokenRefreshed,
+              s.event == AuthChangeEvent.initialSession,
         )
-        .timeout(const Duration(milliseconds: 3000));
-
-    // ── Phase 2: if the access token was expired, the first event may be
-    // an initialSession with no user yet (refresh still in flight).
-    // Wait for the tokenRefreshed/signedIn confirmation before proceeding.
-    if (auth.currentUser == null) {
-      await auth.onAuthStateChange
-          .firstWhere(
-            (s) =>
-                s.event == AuthChangeEvent.tokenRefreshed ||
-                s.event == AuthChangeEvent.signedIn ||
-                s.event == AuthChangeEvent.signedOut,
-          )
-          .timeout(const Duration(milliseconds: 4000));
-    }
+        .timeout(const Duration(seconds: 8));
   } catch (_) {
-    // Timeout is acceptable — either no session in localStorage or the
-    // network is too slow to refresh the token. The auth bloc will handle
-    // the unauthenticated state correctly.
+    // Timed out — network too slow or truly no session. The auth bloc will
+    // handle the unauthenticated state correctly.
   }
 }
 

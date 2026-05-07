@@ -3,13 +3,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
-import 'package:pos/features/ai_assistant/widgets/floating_ai_assistant_bar.dart';
+// import 'package:pos/features/ai_assistant/widgets/floating_ai_assistant_bar.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/dashboard/data/dashboard_data.dart';
 import 'package:pos/features/dashboard/presentation/cubit/dashboard_cubit.dart';
 import 'package:pos/features/dashboard/presentation/cubit/dashboard_state.dart';
-import 'package:pos/features/dashboard/presentation/widgets/ai_insights_card.dart';
+// import 'package:pos/features/dashboard/presentation/widgets/ai_insights_card.dart';
 import 'package:pos/features/dashboard/presentation/widgets/branch_comparison_card.dart';
 import 'package:pos/features/dashboard/presentation/widgets/category_performance_chart.dart';
 import 'package:pos/features/dashboard/presentation/widgets/low_stock_alerts_card.dart';
@@ -101,7 +101,7 @@ class _DashboardPageState extends State<DashboardPage> {
             final isLoading = state is DashboardLoading;
 
             return Scaffold(
-              floatingActionButton: const FloatingAIAssistantBar(),
+              // floatingActionButton: const FloatingAIAssistantBar(),
               body: RefreshIndicator(
                 onRefresh: () async => _triggerLoad(), // restarts watcher + loads fresh
                 child: SingleChildScrollView(
@@ -116,101 +116,132 @@ class _DashboardPageState extends State<DashboardPage> {
                       QuickActionsBar(onNewSale: widget.onNewSale),
                       const SizedBox(height: 16),
 
+                      // ── ROW 1: Sales Trend (hero) + Low Stock Alerts (urgent) ──
+                      // Low stock is time-sensitive — a manager needs to see it
+                      // immediately, not buried at the bottom of the page.
                       LayoutBuilder(
                         builder: (context, constraints) {
                           if (constraints.maxWidth > 800) {
-                            return Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
+                            return IntrinsicHeight(
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Expanded(
+                                    flex: 3,
+                                    child: SalesTrendChart(data: data),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
                                     flex: 2,
-                                    child: SalesTrendChart(data: data)),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                    flex: 1,
-                                    child: PaymentMethodsChart(
-                                        breakdown: data.paymentBreakdown)),
-                              ],
+                                    child: LowStockAlertsCard(
+                                      items: data.lowStockItems,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             );
                           }
                           return Column(
                             children: [
                               SalesTrendChart(data: data),
                               const SizedBox(height: 16),
-                              PaymentMethodsChart(
-                                  breakdown: data.paymentBreakdown),
-                            ],
-                          );
-                        },
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          if (constraints.maxWidth > 800) {
-                            return Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                    child: CategoryPerformanceChart(
-                                        stats: data.categoryStats)),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                    child:
-                                        TopSellingItems(items: data.topItems)),
-                                const SizedBox(width: 16),
-                                const Expanded(child: AiInsightsCard()),
-                              ],
-                            );
-                          }
-                          return Column(
-                            children: [
-                              CategoryPerformanceChart(stats: data.categoryStats),
-                              const SizedBox(height: 16),
-                              TopSellingItems(items: data.topItems),
-                              // const SizedBox(height: 16),
-                              // const AiInsightsCard(),
-                            ],
-                          );
-                        },
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // ── Low Stock + Expenses + Branch Comparison ──
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          if (constraints.maxWidth > 800) {
-                            return Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                    child: LowStockAlertsCard(
-                                        items: data.lowStockItems)),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                    child: ExpensesSummaryCard(
-                                        summary: data.expenseSummary)),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                    child: BranchComparisonCard(
-                                        stats: data.branchStats)),
-                              ],
-                            );
-                          }
-                          return Column(
-                            children: [
                               LowStockAlertsCard(items: data.lowStockItems),
+                            ],
+                          );
+                        },
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // ── ROW 2: Top Selling Items + Payment Methods + Recent Expenses ──
+                      // Operational insights: what sells, how customers pay, what costs.
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          if (constraints.maxWidth > 800) {
+                            return IntrinsicHeight(
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Expanded(
+                                    child: TopSellingItems(
+                                      items: data.topItems,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: PaymentMethodsChart(
+                                      breakdown: data.paymentBreakdown,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: ExpensesSummaryCard(
+                                      summary: data.expenseSummary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                          return Column(
+                            children: [
+                              TopSellingItems(items: data.topItems),
                               const SizedBox(height: 16),
-                              ExpensesSummaryCard(
-                                  summary: data.expenseSummary),
+                              PaymentMethodsChart(
+                                breakdown: data.paymentBreakdown,
+                              ),
+                              const SizedBox(height: 16),
+                              ExpensesSummaryCard(summary: data.expenseSummary),
+                            ],
+                          );
+                        },
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // ── ROW 3: Category Performance + Branch Comparison ──
+                      // Deeper analytics — reviewed less frequently.
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          if (constraints.maxWidth > 800) {
+                            return IntrinsicHeight(
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Expanded(
+                                    flex: 3,
+                                    child: CategoryPerformanceChart(
+                                      stats: data.categoryStats,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    flex: 2,
+                                    child: BranchComparisonCard(
+                                      stats: data.branchStats,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                          return Column(
+                            children: [
+                              CategoryPerformanceChart(
+                                stats: data.categoryStats,
+                              ),
                               const SizedBox(height: 16),
                               BranchComparisonCard(stats: data.branchStats),
                             ],
                           );
                         },
                       ),
+
+                      const SizedBox(height: 16),
+
+                      // ── ROW 4: AI Insights (full width) ──
+                      // Commented out — AI assistant not yet integrated.
+                      // const AiInsightsCard(),
 
                       const SizedBox(height: 24),
                     ],

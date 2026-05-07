@@ -21,8 +21,8 @@ import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/more/presentation/more_page.dart';
 
-const double _kSidebarExpanded = 220;
-const double _kSidebarCollapsed = 64;
+const double _kSidebarExpanded = 200;
+const double _kSidebarCollapsed = 60;
 
 class MainNavigationPage extends StatefulWidget {
   final StatefulNavigationShell navigationShell;
@@ -35,7 +35,10 @@ class MainNavigationPage extends StatefulWidget {
 
 class _MainNavigationPageState extends State<MainNavigationPage> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
+  // Initialised in didChangeDependencies so we can read the screen width.
+  // Desktop (≥1024 px) → expanded; tablet (600–1023 px) → collapsed icons.
   bool _sidebarExpanded = true;
+  bool _sidebarInitialized = false;
   String? _lastUserContextKey;
   bool _syncInitialized = false;
 
@@ -49,6 +52,17 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
       _syncInitialized = true;
       sl<SyncService>().init();
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_sidebarInitialized) {
+      _sidebarInitialized = true;
+      // Desktop (≥1024 px): expanded sidebar is comfortable.
+      // Tablet (600–1023 px): collapsed so content gets maximum width.
+      _sidebarExpanded = Breakpoints.isDesktop(context);
+    }
   }
 
   void _onNavTap(int index) {
@@ -106,10 +120,11 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
           final userRole = (roleName != null && roleName.isNotEmpty)
               ? roleName
               : (roleId != null && roleId.isNotEmpty)
-                  ? roleId
-                  : 'Syncing role...';
+              ? roleId
+              : 'Syncing role...';
           final businessName = authState.user.businessName ?? 'Business';
-          final branchName = authState.user.branchName ??
+          final branchName =
+              authState.user.branchName ??
               authState.user.businessName ??
               'Branch';
           final userEmail = authState.user.email ?? 'N/A';
@@ -128,17 +143,22 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
               final shell = widget.navigationShell;
 
               if (isTablet) {
-                return Scaffold(
-                  body: Row(
-                    children: [
-                      if (!isPosTab)
-                        _SyncStatusProvider(
-                          builder: (isOnline, pendingSyncCount) => _AppSidebar(
+                return _SyncStatusProvider(
+                  builder: (isOnline, pendingSyncCount) => Scaffold(
+                    body: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1980),
+                        child: Row(
+                      children: [
+                        // ── Sidebar ──────────────────────────────────────────
+                        if (!isPosTab)
+                          _AppSidebar(
                             expanded: _sidebarExpanded,
                             currentIndex: _currentIndex,
                             onNavTap: _onNavTap,
                             onToggle: () => setState(
-                                () => _sidebarExpanded = !_sidebarExpanded),
+                              () => _sidebarExpanded = !_sidebarExpanded,
+                            ),
                             userName: userName,
                             userRole: userRole,
                             userEmail: userEmail,
@@ -150,9 +170,63 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                             selectedBranch: selectedBranch,
                             canSwitchBranches: branchState.canSwitchBranches,
                           ),
+
+                        // ── Right column: top bar + page content ─────────────
+                        Expanded(
+                          child: Column(
+                            children: [
+                              // Shared top bar — same component as mobile so
+                              // branch selector, sync status, and user section
+                              // are always consistent across breakpoints.
+                              if (!isPosTab)
+                                CustomAppBar(
+                                  branches: visibleBranches,
+                                  selectedBranch: selectedBranch,
+                                  onBranchChanged: branchState.canSwitchBranches
+                                      ? (branch) => context
+                                            .read<BranchCubit>()
+                                            .selectBranch(branch)
+                                      : null,
+                                  userName: userName,
+                                  userRole: userRole,
+                                  userEmail: userEmail,
+                                  userId: userId,
+                                  userAvatar: userAvatar,
+                                  businessName: businessName,
+                                  isOnline: isOnline,
+                                  pendingSyncCount: pendingSyncCount,
+                                  onNotificationTapped: () => _onNavTap(3),
+                                  showThemeToggle: false,
+                                ),
+
+                              // Page content.  We override AppBarTheme with
+                              // toolbarHeight: 0 so any per-page AppBar that
+                              // individual pages declare occupies no space and
+                              // is visually hidden — the top bar above provides
+                              // all the chrome the user needs on desktop.
+                              Expanded(
+                                child: Theme(
+                                  data: Theme.of(context).copyWith(
+                                    appBarTheme: Theme.of(context).appBarTheme
+                                        .copyWith(
+                                          toolbarHeight: 0,
+                                          elevation: 0,
+                                          scrolledUnderElevation: 0,
+                                          backgroundColor: Colors.transparent,
+                                          surfaceTintColor: Colors.transparent,
+                                          shadowColor: Colors.transparent,
+                                        ),
+                                  ),
+                                  child: shell,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      Expanded(child: shell),
-                    ],
+                      ],
+                        ),
+                      ),
+                    ),
                   ),
                 );
               }
@@ -168,8 +242,8 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                           selectedBranch: selectedBranch,
                           onBranchChanged: branchState.canSwitchBranches
                               ? (branch) => context
-                                  .read<BranchCubit>()
-                                  .selectBranch(branch)
+                                    .read<BranchCubit>()
+                                    .selectBranch(branch)
                               : null,
                           userName: userName,
                           userRole: userRole,
@@ -226,13 +300,13 @@ class _SyncStatusProviderState extends State<_SyncStatusProvider> {
       if (mounted && _isOnline != v) setState(() => _isOnline = v);
     });
 
-    _connectivitySub =
-        _connectivityService.onConnectivityChanged.listen((v) {
+    _connectivitySub = _connectivityService.onConnectivityChanged.listen((v) {
       if (mounted && _isOnline != v) setState(() => _isOnline = v);
     });
 
-    _syncCountSub =
-        sl<SyncService>().watchTotalPendingSyncCount().listen((count) {
+    _syncCountSub = sl<SyncService>().watchTotalPendingSyncCount().listen((
+      count,
+    ) {
       if (mounted && _pendingSyncCount != count) {
         setState(() => _pendingSyncCount = count);
       }
@@ -366,13 +440,16 @@ class _AppSidebarState extends State<_AppSidebar>
       ),
       child: Column(
         children: [
-          const SizedBox(height: 8),
           // ── Logo / business header ──
-          // Collapsed (64px): the entire header becomes a single tap target so
-          // the expand icon is always reachable — no Row overflow possible.
-          // Expanded (220px): logo + business name + collapse chevron in a Row.
-          SizedBox(
-            height: 48,
+          // Height matches CustomAppBar (64 px) exactly so the horizontal
+          // divider/border aligns perfectly with the app bar bottom border.
+          Container(
+            height: 64,
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: AppColors.borderSoft, width: 1),
+              ),
+            ),
             child: widget.expanded
                 ? Row(
                     children: [
@@ -384,8 +461,11 @@ class _AppSidebarState extends State<_AppSidebar>
                           color: AppColors.brand,
                           borderRadius: BorderRadius.circular(9),
                         ),
-                        child: const Icon(Icons.point_of_sale_rounded,
-                            size: 18, color: AppColors.textInverse),
+                        child: const Icon(
+                          Icons.point_of_sale_rounded,
+                          size: 18,
+                          color: AppColors.textInverse,
+                        ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -404,6 +484,7 @@ class _AppSidebarState extends State<_AppSidebar>
                         child: InkWell(
                           onTap: widget.onToggle,
                           borderRadius: BorderRadius.circular(8),
+                          mouseCursor: SystemMouseCursors.click,
                           child: Padding(
                             padding: const EdgeInsets.all(8),
                             child: const Icon(
@@ -425,6 +506,7 @@ class _AppSidebarState extends State<_AppSidebar>
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: widget.onToggle,
+                        mouseCursor: SystemMouseCursors.click,
                         child: const SizedBox.expand(
                           child: Center(
                             child: Icon(
@@ -438,9 +520,7 @@ class _AppSidebarState extends State<_AppSidebar>
                     ),
                   ),
           ),
-          const SizedBox(height: 4),
-          const Divider(height: 1, color: AppColors.borderSoft),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
 
           // ── Nav items ──
           Expanded(
@@ -492,9 +572,9 @@ class _AppSidebarState extends State<_AppSidebar>
                     onTap: widget.onNavTap,
                   ),
 
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   const Divider(height: 1, color: AppColors.borderSoft),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
 
                   // ── OPERATIONS section ──
                   if (widget.expanded) const _SectionLabel(label: 'OPERATIONS'),
@@ -515,9 +595,9 @@ class _AppSidebarState extends State<_AppSidebar>
                     onTap: widget.onNavTap,
                   ),
 
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   const Divider(height: 1, color: AppColors.borderSoft),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
 
                   // ── SETTINGS section ──
                   if (widget.expanded) const _SectionLabel(label: 'SETTINGS'),
@@ -530,20 +610,24 @@ class _AppSidebarState extends State<_AppSidebar>
                     onHeaderTap: () {
                       if (!widget.expanded) {
                         // Collapsed sidebar: just navigate to settings
-                        context.read<SidebarNavCubit>().setSubPage(SettingsSubPage.receipt);
+                        context.read<SidebarNavCubit>().setSubPage(
+                          SettingsSubPage.receipt,
+                        );
                         widget.onNavTap(7);
                       } else {
                         _toggleSettings();
                         if (!_settingsExpanded) {
                           // Opening accordion also navigates to settings
-                          context.read<SidebarNavCubit>().setSubPage(SettingsSubPage.receipt);
+                          context.read<SidebarNavCubit>().setSubPage(
+                            SettingsSubPage.receipt,
+                          );
                           widget.onNavTap(7);
                         }
                       }
                     },
                     onSubItemTap: _tapSettingsSubItem,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                 ],
               ),
             ),
@@ -558,7 +642,7 @@ class _AppSidebarState extends State<_AppSidebar>
             userRole: widget.userRole,
             userAvatar: widget.userAvatar,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
         ],
       ),
     );
@@ -588,8 +672,7 @@ class _SettingsAccordion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final headerColor =
-        isActive ? AppColors.brand : AppColors.textSecondary;
+    final headerColor = isActive ? AppColors.brand : AppColors.textSecondary;
     final headerBg = isActive ? AppColors.brandSoft : Colors.transparent;
 
     final header = Padding(
@@ -599,6 +682,7 @@ class _SettingsAccordion extends StatelessWidget {
         child: InkWell(
           onTap: onHeaderTap,
           borderRadius: BorderRadius.circular(10),
+          mouseCursor: SystemMouseCursors.click,
           splashColor: AppColors.brand.withAlpha(20),
           child: Container(
             height: 40,
@@ -619,7 +703,9 @@ class _SettingsAccordion extends StatelessWidget {
                       'Settings',
                       style: getOutfitStyle(
                         fontSize: 13.5,
-                        fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                        fontWeight: isActive
+                            ? FontWeight.w600
+                            : FontWeight.w500,
                         color: isActive
                             ? AppColors.textPrimary
                             : AppColors.textSecondary,
@@ -644,11 +730,7 @@ class _SettingsAccordion extends StatelessWidget {
     );
 
     if (!expanded) {
-      return Tooltip(
-        message: 'Settings',
-        preferBelow: false,
-        child: header,
-      );
+      return Tooltip(message: 'Settings', preferBelow: false, child: header);
     }
 
     final subItems = [
@@ -685,16 +767,17 @@ class _SettingsAccordion extends StatelessWidget {
                   child: InkWell(
                     onTap: () => onSubItemTap(item.subPage),
                     borderRadius: BorderRadius.circular(8),
+                    mouseCursor: SystemMouseCursors.click,
                     splashColor: AppColors.brand.withAlpha(15),
                     child: Container(
-                      height: 36,
+                      height: 32,
                       decoration: BoxDecoration(
                         color: isSubActive
                             ? AppColors.brandSoft
                             : Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(7),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
                       child: Row(
                         children: [
                           // Indent indicator line
@@ -768,7 +851,9 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isActive = currentIndex == index;
-    final color = isActive || accent ? AppColors.brand : AppColors.textSecondary;
+    final color = isActive || accent
+        ? AppColors.brand
+        : AppColors.textSecondary;
     final bg = isActive ? AppColors.brandSoft : Colors.transparent;
 
     final item = Material(
@@ -776,11 +861,15 @@ class _NavItem extends StatelessWidget {
       child: InkWell(
         onTap: () => onTap(index),
         borderRadius: BorderRadius.circular(10),
+        mouseCursor: SystemMouseCursors.click,
         splashColor: AppColors.brand.withAlpha(20),
         child: Container(
-          height: 40,
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
-          padding: EdgeInsets.symmetric(horizontal: expanded ? 12 : 0),
+          height: 36,
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          padding: EdgeInsets.symmetric(horizontal: expanded ? 10 : 0),
           alignment: expanded ? Alignment.centerLeft : Alignment.center,
           child: Row(
             mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,
@@ -795,7 +884,9 @@ class _NavItem extends StatelessWidget {
                     style: getOutfitStyle(
                       fontSize: 13.5,
                       fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                      color: isActive ? AppColors.textPrimary : AppColors.textSecondary,
+                      color: isActive
+                          ? AppColors.textPrimary
+                          : AppColors.textSecondary,
                     ),
                   ),
                 ),
@@ -811,7 +902,9 @@ class _NavItem extends StatelessWidget {
       child: item,
     );
 
-    return expanded ? padded : Tooltip(message: label, preferBelow: false, child: padded);
+    return expanded
+        ? padded
+        : Tooltip(message: label, preferBelow: false, child: padded);
   }
 }
 
@@ -822,7 +915,7 @@ class _SectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 12, 4),
+      padding: const EdgeInsets.fromLTRB(18, 6, 12, 3),
       child: Text(
         label,
         style: getOutfitStyle(
@@ -859,33 +952,60 @@ class _SidebarFooter extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Column(
         children: [
-          _StatusRow(expanded: expanded, isOnline: isOnline, pendingSyncCount: pendingSyncCount),
-          const SizedBox(height: 6),
           Material(
             color: Colors.transparent,
             child: InkWell(
               onTap: () => _showLogoutDialog(context),
               borderRadius: BorderRadius.circular(10),
+              mouseCursor: SystemMouseCursors.click,
               child: Container(
-                padding: EdgeInsets.symmetric(horizontal: expanded ? 8 : 0, vertical: 8),
+                padding: EdgeInsets.symmetric(
+                  horizontal: expanded ? 8 : 0,
+                  vertical: 8,
+                ),
                 child: Row(
-                  mainAxisAlignment: expanded ? MainAxisAlignment.start : MainAxisAlignment.center,
+                  mainAxisAlignment: expanded
+                      ? MainAxisAlignment.start
+                      : MainAxisAlignment.center,
                   children: [
-                    UserAvatar(avatarUrl: userAvatar, name: userName, radius: 16),
+                    UserAvatar(
+                      avatarUrl: userAvatar,
+                      name: userName,
+                      radius: 16,
+                    ),
                     if (expanded) ...[
                       const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(userName, maxLines: 1, overflow: TextOverflow.ellipsis,
-                                style: getOutfitStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                            Text(userRole, maxLines: 1, overflow: TextOverflow.ellipsis,
-                                style: getOutfitStyle(fontSize: 11, color: AppColors.textMuted)),
+                            Text(
+                              userName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: getOutfitStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            Text(
+                              userRole,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: getOutfitStyle(
+                                fontSize: 11,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
                           ],
                         ),
                       ),
-                      const Icon(Icons.logout_rounded, size: 16, color: AppColors.textMuted),
+                      const Icon(
+                        Icons.logout_rounded,
+                        size: 16,
+                        color: AppColors.textMuted,
+                      ),
                     ],
                   ],
                 ),
@@ -903,17 +1023,46 @@ class _SidebarFooter extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Log out?', style: getOutfitStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-        content: Text('Are you sure you want to log out?', style: getOutfitStyle(fontSize: 14, color: AppColors.textSecondary)),
+        title: Text(
+          'Log out?',
+          style: getOutfitStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to log out?',
+          style: getOutfitStyle(fontSize: 14, color: AppColors.textSecondary),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Cancel', style: getOutfitStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+            child: Text(
+              'Cancel',
+              style: getOutfitStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-            child: Text('Log out', style: getOutfitStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.error,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: Text(
+              'Log out',
+              style: getOutfitStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
           ),
         ],
       ),
@@ -925,70 +1074,3 @@ class _SidebarFooter extends StatelessWidget {
   }
 }
 
-class _StatusRow extends StatelessWidget {
-  final bool expanded;
-  final bool isOnline;
-  final int pendingSyncCount;
-
-  const _StatusRow({required this.expanded, required this.isOnline, required this.pendingSyncCount});
-
-  @override
-  Widget build(BuildContext context) {
-    final onlineColor = isOnline ? AppColors.synced : AppColors.offline;
-    final syncColor = pendingSyncCount > 0 ? AppColors.syncing : AppColors.synced;
-
-    if (!expanded) {
-      return Tooltip(
-        message: isOnline ? (pendingSyncCount > 0 ? 'Syncing...' : 'Online · Synced') : 'Offline',
-        child: Container(
-          width: 32, height: 32,
-          margin: const EdgeInsets.symmetric(horizontal: 6),
-          decoration: BoxDecoration(
-            color: onlineColor.withAlpha(18),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: onlineColor.withAlpha(45)),
-          ),
-          child: Icon(isOnline ? Icons.wifi_rounded : Icons.wifi_off_rounded, size: 15, color: onlineColor),
-        ),
-      );
-    }
-
-    return Row(
-      children: [
-        _StatusChip(color: onlineColor, icon: isOnline ? Icons.wifi_rounded : Icons.wifi_off_rounded, label: isOnline ? 'Online' : 'Offline'),
-        if (isOnline) ...[
-          const SizedBox(width: 6),
-          _StatusChip(color: syncColor, icon: pendingSyncCount > 0 ? Icons.sync_rounded : Icons.cloud_done_rounded, label: pendingSyncCount > 0 ? 'Syncing' : 'Synced'),
-        ],
-      ],
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  final Color color;
-  final IconData icon;
-  final String label;
-
-  const _StatusChip({required this.color, required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withAlpha(18),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withAlpha(45)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 4),
-          Text(label, style: getOutfitStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
-        ],
-      ),
-    );
-  }
-}

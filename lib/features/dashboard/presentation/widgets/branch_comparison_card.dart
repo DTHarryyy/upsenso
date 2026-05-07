@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/features/dashboard/data/dashboard_data.dart';
+import 'package:pos/features/dashboard/presentation/widgets/dashboard_empty_state.dart';
 
 class BranchComparisonCard extends StatelessWidget {
   final List<BranchStat> stats;
@@ -266,41 +267,14 @@ class _BranchRow extends StatelessWidget {
 class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 28),
-      child: Center(
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceAlt,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Icon(Icons.store_outlined,
-                  size: 28, color: AppColors.textMuted),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'No branch data yet',
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 13.5,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Sales data will appear here once\ntransactions are recorded.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.textMuted,
-                fontSize: 12,
-                height: 1.5,
-              ),
-            ),
-          ],
-        ),
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 28),
+      child: DashboardEmptyState(
+        icon: Icons.store_outlined,
+        iconColor: Color(0xFF557FF4),
+        iconBg: Color(0xFFEAF0FF),
+        title: 'No branch data yet',
+        subtitle: 'Data appears once transactions\nare recorded',
       ),
     );
   }

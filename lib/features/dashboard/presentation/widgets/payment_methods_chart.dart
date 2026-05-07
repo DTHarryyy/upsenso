@@ -1,5 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:pos/features/dashboard/presentation/widgets/dashboard_empty_state.dart';
 
 class PaymentMethodsChart extends StatelessWidget {
   final Map<String, double> breakdown;
@@ -36,11 +37,14 @@ class PaymentMethodsChart extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           if (entries.isEmpty)
-            SizedBox(
+            const SizedBox(
               height: 160,
-              child: Center(
-                child: Text('No payment data yet',
-                    style: TextStyle(color: Colors.grey.shade500)),
+              child: DashboardEmptyState(
+                icon: Icons.donut_large_rounded,
+                iconColor: Color(0xFF3B5BDB),
+                iconBg: Color(0xFFEEF2FF),
+                title: 'No payments yet',
+                subtitle: 'Breakdown appears\nafter first sale',
               ),
             )
           else

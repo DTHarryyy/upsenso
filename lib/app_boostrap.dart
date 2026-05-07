@@ -3,7 +3,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:pos/app_router.dart';
 import 'package:pos/core/config/di.dart';
-import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_strings.dart';
 import 'package:pos/core/theme/theme_controller.dart';
 import 'package:pos/theme_data.dart';
@@ -36,19 +35,19 @@ class _AppBoostrapState extends State<AppBoostrap> {
           darkTheme: buildDarkAppTheme(),
           themeMode: _themeController.themeMode,
           routerConfig: AppRouter.router,
-          // On web, enable mouse-drag scrolling (disabled by default in
-          // Flutter web until explicitly opted in).
+          // Enable mouse-drag scrolling on web (disabled by default in Flutter
+          // web until explicitly opted in via dragDevices).
           scrollBehavior: kIsWeb ? const _WebScrollBehavior() : null,
           builder: (context, child) {
-            // Clamp textScaler to 1.0 so OS / browser accessibility font
-            // size settings do not distort the POS layout. Non-integer
-            // scaling factors cause sub-pixel glyph placement which
-            // manifests as blurry or misaligned text in CanvasKit.
+            // Clamp textScaler to 1.0 so OS / browser accessibility font-size
+            // settings do not distort the POS layout.  Non-integer scale
+            // factors produce fractional font sizes which land between physical
+            // pixels in CanvasKit/SkWasm → blurry text.
             return MediaQuery(
               data: MediaQuery.of(context).copyWith(
                 textScaler: TextScaler.noScaling,
               ),
-              child: Container(color: AppColors.background, child: child!),
+              child: child!,
             );
           },
         );
@@ -57,8 +56,11 @@ class _AppBoostrapState extends State<AppBoostrap> {
   }
 }
 
-/// Enables scrolling with a mouse pointer on Flutter web (CanvasKit renderer
-/// only accepts touch events by default). Applies only when [kIsWeb] is true.
+/// Enables scrolling with every pointer device on Flutter web.
+///
+/// Flutter web defaults to touch-only drag-to-scroll.  Adding mouse and
+/// trackpad here lets users scroll lists with a mouse wheel _and_ by clicking
+/// and dragging — the latter matches what users expect from desktop dashboards.
 class _WebScrollBehavior extends MaterialScrollBehavior {
   const _WebScrollBehavior();
 

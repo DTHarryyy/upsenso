@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pos/features/dashboard/data/dashboard_data.dart';
+import 'package:pos/features/dashboard/presentation/widgets/dashboard_empty_state.dart';
 
 class LowStockAlertsCard extends StatelessWidget {
   final List<LowStockItem> items;
@@ -51,21 +52,14 @@ class LowStockAlertsCard extends StatelessWidget {
           const SizedBox(height: 16),
 
           if (items.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Center(
-                child: Column(
-                  children: [
-                    Icon(Icons.check_circle_outline,
-                        size: 36, color: Colors.green.shade400),
-                    const SizedBox(height: 8),
-                    Text(
-                      'All items are well stocked',
-                      style:
-                          TextStyle(fontSize: 13, color: Colors.grey.shade500),
-                    ),
-                  ],
-                ),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: DashboardEmptyState(
+                icon: Icons.inventory_2_outlined,
+                iconColor: Color(0xFF16A34A),
+                iconBg: Color(0xFFDCFCE7),
+                title: 'All stocked up!',
+                subtitle: 'Inventory levels\nlook great',
               ),
             )
           else

@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:pos/features/dashboard/data/dashboard_data.dart';
+import 'package:pos/features/dashboard/presentation/widgets/dashboard_empty_state.dart';
 
 class SalesTrendChart extends StatefulWidget {
   final DashboardData data;
@@ -77,9 +78,12 @@ class _SalesTrendChartState extends State<SalesTrendChart> {
           SizedBox(
             height: 220,
             child: _totals.isEmpty
-                ? const Center(
-                    child: Text('No sales data yet',
-                        style: TextStyle(color: Colors.grey)),
+                ? const DashboardEmptyState(
+                    icon: Icons.show_chart_rounded,
+                    iconColor: Color(0xFF3B82F6),
+                    iconBg: Color(0xFFEFF6FF),
+                    title: 'No sales data yet',
+                    subtitle: 'Complete your first sale\nto see trends here',
                   )
                 : LineChart(
                     LineChartData(

@@ -114,7 +114,10 @@ class AppRouter {
         return AppRoutes.businessProfileSetup;
       }
 
-      if (hasBusiness && (goingToOnboarding || isPublicAuthRoute)) {
+      if (hasBusiness &&
+          (goingToOnboarding ||
+              isPublicAuthRoute ||
+              goingToBusinessProfileSetup)) {
         return AppRoutes.dashboard;
       }
 

@@ -119,59 +119,34 @@ class _CustomAppBarState extends State<CustomAppBar> {
                         ),
                       )
                     else ...[
+                      // Sync status only — online/offline indicator removed.
                       _StatusPill(
-                        color: widget.isOnline
-                            ? AppColors.synced
-                            : AppColors.offline,
-                        icon: widget.isOnline
-                            ? Icons.wifi_rounded
-                            : Icons.wifi_off_rounded,
-                        label: widget.isOnline ? 'Online' : 'Offline',
+                        color: widget.pendingSyncCount > 0
+                            ? AppColors.syncing
+                            : AppColors.synced,
+                        icon: widget.pendingSyncCount > 0
+                            ? Icons.sync_rounded
+                            : Icons.cloud_done_rounded,
+                        label: widget.pendingSyncCount > 0
+                            ? 'Sync: ${widget.pendingSyncCount} pending'
+                            : 'All synced',
+                        isSyncing: widget.pendingSyncCount > 0,
                       ),
-                      const SizedBox(width: 8),
-                      if (widget.isOnline)
-                        _StatusPill(
-                          color: widget.pendingSyncCount > 0
-                              ? AppColors.syncing
-                              : AppColors.synced,
-                          icon: widget.pendingSyncCount > 0
-                              ? Icons.sync_rounded
-                              : Icons.cloud_done_rounded,
-                          label: widget.pendingSyncCount > 0
-                              ? 'Syncing...'
-                              : 'Synced',
-                          isSyncing: widget.pendingSyncCount > 0,
-                        ),
                     ],
                   ],
                 ),
               ),
 
-              // Mobile: compact status badges (always visible)
-              if (isMobile) ...[
+              // Mobile: compact sync badge only — online indicator removed.
+              if (isMobile && widget.pendingSyncCount > 0) ...[
                 _StatusPill(
-                  color: widget.isOnline ? AppColors.synced : AppColors.offline,
-                  icon: widget.isOnline
-                      ? Icons.wifi_rounded
-                      : Icons.wifi_off_rounded,
-                  label: widget.isOnline ? 'Online' : 'Offline',
+                  color: AppColors.syncing,
+                  icon: Icons.sync_rounded,
+                  label: 'Sync: ${widget.pendingSyncCount} pending',
+                  isSyncing: true,
                   compact: true,
                 ),
                 const SizedBox(width: 4),
-                if (widget.isOnline) ...[
-                  _StatusPill(
-                    color: widget.pendingSyncCount > 0
-                        ? AppColors.syncing
-                        : AppColors.synced,
-                    icon: widget.pendingSyncCount > 0
-                        ? Icons.sync_rounded
-                        : Icons.cloud_done_rounded,
-                    label: widget.pendingSyncCount > 0 ? 'Syncing' : 'Synced',
-                    isSyncing: widget.pendingSyncCount > 0,
-                    compact: true,
-                  ),
-                  const SizedBox(width: 4),
-                ],
               ],
 
               // Right: theme toggle + notifications + avatar

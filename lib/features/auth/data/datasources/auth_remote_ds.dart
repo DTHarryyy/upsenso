@@ -98,18 +98,15 @@ class AuthRemoteDs {
     );
   }
 
-  /// Extract name from email (part before @)
+  /// Extract first name from email (part before the first separator or @).
+  /// e.g. "john.doe@gmail.com" → "John", "janedoe@mail.com" → "Janedoe"
   String _extractNameFromEmail(String email) {
     final username = email.split('@')[0];
-    // Convert to title case (e.g., "john.doe" -> "John Doe")
-    return username
-        .split(RegExp(r'[._-]'))
-        .map(
-          (part) => part.isEmpty
-              ? ''
-              : part[0].toUpperCase() + part.substring(1).toLowerCase(),
-        )
-        .join(' ');
+    final firstName = username
+        .split(RegExp(r'[._\-]'))
+        .firstWhere((p) => p.isNotEmpty, orElse: () => username);
+    if (firstName.isEmpty) return username;
+    return firstName[0].toUpperCase() + firstName.substring(1).toLowerCase();
   }
 
   /// Upload avatar image to Supabase Storage and return the public URL.
@@ -145,7 +142,7 @@ class AuthRemoteDs {
 
   /// Send password reset OTP to email
   Future<void> sendPasswordResetOtp(String email) async {
-    await client.auth.signInWithOtp(email: email, shouldCreateUser: false);
+    await client.auth.resetPasswordForEmail(email);
   }
 
   /// Verify password reset OTP

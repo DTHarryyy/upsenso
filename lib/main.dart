@@ -58,7 +58,7 @@ class _AppInitializerState extends State<AppInitializer> {
     super.initState();
     _initializeApp();
   }
- 
+
   Future<void> _initializeApp() async {
     setState(() {
       _error = null;
@@ -95,11 +95,10 @@ class _AppInitializerState extends State<AppInitializer> {
 class _SplashScreen extends StatelessWidget {
   const _SplashScreen();
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(
+  Route<dynamic> _buildRoute(RouteSettings settings) {
+    return MaterialPageRoute<void>(
+      settings: settings,
+      builder: (_) => Scaffold(
         backgroundColor: Colors.white,
         body: Center(
           child: Column(
@@ -133,6 +132,15 @@ class _SplashScreen extends StatelessWidget {
       ),
     );
   }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      onGenerateRoute: _buildRoute,
+      onUnknownRoute: _buildRoute,
+    );
+  }
 }
 
 class _ErrorScreen extends StatelessWidget {
@@ -141,11 +149,10 @@ class _ErrorScreen extends StatelessWidget {
 
   const _ErrorScreen({required this.message, required this.onRetry});
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(
+  Route<dynamic> _buildRoute(RouteSettings settings) {
+    return MaterialPageRoute<void>(
+      settings: settings,
+      builder: (_) => Scaffold(
         backgroundColor: Colors.white,
         body: Center(
           child: Padding(
@@ -161,7 +168,6 @@ class _ErrorScreen extends StatelessWidget {
                 const SizedBox(height: 24),
                 const Text(
                   'Failed to Start',
-                  
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -191,6 +197,15 @@ class _ErrorScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      onGenerateRoute: _buildRoute,
+      onUnknownRoute: _buildRoute,
     );
   }
 }

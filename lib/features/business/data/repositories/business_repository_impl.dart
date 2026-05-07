@@ -138,9 +138,23 @@ class BusinessRepositoryImpl implements BusinessRepository {
           name: branchName,
         );
 
-        // NOTE: Business owner is Super Admin and should NOT be assigned to any specific branch.
-        // Super Admin can access and manage all branches.
-        // Only non-Super Admin roles (cashier, admin, etc.) should be assigned to specific branches.
+        // Create Super Admin role for this business and link the owner to it.
+        // Super Admin is not restricted to any branch (branch_id stays null).
+        final templateEntity = template != null
+            ? BusinessTemplatesDao.toEntity(template)
+            : null;
+        final superAdminRoleId = await remote.getSuperAdminRoleId(
+          businessId: businessId,
+          templateRoles: templateEntity?.defaultRoles ?? [],
+        );
+        final currentUser = authRepository.getCurrentUser();
+        await remote.createUserForBusiness(
+          businessId: businessId,
+          userId: ownerId,
+          email: currentUser?.email ?? '',
+          fullName: currentUser?.fullName,
+          superAdminRoleId: superAdminRoleId,
+        );
 
         // Update local business record with server response and mark as synced
         final serverBusiness = BusinessModel.fromJson(serverData);

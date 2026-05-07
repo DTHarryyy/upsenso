@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/features/dashboard/data/dashboard_data.dart';
+import 'package:pos/features/dashboard/presentation/widgets/dashboard_empty_state.dart';
 
 class ExpensesSummaryCard extends StatelessWidget {
   final ExpenseSummary summary;
@@ -77,31 +78,14 @@ class ExpensesSummaryCard extends StatelessWidget {
 
           // ── Recent list ──────────────────────────────────────────────
           if (summary.recentExpenses.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Center(
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceAlt,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(Icons.receipt_outlined,
-                          size: 26, color: AppColors.textMuted),
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'No recent expenses',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: DashboardEmptyState(
+                icon: Icons.receipt_long_outlined,
+                iconColor: Color(0xFFD97706),
+                iconBg: Color(0xFFFEF3C7),
+                title: 'No expenses yet',
+                subtitle: 'Track your spending\nto see a summary here',
               ),
             )
           else

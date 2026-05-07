@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:pos/features/dashboard/data/dashboard_data.dart';
+import 'package:pos/features/dashboard/presentation/widgets/dashboard_empty_state.dart';
 
 class CategoryPerformanceChart extends StatelessWidget {
   final List<CategoryStat> stats;
@@ -24,11 +25,14 @@ class CategoryPerformanceChart extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           if (stats.isEmpty)
-            SizedBox(
+            const SizedBox(
               height: 200,
-              child: Center(
-                child: Text('No category data yet',
-                    style: TextStyle(color: Colors.grey.shade500)),
+              child: DashboardEmptyState(
+                icon: Icons.bar_chart_rounded,
+                iconColor: Color(0xFF7C3AED),
+                iconBg: Color(0xFFF5F3FF),
+                title: 'No category data',
+                subtitle: 'Add products to categories\nto see performance',
               ),
             )
           else

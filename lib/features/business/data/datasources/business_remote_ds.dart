@@ -54,27 +54,26 @@ class BusinessRemoteDs {
       'is_active': true,
     };
 
+    // Upsert because the auth trigger may have already created a minimal row
+    // (id + email) when the user signed up. We update it with full business context.
     final response = await client
         .from('users')
-        .insert(userData)
+        .upsert(userData, onConflict: 'id')
         .select()
         .single();
 
     return Map<String, dynamic>.from(response);
   }
 
-  /// Extract and format name from email (part before @)
+  /// Extract first name from email (part before the first separator or @).
+  /// e.g. "john.doe@gmail.com" → "John", "janedoe@mail.com" → "Janedoe"
   String _extractNameFromEmail(String email) {
     final username = email.split('@')[0];
-    // Convert to title case (e.g., "john.doe" -> "John Doe")
-    return username
-        .split(RegExp(r'[._-]'))
-        .map(
-          (part) => part.isEmpty
-              ? ''
-              : part[0].toUpperCase() + part.substring(1).toLowerCase(),
-        )
-        .join(' ');
+    final firstName = username
+        .split(RegExp(r'[._\-]'))
+        .firstWhere((p) => p.isNotEmpty, orElse: () => username);
+    if (firstName.isEmpty) return username;
+    return firstName[0].toUpperCase() + firstName.substring(1).toLowerCase();
   }
 
   /// Get or create super admin role for a business

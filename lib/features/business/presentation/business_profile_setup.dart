@@ -50,23 +50,23 @@ class _BusinessProfilePageState extends State<BusinessProfileSetup> {
   bool _hasText(String? value) => value != null && value.trim().isNotEmpty;
 
   Future<void> _navigateToHomeWhenBusinessContextReady() async {
+    if (!mounted) return;
     final authBloc = context.read<AuthBloc>();
-    for (var attempt = 0; attempt < 12; attempt++) {
-      final authState = authBloc.state;
-      if (authState is AuthAuthenticated) {
-        final hasBusiness = _hasText(authState.user.businessId);
-        final hasRole =
-            _hasText(authState.user.roleId) ||
-            _hasText(authState.user.roleName);
-        if (hasBusiness && hasRole) {
-          if (!mounted) return;
-          context.go(AppRoutes.home);
-          return;
-        }
-      }
-      authBloc.add(AuthStarted());
-      await Future<void>.delayed(const Duration(milliseconds: 350));
+
+    try {
+      // Wait for AuthBloc to reflect the new business — the remote fetch
+      // triggered by AuthStarted usually completes within 1-2 s.
+      await authBloc.stream
+          .firstWhere(
+            (s) =>
+                s is AuthAuthenticated &&
+                _hasText(s.user.businessId),
+          )
+          .timeout(const Duration(seconds: 6));
+    } catch (_) {
+      // Timed out — navigate anyway; router will settle once context arrives.
     }
+
     if (!mounted) return;
     context.go(AppRoutes.home);
   }

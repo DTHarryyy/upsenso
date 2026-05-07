@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/features/alert/data/alert_model.dart';
 import 'package:pos/features/alert/presentation/widgets/alert_detail_dialog.dart';
 import 'package:pos/features/alert/presentation/widgets/alert_detail_page.dart';
@@ -54,7 +55,7 @@ class _AlertPageState extends State<AlertPage> {
       mockFraudAlerts.where((a) => a.status == AlertStatus.resolved).length;
 
   void _openDetail(BuildContext context, FraudAlert alert) {
-    if (MediaQuery.sizeOf(context).width >= 1024) {
+    if (Breakpoints.isDesktop(context)) {
       showDialog(
         context: context,
         builder: (_) => AlertDetailDialog(alert: alert),

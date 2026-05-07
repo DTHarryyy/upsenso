@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/const/breakpoint.dart';
 import 'status_type.dart';
+
+// Toast geometry constants
+const double _kDesktopToastWidth = 360;
+const double _kTabletToastWidth  = 420;
+const double _kDesktopRightInset = 24;
 
 class StatusSnack {
   static OverlayEntry? _current;
@@ -20,7 +26,18 @@ class StatusSnack {
 
     final overlay = Overlay.of(context);
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final toastWidth = screenWidth > 600 ? 420.0 : screenWidth - 32.0;
+    final isDesktop = Breakpoints.isDesktop(context);
+    final isTablet  = Breakpoints.isTablet(context);
+
+    // Desktop: fixed-width toast anchored to the top-right corner.
+    // Tablet:  wider centred banner.
+    // Mobile:  full-width minus edge gutters.
+    final toastWidth = isDesktop
+        ? _kDesktopToastWidth
+        : isTablet
+            ? _kTabletToastWidth
+            : screenWidth - 32.0;
+
     final topInset = MediaQuery.paddingOf(context).top + 16;
 
     late final OverlayEntry entry;
@@ -32,6 +49,7 @@ class StatusSnack {
         duration: duration,
         width: toastWidth,
         topInset: topInset,
+        alignRight: isDesktop,
         onDismiss: () {
           entry.remove();
           if (_current == entry) _current = null;
@@ -53,6 +71,7 @@ class _TopToast extends StatefulWidget {
   final Duration duration;
   final double width;
   final double topInset;
+  final bool alignRight;
   final VoidCallback onDismiss;
 
   const _TopToast({
@@ -62,6 +81,7 @@ class _TopToast extends StatefulWidget {
     required this.duration,
     required this.width,
     required this.topInset,
+    required this.alignRight,
     required this.onDismiss,
   });
 
@@ -108,74 +128,83 @@ class _TopToastState extends State<_TopToast>
   Widget build(BuildContext context) {
     final s = _snackStyle(widget.type);
 
-    return Positioned(
-      top: widget.topInset,
-      left: 0,
-      right: 0,
-      child: Center(
-        child: SlideTransition(
-          position: _slide,
-          child: FadeTransition(
-            opacity: _fade,
-            child: GestureDetector(
-              onTap: _dismiss,
-              child: Material(
-                color: Colors.transparent,
-                child: SizedBox(
-                  width: widget.width,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
+    final card = SlideTransition(
+      position: _slide,
+      child: FadeTransition(
+        opacity: _fade,
+        child: GestureDetector(
+          onTap: _dismiss,
+          child: Material(
+            color: Colors.transparent,
+            child: SizedBox(
+              width: widget.width,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: s.bg,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: s.border),
+                  boxShadow: [
+                    BoxShadow(
+                      blurRadius: 18,
+                      offset: const Offset(0, 10),
+                      color: Colors.black.withValues(alpha: 0.12),
                     ),
-                    decoration: BoxDecoration(
-                      color: s.bg,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: s.border),
-                      boxShadow: [
-                        BoxShadow(
-                          blurRadius: 18,
-                          offset: const Offset(0, 10),
-                          color: Colors.black.withValues(alpha: 0.12),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(s.icon, color: s.iconColor),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (widget.title != null &&
-                                  widget.title!.trim().isNotEmpty)
-                                Text(
-                                  widget.title!,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    color: s.text,
-                                  ),
-                                ),
-                              Text(
-                                widget.message,
-                                style: TextStyle(
-                                  color: s.text.withValues(alpha: 0.9),
-                                ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Icon(s.icon, color: s.iconColor),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (widget.title != null &&
+                              widget.title!.trim().isNotEmpty)
+                            Text(
+                              widget.title!,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: s.text,
                               ),
-                            ],
+                            ),
+                          Text(
+                            widget.message,
+                            style: TextStyle(
+                              color: s.text.withValues(alpha: 0.9),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),
           ),
         ),
       ),
+    );
+
+    // Desktop → top-right corner; mobile/tablet → centred at top.
+    if (widget.alignRight) {
+      return Positioned(
+        top: widget.topInset,
+        right: _kDesktopRightInset,
+        child: card,
+      );
+    }
+
+    return Positioned(
+      top: widget.topInset,
+      left: 0,
+      right: 0,
+      child: Center(child: card),
     );
   }
 }
