@@ -14,7 +14,10 @@
       "PowerShell(Stop-Process -Id 8908 -Force -ErrorAction SilentlyContinue)",
       "PowerShell(Get-Process java, gradle -ErrorAction SilentlyContinue)",
       "PowerShell(Stop-Process -Force)",
-      "Bash(findstr /i \"drift\" pubspec.yaml)"
+      "Bash(findstr /i \"drift\" pubspec.yaml)",
+      "PowerShell(ls \"$env:LOCALAPPDATA\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\drift-2.33.0\\\\web\")",
+      "PowerShell(ls \"$env:LOCALAPPDATA\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\drift-2.33.0\\\\tool\")",
+      "Bash(curl -L -o \"c:/Projects/pos/web/sqlite3.wasm\" \"https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-3.1.7/sqlite3.wasm\")"
     ],
     "additionalDirectories": [
       "c:\\DEVELOPMENT PROJECTS\\Flutter Projects\\pos\\android\\.gradle\\noVersion"

@@ -10,6 +10,7 @@ import 'package:pos/core/ui/status/status_type.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
+import 'package:pos/features/auth/presentation/widgets/auth_layout.dart';
 
 class ResetPasswordVerificationPage extends StatefulWidget {
   final String email;
@@ -37,7 +38,6 @@ class _ResetPasswordVerificationPageState
       (index) => FocusNode(
         onKeyEvent: (_, event) {
           if (event is! KeyDownEvent) return KeyEventResult.ignored;
-
           if (event.logicalKey == LogicalKeyboardKey.backspace &&
               _controllers[index].text.isEmpty &&
               index > 0) {
@@ -46,7 +46,6 @@ class _ResetPasswordVerificationPageState
             setState(() {});
             return KeyEventResult.handled;
           }
-
           return KeyEventResult.ignored;
         },
       ),
@@ -55,17 +54,16 @@ class _ResetPasswordVerificationPageState
 
   @override
   void dispose() {
-    for (final controller in _controllers) {
-      controller.dispose();
+    for (final c in _controllers) {
+      c.dispose();
     }
-    for (final node in _focusNodes) {
-      node.dispose();
+    for (final n in _focusNodes) {
+      n.dispose();
     }
     super.dispose();
   }
 
   String get _enteredCode => _controllers.map((c) => c.text).join();
-
   bool get _isComplete => _enteredCode.length == _codeLength;
 
   void _onDigitChanged(int index, String value) {
@@ -73,44 +71,31 @@ class _ResetPasswordVerificationPageState
       _fillFromPaste(value);
       return;
     }
-
     if (value.isNotEmpty && index < _codeLength - 1) {
       _focusNodes[index + 1].requestFocus();
     }
-
-    if (value.isEmpty && index > 0) {
-      _focusNodes[index - 1].requestFocus();
-    }
-
     setState(() {});
-
-    if (_isComplete) {
-      _verifyCode();
-    }
+    if (_isComplete) _verifyCode();
   }
 
   void _fillFromPaste(String pastedText) {
-    final digitsOnly = pastedText.replaceAll(RegExp(r'\D'), '');
-    final chars = digitsOnly.split('');
-
+    final digits = pastedText.replaceAll(RegExp(r'\D'), '');
+    final chars = digits.split('');
     for (var i = 0; i < _codeLength && i < chars.length; i++) {
       _controllers[i].text = chars[i];
     }
-
     if (chars.length >= _codeLength) {
       _focusNodes[_codeLength - 1].requestFocus();
       setState(() {});
       _verifyCode();
     } else if (chars.isNotEmpty) {
-      final nextIndex = chars.length.clamp(0, _codeLength - 1);
-      _focusNodes[nextIndex].requestFocus();
+      _focusNodes[chars.length.clamp(0, _codeLength - 1)].requestFocus();
       setState(() {});
     }
   }
 
   void _verifyCode() {
     if (!_isComplete) return;
-
     context.read<AuthBloc>().add(
       AuthVerifyResetCodeRequested(widget.email, _enteredCode),
     );
@@ -118,6 +103,14 @@ class _ResetPasswordVerificationPageState
 
   void _resendCode() {
     context.read<AuthBloc>().add(AuthResendResetCodeRequested(widget.email));
+  }
+
+  void _clearAndRefocus() {
+    for (final c in _controllers) {
+      c.clear();
+    }
+    _focusNodes[0].requestFocus();
+    setState(() {});
   }
 
   @override
@@ -140,13 +133,7 @@ class _ResetPasswordVerificationPageState
             title: 'Verification failed',
             message: state.message,
           );
-
-          // Clear code on error
-          for (final controller in _controllers) {
-            controller.clear();
-          }
-          _focusNodes[0].requestFocus();
-          setState(() {});
+          _clearAndRefocus();
         } else if (state is AuthResetCodeSent) {
           StatusSnack.show(
             context,
@@ -159,163 +146,167 @@ class _ResetPasswordVerificationPageState
       builder: (context, state) {
         final isLoading = state is AuthLoading;
 
-        return Scaffold(
-          backgroundColor: AppColors.surface,
-          appBar: AppBar(
-            backgroundColor: AppColors.surface,
-            elevation: 0,
-            leading: IconButton(
-              icon: Icon(Icons.arrow_back, color: AppColors.textPrimary),
-              onPressed: () => context.go(AppRoutes.forgotPassword),
-            ),
-          ),
-          body: SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Email Icon
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color: AppColors.brand.withAlpha(25),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.mark_email_read_outlined,
-                          size: 40,
-                          color: AppColors.brand,
-                        ),
-                      ),
-                      const SizedBox(height: 32),
+        return AuthLayout(
+          onBack: () => context.go(AppRoutes.forgotPassword),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Icon badge
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: AppColors.brandSoft,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.mark_email_read_outlined,
+                  size: 26,
+                  color: AppColors.brand,
+                ),
+              ),
+              const SizedBox(height: 24),
 
-                      // Title
-                      Text(
-                        'Check Your Email',
-                        style: AppTextStyles.title(context).copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
-                        textAlign: TextAlign.center,
+              // Heading
+              Text(
+                'Check your email',
+                style: AppTextStyles.headline(context).copyWith(
+                  color: AppColors.textPrimary,
+                  height: 1.3,
+                ),
+              ),
+              const SizedBox(height: 8),
+              RichText(
+                text: TextSpan(
+                  style: AppTextStyles.subtitle(context).copyWith(
+                    color: AppColors.textSecondary,
+                    height: 1.5,
+                    fontWeight: FontWeight.w400,
+                  ),
+                  children: [
+                    const TextSpan(text: 'We sent a 6-digit reset code to '),
+                    TextSpan(
+                      text: widget.email,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w600,
                       ),
-                      const SizedBox(height: 12),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 36),
 
-                      // Subtitle
-                      RichText(
-                        textAlign: TextAlign.center,
-                        text: TextSpan(
-                          style: AppTextStyles.body(
-                            context,
-                          ).copyWith(color: AppColors.textSecondary),
-                          children: [
-                            const TextSpan(
-                              text: 'We\'ve sent a 6-digit code to\n',
-                            ),
-                            TextSpan(
-                              text: widget.email,
-                              style: TextStyle(
-                                color: AppColors.textPrimary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 40),
-
-                      // OTP Input Fields
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: List.generate(_codeLength, (index) {
-                          return _buildCodeBox(index);
-                        }),
-                      ),
-                      const SizedBox(height: 32),
-
-                      // Resend Code
-                      Center(
-                        child: TextButton(
-                          onPressed: isLoading ? null : _resendCode,
-                          child: Text(
-                            'Didn\'t receive the code? Resend',
-                            style: AppTextStyles.body(context).copyWith(
-                              color: AppColors.brand,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Verify Button
-                      FilledButton(
-                        onPressed: _isComplete && !isLoading
-                            ? _verifyCode
-                            : null,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.brand,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          disabledBackgroundColor: AppColors.brand.withAlpha(
-                            100,
-                          ),
-                        ),
-                        child: isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
-                                  ),
-                                ),
-                              )
-                            : Text(
-                                'Verify Code',
-                                style: AppTextStyles.subtitle(context).copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                      ),
-                    ],
+              // OTP boxes
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: List.generate(
+                  _codeLength,
+                  (i) => _OtpBox(
+                    controller: _controllers[i],
+                    focusNode: _focusNodes[i],
+                    autofocus: i == 0,
+                    isLast: i == _codeLength - 1,
+                    onChanged: (v) => _onDigitChanged(i, v),
                   ),
                 ),
               ),
-            ),
+              const SizedBox(height: 28),
+
+              // Verify button
+              FilledButton(
+                onPressed: isLoading || !_isComplete ? null : _verifyCode,
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: isLoading
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Verify code'),
+              ),
+              const SizedBox(height: 20),
+
+              // Resend
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    "Didn't receive it? ",
+                    style: AppTextStyles.body(context).copyWith(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: isLoading ? null : _resendCode,
+                    child: Text(
+                      'Resend code',
+                      style: AppTextStyles.body(context).copyWith(
+                        color: AppColors.brand,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         );
       },
     );
   }
+}
 
-  Widget _buildCodeBox(int index) {
+// ── OTP digit box ──────────────────────────────────────────────────────────
+
+class _OtpBox extends StatelessWidget {
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final bool autofocus;
+  final bool isLast;
+  final ValueChanged<String> onChanged;
+
+  const _OtpBox({
+    required this.controller,
+    required this.focusNode,
+    required this.autofocus,
+    required this.isLast,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return SizedBox(
-      width: 50,
+      width: 52,
       height: 60,
       child: TextField(
-        controller: _controllers[index],
-        focusNode: _focusNodes[index],
-        textAlign: TextAlign.center,
+        controller: controller,
+        focusNode: focusNode,
+        autofocus: autofocus,
         keyboardType: TextInputType.number,
-        maxLength: 1,
-        style: AppTextStyles.title(
-          context,
-        ).copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        textInputAction: isLast ? TextInputAction.done : TextInputAction.next,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textPrimary,
+          letterSpacing: 0,
+        ),
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(1),
+        ],
         decoration: InputDecoration(
           counterText: '',
-          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+          contentPadding: EdgeInsets.zero,
           filled: true,
           fillColor: AppColors.inputFill,
           border: OutlineInputBorder(
@@ -324,14 +315,14 @@ class _ResetPasswordVerificationPageState
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: AppColors.borderSoft, width: 1),
+            borderSide: const BorderSide(color: AppColors.borderSoft),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: AppColors.brand, width: 2),
+            borderSide: const BorderSide(color: AppColors.brand, width: 2),
           ),
         ),
-        onChanged: (value) => _onDigitChanged(index, value),
+        onChanged: onChanged,
         onTapOutside: (_) => FocusScope.of(context).unfocus(),
       ),
     );

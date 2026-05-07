@@ -10,6 +10,7 @@ import 'package:pos/core/ui/status/status_type.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
+import 'package:pos/features/auth/presentation/widgets/auth_layout.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -38,7 +39,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   void _onSubmit() {
     final valid = _formKey.currentState?.validate() ?? false;
     if (!valid) return;
-
     context.read<AuthBloc>().add(
       AuthForgotPasswordRequested(_emailController.text.trim()),
     );
@@ -71,184 +71,105 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       builder: (context, state) {
         final isLoading = state is AuthLoading;
 
-        return Scaffold(
-          backgroundColor: AppColors.surface,
-          appBar: AppBar(
-            backgroundColor: AppColors.surface,
-            elevation: 0,
-            leading: IconButton(
-              icon: Icon(Icons.arrow_back, color: AppColors.textPrimary),
-              onPressed: () => context.go(AppRoutes.signIn),
-            ),
-          ),
-          body: SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Lock Icon
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            color: AppColors.brand.withAlpha(25),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.lock_reset_rounded,
-                            size: 40,
-                            color: AppColors.brand,
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-
-                        // Title
-                        Text(
-                          'Forgot Password?',
-                          style: AppTextStyles.title(context).copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Subtitle
-                        Text(
-                          'No worries! Enter your email address and we\'ll send you a code to reset your password.',
-                          style: AppTextStyles.body(
-                            context,
-                          ).copyWith(color: AppColors.textSecondary),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 40),
-
-                        // Email Field
-                        TextFormField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          textInputAction: TextInputAction.done,
-                          enabled: !isLoading,
-                          validator: Validators.email,
-                          onFieldSubmitted: (_) => _onSubmit(),
-                          decoration: InputDecoration(
-                            labelText: 'Email',
-                            hintText: 'Enter your email address',
-                            prefixIcon: Icon(
-                              Icons.email_outlined,
-                              color: AppColors.textSecondary,
-                            ),
-                            filled: true,
-                            fillColor: AppColors.inputFill,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: AppColors.borderSoft,
-                                width: 1,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: AppColors.brand,
-                                width: 2,
-                              ),
-                            ),
-                            errorBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: AppColors.error,
-                                width: 1,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Submit Button
-                        FilledButton(
-                          onPressed: isLoading ? null : _onSubmit,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.brand,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            disabledBackgroundColor: AppColors.brand.withAlpha(
-                              100,
-                            ),
-                          ),
-                          child: isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white,
-                                    ),
-                                  ),
-                                )
-                              : Text(
-                                  'Send Reset Code',
-                                  style: AppTextStyles.subtitle(context)
-                                      .copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Back to Sign In
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'Remember your password? ',
-                              style: AppTextStyles.body(
-                                context,
-                              ).copyWith(color: AppColors.textSecondary),
-                            ),
-                            TextButton(
-                              onPressed: isLoading
-                                  ? null
-                                  : () => context.go(AppRoutes.signIn),
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 4,
-                                  vertical: 0,
-                                ),
-                                minimumSize: const Size(0, 0),
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                              child: Text(
-                                'Sign In',
-                                style: AppTextStyles.body(context).copyWith(
-                                  color: AppColors.brand,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+        return AuthLayout(
+          onBack: () => context.go(AppRoutes.signIn),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Icon badge
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: AppColors.brandSoft,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.lock_reset_rounded,
+                    size: 26,
+                    color: AppColors.brand,
                   ),
                 ),
-              ),
+                const SizedBox(height: 24),
+
+                // Heading
+                Text(
+                  'Forgot password?',
+                  style: AppTextStyles.headline(context).copyWith(
+                    color: AppColors.textPrimary,
+                    height: 1.3,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'No worries — enter your email and we\'ll send you a reset code.',
+                  style: AppTextStyles.subtitle(context).copyWith(
+                    color: AppColors.textSecondary,
+                    height: 1.5,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // Email field
+                TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.done,
+                  enabled: !isLoading,
+                  validator: Validators.email,
+                  onFieldSubmitted: (_) => _onSubmit(),
+                  decoration: const InputDecoration(labelText: 'Email address'),
+                ),
+                const SizedBox(height: 24),
+
+                // Submit
+                FilledButton(
+                  onPressed: isLoading ? null : _onSubmit,
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: isLoading
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Send reset code'),
+                ),
+                const SizedBox(height: 20),
+
+                // Back to sign in
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Remember your password? ',
+                      style: AppTextStyles.body(context).copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: isLoading ? null : () => context.go(AppRoutes.signIn),
+                      child: Text(
+                        'Sign In',
+                        style: AppTextStyles.body(context).copyWith(
+                          color: AppColors.brand,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         );

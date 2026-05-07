@@ -115,35 +115,34 @@ class _OnboardingState extends State<Onboarding> {
         ],
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 30),
-          child: Column(
-            children: [
-              Expanded(
-                child: PageView.builder(
-                  controller: _controller,
-                  itemCount: _pages.length,
-                  onPageChanged: (i) => setState(() => _index = i),
-                  itemBuilder: (context, i) {
-                    final p = _pages[i];
-                    return _OnboardPage(
-                      lottieAsset: p.lottieAsset,
-                      title: p.title,
-                      description: p.description,
-                    );
-                  },
-                ),
+        child: Column(
+          children: [
+            Expanded(
+              child: PageView.builder(
+                controller: _controller,
+                itemCount: _pages.length,
+                onPageChanged: (i) => setState(() => _index = i),
+                itemBuilder: (context, i) {
+                  final p = _pages[i];
+                  return _OnboardPage(
+                    lottieAsset: p.lottieAsset,
+                    title: p.title,
+                    description: p.description,
+                  );
+                },
               ),
-              Row(
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(30, 8, 30, 24),
+              child: Row(
                 children: [
                   PageIndicator(currentIndex: _index, count: _pages.length),
                   const Spacer(),
-
-                  // Next / Get Started button
                   FilledButton(
                     onPressed: _next,
                     style: FilledButton.styleFrom(
-                      shape: isLast ? const StadiumBorder() : CircleBorder(),
+                      shape:
+                          isLast ? const StadiumBorder() : const CircleBorder(),
                       padding: EdgeInsets.all(isLast ? 12 : 15),
                     ),
                     child: isLast
@@ -161,11 +160,8 @@ class _OnboardingState extends State<Onboarding> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-
-              const SizedBox(height: 10),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -185,17 +181,19 @@ class _OnboardPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 30),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Lottie.asset(lottieAsset),
+          Expanded(
+            child: Lottie.asset(lottieAsset, fit: BoxFit.contain),
+          ),
           Text(
             title,
-            style: AppTextStyles.headline(
-              context,
-            ).copyWith(color: AppColors.textPrimary),
+            style: AppTextStyles.headline(context).copyWith(
+              color: AppColors.textPrimary,
+            ),
           ),
           const SizedBox(height: 10),
           Text(
@@ -205,6 +203,7 @@ class _OnboardPage extends StatelessWidget {
               fontWeight: FontWeight.w300,
             ),
           ),
+          const SizedBox(height: 20),
         ],
       ),
     );

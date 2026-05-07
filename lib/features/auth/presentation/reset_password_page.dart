@@ -10,6 +10,7 @@ import 'package:pos/core/ui/status/status_type.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
+import 'package:pos/features/auth/presentation/widgets/auth_layout.dart';
 
 class ResetPasswordPage extends StatefulWidget {
   final String email;
@@ -24,11 +25,6 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   late final GlobalKey<FormState> _formKey;
   late final TextEditingController _passwordController;
   late final TextEditingController _confirmPasswordController;
-
-  static final RegExp _hasUpper = RegExp(r'[A-Z]');
-  static final RegExp _hasLower = RegExp(r'[a-z]');
-  static final RegExp _hasDigit = RegExp(r'\d');
-  static final RegExp _hasSpecial = RegExp(r'[!@#$%^&*(),.?":{}|<>_\-+=/]');
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -48,45 +44,20 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     super.dispose();
   }
 
-  String? _validatePassword(String? value) {
-    return Validators.combine(value, [
-      (x) => Validators.required(x, fieldName: 'Password'),
-      (x) => Validators.strongPassword(x, min: 8),
-    ]);
-  }
+  String? _validatePassword(String? value) => Validators.combine(value, [
+    (x) => Validators.required(x, fieldName: 'Password'),
+    (x) => Validators.strongPassword(x, min: 8),
+  ]);
 
-  String? _validateConfirmPassword(String? value) {
-    return Validators.combine(value, [
-      (x) => Validators.required(x, fieldName: 'Confirm Password'),
-      (x) => Validators.confirmPassword(x, _passwordController.text),
-    ]);
-  }
-
-  Widget _buildRequirementItem({required String text, required bool met}) {
-    return Row(
-      children: [
-        Icon(
-          Icons.info_outline_rounded,
-          color: AppColors.textSecondary,
-          size: 16,
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: AppTextStyles.caption(context).copyWith(
-              color: met ? AppColors.textPrimary : AppColors.textSecondary,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  String? _validateConfirmPassword(String? value) =>
+      Validators.combine(value, [
+        (x) => Validators.required(x, fieldName: 'Confirm Password'),
+        (x) => Validators.confirmPassword(x, _passwordController.text),
+      ]);
 
   void _onSubmit() {
     final valid = _formKey.currentState?.validate() ?? false;
     if (!valid) return;
-
     context.read<AuthBloc>().add(
       AuthResetPasswordRequested(_passwordController.text),
     );
@@ -101,7 +72,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
           StatusSnack.show(
             context,
             type: StatusType.success,
-            title: 'Password reset successful',
+            title: 'Password reset',
             message: 'You can now sign in with your new password.',
           );
           context.go(AppRoutes.signIn);
@@ -116,286 +87,215 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       },
       builder: (context, state) {
         final isLoading = state is AuthLoading;
+        final pw = _passwordController.text;
 
-        return Scaffold(
-          backgroundColor: AppColors.surface,
-          appBar: AppBar(
-            backgroundColor: AppColors.surface,
-            elevation: 0,
-            leading: IconButton(
-              icon: Icon(Icons.arrow_back, color: AppColors.textPrimary),
-              onPressed: () => context.go(AppRoutes.signIn),
-            ),
-          ),
-          body: SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Key Icon
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            color: AppColors.brand.withAlpha(25),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.vpn_key_rounded,
-                            size: 40,
-                            color: AppColors.brand,
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-
-                        // Title
-                        Text(
-                          'Create New Password',
-                          style: AppTextStyles.title(context).copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Subtitle
-                        Text(
-                          'Your new password must be different from previously used passwords.',
-                          style: AppTextStyles.body(
-                            context,
-                          ).copyWith(color: AppColors.textSecondary),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 40),
-
-                        // Password Field
-                        TextFormField(
-                          controller: _passwordController,
-                          obscureText: _obscurePassword,
-                          enabled: !isLoading,
-                          validator: _validatePassword,
-                          onChanged: (_) => setState(() {}),
-                          decoration: InputDecoration(
-                            labelText: 'New Password',
-                            hintText: 'Enter new password',
-                            prefixIcon: Icon(
-                              Icons.lock_outline,
-                              color: AppColors.textSecondary,
-                            ),
-                            suffixIcon: _passwordController.text.isEmpty
-                                ? null
-                                : IconButton(
-                                    icon: Icon(
-                                      _obscurePassword
-                                          ? Icons.visibility_off
-                                          : Icons.visibility,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        _obscurePassword = !_obscurePassword;
-                                      });
-                                    },
-                                  ),
-                            filled: true,
-                            fillColor: AppColors.inputFill,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: AppColors.borderSoft,
-                                width: 1,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: AppColors.brand,
-                                width: 2,
-                              ),
-                            ),
-                            errorBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: AppColors.error,
-                                width: 1,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Confirm Password Field
-                        TextFormField(
-                          controller: _confirmPasswordController,
-                          obscureText: _obscureConfirmPassword,
-                          enabled: !isLoading,
-                          validator: _validateConfirmPassword,
-                          onChanged: (_) => setState(() {}),
-                          onFieldSubmitted: (_) => _onSubmit(),
-                          decoration: InputDecoration(
-                            labelText: 'Confirm Password',
-                            hintText: 'Re-enter new password',
-                            prefixIcon: Icon(
-                              Icons.lock_outline,
-                              color: AppColors.textSecondary,
-                            ),
-                            suffixIcon: _confirmPasswordController.text.isEmpty
-                                ? null
-                                : IconButton(
-                                    icon: Icon(
-                                      _obscureConfirmPassword
-                                          ? Icons.visibility_off
-                                          : Icons.visibility,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        _obscureConfirmPassword =
-                                            !_obscureConfirmPassword;
-                                      });
-                                    },
-                                  ),
-                            filled: true,
-                            fillColor: AppColors.inputFill,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: AppColors.borderSoft,
-                                width: 1,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: AppColors.brand,
-                                width: 2,
-                              ),
-                            ),
-                            errorBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: AppColors.error,
-                                width: 1,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceAlt,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.borderSoft),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Password requirements:',
-                                style: AppTextStyles.caption(context).copyWith(
-                                  color: AppColors.textPrimary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              _buildRequirementItem(
-                                text: 'At least 8 characters',
-                                met: _passwordController.text.length >= 8,
-                              ),
-                              const SizedBox(height: 6),
-                              _buildRequirementItem(
-                                text: 'At least 1 uppercase letter',
-                                met: _hasUpper.hasMatch(
-                                  _passwordController.text,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              _buildRequirementItem(
-                                text: 'At least 1 lowercase letter',
-                                met: _hasLower.hasMatch(
-                                  _passwordController.text,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              _buildRequirementItem(
-                                text: 'At least 1 number',
-                                met: _hasDigit.hasMatch(
-                                  _passwordController.text,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              _buildRequirementItem(
-                                text: 'At least 1 special character',
-                                met: _hasSpecial.hasMatch(
-                                  _passwordController.text,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Submit Button
-                        FilledButton(
-                          onPressed: isLoading ? null : _onSubmit,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.brand,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            disabledBackgroundColor: AppColors.brand.withAlpha(
-                              100,
-                            ),
-                          ),
-                          child: isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white,
-                                    ),
-                                  ),
-                                )
-                              : Text(
-                                  'Reset Password',
-                                  style: AppTextStyles.subtitle(context)
-                                      .copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                ),
-                        ),
-                      ],
-                    ),
+        return AuthLayout(
+          onBack: () => context.go(AppRoutes.signIn),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Icon badge
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: AppColors.brandSoft,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.vpn_key_rounded,
+                    size: 26,
+                    color: AppColors.brand,
                   ),
                 ),
-              ),
+                const SizedBox(height: 24),
+
+                // Heading
+                Text(
+                  'Create new password',
+                  style: AppTextStyles.headline(context).copyWith(
+                    color: AppColors.textPrimary,
+                    height: 1.3,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Your new password must be different from previously used passwords.',
+                  style: AppTextStyles.subtitle(context).copyWith(
+                    color: AppColors.textSecondary,
+                    height: 1.5,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // New password
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
+                  enabled: !isLoading,
+                  textInputAction: TextInputAction.next,
+                  validator: _validatePassword,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    labelText: 'New password',
+                    suffixIcon: _passwordController.text.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              size: 20,
+                            ),
+                            onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword,
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Confirm password
+                TextFormField(
+                  controller: _confirmPasswordController,
+                  obscureText: _obscureConfirmPassword,
+                  enabled: !isLoading,
+                  textInputAction: TextInputAction.done,
+                  validator: _validateConfirmPassword,
+                  onChanged: (_) => setState(() {}),
+                  onFieldSubmitted: (_) => _onSubmit(),
+                  decoration: InputDecoration(
+                    labelText: 'Confirm new password',
+                    suffixIcon: _confirmPasswordController.text.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: Icon(
+                              _obscureConfirmPassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              size: 20,
+                            ),
+                            onPressed: () => setState(
+                              () => _obscureConfirmPassword =
+                                  !_obscureConfirmPassword,
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Password requirements
+                _PasswordRequirements(password: pw),
+                const SizedBox(height: 24),
+
+                // Submit
+                FilledButton(
+                  onPressed: isLoading ? null : _onSubmit,
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: isLoading
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Reset password'),
+                ),
+              ],
             ),
           ),
         );
       },
+    );
+  }
+}
+
+// ── Password requirements checklist ───────────────────────────────────────
+
+class _PasswordRequirements extends StatelessWidget {
+  final String password;
+
+  static final RegExp _hasUpper = RegExp(r'[A-Z]');
+  static final RegExp _hasLower = RegExp(r'[a-z]');
+  static final RegExp _hasDigit = RegExp(r'\d');
+  static final RegExp _hasSpecial = RegExp(r'[!@#$%^&*(),.?":{}|<>_\-+=/]');
+
+  const _PasswordRequirements({required this.password});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderSoft),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Password requirements',
+            style: AppTextStyles.caption(context).copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 10),
+          _Req(text: 'At least 8 characters', met: password.length >= 8),
+          _Req(
+            text: 'One uppercase letter',
+            met: _hasUpper.hasMatch(password),
+          ),
+          _Req(
+            text: 'One lowercase letter',
+            met: _hasLower.hasMatch(password),
+          ),
+          _Req(text: 'One number', met: _hasDigit.hasMatch(password)),
+          _Req(
+            text: 'One special character',
+            met: _hasSpecial.hasMatch(password),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Req extends StatelessWidget {
+  final String text;
+  final bool met;
+
+  const _Req({required this.text, required this.met});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        children: [
+          Icon(
+            met ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+            size: 15,
+            color: met ? AppColors.success : AppColors.textMuted,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: AppTextStyles.caption(context).copyWith(
+              color: met ? AppColors.textPrimary : AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

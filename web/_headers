@@ -1,0 +1,13 @@
+# Cloudflare Pages — explicit MIME types for Flutter web assets
+# Without these, Cloudflare may serve .wasm as application/octet-stream
+# which breaks WebAssembly.instantiateStreaming(), and .js workers may
+# be served without charset causing MIME sniffing warnings in some browsers.
+
+/sqlite3.wasm
+  Content-Type: application/wasm
+
+/drift_worker.js
+  Content-Type: application/javascript; charset=utf-8
+
+/*.js
+  Content-Type: application/javascript; charset=utf-8

@@ -61,15 +61,6 @@ class _SignUpState extends State<SignUp> {
     );
   }
 
-  void _onForgotPasswordTap() {
-    StatusSnack.show(
-      context,
-      type: StatusType.info,
-      title: 'Coming soon',
-      message: 'Forgot password flow will be available soon.',
-    );
-  }
-
   void _onGoogleSignIn() {
     context.read<AuthBloc>().add(const AuthGoogleSignInRequested());
   }
@@ -98,183 +89,171 @@ class _SignUpState extends State<SignUp> {
             state is AuthLoading && state.type == AuthLoadingType.signUp;
         final isGoogleLoading =
             state is AuthLoading && state.type == AuthLoadingType.google;
-        final isWide = Breakpoints.isTablet(context);
+        final isMobile = !Breakpoints.isTablet(context);
 
-        return AuthLayout(child: _FormCard(isWide: isWide, child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (!isWide) ...[
-                Center(
-                  child: Image.asset(
-                    'assets/icons/AppIconNoBg.png',
-                    width: 56,
-                    height: 56,
+        return AuthLayout(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Mobile wordmark
+                if (isMobile) ...[
+                  AuthWordmark(color: AppColors.brand, fontSize: 26),
+                  const SizedBox(height: 20),
+                ],
+
+                // Heading
+                Text(
+                  AppStrings.signUpHeadline,
+                  style: AppTextStyles.headline(context).copyWith(
+                    color: AppColors.textPrimary,
+                    height: 1.3,
                   ),
                 ),
-                const SizedBox(height: 4),
-              ],
-              Text(
-                AppStrings.signUpHeadline,
-                style: AppTextStyles.headline(context)
-                    .copyWith(color: AppColors.textPrimary, height: 1.3),
-                textAlign: isWide ? TextAlign.left : TextAlign.center,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                AppStrings.signUpSubHeadline,
-                style: AppTextStyles.subtitle(context).copyWith(
-                  color: AppColors.textSecondary,
-                  height: 1.4,
-                  fontWeight: FontWeight.w400,
+                const SizedBox(height: 6),
+                Text(
+                  AppStrings.signUpSubHeadline,
+                  style: AppTextStyles.subtitle(context).copyWith(
+                    color: AppColors.textSecondary,
+                    height: 1.5,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
-                textAlign: isWide ? TextAlign.left : TextAlign.center,
-              ),
-              const SizedBox(height: 28),
-              TextFormField(
-                controller: _emailController,
-                decoration: const InputDecoration(labelText: 'Email'),
-                keyboardType: TextInputType.emailAddress,
-                validator: (v) => Validators.combine(v, [
-                  (x) => Validators.required(x, fieldName: 'Email'),
-                  Validators.email,
-                ]),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _passwordController,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  suffixIcon: _passwordController.text.isEmpty
-                      ? null
-                      : IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_off
-                                : Icons.visibility,
+                const SizedBox(height: 32),
+
+                // Email
+                TextFormField(
+                  controller: _emailController,
+                  decoration: const InputDecoration(labelText: 'Email'),
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
+                  validator: (v) => Validators.combine(v, [
+                    (x) => Validators.required(x, fieldName: 'Email'),
+                    Validators.email,
+                  ]),
+                ),
+                const SizedBox(height: 16),
+
+                // Password
+                TextFormField(
+                  controller: _passwordController,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    suffixIcon: _passwordController.text.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              size: 20,
+                            ),
+                            onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword,
+                            ),
                           ),
-                          onPressed: () =>
-                              setState(() => _obscurePassword = !_obscurePassword),
-                        ),
+                  ),
+                  obscureText: _obscurePassword,
+                  textInputAction: TextInputAction.next,
+                  onChanged: (_) => setState(() {}),
+                  validator: (v) => Validators.combine(v, [
+                    (x) => Validators.required(x, fieldName: 'Password'),
+                    (x) => Validators.strongPassword(x, min: 8),
+                  ]),
                 ),
-                obscureText: _obscurePassword,
-                onChanged: (_) => setState(() {}),
-                validator: (v) => Validators.combine(v, [
-                  (x) => Validators.required(x, fieldName: 'Password'),
-                  (x) => Validators.strongPassword(x, min: 8),
-                ]),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _confirmPasswordController,
-                decoration: InputDecoration(
-                  labelText: 'Confirm Password',
-                  suffixIcon: _confirmPasswordController.text.isEmpty
-                      ? null
-                      : IconButton(
-                          icon: Icon(
-                            _obscureConfirmPassword
-                                ? Icons.visibility_off
-                                : Icons.visibility,
+                const SizedBox(height: 16),
+
+                // Confirm password
+                TextFormField(
+                  controller: _confirmPasswordController,
+                  decoration: InputDecoration(
+                    labelText: 'Confirm Password',
+                    suffixIcon: _confirmPasswordController.text.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: Icon(
+                              _obscureConfirmPassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              size: 20,
+                            ),
+                            onPressed: () => setState(
+                              () => _obscureConfirmPassword =
+                                  !_obscureConfirmPassword,
+                            ),
                           ),
-                          onPressed: () => setState(() =>
-                              _obscureConfirmPassword = !_obscureConfirmPassword),
-                        ),
+                  ),
+                  obscureText: _obscureConfirmPassword,
+                  textInputAction: TextInputAction.done,
+                  onChanged: (_) => setState(() {}),
+                  onFieldSubmitted: (_) => _onSubmit(),
+                  validator: (v) => Validators.combine(v, [
+                    (x) =>
+                        Validators.required(x, fieldName: 'Confirm Password'),
+                    (x) =>
+                        Validators.confirmPassword(x, _passwordController.text),
+                  ]),
                 ),
-                obscureText: _obscureConfirmPassword,
-                onChanged: (_) => setState(() {}),
-                validator: (v) => Validators.combine(v, [
-                  (x) => Validators.required(x, fieldName: 'Confirm Password'),
-                  (x) => Validators.confirmPassword(x, _passwordController.text),
-                ]),
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  TextButton(
-                    onPressed: _onForgotPasswordTap,
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(0, 32),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: Text(
-                      AppStrings.forgotPassword,
-                      style: const TextStyle(color: AppColors.brand),
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    AppStrings.alreadyHaveAccount,
-                    style: const TextStyle(color: AppColors.textSecondary),
-                  ),
-                  TextButton(
-                    onPressed: () => context.go(AppRoutes.signIn),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.only(left: 4),
-                      minimumSize: const Size(0, 32),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: const Text(
-                      'Sign In',
+                const SizedBox(height: 14),
+
+                // Already have account
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      AppStrings.alreadyHaveAccount,
                       style: TextStyle(
-                        color: AppColors.brand,
-                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
                       ),
                     ),
+                    const SizedBox(width: 4),
+                    GestureDetector(
+                      onTap: () => context.go(AppRoutes.signIn),
+                      child: const Text(
+                        'Sign In',
+                        style: TextStyle(
+                          color: AppColors.brand,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Sign up button
+                FilledButton(
+                  onPressed: isLoading ? null : _onSubmit,
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              FilledButton(
-                onPressed: isLoading ? null : _onSubmit,
-                child: isLoading
-                    ? const SizedBox(
-                        height: 18,
-                        width: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(AppStrings.signUp),
-              ),
-              const SizedBox(height: 24),
-              AuthOptions(
-                isLoading: isGoogleLoading,
-                onGooglePressed: _onGoogleSignIn,
-              ),
-            ],
+                  child: isLoading
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(AppStrings.signUp),
+                ),
+                const SizedBox(height: 28),
+
+                // OAuth options
+                AuthOptions(
+                  isLoading: isGoogleLoading,
+                  onGooglePressed: _onGoogleSignIn,
+                ),
+              ],
+            ),
           ),
-        )));
+        );
       },
-    );
-  }
-}
-
-class _FormCard extends StatelessWidget {
-  final bool isWide;
-  final Widget child;
-
-  const _FormCard({required this.isWide, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    if (!isWide) return child;
-    return Container(
-      padding: const EdgeInsets.all(36),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.borderSoft),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: child,
     );
   }
 }

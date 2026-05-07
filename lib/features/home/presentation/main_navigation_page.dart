@@ -368,55 +368,75 @@ class _AppSidebarState extends State<_AppSidebar>
         children: [
           const SizedBox(height: 8),
           // ── Logo / business header ──
+          // Collapsed (64px): the entire header becomes a single tap target so
+          // the expand icon is always reachable — no Row overflow possible.
+          // Expanded (220px): logo + business name + collapse chevron in a Row.
           SizedBox(
             height: 48,
-            child: Row(
-              children: [
-                const SizedBox(width: 12),
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: AppColors.brand,
-                    borderRadius: BorderRadius.circular(9),
-                  ),
-                  child: const Icon(Icons.point_of_sale_rounded,
-                      size: 18, color: AppColors.textInverse),
-                ),
-                if (widget.expanded) ...[
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      widget.businessName,
-                      overflow: TextOverflow.ellipsis,
-                      style: getOutfitStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+            child: widget.expanded
+                ? Row(
+                    children: [
+                      const SizedBox(width: 12),
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: AppColors.brand,
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: const Icon(Icons.point_of_sale_rounded,
+                            size: 18, color: AppColors.textInverse),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          widget.businessName,
+                          overflow: TextOverflow.ellipsis,
+                          style: getOutfitStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: widget.onToggle,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: const Icon(
+                              Icons.chevron_left_rounded,
+                              size: 20,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                  )
+                : Tooltip(
+                    message: 'Expand sidebar',
+                    preferBelow: false,
+                    waitDuration: const Duration(milliseconds: 400),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: widget.onToggle,
+                        child: const SizedBox.expand(
+                          child: Center(
+                            child: Icon(
+                              Icons.chevron_right_rounded,
+                              size: 20,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ],
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: widget.onToggle,
-                    borderRadius: BorderRadius.circular(8),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Icon(
-                        widget.expanded
-                            ? Icons.chevron_left_rounded
-                            : Icons.chevron_right_rounded,
-                        size: 20,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 4),
-              ],
-            ),
           ),
           const SizedBox(height: 4),
           const Divider(height: 1, color: AppColors.borderSoft),

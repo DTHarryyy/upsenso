@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/const/app_strings.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/validators.dart';
 import 'package:pos/core/routes/app_routes.dart';
@@ -12,6 +13,7 @@ import 'package:pos/core/ui/status/status_type.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
+import 'package:pos/features/auth/presentation/widgets/auth_layout.dart';
 import 'package:pos/features/business/domain/entities/business_template.dart';
 import 'package:pos/features/business/presentation/bloc/business_bloc.dart';
 import 'package:pos/features/business/presentation/bloc/business_event.dart';
@@ -45,14 +47,10 @@ class _BusinessProfilePageState extends State<BusinessProfileSetup> {
     super.dispose();
   }
 
-  bool _hasText(String? value) {
-    return value != null && value.trim().isNotEmpty;
-  }
+  bool _hasText(String? value) => value != null && value.trim().isNotEmpty;
 
   Future<void> _navigateToHomeWhenBusinessContextReady() async {
     final authBloc = context.read<AuthBloc>();
-
-    // Wait until auth state contains the freshly created business context.
     for (var attempt = 0; attempt < 12; attempt++) {
       final authState = authBloc.state;
       if (authState is AuthAuthenticated) {
@@ -60,19 +58,15 @@ class _BusinessProfilePageState extends State<BusinessProfileSetup> {
         final hasRole =
             _hasText(authState.user.roleId) ||
             _hasText(authState.user.roleName);
-
         if (hasBusiness && hasRole) {
           if (!mounted) return;
           context.go(AppRoutes.home);
           return;
         }
       }
-
       authBloc.add(AuthStarted());
       await Future<void>.delayed(const Duration(milliseconds: 350));
     }
-
-    // Fallback navigation; router guard will still protect inconsistent state.
     if (!mounted) return;
     context.go(AppRoutes.home);
   }
@@ -85,8 +79,8 @@ class _BusinessProfilePageState extends State<BusinessProfileSetup> {
       StatusSnack.show(
         context,
         type: StatusType.warning,
-        title: 'Select Template',
-        message: 'Please select a business template to continue.',
+        title: 'Select template',
+        message: 'Please select a business type to continue.',
       );
       return;
     }
@@ -106,21 +100,16 @@ class _BusinessProfilePageState extends State<BusinessProfileSetup> {
       listenWhen: (prev, curr) => curr is! BusinessLoading,
       listener: (context, state) {
         if (state is BusinessCreated) {
-          // Refresh user data to fetch business_id, role_id, business_name
-          // (created by database trigger)
           context.read<AuthBloc>().add(AuthStarted());
-
           StatusSnack.show(
             context,
             type: StatusType.success,
-            title: 'Success',
-            message: 'Business profile created successfully!',
+            title: 'Business created',
+            message: 'Your business profile is ready!',
           );
-
           _navigateToHomeWhenBusinessContextReady();
           return;
         }
-
         if (state is BusinessError) {
           StatusSnack.show(
             context,
@@ -136,204 +125,187 @@ class _BusinessProfilePageState extends State<BusinessProfileSetup> {
             ? state.templates
             : <BusinessTemplate>[];
 
-        return Scaffold(
-          
-          body: SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24.0),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header section
-                      Center(
-                        child: Column(
-                          children: [
-                            Container(
-                              width: 72,
-                              height: 72,
-                              decoration: BoxDecoration(
-                                color: AppColors.brandSoft,
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: const Icon(
-                                Icons.store_rounded,
-                                size: 36,
-                                color: AppColors.brand,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Set Up Your Business',
-                              style: AppTextStyles.headline(
-                                context,
-                              ).copyWith(color: AppColors.textPrimary),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Create your business profile to get started with your POS system',
-                              style: AppTextStyles.body(
-                                context,
-                              ).copyWith(color: AppColors.textSecondary),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      // Business Name Field
-                      Text(
-                        'Business Name',
-                        style: AppTextStyles.subtitle(context).copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _nameController,
-                        decoration: const InputDecoration(
-                          hintText: 'Enter your business name',
-                          prefixIcon: Icon(Icons.business_rounded),
-                        ),
-                        textCapitalization: TextCapitalization.words,
-                        validator: (v) =>
-                            Validators.required(v, fieldName: 'Business name'),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // Branch Name Field
-                      Text(
-                        'Branch Name',
-                        style: AppTextStyles.subtitle(context).copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Name for your first branch/location',
-                        style: AppTextStyles.caption(
-                          context,
-                        ).copyWith(color: AppColors.textMuted),
-                      ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _branchNameController,
-                        decoration: const InputDecoration(
-                          hintText: 'e.g., Main Branch, Downtown Store',
-                          prefixIcon: Icon(Icons.store_rounded),
-                        ),
-                        textCapitalization: TextCapitalization.words,
-                        validator: (v) =>
-                            Validators.required(v, fieldName: 'Branch name'),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // Template Dropdown
-                      Text(
-                        'Business Type',
-                        style: AppTextStyles.subtitle(context).copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Select a template to customize your POS experience',
-                        style: AppTextStyles.caption(
-                          context,
-                        ).copyWith(color: AppColors.textMuted),
-                      ),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<BusinessTemplate>(
-                        initialValue: _selectedTemplate,
-                        decoration: const InputDecoration(
-                          hintText: 'Select a business template',
-                          prefixIcon: Icon(Icons.category_rounded),
-                        ),
-                        isExpanded: true,
-                        items: templates.map((template) {
-                          return DropdownMenuItem<BusinessTemplate>(
-                            value: template,
-                            child: Text(template.name),
-                          );
-                        }).toList(),
-                        onChanged: (template) {
-                          setState(() {
-                            _selectedTemplate = template;
-                          });
-                          if (template != null) {
-                            context.read<BusinessBloc>().add(
-                              SelectTemplate(template),
-                            );
-                          }
-                        },
-                        validator: (value) {
-                          if (value == null) {
-                            return 'Please select a business template';
-                          }
-                          return null;
-                        },
-                      ),
-
-                      // Template Details Card
-                      if (_selectedTemplate != null) ...[
-                        const SizedBox(height: 16),
-                        _buildTemplateDetailsCard(_selectedTemplate!),
-                      ],
-
-                      const SizedBox(height: 32),
-
-                      // Submit Button
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton(
-                          onPressed: isLoading ? null : _onSubmit,
-                          child: isLoading
-                              ? const SizedBox(
-                                  height: 18,
-                                  width: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Text('Create Business'),
-                        ),
-                      ),
-                    ],
+        return AuthLayout(
+          leftPanel: const _BusinessSetupPanel(),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Icon badge
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: AppColors.brandSoft,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.store_rounded,
+                    size: 26,
+                    color: AppColors.brand,
                   ),
                 ),
-              ),
+                const SizedBox(height: 24),
+
+                // Heading
+                Text(
+                  'Set up your business',
+                  style: AppTextStyles.headline(context).copyWith(
+                    color: AppColors.textPrimary,
+                    height: 1.3,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Create your business profile to unlock your full dashboard.',
+                  style: AppTextStyles.subtitle(context).copyWith(
+                    color: AppColors.textSecondary,
+                    height: 1.5,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // Business name
+                _FieldLabel(label: 'Business name'),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    hintText: 'e.g., Dela Cruz Store',
+                    prefixIcon: Icon(Icons.business_rounded),
+                  ),
+                  textCapitalization: TextCapitalization.words,
+                  textInputAction: TextInputAction.next,
+                  validator: (v) =>
+                      Validators.required(v, fieldName: 'Business name'),
+                ),
+                const SizedBox(height: 24),
+
+                // Branch name
+                _FieldLabel(label: 'First branch name'),
+                const SizedBox(height: 4),
+                Text(
+                  'Name for your main location',
+                  style: AppTextStyles.caption(context).copyWith(
+                    color: AppColors.textMuted,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _branchNameController,
+                  decoration: const InputDecoration(
+                    hintText: 'e.g., Main Branch, Downtown',
+                    prefixIcon: Icon(Icons.storefront_rounded),
+                  ),
+                  textCapitalization: TextCapitalization.words,
+                  textInputAction: TextInputAction.next,
+                  validator: (v) =>
+                      Validators.required(v, fieldName: 'Branch name'),
+                ),
+                const SizedBox(height: 24),
+
+                // Business type dropdown
+                _FieldLabel(label: 'Business type'),
+                const SizedBox(height: 4),
+                Text(
+                  'Customizes your POS modules and default settings',
+                  style: AppTextStyles.caption(context).copyWith(
+                    color: AppColors.textMuted,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<BusinessTemplate>(
+                  initialValue: _selectedTemplate,
+                  decoration: const InputDecoration(
+                    hintText: 'Select a business type',
+                    prefixIcon: Icon(Icons.category_rounded),
+                  ),
+                  isExpanded: true,
+                  items: templates.map((t) {
+                    return DropdownMenuItem<BusinessTemplate>(
+                      value: t,
+                      child: Text(t.name),
+                    );
+                  }).toList(),
+                  onChanged: (t) {
+                    setState(() => _selectedTemplate = t);
+                    if (t != null) {
+                      context.read<BusinessBloc>().add(SelectTemplate(t));
+                    }
+                  },
+                  validator: (v) =>
+                      v == null ? 'Please select a business type' : null,
+                ),
+
+                // Template details
+                if (_selectedTemplate != null) ...[
+                  const SizedBox(height: 16),
+                  _TemplateDetailsCard(template: _selectedTemplate!),
+                ],
+
+                const SizedBox(height: 32),
+
+                // Submit
+                FilledButton(
+                  onPressed: isLoading ? null : _onSubmit,
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: isLoading
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Create business'),
+                ),
+              ],
             ),
           ),
         );
       },
     );
   }
+}
 
-  Widget _buildTemplateDetailsCard(BusinessTemplate template) {
-    // Extract enabled modules
-    final enabledModules = template.defaultModules.entries
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+class _FieldLabel extends StatelessWidget {
+  final String label;
+  const _FieldLabel({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: AppTextStyles.subtitle(context).copyWith(
+        color: AppColors.textPrimary,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+  }
+}
+
+class _TemplateDetailsCard extends StatelessWidget {
+  final BusinessTemplate template;
+  const _TemplateDetailsCard({required this.template});
+
+  @override
+  Widget build(BuildContext context) {
+    final modules = template.defaultModules.entries
         .where((e) => e.value == true)
         .map((e) => e.key)
         .toList();
-
-    // Extract roles
-    final roles = template.defaultRoles
-        .map((r) => r['name'] as String)
-        .toList();
+    final roles = template.defaultRoles.map((r) => r['name'] as String).toList();
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surfaceAlt,
         borderRadius: BorderRadius.circular(12),
@@ -344,81 +316,224 @@ class _BusinessProfilePageState extends State<BusinessProfileSetup> {
         children: [
           Row(
             children: [
-              Icon(
+              const Icon(
                 Icons.info_outline_rounded,
-                size: 20,
+                size: 16,
                 color: AppColors.brand,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Text(
-                'Template Details',
-                style: AppTextStyles.subtitle(context).copyWith(
+                'Template details',
+                style: AppTextStyles.caption(context).copyWith(
                   color: AppColors.textPrimary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-
-          // Modules
-          _buildDetailRow(
+          const SizedBox(height: 10),
+          _DetailRow(
             icon: Icons.apps_rounded,
             label: 'Modules',
-            value: enabledModules.join(', '),
+            value: modules.join(', '),
           ),
-          const SizedBox(height: 8),
-
-          // Roles
-          _buildDetailRow(
+          _DetailRow(
             icon: Icons.people_rounded,
             label: 'Roles',
             value: roles.join(', '),
           ),
-
-          // Tax Rate
-          if (template.defaultTaxRate != null) ...[
-            const SizedBox(height: 8),
-            _buildDetailRow(
+          if (template.defaultTaxRate != null)
+            _DetailRow(
               icon: Icons.percent_rounded,
-              label: 'Default Tax Rate',
+              label: 'Default tax',
               value: '${template.defaultTaxRate}%',
             ),
-          ],
         ],
       ),
     );
   }
+}
 
-  Widget _buildDetailRow({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
+class _DetailRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  const _DetailRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 14, color: AppColors.textMuted),
+          const SizedBox(width: 6),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                children: [
+                  TextSpan(
+                    text: '$label: ',
+                    style: AppTextStyles.caption(context).copyWith(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  TextSpan(
+                    text: value,
+                    style: AppTextStyles.caption(context).copyWith(
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Business setup left panel ──────────────────────────────────────────────
+
+class _BusinessSetupPanel extends StatelessWidget {
+  const _BusinessSetupPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF2D4ED8), Color(0xFF557FF4), Color(0xFF7C9FF8)],
+        ),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const AuthWordmark(),
+
+              const Spacer(),
+
+              // Headline
+              const Text(
+                'Almost there!',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 36,
+                  fontWeight: FontWeight.w800,
+                  height: 1.2,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Set up your business profile to unlock your full POS dashboard and start selling.',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.80),
+                  fontSize: 15,
+                  height: 1.6,
+                ),
+              ),
+              const SizedBox(height: 40),
+
+              // Setup steps
+              const _SetupStep(
+                number: '1',
+                label: 'Create your account',
+                done: true,
+              ),
+              const SizedBox(height: 12),
+              const _SetupStep(
+                number: '2',
+                label: 'Verify your email',
+                done: true,
+              ),
+              const SizedBox(height: 12),
+              const _SetupStep(
+                number: '3',
+                label: 'Set up your business',
+                done: false,
+              ),
+
+              const Spacer(),
+
+              Text(
+                '© 2025 ${AppStrings.appName}',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.45),
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SetupStep extends StatelessWidget {
+  final String number;
+  final String label;
+  final bool done;
+
+  const _SetupStep({
+    required this.number,
+    required this.label,
+    required this.done,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 16, color: AppColors.textMuted),
-        const SizedBox(width: 8),
-        Expanded(
-          child: RichText(
-            text: TextSpan(
-              children: [
-                TextSpan(
-                  text: '$label: ',
-                  style: AppTextStyles.caption(context).copyWith(
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
+        Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            color: done
+                ? Colors.white.withValues(alpha: 0.25)
+                : Colors.white.withValues(alpha: 0.15),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: Colors.white.withValues(alpha: done ? 0.5 : 0.3),
+            ),
+          ),
+          child: done
+              ? const Icon(Icons.check, size: 14, color: Colors.white)
+              : Center(
+                  child: Text(
+                    number,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-                TextSpan(
-                  text: value,
-                  style: AppTextStyles.caption(
-                    context,
-                  ).copyWith(color: AppColors.textPrimary),
-                ),
-              ],
-            ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          label,
+          style: TextStyle(
+            color: done
+                ? Colors.white.withValues(alpha: 0.65)
+                : Colors.white,
+            fontSize: 14,
+            fontWeight: done ? FontWeight.w400 : FontWeight.w600,
+            decoration: done ? TextDecoration.lineThrough : null,
+            decorationColor: Colors.white.withValues(alpha: 0.5),
           ),
         ),
       ],

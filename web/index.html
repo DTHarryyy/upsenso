@@ -29,9 +29,14 @@
   <link rel="preload" href="flutter_bootstrap.js" as="script">
 
   <!-- Preload Drift WASM assets so IndexedDB opens without a stall on first
-       DB query. The browser fetches these in parallel with the Flutter engine. -->
-  <link rel="preload" href="sqlite3.wasm" as="fetch" crossorigin>
-  <link rel="preload" href="drift_worker.js" as="script">
+       DB query. The browser fetches these in parallel with the Flutter engine.
+       type="application/wasm" lets the browser match this hint to the
+       WebAssembly.instantiateStreaming() call Drift makes at runtime, preventing
+       the "preloaded but not used" warning. drift_worker.js is a SharedWorker
+       script — preload it as="worker" so the browser can correctly match it to
+       the SharedWorker constructor call instead of discarding it as a plain script. -->
+  <link rel="preload" href="sqlite3.wasm" as="fetch" crossorigin type="application/wasm">
+  <link rel="preload" href="drift_worker.js" as="worker">
 
   <!-- ── Styles ─────────────────────────────────────────────────────────── -->
   <style>
