@@ -10,7 +10,7 @@ import 'package:pos/core/widgets/app_dropdown.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/reports/data/reports_data.dart';
-import 'package:pos/features/reports/data/reports_repository.dart';
+import 'package:pos/features/reports/domain/repositories/i_reports_repository.dart';
 import 'package:pos/features/reports/pdf/report_pdf_exporter.dart';
 import 'package:pos/features/reports/presentation/cubit/reports_cubit.dart';
 import 'package:pos/features/reports/presentation/cubit/reports_state.dart';
@@ -47,7 +47,7 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
   @override
   void initState() {
     super.initState();
-    _cubit = ReportsCubit(sl<ReportsRepository>());
+    _cubit = ReportsCubit(sl<IReportsRepository>());
     WidgetsBinding.instance.addPostFrameCallback((_) => _startWatching());
   }
 
@@ -62,8 +62,9 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
     final authState = context.read<AuthBloc>().state;
     if (authState is! AuthAuthenticated) return;
 
-    final branchId =
-        context.read<BranchCubit>().getSelectedBranchIdForFiltering();
+    final branchId = context
+        .read<BranchCubit>()
+        .getSelectedBranchIdForFiltering();
 
     _cubit.startWatching(
       businessId: authState.user.businessId ?? '',
@@ -154,8 +155,7 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
                       ReportNavChipBar(
                         tabs: _tabs,
                         selectedIndex: _selectedTab,
-                        onTabSelected: (i) =>
-                            setState(() => _selectedTab = i),
+                        onTabSelected: (i) => setState(() => _selectedTab = i),
                       ),
                       const SizedBox(height: 20),
                       if (isLoading)
@@ -164,7 +164,10 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
                           child: Center(child: CircularProgressIndicator()),
                         )
                       else if (state is ReportsError)
-                        _ErrorView(message: state.message, onRetry: _startWatching)
+                        _ErrorView(
+                          message: state.message,
+                          onRetry: _startWatching,
+                        )
                       else
                         _buildTabContent(data),
                       const SizedBox(height: 24),
@@ -180,52 +183,58 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
   }
 
   Widget _buildHeader(BuildContext context, ReportsData data) {
-    return LayoutBuilder(builder: (_, constraints) {
-      final narrow = constraints.maxWidth < 600;
-      final periodPicker = SizedBox(
-        width: 160,
-        child: AppDropdown<ReportPeriod>(
-          value: _period,
-          dense: true,
-          items: ReportPeriod.values
-              .map((p) => AppDropdownItem(
+    return LayoutBuilder(
+      builder: (_, constraints) {
+        final narrow = constraints.maxWidth < 600;
+        final periodPicker = SizedBox(
+          width: 160,
+          child: AppDropdown<ReportPeriod>(
+            value: _period,
+            dense: true,
+            items: ReportPeriod.values
+                .map(
+                  (p) => AppDropdownItem(
                     value: p,
                     label: p.label,
                     icon: Icons.calendar_today_outlined,
-                  ))
-              .toList(),
-          onChanged: (v) {
-            if (v != null) _onPeriodChanged(v);
-          },
-        ),
-      );
-      final exportBtn = _ExportButton(
-        isLoading: _exporting,
-        onTap: () => _onExport(context, data),
-      );
+                  ),
+                )
+                .toList(),
+            onChanged: (v) {
+              if (v != null) _onPeriodChanged(v);
+            },
+          ),
+        );
+        final exportBtn = _ExportButton(
+          isLoading: _exporting,
+          onTap: () => _onExport(context, data),
+        );
 
-      if (narrow) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        if (narrow) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _TitleSection(),
+              const SizedBox(height: 12),
+              Row(
+                children: [periodPicker, const SizedBox(width: 8), exportBtn],
+              ),
+            ],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             _TitleSection(),
-            const SizedBox(height: 12),
-            Row(children: [periodPicker, const SizedBox(width: 8), exportBtn]),
+            const Spacer(),
+            periodPicker,
+            const SizedBox(width: 8),
+            exportBtn,
           ],
         );
-      }
-
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          _TitleSection(),
-          const Spacer(),
-          periodPicker,
-          const SizedBox(width: 8),
-          exportBtn,
-        ],
-      );
-    });
+      },
+    );
   }
 
   Widget _buildTabContent(ReportsData data) {
@@ -264,10 +273,7 @@ class _TitleSection extends StatelessWidget {
         SizedBox(height: 2),
         Text(
           'Business intelligence and insights',
-          style: TextStyle(
-            fontSize: 13,
-            color: AppColors.textSecondary,
-          ),
+          style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
         ),
       ],
     );
@@ -304,8 +310,11 @@ class _ExportButton extends StatelessWidget {
                 ),
               )
             else
-              const Icon(Icons.download_rounded,
-                  size: 15, color: AppColors.textSecondary),
+              const Icon(
+                Icons.download_rounded,
+                size: 15,
+                color: AppColors.textSecondary,
+              ),
             const SizedBox(width: 6),
             Text(
               isLoading ? 'Exporting…' : 'Export PDF',
@@ -335,7 +344,11 @@ class _ErrorView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 40, color: AppColors.textMuted),
+            const Icon(
+              Icons.error_outline,
+              size: 40,
+              color: AppColors.textMuted,
+            ),
             const SizedBox(height: 12),
             const Text(
               'Failed to load reports',

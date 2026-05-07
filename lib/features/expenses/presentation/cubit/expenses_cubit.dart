@@ -3,12 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/errors/app_error_mapper.dart';
-import 'package:pos/features/expenses/data/expenses_repository.dart';
+import 'package:pos/features/expenses/domain/repositories/i_expenses_repository.dart';
 import 'package:pos/features/expenses/domain/expense_item.dart';
 import 'package:pos/features/expenses/presentation/cubit/expenses_state.dart';
 
 class ExpensesCubit extends Cubit<ExpensesState> {
-  final ExpensesRepository _repository;
+  final IExpensesRepository _repository;
 
   StreamSubscription<List<ExpenseItem>>? _watcher;
   String? _businessId;
@@ -51,36 +51,42 @@ class ExpensesCubit extends Cubit<ExpensesState> {
     await _watcher?.cancel();
     emit(const ExpensesLoading());
 
-    _watcher = _repository.watchExpenses(businessId).listen(
-      (items) {
-        if (!isClosed) _onDataChanged(items);
-      },
-      onError: (e) {
-        if (!isClosed) emit(ExpensesError(AppErrorMapper.message(e)));
-      },
-    );
+    _watcher = _repository
+        .watchExpenses(businessId)
+        .listen(
+          (items) {
+            if (!isClosed) _onDataChanged(items);
+          },
+          onError: (e) {
+            if (!isClosed) emit(ExpensesError(AppErrorMapper.message(e)));
+          },
+        );
   }
 
   void _onDataChanged(List<ExpenseItem> items) {
     final filtered = _filter(items);
     final current = state;
     if (current is ExpensesLoaded) {
-      emit(current.copyWith(
-        allItems: items,
-        displayItems: filtered,
-        canApprove: canApprove,
-      ));
+      emit(
+        current.copyWith(
+          allItems: items,
+          displayItems: filtered,
+          canApprove: canApprove,
+        ),
+      );
     } else {
-      emit(ExpensesLoaded(
-        allItems: items,
-        displayItems: filtered,
-        searchQuery: _searchQuery,
-        statusFilter: _statusFilter,
-        categoryFilter: _categoryFilter,
-        dateRange: _dateRange,
-        viewMode: _viewMode,
-        canApprove: canApprove,
-      ));
+      emit(
+        ExpensesLoaded(
+          allItems: items,
+          displayItems: filtered,
+          searchQuery: _searchQuery,
+          statusFilter: _statusFilter,
+          categoryFilter: _categoryFilter,
+          dateRange: _dateRange,
+          viewMode: _viewMode,
+          canApprove: canApprove,
+        ),
+      );
     }
   }
 
@@ -113,13 +119,15 @@ class ExpensesCubit extends Cubit<ExpensesState> {
   void _applyFilters() {
     final current = state;
     if (current is! ExpensesLoaded) return;
-    emit(current.copyWith(
-      displayItems: _filter(current.allItems),
-      searchQuery: _searchQuery,
-      statusFilter: _statusFilter,
-      categoryFilter: _categoryFilter,
-      dateRange: _dateRange,
-    ));
+    emit(
+      current.copyWith(
+        displayItems: _filter(current.allItems),
+        searchQuery: _searchQuery,
+        statusFilter: _statusFilter,
+        categoryFilter: _categoryFilter,
+        dateRange: _dateRange,
+      ),
+    );
   }
 
   List<ExpenseItem> _filter(List<ExpenseItem> items) {
@@ -132,9 +140,11 @@ class ExpensesCubit extends Cubit<ExpensesState> {
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();
       result = result
-          .where((e) =>
-              e.vendor.toLowerCase().contains(q) ||
-              e.category.toLowerCase().contains(q))
+          .where(
+            (e) =>
+                e.vendor.toLowerCase().contains(q) ||
+                e.category.toLowerCase().contains(q),
+          )
           .toList();
     }
 
@@ -143,17 +153,20 @@ class ExpensesCubit extends Cubit<ExpensesState> {
     }
 
     if (_categoryFilter != null) {
-      result =
-          result.where((e) => e.category == _categoryFilter).toList();
+      result = result.where((e) => e.category == _categoryFilter).toList();
     }
 
     if (_dateRange != null) {
       final start = _dateRange!.start;
       final end = _dateRange!.end.add(const Duration(days: 1));
       result = result
-          .where((e) =>
-              e.expenseDate.isAfter(start.subtract(const Duration(seconds: 1))) &&
-              e.expenseDate.isBefore(end))
+          .where(
+            (e) =>
+                e.expenseDate.isAfter(
+                  start.subtract(const Duration(seconds: 1)),
+                ) &&
+                e.expenseDate.isBefore(end),
+          )
           .toList();
     }
 

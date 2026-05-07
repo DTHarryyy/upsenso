@@ -6,7 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/env/app_env.dart';
-import 'package:pos/app_boostrap.dart';
+import 'package:pos/app_bootstrap.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
@@ -53,7 +53,7 @@ Future<Widget> bootstrap() async {
       BlocProvider.value(value: authBloc),
       BlocProvider<BranchCubit>(create: (_) => sl<BranchCubit>()),
     ],
-    child: const AppBoostrap(),
+    child: const AppBootstrap(),
   );
 }
 

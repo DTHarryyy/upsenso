@@ -9,14 +9,16 @@ import 'package:pos/core/database/daos/transactions_dao.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/features/dashboard/data/dashboard_data.dart';
 import 'package:pos/features/reports/data/reports_data.dart';
+import 'package:pos/features/reports/domain/repositories/i_reports_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class ReportsRepository {
+class ReportsRepository implements IReportsRepository {
   final TransactionsDao _txnDao;
   final ProductVariantsDao _variantsDao;
   final ProductsDao _productsDao;
   final CategoriesDao _categoriesDao;
   final BranchesDao _branchesDao;
+  final SharedPreferences _prefs;
 
   static const String _branchCubitOptionsKeyPrefix = 'cached_branch_options';
 
@@ -26,11 +28,13 @@ class ReportsRepository {
     required ProductsDao productsDao,
     required CategoriesDao categoriesDao,
     required BranchesDao branchesDao,
-  })  : _txnDao = txnDao,
-        _variantsDao = variantsDao,
-        _productsDao = productsDao,
-        _categoriesDao = categoriesDao,
-        _branchesDao = branchesDao;
+    required SharedPreferences prefs,
+  }) : _txnDao = txnDao,
+       _variantsDao = variantsDao,
+       _productsDao = productsDao,
+       _categoriesDao = categoriesDao,
+       _branchesDao = branchesDao,
+       _prefs = prefs;
 
   // ─── Real-time change stream ─────────────────────────────────────────────
 
@@ -41,6 +45,7 @@ class ReportsRepository {
   /// when the cubit actually subscribes — avoiding the broadcast-before-listener
   /// timing race. [skip(1)] discards the immediate snapshot each Drift stream
   /// emits on subscribe; only genuine table mutations propagate.
+  @override
   Stream<void> watchChanges({required String businessId}) {
     StreamSubscription<List<TransactionsTableData>>? txnSub;
     StreamSubscription<List<ProductVariantsTableData>>? variantSub;
@@ -48,14 +53,14 @@ class ReportsRepository {
     late final StreamController<void> controller;
     controller = StreamController<void>.broadcast(
       onListen: () {
-        txnSub = _txnDao
-            .watchTransactions()
-            .skip(1)
-            .listen((_) { if (!controller.isClosed) controller.add(null); });
-        variantSub = _variantsDao
-            .watchByBusinessId(businessId)
-            .skip(1)
-            .listen((_) { if (!controller.isClosed) controller.add(null); });
+        txnSub = _txnDao.watchTransactions().skip(1).listen((_) {
+          if (!controller.isClosed) controller.add(null);
+        });
+        variantSub = _variantsDao.watchByBusinessId(businessId).skip(1).listen((
+          _,
+        ) {
+          if (!controller.isClosed) controller.add(null);
+        });
       },
       onCancel: () {
         txnSub?.cancel();
@@ -70,11 +75,10 @@ class ReportsRepository {
   // ─── Branch name resolution ───────────────────────────────────────────────
 
   Future<Map<String, String>> _loadCachedBranchNames(String businessId) async {
-    final prefs = await SharedPreferences.getInstance();
     final merged = <String, String>{};
     try {
       final scopedKey = '${_branchCubitOptionsKeyPrefix}_$businessId';
-      final raw = prefs.getString(scopedKey);
+      final raw = _prefs.getString(scopedKey);
       if (raw != null) {
         final list = jsonDecode(raw);
         if (list is List) {
@@ -82,7 +86,10 @@ class ReportsRepository {
             if (item is! Map) continue;
             final id = item['id']?.toString().trim();
             final name = item['name']?.toString().trim();
-            if (id != null && id.isNotEmpty && name != null && name.isNotEmpty) {
+            if (id != null &&
+                id.isNotEmpty &&
+                name != null &&
+                name.isNotEmpty) {
               merged[id] = name;
             }
           }
@@ -95,8 +102,18 @@ class ReportsRepository {
   // ─── Bucket helpers ───────────────────────────────────────────────────────
 
   static const _months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
 
   List<({DateTime start, DateTime end, String label})> _buildBuckets(
@@ -142,8 +159,10 @@ class ReportsRepository {
       case ReportPeriod.lastYear:
         // 12 monthly buckets — oldest first
         return List.generate(12, (m) {
-          final monthStart =
-              _subtractMonths(DateTime(today.year, today.month, 1), 11 - m);
+          final monthStart = _subtractMonths(
+            DateTime(today.year, today.month, 1),
+            11 - m,
+          );
           final monthEnd = _addMonths(monthStart, 1);
           return (
             start: monthStart,
@@ -186,6 +205,7 @@ class ReportsRepository {
 
   // ─── Main load ────────────────────────────────────────────────────────────
 
+  @override
   Future<ReportsData> load({
     required String businessId,
     String? branchId,
@@ -204,20 +224,29 @@ class ReportsRepository {
       branchId: branchId,
     );
     final allBranches = branchId != null
-        ? await _txnDao.getAllTransactionsSince(prevCutoff, businessId: businessId)
+        ? await _txnDao.getAllTransactionsSince(
+            prevCutoff,
+            businessId: businessId,
+          )
         : allFiltered;
 
-    final currentTxns =
-        allFiltered.where((t) => !t.createdAt.isBefore(cutoff)).toList();
-    final prevTxns = allFiltered
-        .where((t) =>
-            t.createdAt.isBefore(cutoff) && !t.createdAt.isBefore(prevCutoff))
+    final currentTxns = allFiltered
+        .where((t) => !t.createdAt.isBefore(cutoff))
         .toList();
-    final currentAllBranch =
-        allBranches.where((t) => !t.createdAt.isBefore(cutoff)).toList();
+    final prevTxns = allFiltered
+        .where(
+          (t) =>
+              t.createdAt.isBefore(cutoff) && !t.createdAt.isBefore(prevCutoff),
+        )
+        .toList();
+    final currentAllBranch = allBranches
+        .where((t) => !t.createdAt.isBefore(cutoff))
+        .toList();
     final prevAllBranch = allBranches
-        .where((t) =>
-            t.createdAt.isBefore(cutoff) && !t.createdAt.isBefore(prevCutoff))
+        .where(
+          (t) =>
+              t.createdAt.isBefore(cutoff) && !t.createdAt.isBefore(prevCutoff),
+        )
         .toList();
 
     // ── 2. Fetch transaction items ─────────────────────────────────────────
@@ -238,28 +267,31 @@ class ReportsRepository {
     final categoryName = {for (final c in categories) c.id: c.name};
 
     // ── 4. Sales Report ───────────────────────────────────────────────────
-    final totalRevenue =
-        currentTxns.fold(0.0, (s, t) => s + t.totalAmount);
+    final totalRevenue = currentTxns.fold(0.0, (s, t) => s + t.totalAmount);
     final totalTransactions = currentTxns.length;
-    final avgTicket =
-        totalTransactions > 0 ? totalRevenue / totalTransactions : 0.0;
-    final itemsSold =
-        currentItems.fold<double>(0, (s, i) => s + i.qty).round();
+    final avgTicket = totalTransactions > 0
+        ? totalRevenue / totalTransactions
+        : 0.0;
+    final itemsSold = currentItems.fold<double>(0, (s, i) => s + i.qty).round();
 
     final prevRevenue = prevTxns.fold(0.0, (s, t) => s + t.totalAmount);
     final prevTransactions = prevTxns.length;
-    final prevAvgTicket =
-        prevTransactions > 0 ? prevRevenue / prevTransactions : 0.0;
-    final prevItemsSold =
-        prevItems.fold<double>(0, (s, i) => s + i.qty).round();
+    final prevAvgTicket = prevTransactions > 0
+        ? prevRevenue / prevTransactions
+        : 0.0;
+    final prevItemsSold = prevItems
+        .fold<double>(0, (s, i) => s + i.qty)
+        .round();
 
     // Sales trend
     final buckets = _buildBuckets(cutoff, today, period);
     final salesTrend = buckets
-        .map((b) => SalesTrendPoint(
-              label: b.label,
-              total: _sumInRange(currentTxns, b.start, b.end),
-            ))
+        .map(
+          (b) => SalesTrendPoint(
+            label: b.label,
+            total: _sumInRange(currentTxns, b.start, b.end),
+          ),
+        )
         .toList();
 
     // Category breakdown
@@ -268,25 +300,25 @@ class ReportsRepository {
       final productId = variantToProduct[item.variantId];
       if (productId == null) continue;
       final catId = productToCategory[productId];
-      final name =
-          catId != null ? (categoryName[catId] ?? 'Other') : 'Other';
+      final name = catId != null ? (categoryName[catId] ?? 'Other') : 'Other';
       catAgg[name] = (catAgg[name] ?? 0) + item.lineTotal;
     }
-    final categoryBreakdown = (catAgg.entries
-        .map((e) => CategoryStat(name: e.key, total: e.value))
-        .toList()
-      ..sort((a, b) => b.total.compareTo(a.total)));
+    final categoryBreakdown =
+        (catAgg.entries
+            .map((e) => CategoryStat(name: e.key, total: e.value))
+            .toList()
+          ..sort((a, b) => b.total.compareTo(a.total)));
 
     // ── 5. Inventory Health ───────────────────────────────────────────────
-    final activeVariants =
-        variants.where((v) => v.isActive && v.trackStock).toList();
+    final activeVariants = variants
+        .where((v) => v.isActive && v.trackStock)
+        .toList();
     final totalSKUs = activeVariants.length;
 
     // Per-variant qty sold in current period
     final variantQty = <String, double>{};
     for (final item in currentItems) {
-      variantQty[item.variantId] =
-          (variantQty[item.variantId] ?? 0) + item.qty;
+      variantQty[item.variantId] = (variantQty[item.variantId] ?? 0) + item.qty;
     }
 
     final inventoryItems = <InventoryStatusItem>[];
@@ -294,13 +326,11 @@ class ReportsRepository {
 
     for (final v in activeVariants) {
       final pName = productToName[v.productId] ?? 'Unknown';
-      final displayName =
-          v.name == 'Default' ? pName : '$pName (${v.name})';
+      final displayName = v.name == 'Default' ? pName : '$pName (${v.name})';
       final totalQty = variantQty[v.id] ?? 0;
       final avgDailySale = totalQty / period.days;
       final currentStock = v.stockDecimal ?? v.stock.toDouble();
-      final daysLeft =
-          avgDailySale > 0 ? currentStock / avgDailySale : null;
+      final daysLeft = avgDailySale > 0 ? currentStock / avgDailySale : null;
 
       // Determine status
       InventoryStatusType status;
@@ -323,14 +353,16 @@ class ReportsRepository {
       String? notes;
       if (status == InventoryStatusType.slowMoving) notes = 'Slow moving';
 
-      inventoryItems.add(InventoryStatusItem(
-        productName: displayName,
-        status: status,
-        currentStock: currentStock,
-        avgDailySale: avgDailySale,
-        daysLeft: daysLeft,
-        notes: notes,
-      ));
+      inventoryItems.add(
+        InventoryStatusItem(
+          productName: displayName,
+          status: status,
+          currentStock: currentStock,
+          avgDailySale: avgDailySale,
+          daysLeft: daysLeft,
+          notes: notes,
+        ),
+      );
     }
 
     // Sort: low → warning → ok → slow moving
@@ -386,8 +418,7 @@ class ReportsRepository {
       if (bId == null) return 'No Branch';
       final n = branchIdToName[bId];
       if (n != null && n.trim().isNotEmpty) return n.trim();
-      final short =
-          bId.length > 6 ? '…${bId.substring(bId.length - 6)}' : bId;
+      final short = bId.length > 6 ? '…${bId.substring(bId.length - 6)}' : bId;
       return 'Branch $short';
     }
 

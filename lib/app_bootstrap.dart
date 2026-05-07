@@ -7,14 +7,14 @@ import 'package:pos/core/const/app_strings.dart';
 import 'package:pos/core/theme/theme_controller.dart';
 import 'package:pos/theme_data.dart';
 
-class AppBoostrap extends StatefulWidget {
-  const AppBoostrap({super.key});
+class AppBootstrap extends StatefulWidget {
+  const AppBootstrap({super.key});
 
   @override
-  State<AppBoostrap> createState() => _AppBoostrapState();
+  State<AppBootstrap> createState() => _AppBootstrapState();
 }
 
-class _AppBoostrapState extends State<AppBoostrap> {
+class _AppBootstrapState extends State<AppBootstrap> {
   late final ThemeController _themeController;
 
   @override
@@ -44,9 +44,9 @@ class _AppBoostrapState extends State<AppBoostrap> {
             // factors produce fractional font sizes which land between physical
             // pixels in CanvasKit/SkWasm → blurry text.
             return MediaQuery(
-              data: MediaQuery.of(context).copyWith(
-                textScaler: TextScaler.noScaling,
-              ),
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: TextScaler.noScaling),
               child: child!,
             );
           },

@@ -1,5 +1,8 @@
 import 'package:equatable/equatable.dart';
-import 'package:pos/core/database/app_database.dart';
+import 'package:pos/features/products/domain/entities/category.dart';
+import 'package:pos/features/products/domain/entities/inventory_level.dart';
+import 'package:pos/features/products/domain/entities/product.dart';
+import 'package:pos/features/products/domain/entities/product_variant.dart';
 
 // Sentinel used to distinguish "not passed" from `null` in copyWith.
 const _sentinel = Object();
@@ -21,10 +24,10 @@ class ProductsLoading extends ProductsState {
 
 /// All four reactive data streams have emitted at least once.
 class ProductsLoaded extends ProductsState {
-  final List<ProductsTableData> products;
-  final List<ProductVariantsTableData> variants;
-  final List<CategoriesTableData> categories;
-  final List<InventoryLevelsTableData> levels;
+  final List<Product> products;
+  final List<ProductVariant> variants;
+  final List<Category> categories;
+  final List<InventoryLevel> levels;
 
   /// Active category filter, `null` means "all categories".
   final String? selectedCategoryId;
@@ -46,8 +49,8 @@ class ProductsLoaded extends ProductsState {
   // ── Computed properties ────────────────────────────────────────────────────
 
   /// Variants keyed by product ID, ready for O(1) lookup in the grid.
-  Map<String, List<ProductVariantsTableData>> get variantsMap {
-    final map = <String, List<ProductVariantsTableData>>{};
+  Map<String, List<ProductVariant>> get variantsMap {
+    final map = <String, List<ProductVariant>>{};
     for (final v in variants) {
       map.putIfAbsent(v.productId, () => []).add(v);
     }
@@ -66,7 +69,7 @@ class ProductsLoaded extends ProductsState {
   }
 
   /// Products passing the active category and search filters.
-  List<ProductsTableData> get filteredProducts => products
+  List<Product> get filteredProducts => products
       .where(
         (p) => selectedCategoryId == null || p.categoryId == selectedCategoryId,
       )
@@ -89,10 +92,10 @@ class ProductsLoaded extends ProductsState {
   ];
 
   ProductsLoaded copyWith({
-    List<ProductsTableData>? products,
-    List<ProductVariantsTableData>? variants,
-    List<CategoriesTableData>? categories,
-    List<InventoryLevelsTableData>? levels,
+    List<Product>? products,
+    List<ProductVariant>? variants,
+    List<Category>? categories,
+    List<InventoryLevel>? levels,
     Object? selectedCategoryId = _sentinel,
     String? searchQuery,
     Object? branchId = _sentinel,

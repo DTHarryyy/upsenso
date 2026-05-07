@@ -10,7 +10,7 @@ import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/transactions_dao.dart';
-import 'package:pos/features/inventory/data/inventory_repository.dart';
+import 'package:pos/features/inventory/domain/repositories/i_inventory_repository.dart';
 import 'package:pos/core/ui/status/status_snack.dart';
 import 'package:pos/core/ui/status/status_type.dart';
 import 'package:pos/core/widgets/widgets.dart';
@@ -53,7 +53,15 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
   bool _summaryExpanded = false;
 
   static const _denoms = [
-    1.0, 5.0, 10.0, 20.0, 50.0, 100.0, 200.0, 500.0, 1000.0,
+    1.0,
+    5.0,
+    10.0,
+    20.0,
+    50.0,
+    100.0,
+    200.0,
+    500.0,
+    1000.0,
   ];
 
   static final _methods = [
@@ -65,8 +73,7 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
 
   bool get _isCash => _paymentMethod == 'cash';
   double get _change => _amountReceived - widget.total;
-  bool get _canConfirm =>
-      !_isCash || (_amountReceived > 0 && _change >= 0);
+  bool get _canConfirm => !_isCash || (_amountReceived > 0 && _change >= 0);
 
   @override
   void dispose() {
@@ -95,7 +102,8 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
     if (authState is! AuthAuthenticated) return;
 
     final branchCubit = context.read<BranchCubit>();
-    String? branchId = branchCubit.getSelectedBranchIdForFiltering() ??
+    String? branchId =
+        branchCubit.getSelectedBranchIdForFiltering() ??
         authState.user.branchId;
 
     // When no branch is resolved, prompt the cashier to pick one.
@@ -157,7 +165,7 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
 
       await sl<TransactionsDao>().insertTransaction(tx, txItems);
 
-      await sl<InventoryRepository>().recordSaleDeductions(
+      await sl<IInventoryRepository>().recordSaleDeductions(
         items: widget.items
             .map((i) => (variantId: i.variantId, qty: i.qty.round()))
             .toList(),
@@ -189,13 +197,16 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
             businessId: authState.user.businessId ?? '',
           ),
           transitionsBuilder: (_, animation, _, child) {
-            final slide = Tween<Offset>(
-              begin: const Offset(0, 0.06),
-              end: Offset.zero,
-            ).animate(CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOutCubic,
-            ));
+            final slide =
+                Tween<Offset>(
+                  begin: const Offset(0, 0.06),
+                  end: Offset.zero,
+                ).animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ),
+                );
             final fade = CurvedAnimation(
               parent: animation,
               curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
@@ -276,31 +287,38 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
                                 controller: _amountController,
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
-                                        decimal: true),
+                                      decimal: true,
+                                    ),
                                 inputFormatters: [
                                   FilteringTextInputFormatter.allow(
-                                      RegExp(r'^\d*\.?\d{0,2}')),
+                                    RegExp(r'^\d*\.?\d{0,2}'),
+                                  ),
                                 ],
-                                decoration:
-                                    appInputDeco('0.00', prefixText: '₱ '),
+                                decoration: appInputDeco(
+                                  '0.00',
+                                  prefixText: '₱ ',
+                                ),
                                 style: getOutfitStyle(
                                   color: AppColors.textPrimary,
                                   fontWeight: FontWeight.w600,
                                   fontSize: 18,
                                 ),
                                 onChanged: (v) => setState(
-                                    () => _amountReceived =
-                                        double.tryParse(v) ?? 0),
+                                  () =>
+                                      _amountReceived = double.tryParse(v) ?? 0,
+                                ),
                               ),
                               const SizedBox(height: 14),
                               Wrap(
                                 spacing: 8,
                                 runSpacing: 8,
                                 children: [
-                                  ..._denoms.map((d) => DenomChip(
-                                        label: '₱${d.toInt()}',
-                                        onTap: () => _addDenom(d),
-                                      )),
+                                  ..._denoms.map(
+                                    (d) => DenomChip(
+                                      label: '₱${d.toInt()}',
+                                      onTap: () => _addDenom(d),
+                                    ),
+                                  ),
                                   DenomChip(
                                     label: 'Exact',
                                     isExact: true,
@@ -314,7 +332,9 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
                                   duration: const Duration(milliseconds: 200),
                                   width: double.infinity,
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 14),
+                                    horizontal: 16,
+                                    vertical: 14,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: _change >= 0
                                         ? AppColors.successSoft
@@ -336,8 +356,7 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
                                         ),
                                       ),
                                       Text(
-                                        ProductCartPage.fmtPrice(
-                                            _change.abs()),
+                                        ProductCartPage.fmtPrice(_change.abs()),
                                         style: getOutfitStyle(
                                           color: _change >= 0
                                               ? AppColors.success
@@ -365,7 +384,8 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
             child: SafeArea(
               top: false,
               child: AppFilledButton(
-                label: 'Confirm Payment  ·  ${ProductCartPage.fmtPrice(widget.total)}',
+                label:
+                    'Confirm Payment  ·  ${ProductCartPage.fmtPrice(widget.total)}',
                 loading: _confirming,
                 onPressed: (_canConfirm && !_confirming) ? _confirm : null,
               ),
@@ -386,11 +406,9 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
         children: [
           // Tappable header
           InkWell(
-            onTap: () =>
-                setState(() => _summaryExpanded = !_summaryExpanded),
+            onTap: () => setState(() => _summaryExpanded = !_summaryExpanded),
             child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Row(
                 children: [
                   Container(
@@ -399,8 +417,11 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
                       color: AppColors.brandSoft,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.receipt_long_rounded,
-                        size: 18, color: AppColors.brand),
+                    child: const Icon(
+                      Icons.receipt_long_rounded,
+                      size: 18,
+                      color: AppColors.brand,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -410,14 +431,17 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
                         Text(
                           'Order Summary',
                           style: getOutfitStyle(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14),
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
                         ),
                         Text(
                           '${widget.items.length} item${widget.items.length == 1 ? '' : 's'}',
                           style: getOutfitStyle(
-                              color: AppColors.textMuted, fontSize: 12),
+                            color: AppColors.textMuted,
+                            fontSize: 12,
+                          ),
                         ),
                       ],
                     ),
@@ -425,16 +449,20 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
                   Text(
                     ProductCartPage.fmtPrice(widget.total),
                     style: getOutfitStyle(
-                        color: AppColors.brand,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16),
+                      color: AppColors.brand,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
                   ),
                   const SizedBox(width: 6),
                   AnimatedRotation(
                     turns: _summaryExpanded ? 0.5 : 0,
                     duration: const Duration(milliseconds: 200),
-                    child: const Icon(Icons.keyboard_arrow_down_rounded,
-                        size: 20, color: AppColors.textMuted),
+                    child: const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 20,
+                      color: AppColors.textMuted,
+                    ),
                   ),
                 ],
               ),
@@ -448,25 +476,26 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
                 ? Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Divider(
-                          height: 1, color: AppColors.borderSoft),
+                      const Divider(height: 1, color: AppColors.borderSoft),
                       ...widget.items.map(
                         (item) => Padding(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 9),
+                            horizontal: 16,
+                            vertical: 9,
+                          ),
                           child: Row(
                             children: [
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       item.name,
                                       style: getOutfitStyle(
-                                          color: AppColors.textPrimary,
-                                          fontWeight: FontWeight.w500,
-                                          fontSize: 13),
+                                        color: AppColors.textPrimary,
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 13,
+                                      ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
@@ -474,8 +503,9 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
                                       Text(
                                         item.variant,
                                         style: getOutfitStyle(
-                                            color: AppColors.textMuted,
-                                            fontSize: 11),
+                                          color: AppColors.textMuted,
+                                          fontSize: 11,
+                                        ),
                                       ),
                                   ],
                                 ),
@@ -483,16 +513,18 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
                               Text(
                                 '×${item.qty.toInt()}',
                                 style: getOutfitStyle(
-                                    color: AppColors.textMuted,
-                                    fontSize: 12),
+                                  color: AppColors.textMuted,
+                                  fontSize: 12,
+                                ),
                               ),
                               const SizedBox(width: 14),
                               Text(
                                 ProductCartPage.fmtPrice(item.total),
                                 style: getOutfitStyle(
-                                    color: AppColors.textPrimary,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13),
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
                               ),
                             ],
                           ),
@@ -507,8 +539,10 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
             child: Column(
               children: [
-                _summaryLine('Subtotal',
-                    ProductCartPage.fmtPrice(widget.subtotal)),
+                _summaryLine(
+                  'Subtotal',
+                  ProductCartPage.fmtPrice(widget.subtotal),
+                ),
                 if (widget.discountAmount > 0) ...[
                   const SizedBox(height: 4),
                   _summaryLine(
@@ -538,8 +572,12 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
     );
   }
 
-  Widget _summaryLine(String label, String value,
-      {bool isBold = false, Color? valueColor}) {
+  Widget _summaryLine(
+    String label,
+    String value, {
+    bool isBold = false,
+    Color? valueColor,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -556,7 +594,9 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
           style: getOutfitStyle(
             fontSize: isBold ? 15 : 13,
             fontWeight: isBold ? FontWeight.w700 : FontWeight.w600,
-            color: valueColor ?? (isBold ? AppColors.brand : AppColors.textSecondary),
+            color:
+                valueColor ??
+                (isBold ? AppColors.brand : AppColors.textSecondary),
           ),
         ),
       ],
@@ -594,18 +634,17 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(icon,
-                      size: 20,
-                      color: selected ? Colors.white : AppColors.textMuted),
+                  Icon(
+                    icon,
+                    size: 20,
+                    color: selected ? Colors.white : AppColors.textMuted,
+                  ),
                   const SizedBox(height: 5),
                   Text(
                     label,
                     style: getOutfitStyle(
-                      color: selected
-                          ? Colors.white
-                          : AppColors.textSecondary,
-                      fontWeight:
-                          selected ? FontWeight.w700 : FontWeight.w500,
+                      color: selected ? Colors.white : AppColors.textSecondary,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                       fontSize: 11,
                     ),
                   ),

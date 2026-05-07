@@ -1,5 +1,4 @@
-import 'package:pos/core/database/daos/products_dao.dart';
-import 'package:pos/core/database/daos/product_variants_dao.dart';
+import 'package:pos/features/products/domain/repositories/i_products_repository.dart';
 
 // ── Result types ──────────────────────────────────────────────────────────────
 
@@ -48,25 +47,23 @@ final class BarcodeUnknown extends BarcodeResult {
   const BarcodeUnknown();
 }
 
-
 class ResolveBarcodeUseCase {
-  final ProductVariantsDao _variantsDao;
-  final ProductsDao _productsDao;
+  final IProductsRepository _repository;
 
-  const ResolveBarcodeUseCase({
-    required ProductVariantsDao variantsDao,
-    required ProductsDao productsDao,
-  })  : _variantsDao = variantsDao,
-        _productsDao = productsDao;
+  const ResolveBarcodeUseCase({required IProductsRepository repository})
+    : _repository = repository;
 
   Future<BarcodeResult> call(String barcode, String businessId) async {
     try {
       // 1. Try variant-level barcode first (most specific match).
-      final variant = await _variantsDao.getByBarcode(barcode, businessId);
+      final variant = await _repository.getVariantByBarcode(
+        barcode,
+        businessId,
+      );
       if (variant != null) {
         if (!variant.isActive) return const BarcodeInactive();
 
-        final product = await _productsDao.getById(variant.productId);
+        final product = await _repository.getProductById(variant.productId);
         return BarcodeResolved(
           variantId: variant.id,
           productName: product?.name ?? variant.name,
@@ -77,9 +74,12 @@ class ResolveBarcodeUseCase {
       }
 
       // 2. Fallback: product-level barcode (simple products only).
-      final product = await _productsDao.getByBarcode(barcode, businessId);
+      final product = await _repository.getProductByBarcode(
+        barcode,
+        businessId,
+      );
       if (product != null) {
-        final variants = await _variantsDao.getByProductId(product.id);
+        final variants = await _repository.getVariantsByProductId(product.id);
         final active = variants.where((v) => v.isActive).toList();
 
         if (active.isEmpty) return BarcodeNoVariants(product.name);

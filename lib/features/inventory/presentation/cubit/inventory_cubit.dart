@@ -3,11 +3,11 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:pos/features/inventory/data/inventory_data.dart';
-import 'package:pos/features/inventory/data/inventory_repository.dart';
+import 'package:pos/features/inventory/domain/repositories/i_inventory_repository.dart';
 import 'package:pos/features/inventory/presentation/cubit/inventory_state.dart';
 
 class InventoryCubit extends Cubit<InventoryState> {
-  final InventoryRepository _repository;
+  final IInventoryRepository _repository;
 
   StreamSubscription<void>? _watcher;
   String? _businessId;
@@ -20,7 +20,9 @@ class InventoryCubit extends Cubit<InventoryState> {
   StockStatus? _statusFilter;
   InventoryViewMode _viewMode = InventoryViewMode.table;
 
-  InventoryCubit(this._repository) : super(const InventoryInitial());
+  InventoryCubit(IInventoryRepository repository)
+    : _repository = repository,
+      super(const InventoryInitial());
 
   Future<void> startWatching({
     required String businessId,
@@ -108,14 +110,16 @@ class InventoryCubit extends Cubit<InventoryState> {
       );
       if (!isClosed) {
         final filtered = _filter(data.items);
-        emit(InventoryLoaded(
-          data: data,
-          displayItems: filtered,
-          searchQuery: _searchQuery,
-          selectedBranchId: _branchId,
-          statusFilter: _statusFilter,
-          viewMode: _viewMode,
-        ));
+        emit(
+          InventoryLoaded(
+            data: data,
+            displayItems: filtered,
+            searchQuery: _searchQuery,
+            selectedBranchId: _branchId,
+            statusFilter: _statusFilter,
+            viewMode: _viewMode,
+          ),
+        );
       }
     } catch (e) {
       if (!isClosed) emit(InventoryError(AppErrorMapper.message(e)));
@@ -132,11 +136,13 @@ class InventoryCubit extends Cubit<InventoryState> {
     final current = state;
     if (current is! InventoryLoaded) return;
     final filtered = _filter(current.data.items);
-    emit(current.copyWith(
-      displayItems: filtered,
-      searchQuery: _searchQuery,
-      statusFilter: _statusFilter,
-    ));
+    emit(
+      current.copyWith(
+        displayItems: filtered,
+        searchQuery: _searchQuery,
+        statusFilter: _statusFilter,
+      ),
+    );
   }
 
   List<InventoryItem> _filter(List<InventoryItem> items) {

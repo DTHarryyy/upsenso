@@ -8,7 +8,7 @@ import 'package:pos/core/config/di.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/routes/app_routes.dart';
-import 'package:pos/features/ai_assistant/pagges/ai_chat_page.dart';
+import 'package:pos/features/ai_assistant/pages/ai_chat_page.dart';
 import 'package:pos/features/ai_assistant/bloc/ai_chat_bloc.dart';
 import 'package:pos/features/ai_assistant/services/ai_pipeline.dart';
 import 'package:pos/features/ai_assistant/services/model_download_service.dart';
@@ -33,7 +33,7 @@ import 'package:pos/features/products/pages/add_products.dart';
 import 'package:pos/features/products/products_page.dart';
 import 'package:pos/features/profile/presentation/profile_page.dart';
 import 'package:pos/features/expenses/presentation/expenses_page.dart';
-import 'package:pos/features/sales/sales_history.dart';
+import 'package:pos/features/sales/presentation/sales_history.dart';
 import 'package:pos/features/settings/presentation/receipt_settings_page.dart';
 import 'package:pos/features/settings/presentation/settings_shell_page.dart';
 import 'package:pos/features/dashboard/presentation/dashboard_page.dart';
@@ -72,15 +72,16 @@ class AppRouter {
       final goingToSignUp = location == AppRoutes.signUp;
       final goingToVerification = location == AppRoutes.verification;
       final goingToForgotPassword = location == AppRoutes.forgotPassword;
-      final goingToResetVerification =
-          location.startsWith(AppRoutes.resetPasswordVerification);
-      final goingToResetPassword =
-          location.startsWith(AppRoutes.resetPassword);
+      final goingToResetVerification = location.startsWith(
+        AppRoutes.resetPasswordVerification,
+      );
+      final goingToResetPassword = location.startsWith(AppRoutes.resetPassword);
       final goingToBusinessProfileSetup =
           location == AppRoutes.businessProfileSetup;
       final isPublicAuthRoute =
           goingToSignIn || goingToSignUp || goingToVerification;
-      final isPasswordResetRoute = goingToForgotPassword ||
+      final isPasswordResetRoute =
+          goingToForgotPassword ||
           goingToResetVerification ||
           goingToResetPassword;
       final isAuthRoute = isPublicAuthRoute || isPasswordResetRoute;
@@ -110,7 +111,9 @@ class AppRouter {
       final user = authState.user;
       final hasBusiness = (user.businessId?.trim() ?? '').isNotEmpty;
 
-      if (!hasBusiness && !goingToBusinessProfileSetup && !isPasswordResetRoute) {
+      if (!hasBusiness &&
+          !goingToBusinessProfileSetup &&
+          !isPasswordResetRoute) {
         return AppRoutes.businessProfileSetup;
       }
 
@@ -130,14 +133,8 @@ class AppRouter {
         path: AppRoutes.onboarding,
         builder: (context, _) => const Onboarding(),
       ),
-      GoRoute(
-        path: AppRoutes.signIn,
-        builder: (context, _) => const SignIn(),
-      ),
-      GoRoute(
-        path: AppRoutes.signUp,
-        builder: (context, _) => const SignUp(),
-      ),
+      GoRoute(path: AppRoutes.signIn, builder: (context, _) => const SignIn()),
+      GoRoute(path: AppRoutes.signUp, builder: (context, _) => const SignUp()),
       GoRoute(
         path: AppRoutes.verification,
         builder: (context, state) {
@@ -184,15 +181,13 @@ class AppRouter {
       ),
       GoRoute(
         path: AppRoutes.addProduct,
-        builder: (context, state) => AddProductsPage(
-          initialBarcode: state.extra as String?,
-        ),
+        builder: (context, state) =>
+            AddProductsPage(initialBarcode: state.extra as String?),
       ),
       GoRoute(
         path: AppRoutes.editProduct,
-        builder: (context, state) => AddProductsPage(
-          productToEdit: state.extra as ProductsTableData?,
-        ),
+        builder: (context, state) =>
+            AddProductsPage(productToEdit: state.extra as ProductsTableData?),
       ),
       GoRoute(
         path: AppRoutes.aiChat,

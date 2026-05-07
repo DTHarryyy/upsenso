@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/errors/app_error_mapper.dart';
-import 'package:pos/features/sales/data/sales_repository.dart';
+import 'package:pos/features/sales/domain/entities/sale_transaction.dart';
+import 'package:pos/features/sales/domain/repositories/i_sales_repository.dart';
 import 'package:pos/features/sales/presentation/cubit/sales_state.dart';
 
 /// Manages the state of the Sales History screen.
@@ -13,9 +13,9 @@ import 'package:pos/features/sales/presentation/cubit/sales_state.dart';
 /// 2. Call [toggleExpand] when the user taps a transaction row.
 /// 3. The cubit cancels the stream on [close].
 class SalesCubit extends Cubit<SalesState> {
-  final SalesRepository _repository;
+  final ISalesRepository _repository;
 
-  StreamSubscription<List<TransactionsTableData>>? _watcher;
+  StreamSubscription<List<SaleTransaction>>? _watcher;
 
   SalesCubit(this._repository) : super(const SalesInitial());
 

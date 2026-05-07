@@ -7,6 +7,9 @@ class Product {
   final String? barcode;
   final bool hasVariants;
   final bool isActive;
+  final String sellBy;
+  final String? imagePath;
+  final double? tax;
 
   const Product({
     required this.id,
@@ -17,5 +20,8 @@ class Product {
     this.barcode,
     this.hasVariants = false,
     this.isActive = true,
+    this.sellBy = 'unit',
+    this.imagePath,
+    this.tax,
   });
 }

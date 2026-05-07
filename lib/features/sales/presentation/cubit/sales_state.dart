@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
-import 'package:pos/core/database/app_database.dart';
+import 'package:pos/features/sales/domain/entities/sale_item.dart';
+import 'package:pos/features/sales/domain/entities/sale_transaction.dart';
 
 // Sentinel used to distinguish "not passed" from `null` in copyWith.
 const _sentinel = Object();
@@ -20,13 +21,13 @@ class SalesLoading extends SalesState {
 }
 
 class SalesLoaded extends SalesState {
-  final List<TransactionsTableData> transactions;
+  final List<SaleTransaction> transactions;
 
   /// The transaction whose detail panel is currently open, if any.
   final String? expandedTxId;
 
   /// Line items for the expanded transaction, `null` while not yet loaded.
-  final List<TransactionItemsTableData>? expandedItems;
+  final List<SaleItem>? expandedItems;
 
   /// `true` while the line-items are being fetched after an expand tap.
   final bool isLoadingItems;
@@ -47,7 +48,7 @@ class SalesLoaded extends SalesState {
   ];
 
   SalesLoaded copyWith({
-    List<TransactionsTableData>? transactions,
+    List<SaleTransaction>? transactions,
     Object? expandedTxId = _sentinel,
     Object? expandedItems = _sentinel,
     bool? isLoadingItems,
@@ -59,7 +60,7 @@ class SalesLoaded extends SalesState {
           : expandedTxId as String?,
       expandedItems: expandedItems == _sentinel
           ? this.expandedItems
-          : expandedItems as List<TransactionItemsTableData>?,
+          : expandedItems as List<SaleItem>?,
       isLoadingItems: isLoadingItems ?? this.isLoadingItems,
     );
   }

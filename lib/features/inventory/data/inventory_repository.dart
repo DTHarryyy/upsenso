@@ -8,8 +8,9 @@ import 'package:pos/core/database/daos/products_dao.dart';
 import 'package:pos/core/database/daos/stock_ledger_dao.dart';
 // ignore: unused_import — StockLedgerTableCompanion generated into app_database
 import 'package:pos/features/inventory/data/inventory_data.dart';
+import 'package:pos/features/inventory/domain/repositories/i_inventory_repository.dart';
 
-class InventoryRepository {
+class InventoryRepository implements IInventoryRepository {
   final ProductsDao _productsDao;
   final ProductVariantsDao _variantsDao;
   final BranchesDao _branchesDao;
@@ -24,19 +25,21 @@ class InventoryRepository {
     required BranchesDao branchesDao,
     required InventoryLevelsDao levelsDao,
     required StockLedgerDao ledgerDao,
-  })  : _productsDao = productsDao,
-        _variantsDao = variantsDao,
-        _branchesDao = branchesDao,
-        _levelsDao = levelsDao,
-        _ledgerDao = ledgerDao;
+  }) : _productsDao = productsDao,
+       _variantsDao = variantsDao,
+       _branchesDao = branchesDao,
+       _levelsDao = levelsDao,
+       _ledgerDao = ledgerDao;
 
   /// Emits whenever inventory_levels or stock_ledger changes.
+  @override
   Stream<void> watchChanges(String businessId) {
     return _levelsDao.watchByBusinessId(businessId).map((_) {});
   }
 
   /// Load all inventory items with per-branch stock for [businessId].
   /// If [branchId] is provided, only loads data for that branch.
+  @override
   Future<InventoryData> load({
     required String businessId,
     String? branchId,
@@ -48,22 +51,23 @@ class InventoryRepository {
 
     // Deduplicate branches by ID (sync can occasionally insert duplicates)
     final seenIds = <String>{};
-    final branches =
-        rawBranches.where((b) => seenIds.add(b.id)).toList();
+    final branches = rawBranches.where((b) => seenIds.add(b.id)).toList();
 
     // branchInfos always contains ALL branches so the dropdown can show
     // every option regardless of which branch is currently selected.
-    final branchInfos =
-        branches.map((b) => BranchInfo(id: b.id, name: b.name)).toList();
+    final branchInfos = branches
+        .map((b) => BranchInfo(id: b.id, name: b.name))
+        .toList();
 
     // The branches actually used for computing per-item stock columns.
     // Build a lookup: variantId -> { branchId -> quantity }
     // branchId is now non-nullable (no "global" rows exist post-v17).
     final levelMap = <String, Map<String, int>>{};
     for (final level in levels) {
-      levelMap
-          .putIfAbsent(level.variantId, () => <String, int>{})[level.branchId] =
-          level.quantity;
+      levelMap.putIfAbsent(
+        level.variantId,
+        () => <String, int>{},
+      )[level.branchId] = level.quantity;
     }
 
     final productMap = {for (final p in products) p.id: p};
@@ -76,7 +80,9 @@ class InventoryRepository {
     }).toList();
 
     // ignore: avoid_print
-    print('[INV] load: ${variants.length} raw variants → ${dedupedVariants.length} after dedup');
+    print(
+      '[INV] load: ${variants.length} raw variants → ${dedupedVariants.length} after dedup',
+    );
 
     final items = <InventoryItem>[];
     for (final v in dedupedVariants) {
@@ -115,23 +121,27 @@ class InventoryRepository {
           }
         }
       }
-      final reorderLevel =
-          _levelsDao.getEffectiveLowStockAlert(levelRow, v.lowStockAlert);
+      final reorderLevel = _levelsDao.getEffectiveLowStockAlert(
+        levelRow,
+        v.lowStockAlert,
+      );
 
       final displayName = v.name == 'Default' ? product.name : product.name;
       final variantLabel = v.name == 'Default' ? '' : v.name;
 
-      items.add(InventoryItem(
-        variantId: v.id,
-        productId: v.productId,
-        productName: displayName,
-        variantName: variantLabel,
-        sku: v.sku ?? product.sku,
-        stockByBranch: stockByBranch,
-        totalStock: total,
-        reorderLevel: reorderLevel,
-        trackStock: v.trackStock,
-      ));
+      items.add(
+        InventoryItem(
+          variantId: v.id,
+          productId: v.productId,
+          productName: displayName,
+          variantName: variantLabel,
+          sku: v.sku ?? product.sku,
+          stockByBranch: stockByBranch,
+          totalStock: total,
+          reorderLevel: reorderLevel,
+          trackStock: v.trackStock,
+        ),
+      );
     }
 
     items.sort((a, b) => a.productName.compareTo(b.productName));
@@ -142,6 +152,7 @@ class InventoryRepository {
   /// Adjust stock for a variant at a branch.
   /// All three writes (ledger, inventory_levels, product_variants) are wrapped
   /// in a single transaction so a crash mid-way leaves no partial state.
+  @override
   Future<void> adjustStock({
     required String variantId,
     required String productId,
@@ -155,7 +166,10 @@ class InventoryRepository {
     assert(quantity > 0, 'quantity must be positive');
 
     if (branchId == null) {
-      assert(false, 'adjustStock called without branchId — auth context must include a branch');
+      assert(
+        false,
+        'adjustStock called without branchId — auth context must include a branch',
+      );
       return;
     }
 
@@ -165,7 +179,10 @@ class InventoryRepository {
       // Snapshot stock BEFORE the adjustment for the ledger audit trail.
       final levelBefore = await _levelsDao.getLevel(variantId, branchId);
       final double qtyBefore = levelBefore?.quantity.toDouble() ?? 0.0;
-      final double qtyAfter = (qtyBefore + delta.toDouble()).clamp(0.0, 999999.0);
+      final double qtyAfter = (qtyBefore + delta.toDouble()).clamp(
+        0.0,
+        999999.0,
+      );
 
       // 1. Insert ledger entry (immutable source of truth)
       await _ledgerDao.insertEntry(
@@ -216,6 +233,7 @@ class InventoryRepository {
   ///
   /// Skips variants where [trackStock] is false. Each item's writes are
   /// wrapped in a transaction so a crash mid-item leaves no partial state.
+  @override
   Future<void> recordSaleDeductions({
     required List<({String variantId, int qty})> items,
     required String businessId,
@@ -236,7 +254,10 @@ class InventoryRepository {
         // Snapshot stock BEFORE deduction for the ledger audit trail.
         final levelBefore = await _levelsDao.getLevel(item.variantId, branchId);
         final double qtyBefore = levelBefore?.quantity.toDouble() ?? 0.0;
-        final double qtyAfter = (qtyBefore - item.qty.toDouble()).clamp(0.0, 999999.0);
+        final double qtyAfter = (qtyBefore - item.qty.toDouble()).clamp(
+          0.0,
+          999999.0,
+        );
 
         // 1. Insert stock ledger entry
         await _ledgerDao.insertEntry(
@@ -264,7 +285,10 @@ class InventoryRepository {
         );
 
         // 3. Decrement product_variants.stock
-        await _variantsDao.decrementStockIfTracked(item.variantId, item.qty.toDouble());
+        await _variantsDao.decrementStockIfTracked(
+          item.variantId,
+          item.qty.toDouble(),
+        );
       });
     }
   }

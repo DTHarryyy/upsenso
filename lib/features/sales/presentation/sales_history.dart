@@ -5,9 +5,9 @@ import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
-import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/utils/formatters.dart';
-import 'package:pos/features/sales/data/sales_repository.dart';
+import 'package:pos/features/sales/domain/entities/sale_transaction.dart';
+import 'package:pos/features/sales/domain/repositories/i_sales_repository.dart';
 import 'package:pos/features/sales/presentation/cubit/sales_cubit.dart';
 import 'package:pos/features/sales/presentation/cubit/sales_state.dart';
 
@@ -28,7 +28,7 @@ class _SalesHistoryState extends State<SalesHistory> {
   @override
   void initState() {
     super.initState();
-    _cubit = SalesCubit(sl<SalesRepository>());
+    _cubit = SalesCubit(sl<ISalesRepository>());
     // Defer so BranchCubit is fully available in the widget tree.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -107,7 +107,7 @@ class _SalesHistoryState extends State<SalesHistory> {
     }
 
     // Group transactions by date
-    final grouped = <String, List<TransactionsTableData>>{};
+    final grouped = <String, List<SaleTransaction>>{};
     for (final tx in state.transactions) {
       grouped
           .putIfAbsent(AppFormatters.shortDate(tx.createdAt), () => [])
@@ -160,7 +160,7 @@ class _SalesHistoryState extends State<SalesHistory> {
   Widget _buildTransactionCard(
     BuildContext context,
     SalesLoaded state,
-    TransactionsTableData tx,
+    SaleTransaction tx,
   ) {
     final isExpanded = state.expandedTxId == tx.id;
 
@@ -273,7 +273,7 @@ class _SalesHistoryState extends State<SalesHistory> {
   Widget _buildDetail(
     BuildContext context,
     SalesLoaded state,
-    TransactionsTableData tx,
+    SaleTransaction tx,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

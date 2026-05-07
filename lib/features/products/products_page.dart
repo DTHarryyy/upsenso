@@ -7,11 +7,6 @@ import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/font_utils.dart';
-import 'package:pos/core/database/app_database.dart';
-import 'package:pos/core/database/daos/categories_dao.dart';
-import 'package:pos/core/database/daos/inventory_levels_dao.dart';
-import 'package:pos/core/database/daos/products_dao.dart';
-import 'package:pos/core/database/daos/product_variants_dao.dart';
 import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/core/services/cart_service.dart';
 import 'package:pos/core/ui/status/status_snack.dart';
@@ -20,6 +15,9 @@ import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/products/checkout/product_cart_page.dart';
+import 'package:pos/features/products/domain/entities/product.dart';
+import 'package:pos/features/products/domain/entities/product_variant.dart';
+import 'package:pos/features/products/domain/repositories/i_products_repository.dart';
 import 'package:pos/features/products/presentation/cubit/products_cubit.dart';
 import 'package:pos/features/products/presentation/cubit/products_state.dart';
 import 'package:pos/features/products/widgets/product_category_chips.dart';
@@ -39,12 +37,7 @@ class _ProductsPageState extends State<ProductsPage> {
   @override
   void initState() {
     super.initState();
-    _cubit = ProductsCubit(
-      productsDao: sl<ProductsDao>(),
-      variantsDao: sl<ProductVariantsDao>(),
-      categoriesDao: sl<CategoriesDao>(),
-      levelsDao: sl<InventoryLevelsDao>(),
-    );
+    _cubit = ProductsCubit(repository: sl<IProductsRepository>());
     // Defer one frame so BLoC state is readable from context.
     WidgetsBinding.instance.addPostFrameCallback((_) => _startWatching());
   }
@@ -69,11 +62,7 @@ class _ProductsPageState extends State<ProductsPage> {
     super.dispose();
   }
 
-  void _addToCart(
-    ProductsTableData product,
-    ProductVariantsTableData variant,
-    double qty,
-  ) {
+  void _addToCart(Product product, ProductVariant variant, double qty) {
     _cartService.addOrIncrement(
       variantId: variant.id,
       name: product.name,
@@ -159,7 +148,7 @@ class _ProductsPageState extends State<ProductsPage> {
     final filtered = state.filteredProducts;
     final variantsMap = state.variantsMap;
     final items = filtered
-        .map((p) => (p, variantsMap[p.id] ?? <ProductVariantsTableData>[]))
+        .map((p) => (p, variantsMap[p.id] ?? <ProductVariant>[]))
         .toList();
 
     return Padding(
@@ -187,8 +176,8 @@ class _ProductsPageState extends State<ProductsPage> {
   Widget _buildGrid(
     BuildContext context,
     ProductsLoaded state,
-    List<ProductsTableData> filtered,
-    List<(ProductsTableData, List<ProductVariantsTableData>)> items,
+    List<Product> filtered,
+    List<(Product, List<ProductVariant>)> items,
   ) {
     if (state.products.isEmpty) {
       return _EmptyProductsState(

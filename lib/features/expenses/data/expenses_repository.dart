@@ -3,31 +3,33 @@ import 'package:uuid/uuid.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/expenses_dao.dart';
 import 'package:pos/features/expenses/domain/expense_item.dart';
+import 'package:pos/features/expenses/domain/repositories/i_expenses_repository.dart';
 
-class ExpensesRepository {
+class ExpensesRepository implements IExpensesRepository {
   final ExpensesDao _expensesDao;
   static const _uuid = Uuid();
 
   ExpensesRepository({required ExpensesDao expensesDao})
-      : _expensesDao = expensesDao;
+    : _expensesDao = expensesDao;
 
   Stream<void> watchChanges(String businessId) {
-    return _expensesDao
-        .watchByBusinessId(businessId)
-        .map((_) {});
+    return _expensesDao.watchByBusinessId(businessId).map((_) {});
   }
 
+  @override
   Future<List<ExpenseItem>> loadExpenses(String businessId) async {
     final rows = await _expensesDao.getByBusinessId(businessId);
     return rows.map(_toEntity).toList();
   }
 
+  @override
   Stream<List<ExpenseItem>> watchExpenses(String businessId) {
     return _expensesDao
         .watchByBusinessId(businessId)
         .map((rows) => rows.map(_toEntity).toList());
   }
 
+  @override
   Future<void> addExpense({
     required String businessId,
     required String? branchId,
@@ -60,14 +62,16 @@ class ExpensesRepository {
         submittedById: submittedById,
         submittedByName: submittedByName,
         approvedById: autoApprove ? Value(submittedById) : const Value(null),
-        approvedByName:
-            autoApprove ? Value(submittedByName) : const Value(null),
+        approvedByName: autoApprove
+            ? Value(submittedByName)
+            : const Value(null),
         note: Value(note),
         expenseDate: expenseDate,
       ),
     );
   }
 
+  @override
   Future<void> approveExpense({
     required String id,
     required String approvedById,
@@ -85,6 +89,7 @@ class ExpensesRepository {
     );
   }
 
+  @override
   Future<void> rejectExpense(String id) async {
     await _expensesDao.updateExpense(
       id,
@@ -96,6 +101,7 @@ class ExpensesRepository {
     );
   }
 
+  @override
   Future<void> deleteExpense(String id) async {
     await _expensesDao.deleteExpense(id);
   }

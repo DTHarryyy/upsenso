@@ -8,15 +8,17 @@ import 'package:pos/core/database/daos/product_variants_dao.dart';
 import 'package:pos/core/database/daos/products_dao.dart';
 import 'package:pos/core/database/daos/transactions_dao.dart';
 import 'package:pos/features/dashboard/data/dashboard_data.dart';
+import 'package:pos/features/dashboard/domain/repositories/i_dashboard_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class DashboardRepository {
+class DashboardRepository implements IDashboardRepository {
   final TransactionsDao _txnDao;
   final ProductVariantsDao _variantsDao;
   final ProductsDao _productsDao;
   final CategoriesDao _categoriesDao;
   final BranchesDao _branchesDao;
   final ExpensesDao _expensesDao;
+  final SharedPreferences _prefs;
 
   DashboardRepository({
     required TransactionsDao txnDao,
@@ -25,12 +27,14 @@ class DashboardRepository {
     required CategoriesDao categoriesDao,
     required BranchesDao branchesDao,
     required ExpensesDao expensesDao,
-  })  : _txnDao = txnDao,
-        _variantsDao = variantsDao,
-        _productsDao = productsDao,
-        _categoriesDao = categoriesDao,
-        _branchesDao = branchesDao,
-        _expensesDao = expensesDao;
+    required SharedPreferences prefs,
+  }) : _txnDao = txnDao,
+       _variantsDao = variantsDao,
+       _productsDao = productsDao,
+       _categoriesDao = categoriesDao,
+       _branchesDao = branchesDao,
+       _expensesDao = expensesDao,
+       _prefs = prefs;
 
   // ─── Branch name cache ────────────────────────────────────────────────────
 
@@ -42,25 +46,24 @@ class DashboardRepository {
 
   /// Persist branch id→name map so it survives offline sessions.
   Future<void> _cacheBranchNames(
-      String businessId, Map<String, String> names) async {
+    String businessId,
+    Map<String, String> names,
+  ) async {
     if (names.isEmpty) return;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_cacheKey(businessId), jsonEncode(names));
+    await _prefs.setString(_cacheKey(businessId), jsonEncode(names));
   }
 
   /// Build a merged id→name map from every available offline source:
   ///   1. BranchCubit's cached options (populated on every login)
   ///   2. Dashboard's own persisted cache
   /// Sources are merged in ascending priority so fresher data wins.
-  Future<Map<String, String>> _loadCachedBranchNames(
-      String businessId) async {
-    final prefs = await SharedPreferences.getInstance();
+  Future<Map<String, String>> _loadCachedBranchNames(String businessId) async {
     final merged = <String, String>{};
 
     // Layer 1 — BranchCubit cache (scoped by businessId): [{"name": "...", "id": "..."}]
     try {
       final scopedKey = '${_branchCubitOptionsKeyPrefix}_$businessId';
-      final raw = prefs.getString(scopedKey);
+      final raw = _prefs.getString(scopedKey);
       if (raw != null) {
         final list = jsonDecode(raw);
         if (list is List) {
@@ -68,7 +71,10 @@ class DashboardRepository {
             if (item is! Map) continue;
             final id = item['id']?.toString().trim();
             final name = item['name']?.toString().trim();
-            if (id != null && id.isNotEmpty && name != null && name.isNotEmpty) {
+            if (id != null &&
+                id.isNotEmpty &&
+                name != null &&
+                name.isNotEmpty) {
               merged[id] = name;
             }
           }
@@ -78,7 +84,7 @@ class DashboardRepository {
 
     // Layer 2 — Dashboard's own cache: {"id": "name"}  (wins over layer 1)
     try {
-      final raw = prefs.getString(_cacheKey(businessId));
+      final raw = _prefs.getString(_cacheKey(businessId));
       if (raw != null) {
         final map = jsonDecode(raw);
         if (map is Map) {
@@ -97,6 +103,7 @@ class DashboardRepository {
   // ─── Stream trigger ───────────────────────────────────────────────────────
 
   /// Emits whenever transactions, product variants, or expenses change.
+  @override
   Stream<void> watchChanges({required String businessId}) {
     final controller = StreamController<void>.broadcast();
     final subs = [
@@ -120,6 +127,7 @@ class DashboardRepository {
 
   // ─── Main load ────────────────────────────────────────────────────────────
 
+  @override
   Future<DashboardData> load({
     required String businessId,
     String? branchId,
@@ -142,18 +150,24 @@ class DashboardRepository {
       businessId: businessId,
     );
 
-    final todayTxns =
-        monthTxns.where((t) => !t.createdAt.isBefore(today)).toList();
-    final yesterdayTxns = monthTxns
-        .where((t) =>
-            !t.createdAt.isBefore(yesterday) && t.createdAt.isBefore(today))
+    final todayTxns = monthTxns
+        .where((t) => !t.createdAt.isBefore(today))
         .toList();
-    final weekTxns =
-        monthTxns.where((t) => !t.createdAt.isBefore(sevenDaysAgo)).toList();
+    final yesterdayTxns = monthTxns
+        .where(
+          (t) =>
+              !t.createdAt.isBefore(yesterday) && t.createdAt.isBefore(today),
+        )
+        .toList();
+    final weekTxns = monthTxns
+        .where((t) => !t.createdAt.isBefore(sevenDaysAgo))
+        .toList();
     final lastWeekTxns = monthTxns
-        .where((t) =>
-            !t.createdAt.isBefore(fourteenDaysAgo) &&
-            t.createdAt.isBefore(sevenDaysAgo))
+        .where(
+          (t) =>
+              !t.createdAt.isBefore(fourteenDaysAgo) &&
+              t.createdAt.isBefore(sevenDaysAgo),
+        )
         .toList();
 
     // ── Stat card values ──────────────────────────────────────────────────
@@ -167,8 +181,9 @@ class DashboardRepository {
     final todayCount = todayTxns.length;
     final yesterdayCount = yesterdayTxns.length;
     final avgOrder = todayCount > 0 ? todaySales / todayCount : 0.0;
-    final yesterdayAvg =
-        yesterdayCount > 0 ? yesterdaySales / yesterdayCount : 0.0;
+    final yesterdayAvg = yesterdayCount > 0
+        ? yesterdaySales / yesterdayCount
+        : 0.0;
 
     // ── 7-day trend ───────────────────────────────────────────────────────
     final sevenDayTotals = <double>[];
@@ -179,7 +194,8 @@ class DashboardRepository {
       final next = day.add(const Duration(days: 1));
       final total = monthTxns
           .where(
-              (t) => !t.createdAt.isBefore(day) && t.createdAt.isBefore(next))
+            (t) => !t.createdAt.isBefore(day) && t.createdAt.isBefore(next),
+          )
           .fold(0.0, (s, t) => s + t.totalAmount);
       sevenDayTotals.add(total);
       sevenDayLabels.add(dayNames[day.weekday - 1]);
@@ -193,7 +209,8 @@ class DashboardRepository {
       final next = day.add(const Duration(days: 1));
       final total = monthTxns
           .where(
-              (t) => !t.createdAt.isBefore(day) && t.createdAt.isBefore(next))
+            (t) => !t.createdAt.isBefore(day) && t.createdAt.isBefore(next),
+          )
           .fold(0.0, (s, t) => s + t.totalAmount);
       thirtyDayTotals.add(total);
       thirtyDayLabels.add(i % 5 == 0 ? '${day.month}/${day.day}' : '');
@@ -206,15 +223,22 @@ class DashboardRepository {
     final itemAgg = <String, _ItemAgg>{};
     for (final item in items) {
       final agg = itemAgg.putIfAbsent(
-          item.productName, () => _ItemAgg(item.productName));
+        item.productName,
+        () => _ItemAgg(item.productName),
+      );
       agg.qty += item.qty;
       agg.revenue += item.lineTotal;
     }
     final topItems =
         (itemAgg.values.toList()..sort((a, b) => b.qty.compareTo(a.qty)))
             .take(5)
-            .map((a) =>
-                TopItem(name: a.name, sold: a.qty.toInt(), revenue: a.revenue))
+            .map(
+              (a) => TopItem(
+                name: a.name,
+                sold: a.qty.toInt(),
+                revenue: a.revenue,
+              ),
+            )
             .toList();
 
     // ── Category performance ──────────────────────────────────────────────
@@ -235,10 +259,11 @@ class DashboardRepository {
           : 'Uncategorized';
       catAgg[name] = (catAgg[name] ?? 0.0) + item.lineTotal;
     }
-    final categoryStats = (catAgg.entries
-        .map((e) => CategoryStat(name: e.key, total: e.value))
-        .toList()
-      ..sort((a, b) => b.total.compareTo(a.total)));
+    final categoryStats =
+        (catAgg.entries
+            .map((e) => CategoryStat(name: e.key, total: e.value))
+            .toList()
+          ..sort((a, b) => b.total.compareTo(a.total)));
 
     // ── Payment methods ───────────────────────────────────────────────────
     final payMap = <String, double>{};
@@ -248,8 +273,9 @@ class DashboardRepository {
     }
 
     // ── Low stock ─────────────────────────────────────────────────────────
-    final lowStockVariants =
-        await _variantsDao.getLowStockByBusinessId(businessId);
+    final lowStockVariants = await _variantsDao.getLowStockByBusinessId(
+      businessId,
+    );
     final productIdToName = {for (final p in products) p.id: p.name};
     final lowStockItems = (lowStockVariants.map((v) {
       final pName = productIdToName[v.productId] ?? 'Unknown';
@@ -259,8 +285,7 @@ class DashboardRepository {
         currentStock: v.stock,
         reorderAt: v.lowStockAlert,
       );
-    }).toList()
-      ..sort((a, b) => a.currentStock.compareTo(b.currentStock)));
+    }).toList()..sort((a, b) => a.currentStock.compareTo(b.currentStock)));
 
     // ── Branch comparison ─────────────────────────────────────────────────
     //
@@ -271,8 +296,7 @@ class DashboardRepository {
     //  3. Any still-unknown branch ID gets a short readable fallback derived
     //     from the ID itself (e.g. "Branch …a1b2") instead of "Unknown Branch".
 
-    final dbBranches =
-        await _branchesDao.getByBusinessId(businessId);
+    final dbBranches = await _branchesDao.getByBusinessId(businessId);
     final dbIdToName = {for (final b in dbBranches) b.id: b.name};
 
     // Persist fresh names to cache
@@ -310,16 +334,17 @@ class DashboardRepository {
 
     final branchList = branchAgg.values.toList()
       ..sort((a, b) => b.revenue.compareTo(a.revenue));
-    final topRevenue =
-        branchList.isNotEmpty ? branchList.first.revenue : 0.0;
+    final topRevenue = branchList.isNotEmpty ? branchList.first.revenue : 0.0;
 
     final branchStats = branchList
-        .map((a) => BranchStat(
-              name: a.name,
-              txnCount: a.txnCount,
-              totalRevenue: a.revenue,
-              isTop: a.revenue == topRevenue && topRevenue > 0,
-            ))
+        .map(
+          (a) => BranchStat(
+            name: a.name,
+            txnCount: a.txnCount,
+            totalRevenue: a.revenue,
+            isTop: a.revenue == topRevenue && topRevenue > 0,
+          ),
+        )
         .toList();
 
     // ── Expense summary ───────────────────────────────────────────────────
@@ -351,13 +376,15 @@ class DashboardRepository {
     final recentExpenses = branchExpenses
         .where((e) => e.status == 'approved' || e.status == 'pending')
         .take(5)
-        .map((e) => RecentExpense(
-              category: e.category,
-              vendor: e.vendor,
-              amount: e.amount,
-              isPending: e.status == 'pending',
-              date: e.expenseDate,
-            ))
+        .map(
+          (e) => RecentExpense(
+            category: e.category,
+            vendor: e.vendor,
+            amount: e.amount,
+            isPending: e.status == 'pending',
+            date: e.expenseDate,
+          ),
+        )
         .toList();
 
     final expenseSummary = ExpenseSummary(

@@ -3,11 +3,11 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:pos/features/reports/data/reports_data.dart';
-import 'package:pos/features/reports/data/reports_repository.dart';
+import 'package:pos/features/reports/domain/repositories/i_reports_repository.dart';
 import 'package:pos/features/reports/presentation/cubit/reports_state.dart';
 
 class ReportsCubit extends Cubit<ReportsState> {
-  final ReportsRepository _repository;
+  final IReportsRepository _repository;
 
   StreamSubscription<void>? _watcher;
   String? _businessId;
@@ -16,7 +16,9 @@ class ReportsCubit extends Cubit<ReportsState> {
   bool _isLoading = false;
   bool _pendingReload = false;
 
-  ReportsCubit(this._repository) : super(const ReportsInitial());
+  ReportsCubit(IReportsRepository repository)
+    : _repository = repository,
+      super(const ReportsInitial());
 
   /// Call this on first load and whenever businessId or branchId changes.
   /// Sets up the live-data watcher so reports auto-update on every sale.

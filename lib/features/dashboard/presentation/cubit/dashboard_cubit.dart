@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/errors/app_error_mapper.dart';
-import 'package:pos/features/dashboard/data/dashboard_repository.dart';
+import 'package:pos/features/dashboard/domain/repositories/i_dashboard_repository.dart';
 import 'package:pos/features/dashboard/presentation/cubit/dashboard_state.dart';
 
 class DashboardCubit extends Cubit<DashboardState> {
-  final DashboardRepository _repository;
+  final IDashboardRepository _repository;
 
   StreamSubscription<void>? _watcher;
   String? _businessId;
@@ -14,7 +14,9 @@ class DashboardCubit extends Cubit<DashboardState> {
   bool _isLoading = false;
   bool _pendingReload = false;
 
-  DashboardCubit(this._repository) : super(const DashboardInitial());
+  DashboardCubit(IDashboardRepository repository)
+    : _repository = repository,
+      super(const DashboardInitial());
 
   /// Call this once (and again whenever businessId/branchId changes).
   /// Sets up the transaction watcher so the dashboard auto-updates on every sale.

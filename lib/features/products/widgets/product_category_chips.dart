@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
-import 'package:pos/core/database/app_database.dart';
+import 'package:pos/features/products/domain/entities/category.dart';
+
 class ProductCategoryChips extends StatelessWidget {
-  final List<CategoriesTableData> categories;
+  final List<Category> categories;
   final String? selectedCategoryId;
   final ValueChanged<String?> onCategorySelected;
 
@@ -29,8 +30,7 @@ class ProductCategoryChips extends StatelessWidget {
               label: Text(
                 'All',
                 style: getOutfitStyle(
-                  color:
-                      isSelected ? AppColors.surface : AppColors.textPrimary,
+                  color: isSelected ? AppColors.surface : AppColors.textPrimary,
                   fontWeight: FontWeight.w600,
                 ),
               ),

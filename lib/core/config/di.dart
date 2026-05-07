@@ -53,15 +53,22 @@ import 'package:pos/features/ai_assistant/services/model_download_service.dart';
 import 'package:pos/features/ai_assistant/services/ai_tool_service.dart';
 import 'package:pos/features/ai_assistant/services/ai_pipeline.dart';
 import 'package:pos/features/dashboard/data/dashboard_repository.dart';
+import 'package:pos/features/expenses/data/expenses_repository.dart';
+import 'package:pos/features/inventory/data/inventory_repository.dart';
 import 'package:pos/features/reports/data/reports_repository.dart';
+import 'package:pos/features/sales/data/sales_repository.dart';
 import 'package:pos/core/database/daos/expenses_dao.dart';
 import 'package:pos/core/database/daos/inventory_levels_dao.dart';
 import 'package:pos/core/database/daos/receipt_settings_dao.dart';
 import 'package:pos/core/database/daos/stock_ledger_dao.dart';
 import 'package:pos/features/expenses/data/datasources/expenses_remote_ds.dart';
-import 'package:pos/features/expenses/data/expenses_repository.dart';
-import 'package:pos/features/inventory/data/inventory_repository.dart';
-import 'package:pos/features/sales/data/sales_repository.dart';
+import 'package:pos/features/dashboard/domain/repositories/i_dashboard_repository.dart';
+import 'package:pos/features/expenses/domain/repositories/i_expenses_repository.dart';
+import 'package:pos/features/inventory/domain/repositories/i_inventory_repository.dart';
+import 'package:pos/features/products/data/products_repository.dart';
+import 'package:pos/features/products/domain/repositories/i_products_repository.dart';
+import 'package:pos/features/reports/domain/repositories/i_reports_repository.dart';
+import 'package:pos/features/sales/domain/repositories/i_sales_repository.dart';
 import 'package:pos/features/settings/data/datasources/receipt_settings_remote_ds.dart';
 import 'package:pos/features/settings/data/receipt_settings_repository.dart';
 import 'package:pos/features/settings/presentation/cubit/settings_cubit.dart';
@@ -120,7 +127,7 @@ Future<void> initDI() async {
     () => StockLedgerDao(sl<AppDatabase>()),
   );
   sl.registerLazySingleton<ExpensesDao>(() => ExpensesDao(sl<AppDatabase>()));
-  sl.registerLazySingleton<ExpensesRepository>(
+  sl.registerLazySingleton<IExpensesRepository>(
     () => ExpensesRepository(expensesDao: sl<ExpensesDao>()),
   );
   sl.registerLazySingleton<ReceiptSettingsDao>(
@@ -140,14 +147,11 @@ Future<void> initDI() async {
   sl.registerLazySingleton<CartService>(() => CartService());
   sl.registerLazySingleton<ImageService>(() => ImageService());
   sl.registerLazySingleton<ResolveBarcodeUseCase>(
-    () => ResolveBarcodeUseCase(
-      variantsDao: sl<ProductVariantsDao>(),
-      productsDao: sl<ProductsDao>(),
-    ),
+    () => ResolveBarcodeUseCase(repository: sl<IProductsRepository>()),
   );
   sl.registerLazySingleton<ConnectivityService>(() => ConnectivityService());
 
-  sl.registerFactory(() => BranchCubit());
+  sl.registerLazySingleton<BranchCubit>(() => BranchCubit());
 
   sl.registerLazySingleton(() => AuthRemoteDs(sl<SupabaseClient>()));
 
@@ -273,7 +277,7 @@ Future<void> initDI() async {
   // settings_page.dart resolves this via sl()
   sl.registerFactory(() => SettingsCubit(sl<ReceiptSettingsRepository>()));
 
-  sl.registerLazySingleton<InventoryRepository>(
+  sl.registerLazySingleton<IInventoryRepository>(
     () => InventoryRepository(
       productsDao: sl<ProductsDao>(),
       variantsDao: sl<ProductVariantsDao>(),
@@ -283,11 +287,20 @@ Future<void> initDI() async {
     ),
   );
 
-  sl.registerLazySingleton<SalesRepository>(
+  sl.registerLazySingleton<IProductsRepository>(
+    () => ProductsRepository(
+      productsDao: sl<ProductsDao>(),
+      variantsDao: sl<ProductVariantsDao>(),
+      categoriesDao: sl<CategoriesDao>(),
+      levelsDao: sl<InventoryLevelsDao>(),
+    ),
+  );
+
+  sl.registerLazySingleton<ISalesRepository>(
     () => SalesRepository(sl<TransactionsDao>()),
   );
 
-  sl.registerLazySingleton<DashboardRepository>(
+  sl.registerLazySingleton<IDashboardRepository>(
     () => DashboardRepository(
       txnDao: sl<TransactionsDao>(),
       variantsDao: sl<ProductVariantsDao>(),
@@ -295,16 +308,18 @@ Future<void> initDI() async {
       categoriesDao: sl<CategoriesDao>(),
       branchesDao: sl<BranchesDao>(),
       expensesDao: sl<ExpensesDao>(),
+      prefs: sl<SharedPreferences>(),
     ),
   );
 
-  sl.registerLazySingleton<ReportsRepository>(
+  sl.registerLazySingleton<IReportsRepository>(
     () => ReportsRepository(
       txnDao: sl<TransactionsDao>(),
       variantsDao: sl<ProductVariantsDao>(),
       productsDao: sl<ProductsDao>(),
       categoriesDao: sl<CategoriesDao>(),
       branchesDao: sl<BranchesDao>(),
+      prefs: sl<SharedPreferences>(),
     ),
   );
 

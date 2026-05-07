@@ -2,18 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/breakpoint.dart';
-import 'package:pos/core/database/app_database.dart';
+import 'package:pos/features/products/domain/entities/product.dart';
+import 'package:pos/features/products/domain/entities/product_variant.dart';
 import 'package:pos/features/products/widgets/product_card.dart';
 
 class ProductGrid extends StatelessWidget {
-  final List<(ProductsTableData, List<ProductVariantsTableData>)> items;
+  final List<(Product, List<ProductVariant>)> items;
   final VoidCallback? onAddProduct;
-  final void Function(
-    ProductsTableData product,
-    ProductVariantsTableData variant,
-    double quantity,
-  )? onAddToCart;
-  final void Function(ProductsTableData product)? onEditProduct;
+  final void Function(Product product, ProductVariant variant, double quantity)?
+  onAddToCart;
+  final void Function(Product product)? onEditProduct;
 
   /// variantId → branch-filtered stock (built from inventory_levels).
   final Map<String, int> variantStock;
@@ -29,8 +27,11 @@ class ProductGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final int breakPoint = Breakpoints.isDesktop(context) ? 5 :
-                       Breakpoints.isTablet(context) ? 4 : 3;
+    final int breakPoint = Breakpoints.isDesktop(context)
+        ? 5
+        : Breakpoints.isTablet(context)
+        ? 4
+        : 3;
     return GridView.builder(
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: breakPoint,
@@ -52,7 +53,7 @@ class ProductGrid extends StatelessWidget {
           onEdit: onEditProduct != null ? () => onEditProduct!(product) : null,
         );
       },
-      
+
       padding: EdgeInsets.zero,
     );
   }
@@ -105,10 +106,9 @@ class ProductAdd extends StatelessWidget {
               Text(
                 'Add Product',
                 textAlign: TextAlign.center,
-                style: AppTextStyles.body(context).copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.brand,
-                ),
+                style: AppTextStyles.body(
+                  context,
+                ).copyWith(fontWeight: FontWeight.w600, color: AppColors.brand),
               ),
             ],
           ),

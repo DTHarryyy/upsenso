@@ -4,14 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/font_utils.dart';
-import 'package:pos/core/database/app_database.dart';
+import 'package:pos/features/products/domain/entities/product.dart';
+import 'package:pos/features/products/domain/entities/product_variant.dart';
 import 'package:pos/features/products/widgets/product_selection_sheet.dart';
 
 class ProductCard extends StatelessWidget {
-  final ProductsTableData product;
-  final List<ProductVariantsTableData> variants;
-  final void Function(ProductVariantsTableData variant, double quantity)?
-      onAddToCart;
+  final Product product;
+  final List<ProductVariant> variants;
+  final void Function(ProductVariant variant, double quantity)? onAddToCart;
   final VoidCallback? onEdit;
 
   /// variantId → branch-filtered stock quantity.
@@ -33,8 +33,6 @@ class ProductCard extends StatelessWidget {
     if (active.isEmpty) return null;
     return active.map((v) => v.price).reduce(min);
   }
-
-
 
   Widget _imagePlaceholder(bool isFraction) {
     return Container(
@@ -80,13 +78,13 @@ class ProductCard extends StatelessWidget {
           onTap: !product.isActive
               ? null
               : () => showProductSelectionSheet(
-                    context,
-                    product: product,
-                    variants: variants,
-                    variantStock: variantStock,
-                    onConfirm: onAddToCart,
-                    onEdit: onEdit,
-                  ),
+                  context,
+                  product: product,
+                  variants: variants,
+                  variantStock: variantStock,
+                  onConfirm: onAddToCart,
+                  onEdit: onEdit,
+                ),
           child: Padding(
             padding: const EdgeInsets.all(8),
             child: Column(
@@ -164,41 +162,48 @@ class ProductCard extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                            Builder(builder: (_) {
-                              final tracked = variants
-                                  .where((v) => v.trackStock && v.isActive)
-                                  .toList();
-                              if (tracked.isEmpty || variantStock.isEmpty) {
-                                return const SizedBox.shrink();
-                              }
-                              final total = tracked.fold(
-                                0,
-                                (s, v) => s + (variantStock[v.id] ?? 0),
-                              );
-                              final inStock = total > 0;
-                              const green = Color(0xFF2E7D32);
-                              const red = Color(0xFFC62828);
-                              return Padding(
-                                padding: EdgeInsets.only(
-                                    top: product.hasVariants ? 4 : 0),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 5, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: (inStock ? green : red).withAlpha(180),
-                                    borderRadius: BorderRadius.circular(4),
+                            Builder(
+                              builder: (_) {
+                                final tracked = variants
+                                    .where((v) => v.trackStock && v.isActive)
+                                    .toList();
+                                if (tracked.isEmpty || variantStock.isEmpty) {
+                                  return const SizedBox.shrink();
+                                }
+                                final total = tracked.fold(
+                                  0,
+                                  (s, v) => s + (variantStock[v.id] ?? 0),
+                                );
+                                final inStock = total > 0;
+                                const green = Color(0xFF2E7D32);
+                                const red = Color(0xFFC62828);
+                                return Padding(
+                                  padding: EdgeInsets.only(
+                                    top: product.hasVariants ? 4 : 0,
                                   ),
-                                  child: Text(
-                                    inStock ? '$total' : '0',
-                                    style: getOutfitStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 5,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: (inStock ? green : red).withAlpha(
+                                        180,
+                                      ),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      inStock ? '$total' : '0',
+                                      style: getOutfitStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                      ),
                                     ),
                                   ),
-                                ),
-                              );
-                            }),
+                                );
+                              },
+                            ),
                           ],
                         ),
                       ),
@@ -227,7 +232,6 @@ class ProductCard extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-
               ],
             ),
           ),

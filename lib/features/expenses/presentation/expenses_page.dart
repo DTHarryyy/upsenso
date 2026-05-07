@@ -7,7 +7,7 @@ import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
-import 'package:pos/features/expenses/data/expenses_repository.dart';
+import 'package:pos/features/expenses/domain/repositories/i_expenses_repository.dart';
 import 'package:pos/features/expenses/presentation/cubit/expenses_cubit.dart';
 import 'package:pos/features/expenses/presentation/cubit/expenses_state.dart';
 import 'package:pos/features/expenses/presentation/widgets/add_expense_sheet.dart';
@@ -23,7 +23,7 @@ class ExpensesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => ExpensesCubit(sl<ExpensesRepository>()),
+      create: (_) => ExpensesCubit(sl<IExpensesRepository>()),
       child: const _ExpensesView(),
     );
   }

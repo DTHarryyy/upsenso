@@ -10,7 +10,7 @@ import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/transactions_dao.dart';
-import 'package:pos/features/inventory/data/inventory_repository.dart';
+import 'package:pos/features/inventory/domain/repositories/i_inventory_repository.dart';
 import 'package:pos/core/ui/status/status_snack.dart';
 import 'package:pos/core/ui/status/status_type.dart';
 import 'package:pos/core/utils/formatters.dart';
@@ -156,7 +156,7 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
 
       await sl<TransactionsDao>().insertTransaction(tx, txItems);
 
-      await sl<InventoryRepository>().recordSaleDeductions(
+      await sl<IInventoryRepository>().recordSaleDeductions(
         items: widget.items
             .map((i) => (variantId: i.variantId, qty: i.qty.round()))
             .toList(),
@@ -243,7 +243,7 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
             total: widget.total,
             itemCount: widget.items.length,
             tax: widget.tax,
-            fmt: _fmt,
+            fmt: AppFormatters.currency,
           ),
 
           Expanded(

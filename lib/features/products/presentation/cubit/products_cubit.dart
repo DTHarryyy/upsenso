@@ -1,10 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:pos/core/database/daos/categories_dao.dart';
-import 'package:pos/core/database/daos/inventory_levels_dao.dart';
-import 'package:pos/core/database/daos/products_dao.dart';
-import 'package:pos/core/database/daos/product_variants_dao.dart';
+import 'package:pos/features/products/domain/entities/category.dart';
+import 'package:pos/features/products/domain/entities/inventory_level.dart';
+import 'package:pos/features/products/domain/entities/product.dart';
+import 'package:pos/features/products/domain/entities/product_variant.dart';
+import 'package:pos/features/products/domain/repositories/i_products_repository.dart';
 import 'package:pos/features/products/presentation/cubit/products_state.dart';
 
 /// Owns all reactive data streams for the Products screen.
@@ -16,18 +17,15 @@ import 'package:pos/features/products/presentation/cubit/products_state.dart';
 /// 4. Reads [ProductsLoaded.filteredProducts], [variantsMap], and [variantStock]
 ///    directly in the widget — no `setState` needed.
 class ProductsCubit extends Cubit<ProductsState> {
-  final ProductsDao _productsDao;
-  final ProductVariantsDao _variantsDao;
-  final CategoriesDao _categoriesDao;
-  final InventoryLevelsDao _levelsDao;
+  final IProductsRepository _repository;
 
   final List<StreamSubscription<dynamic>> _subs = [];
 
   // Mutable raw data — updated by each stream.
-  var _products = <dynamic>[];
-  var _variants = <dynamic>[];
-  var _categories = <dynamic>[];
-  var _levels = <dynamic>[];
+  var _products = <Product>[];
+  var _variants = <ProductVariant>[];
+  var _categories = <Category>[];
+  var _levels = <InventoryLevel>[];
 
   // Filter state — copied into every emitted state.
   String? _selectedCategoryId;
@@ -37,16 +35,9 @@ class ProductsCubit extends Cubit<ProductsState> {
   // Tracks whether the products stream has emitted at least once.
   bool _productsReady = false;
 
-  ProductsCubit({
-    required ProductsDao productsDao,
-    required ProductVariantsDao variantsDao,
-    required CategoriesDao categoriesDao,
-    required InventoryLevelsDao levelsDao,
-  }) : _productsDao = productsDao,
-       _variantsDao = variantsDao,
-       _categoriesDao = categoriesDao,
-       _levelsDao = levelsDao,
-       super(const ProductsInitial());
+  ProductsCubit({required IProductsRepository repository})
+    : _repository = repository,
+      super(const ProductsInitial());
 
   // ── Public API ─────────────────────────────────────────────────────────────
 
@@ -58,15 +49,15 @@ class ProductsCubit extends Cubit<ProductsState> {
     emit(const ProductsLoading());
 
     _subs.addAll([
-      _levelsDao.watchByBusinessId(businessId).listen((data) {
+      _repository.watchInventoryLevels(businessId).listen((data) {
         _levels = data;
         _emitIfReady();
       }),
-      _variantsDao.watchByBusinessId(businessId).listen((data) {
+      _repository.watchVariants(businessId).listen((data) {
         _variants = data;
         _emitIfReady();
       }),
-      _categoriesDao.watchByBusinessId(businessId).listen((data) {
+      _repository.watchCategories(businessId).listen((data) {
         _categories = data;
         // Auto-clear a category selection that no longer exists.
         if (_selectedCategoryId != null &&
@@ -75,7 +66,7 @@ class ProductsCubit extends Cubit<ProductsState> {
         }
         _emitIfReady();
       }),
-      _productsDao.watchByBusinessId(businessId).listen((data) {
+      _repository.watchProducts(businessId).listen((data) {
         _products = data;
         _productsReady = true;
         _emitIfReady();
