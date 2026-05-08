@@ -17,6 +17,7 @@ import 'package:pos/features/reports/presentation/cubit/reports_state.dart';
 import 'package:pos/features/reports/presentation/widgets/branch_comparison.dart';
 import 'package:pos/features/reports/presentation/widgets/inventory_health_tab.dart';
 import 'package:pos/features/reports/presentation/widgets/profit_summary_tab.dart';
+import 'package:pos/features/reports/presentation/widgets/report_card.dart';
 import 'package:pos/features/reports/presentation/widgets/report_nav_chip.dart';
 import 'package:pos/features/reports/presentation/widgets/sales_report_tab.dart';
 
@@ -146,18 +147,24 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
                 onRefresh: () async => _startWatching(),
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildHeader(ctx, data),
+                      // ① KPI summary cards – always visible at top
+                      _buildPageSummaryCards(data),
                       const SizedBox(height: 16),
+                      // ② Filter row: period picker + export
+                      _buildFilterRow(ctx, data),
+                      const SizedBox(height: 12),
+                      // ③ Tab navigation chips
                       ReportNavChipBar(
                         tabs: _tabs,
                         selectedIndex: _selectedTab,
                         onTabSelected: (i) => setState(() => _selectedTab = i),
                       ),
                       const SizedBox(height: 20),
+                      // ④ Detailed tab content
                       if (isLoading)
                         const SizedBox(
                           height: 300,
@@ -170,7 +177,6 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
                         )
                       else
                         _buildTabContent(data),
-                      const SizedBox(height: 24),
                     ],
                   ),
                 ),
@@ -182,12 +188,10 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, ReportsData data) {
-    return LayoutBuilder(
-      builder: (_, constraints) {
-        final narrow = constraints.maxWidth < 600;
-        final periodPicker = SizedBox(
-          width: 160,
+  Widget _buildFilterRow(BuildContext context, ReportsData data) {
+    return Row(
+      children: [
+        Expanded(
           child: AppDropdown<ReportPeriod>(
             value: _period,
             dense: true,
@@ -204,36 +208,13 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
               if (v != null) _onPeriodChanged(v);
             },
           ),
-        );
-        final exportBtn = _ExportButton(
+        ),
+        const SizedBox(width: 8),
+        _ExportButton(
           isLoading: _exporting,
           onTap: () => _onExport(context, data),
-        );
-
-        if (narrow) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _TitleSection(),
-              const SizedBox(height: 12),
-              Row(
-                children: [periodPicker, const SizedBox(width: 8), exportBtn],
-              ),
-            ],
-          );
-        }
-
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            _TitleSection(),
-            const Spacer(),
-            periodPicker,
-            const SizedBox(width: 8),
-            exportBtn,
-          ],
-        );
-      },
+        ),
+      ],
     );
   }
 
@@ -251,32 +232,173 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
         return const SizedBox.shrink();
     }
   }
-}
 
-// ─── Header sub-widgets ───────────────────────────────────────────────────────
+  Widget _buildPageSummaryCards(ReportsData data) {
+    switch (_selectedTab) {
+      case 0: // Sales Report
+        final revChange = pctChange(data.totalRevenue, data.prevTotalRevenue);
+        final txnChange = data.totalTransactions - data.prevTotalTransactions;
+        final avgChange = pctChange(data.avgTicket, data.prevAvgTicket);
+        final itemsChange = data.itemsSold - data.prevItemsSold;
+        return ReportStatCardsRow(
+          cards: [
+            ReportStatCard(
+              title: 'Total Revenue',
+              value: fmtCurrency(data.totalRevenue),
+              changeLabel: '${fmtPct(revChange)} vs prev period',
+              isPositive: revChange >= 0,
+              icon: Icons.attach_money_rounded,
+              iconBg: AppColors.brandSoft,
+              iconColor: AppColors.brand,
+            ),
+            ReportStatCard(
+              title: 'Transactions',
+              value: '${data.totalTransactions}',
+              changeLabel:
+                  '${txnChange >= 0 ? '+' : ''}$txnChange vs prev period',
+              isPositive: txnChange >= 0,
+              icon: Icons.bar_chart_rounded,
+              iconBg: const Color(0xFFF3E8FF),
+              iconColor: const Color(0xFF7C3AED),
+            ),
+            ReportStatCard(
+              title: 'Avg. Ticket',
+              value: fmtCurrency(data.avgTicket),
+              changeLabel: '${fmtPct(avgChange)} vs prev period',
+              isPositive: avgChange >= 0,
+              icon: Icons.trending_up_rounded,
+              iconBg: AppColors.successSoft,
+              iconColor: AppColors.success,
+            ),
+            ReportStatCard(
+              title: 'Items Sold',
+              value: '${data.itemsSold}',
+              changeLabel:
+                  '${itemsChange >= 0 ? '+' : ''}$itemsChange vs prev period',
+              isPositive: itemsChange >= 0,
+              icon: Icons.inventory_2_outlined,
+              iconBg: AppColors.warningSoft,
+              iconColor: AppColors.warning,
+            ),
+          ],
+        );
 
-class _TitleSection extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return const Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Reports & Analytics',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
-            letterSpacing: -0.3,
-          ),
-        ),
-        SizedBox(height: 2),
-        Text(
-          'Business intelligence and insights',
-          style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-        ),
-      ],
-    );
+      case 1: // Inventory Health
+        return ReportStatCardsRow(
+          cards: [
+            ReportStatCard(
+              title: 'Low Stock',
+              value: '${data.lowStockCount}',
+              icon: Icons.inventory_2_outlined,
+              iconBg: AppColors.errorSoft,
+              iconColor: AppColors.error,
+            ),
+            ReportStatCard(
+              title: 'Fast Movers',
+              value: '${data.fastMoversCount}',
+              icon: Icons.trending_up_rounded,
+              iconBg: AppColors.successSoft,
+              iconColor: AppColors.success,
+            ),
+            ReportStatCard(
+              title: 'Dead Stock',
+              value: '${data.deadStockCount}',
+              icon: Icons.access_time_rounded,
+              iconBg: AppColors.warningSoft,
+              iconColor: AppColors.warning,
+            ),
+            ReportStatCard(
+              title: 'Total SKUs',
+              value: '${data.totalSKUs}',
+              icon: Icons.qr_code_2_rounded,
+              iconBg: AppColors.brandSoft,
+              iconColor: AppColors.brand,
+            ),
+          ],
+        );
+
+      case 2: // Profit Summary
+        final netChange = pctChange(data.netProfit, data.prevNetProfit);
+        return ReportStatCardsRow(
+          cards: [
+            ReportStatCard(
+              title: 'Gross Revenue',
+              value: fmtCurrency(data.grossRevenue),
+              icon: Icons.attach_money_rounded,
+              iconBg: AppColors.brandSoft,
+              iconColor: AppColors.brand,
+            ),
+            ReportStatCard(
+              title: 'Cost of Goods',
+              value: fmtCurrency(data.costOfGoods),
+              icon: Icons.inventory_2_outlined,
+              iconBg: AppColors.errorSoft,
+              iconColor: AppColors.error,
+            ),
+            ReportStatCard(
+              title: 'Operating Expenses',
+              value: '₱0',
+              icon: Icons.receipt_long_outlined,
+              iconBg: AppColors.warningSoft,
+              iconColor: AppColors.warning,
+            ),
+            ReportStatCard(
+              title: 'Net Profit',
+              value: fmtCurrency(data.netProfit),
+              changeLabel: '${fmtPct(netChange)} vs prev period',
+              isPositive: netChange >= 0,
+              icon: Icons.trending_up_rounded,
+              iconBg: AppColors.successSoft,
+              iconColor: AppColors.success,
+            ),
+          ],
+        );
+
+      case 3: // Branch Comparison
+        final branchCount = data.branchStats.length;
+        final totalBranchSales = data.branchStats.fold<double>(
+          0,
+          (s, b) => s + b.totalSales,
+        );
+        final topBranch = data.branchStats.where((b) => b.isTop).firstOrNull;
+        return ReportStatCardsRow(
+          cards: [
+            ReportStatCard(
+              title: 'Active Branches',
+              value: '$branchCount',
+              icon: Icons.store_rounded,
+              iconBg: AppColors.brandSoft,
+              iconColor: AppColors.brand,
+            ),
+            ReportStatCard(
+              title: 'Combined Sales',
+              value: fmtCurrency(totalBranchSales),
+              icon: Icons.attach_money_rounded,
+              iconBg: AppColors.successSoft,
+              iconColor: AppColors.success,
+            ),
+            ReportStatCard(
+              title: 'Top Branch',
+              value: topBranch?.name ?? '—',
+              icon: Icons.emoji_events_rounded,
+              iconBg: const Color(0xFFFEF3C7),
+              iconColor: const Color(0xFFD97706),
+            ),
+            ReportStatCard(
+              title: 'Avg. per Branch',
+              value: branchCount > 0
+                  ? fmtCurrency(totalBranchSales / branchCount)
+                  : '—',
+              icon: Icons.balance_rounded,
+              iconBg: const Color(0xFFF3E8FF),
+              iconColor: const Color(0xFF7C3AED),
+            ),
+          ],
+        );
+
+      default:
+        return const SizedBox.shrink();
+    }
   }
 }
 

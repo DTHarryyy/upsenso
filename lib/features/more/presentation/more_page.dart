@@ -83,7 +83,7 @@ class _MorePageState extends State<MorePage>
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.error,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(6),
               ),
             ),
             child: Text(

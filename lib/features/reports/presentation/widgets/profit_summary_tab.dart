@@ -13,48 +13,7 @@ class ProfitSummaryTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final netChange = pctChange(data.netProfit, data.prevNetProfit);
-
-    return Column(
-      children: [
-        ReportStatCardsRow(
-          cards: [
-            ReportStatCard(
-              title: 'Gross Revenue',
-              value: fmtCurrency(data.grossRevenue),
-              icon: Icons.attach_money_rounded,
-              iconBg: AppColors.brandSoft,
-              iconColor: AppColors.brand,
-            ),
-            ReportStatCard(
-              title: 'Cost of Goods',
-              value: fmtCurrency(data.costOfGoods),
-              icon: Icons.inventory_2_outlined,
-              iconBg: AppColors.errorSoft,
-              iconColor: AppColors.error,
-            ),
-            ReportStatCard(
-              title: 'Operating Expenses',
-              value: '₱0',
-              icon: Icons.receipt_long_outlined,
-              iconBg: AppColors.warningSoft,
-              iconColor: AppColors.warning,
-            ),
-            ReportStatCard(
-              title: 'Net Profit',
-              value: fmtCurrency(data.netProfit),
-              changeLabel: '${fmtPct(netChange)} vs prev period',
-              isPositive: netChange >= 0,
-              icon: Icons.trending_up_rounded,
-              iconBg: AppColors.successSoft,
-              iconColor: AppColors.success,
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        ProfitBarChart(trend: data.profitTrend),
-      ],
-    );
+    return Column(children: [ProfitBarChart(trend: data.profitTrend)]);
   }
 }
 
@@ -71,7 +30,10 @@ class ProfitBarChart extends StatelessWidget {
         child: SizedBox(
           height: 260,
           child: Center(
-            child: Text('No data', style: TextStyle(color: AppColors.textMuted)),
+            child: Text(
+              'No data',
+              style: TextStyle(color: AppColors.textMuted),
+            ),
           ),
         ),
       );
@@ -89,7 +51,11 @@ class ProfitBarChart extends StatelessWidget {
             children: [
               const Text(
                 'Revenue vs Expenses',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
               ),
               const Spacer(),
               LegendDot(color: AppColors.brand, label: 'Revenue'),
@@ -120,8 +86,12 @@ class ProfitBarChart extends StatelessWidget {
                   ),
                 ),
                 titlesData: FlTitlesData(
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
@@ -131,7 +101,10 @@ class ProfitBarChart extends StatelessWidget {
                         padding: const EdgeInsets.only(right: 6),
                         child: Text(
                           fmtAxisAmount(v),
-                          style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: AppColors.textMuted,
+                          ),
                         ),
                       ),
                     ),
@@ -142,14 +115,19 @@ class ProfitBarChart extends StatelessWidget {
                       reservedSize: 28,
                       getTitlesWidget: (v, _) {
                         final idx = v.toInt();
-                        if (idx < 0 || idx >= trend.length) return const SizedBox();
+                        if (idx < 0 || idx >= trend.length) {
+                          return const SizedBox();
+                        }
                         final label = trend[idx].label;
                         if (label.isEmpty) return const SizedBox();
                         return Padding(
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(
                             label,
-                            style: const TextStyle(fontSize: 9, color: AppColors.textMuted),
+                            style: const TextStyle(
+                              fontSize: 9,
+                              color: AppColors.textMuted,
+                            ),
                           ),
                         );
                       },
@@ -172,13 +150,17 @@ class ProfitBarChart extends StatelessWidget {
                         toY: trend[i].revenue,
                         color: AppColors.brand,
                         width: 10,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(3),
+                        ),
                       ),
                       BarChartRodData(
                         toY: trend[i].cogs,
                         color: AppColors.error,
                         width: 10,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(3),
+                        ),
                       ),
                     ],
                   );
@@ -211,7 +193,10 @@ class LegendDot extends StatelessWidget {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 5),
-        Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        ),
       ],
     );
   }

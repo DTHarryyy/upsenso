@@ -102,11 +102,24 @@ class _PosTerminalPageState extends State<PosTerminalPage>
 
   Future<void> _checkCameraPermission() async {
     var status = await Permission.camera.status;
+    final wasNotGranted = !status.isGranted;
     if (!status.isGranted) {
       status = await Permission.camera.request();
     }
     if (!mounted) return;
-    setState(() => _permissionDenied = !status.isGranted);
+    final isNowGranted = status.isGranted;
+    setState(() => _permissionDenied = !isNowGranted);
+
+    // Permission was just granted — restart the scanner so the camera feed
+    // initialises immediately without requiring a page navigation.
+    if (wasNotGranted && isNowGranted) {
+      try {
+        await _scannerController.stop();
+        await _scannerController.start();
+      } catch (_) {
+        // Controller may not be ready yet; the widget rebuild will handle it.
+      }
+    }
   }
 
   @override
