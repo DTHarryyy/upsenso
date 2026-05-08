@@ -64,6 +64,16 @@ part 'app_database.g.dart';
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(db_connect.openDatabaseConnection());
 
+  /// Wait for the database connection to be ready (especially important on web with WASM).
+  /// Returns immediately on native platforms. On web, waits for WASM to initialize.
+  Future<void> ensureReady() async {
+    try {
+      await customSelect('SELECT 1').get();
+    } catch (e) {
+      throw Exception('Database initialization failed: $e');
+    }
+  }
+
   @override
   int get schemaVersion => 23;
 

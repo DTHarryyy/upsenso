@@ -395,7 +395,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     // /business-profile-setup during the brief window between an OAuth
     // redirect (where the Supabase session is fresh but businessId hasn't
     // been fetched yet) and the getUserBusinessContext call completing.
-    final cachedContext = await getUserBusinessContext(user.id);
+    final cachedContext = await getUserBusinessContext(user.id).timeout(
+      const Duration(seconds: 3),
+      onTimeout: () => null,
+    );
     if (cachedContext != null && _hasCompleteContext(cachedContext)) {
       emit(AuthAuthenticated(cachedContext));
       return;
@@ -408,7 +411,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(AuthAuthenticated(interim));
     }
 
-    final userWithContext = await _getUserContextWithRetry(user.id);
+    final userWithContext = await _getUserContextWithRetry(user.id).timeout(
+      const Duration(seconds: 5),
+      onTimeout: () => interim,
+    );
     final resolved = userWithContext ?? interim;
 
     // Never downgrade: if we already have a complete context (businessId +

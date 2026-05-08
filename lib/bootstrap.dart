@@ -5,6 +5,7 @@ import 'package:nobodywho/nobodywho.dart' as nobodywho;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:pos/core/config/di.dart';
+import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/env/app_env.dart';
 import 'package:pos/app_bootstrap.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
@@ -30,6 +31,22 @@ Future<Widget> bootstrap() async {
   // Step 3: Initialize DI (includes initializeCachedUser which reads
   // the now-available Supabase session).
   await initDI();
+
+  // Step 3b: On web, wait for the WASM database to be ready before auth queries it.
+  // This prevents a freeze when the auth bloc tries to query an uninitialized database.
+  if (kIsWeb) {
+    try {
+      await sl<AppDatabase>().ensureReady().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => throw Exception('Database initialization timeout'),
+      );
+    } catch (e) {
+      debugPrint('Warning: Database ready check failed: $e');
+      // On web, if database fails to initialize but we have a valid Supabase session,
+      // continue anyway — the database will be retried on each operation.
+      // Don't fail the entire startup sequence.
+    }
+  }
 
   // Non-critical: AI rule parser. Never block startup on this.
   _initNobodyWho().ignore();
