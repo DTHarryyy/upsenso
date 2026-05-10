@@ -55,8 +55,6 @@ class _AuthRefreshNotifier extends ChangeNotifier {
 }
 
 class AppRouter {
-  static bool? _seenOnboarding;
-
   static final GoRouter router = GoRouter(
     initialLocation: AppRoutes.dashboard,
 
@@ -86,12 +84,8 @@ class AppRouter {
           goingToResetPassword;
       final isAuthRoute = isPublicAuthRoute || isPasswordResetRoute;
 
-      if (_seenOnboarding == null) {
-        final prefs = sl<SharedPreferences>();
-        _seenOnboarding =
-            kIsWeb || (prefs.getBool(AppKey.seenOnboarding) ?? false);
-      }
-      final seen = _seenOnboarding!;
+      final prefs = sl<SharedPreferences>();
+      final seen = kIsWeb || (prefs.getBool(AppKey.seenOnboarding) ?? false);
 
       if (!seen) {
         if (!goingToOnboarding) return AppRoutes.onboarding;
