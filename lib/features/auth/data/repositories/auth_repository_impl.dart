@@ -377,12 +377,35 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<AppUser> uploadAvatar(String userId, List<int> bytes) async {
-    // Save locally first so the UI updates instantly without network.
+    final current = _cachedUserInMemory;
+
+    if (kIsWeb) {
+      // Web has no local filesystem — upload directly and await the result.
+      final remoteUrl = await remote.uploadAvatar(bytes, userId);
+      await remote.updateAvatarUrl(userId, remoteUrl);
+      final updated = AppUserModel(
+        id: userId,
+        email: current?.email,
+        fullName: current?.fullName,
+        avatarUrl: remoteUrl,
+        businessId: current?.businessId,
+        roleId: current?.roleId,
+        roleName: current?.roleName,
+        businessName: current?.businessName,
+        branchId: current?.branchId,
+        branchName: current?.branchName,
+        businessTemplateId: current?.businessTemplateId,
+        businessTemplateName: current?.businessTemplateName,
+      );
+      await _cacheUserContext(updated);
+      return updated;
+    }
+
+    // Native: save locally first so the UI updates instantly without network.
     final dir = await getApplicationDocumentsDirectory();
     final localPath = p.join(dir.path, '${userId}_avatar.jpg');
     await File(localPath).writeAsBytes(bytes, flush: true);
 
-    final current = _cachedUserInMemory;
     final localUser = AppUserModel(
       id: userId,
       email: current?.email,

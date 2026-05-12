@@ -4,8 +4,6 @@ import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/features/reports/data/reports_data.dart';
 import 'package:pos/features/reports/presentation/widgets/report_card.dart';
 
-// ─── Profit Summary tab ───────────────────────────────────────────────────────
-
 class ProfitSummaryTab extends StatelessWidget {
   final ReportsData data;
   final ReportPeriod period;
@@ -13,7 +11,13 @@ class ProfitSummaryTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(children: [ProfitBarChart(trend: data.profitTrend)]);
+    return Column(
+      children: [
+        ProfitBarChart(trend: data.profitTrend),
+        const SizedBox(height: 16),
+        _ProfitTrendTable(trend: data.profitTrend),
+      ],
+    );
   }
 }
 
@@ -30,10 +34,7 @@ class ProfitBarChart extends StatelessWidget {
         child: SizedBox(
           height: 260,
           child: Center(
-            child: Text(
-              'No data',
-              style: TextStyle(color: AppColors.textMuted),
-            ),
+            child: Text('No data', style: TextStyle(color: AppColors.textMuted)),
           ),
         ),
       );
@@ -73,7 +74,7 @@ class ProfitBarChart extends StatelessWidget {
                 barTouchData: BarTouchData(
                   enabled: true,
                   touchTooltipData: BarTouchTooltipData(
-                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                    getTooltipItem: (group, _, rod, rodIndex) {
                       final label = trend[group.x].label.isNotEmpty
                           ? trend[group.x].label
                           : '${group.x + 1}';
@@ -87,11 +88,9 @@ class ProfitBarChart extends StatelessWidget {
                 ),
                 titlesData: FlTitlesData(
                   topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
+                      sideTitles: SideTitles(showTitles: false)),
                   rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
+                      sideTitles: SideTitles(showTitles: false)),
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
@@ -99,13 +98,9 @@ class ProfitBarChart extends StatelessWidget {
                       interval: interval,
                       getTitlesWidget: (v, _) => Padding(
                         padding: const EdgeInsets.only(right: 6),
-                        child: Text(
-                          fmtAxisAmount(v),
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
+                        child: Text(fmtAxisAmount(v),
+                            style: const TextStyle(
+                                fontSize: 10, color: AppColors.textMuted)),
                       ),
                     ),
                   ),
@@ -122,13 +117,9 @@ class ProfitBarChart extends StatelessWidget {
                         if (label.isEmpty) return const SizedBox();
                         return Padding(
                           padding: const EdgeInsets.only(top: 4),
-                          child: Text(
-                            label,
-                            style: const TextStyle(
-                              fontSize: 9,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
+                          child: Text(label,
+                              style: const TextStyle(
+                                  fontSize: 9, color: AppColors.textMuted)),
                         );
                       },
                     ),
@@ -150,17 +141,15 @@ class ProfitBarChart extends StatelessWidget {
                         toY: trend[i].revenue,
                         color: AppColors.brand,
                         width: 10,
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(3),
-                        ),
+                        borderRadius:
+                            const BorderRadius.vertical(top: Radius.circular(3)),
                       ),
                       BarChartRodData(
                         toY: trend[i].cogs,
                         color: AppColors.error,
                         width: 10,
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(3),
-                        ),
+                        borderRadius:
+                            const BorderRadius.vertical(top: Radius.circular(3)),
                       ),
                     ],
                   );
@@ -171,6 +160,190 @@ class ProfitBarChart extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ─── Period breakdown table ───────────────────────────────────────────────────
+
+class _ProfitTrendTable extends StatelessWidget {
+  final List<ProfitTrendPoint> trend;
+  const _ProfitTrendTable({required this.trend});
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = trend.where((p) => p.label.isNotEmpty).toList();
+    if (rows.isEmpty) return const SizedBox.shrink();
+
+    double totRev = 0, totCogs = 0;
+    for (final p in rows) {
+      totRev += p.revenue;
+      totCogs += p.cogs;
+    }
+    final totNet = totRev - totCogs;
+    final totMargin =
+        totRev > 0 ? '${(totNet / totRev * 100).toStringAsFixed(1)}%' : '—';
+
+    return ReportCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Period Breakdown',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 14),
+          // Header
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: const _ProfitTableHeader(),
+          ),
+          const SizedBox(height: 2),
+          // Rows
+          ...List.generate(rows.length, (i) {
+            final p = rows[i];
+            final net = p.revenue - p.cogs;
+            final margin = p.revenue > 0
+                ? '${(net / p.revenue * 100).toStringAsFixed(1)}%'
+                : '—';
+            return Container(
+              color: i.isOdd ? const Color(0xFFF7F9FC) : Colors.white,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+              child: Row(
+                children: [
+                  Expanded(
+                      flex: 3,
+                      child: Text(p.label,
+                          style: const TextStyle(
+                              fontSize: 13, color: AppColors.textPrimary))),
+                  Expanded(
+                      flex: 2,
+                      child: Text(fmtCurrency(p.revenue),
+                          textAlign: TextAlign.end,
+                          style: const TextStyle(
+                              fontSize: 13, color: AppColors.textPrimary))),
+                  Expanded(
+                      flex: 2,
+                      child: Text(fmtCurrency(p.cogs),
+                          textAlign: TextAlign.end,
+                          style: const TextStyle(
+                              fontSize: 13, color: AppColors.textSecondary))),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      fmtCurrency(net),
+                      textAlign: TextAlign.end,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: net >= 0 ? AppColors.success : AppColors.error,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                      flex: 2,
+                      child: Text(margin,
+                          textAlign: TextAlign.end,
+                          style: const TextStyle(
+                              fontSize: 12, color: AppColors.textMuted))),
+                ],
+              ),
+            );
+          }),
+          // Totals
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.brandSoft,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+            child: Row(
+              children: [
+                const Expanded(
+                  flex: 3,
+                  child: Text('TOTAL',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.brand)),
+                ),
+                Expanded(
+                    flex: 2,
+                    child: Text(fmtCurrency(totRev),
+                        textAlign: TextAlign.end,
+                        style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary))),
+                Expanded(
+                    flex: 2,
+                    child: Text(fmtCurrency(totCogs),
+                        textAlign: TextAlign.end,
+                        style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary))),
+                Expanded(
+                  flex: 2,
+                  child: Text(fmtCurrency(totNet),
+                      textAlign: TextAlign.end,
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: totNet >= 0
+                              ? AppColors.success
+                              : AppColors.error)),
+                ),
+                Expanded(
+                    flex: 2,
+                    child: Text(totMargin,
+                        textAlign: TextAlign.end,
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary))),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfitTableHeader extends StatelessWidget {
+  const _ProfitTableHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    const s = TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+        color: AppColors.textMuted,
+        letterSpacing: 0.3);
+    return const Row(
+      children: [
+        Expanded(flex: 3, child: Text('PERIOD', style: s)),
+        Expanded(
+            flex: 2, child: Text('REVENUE', style: s, textAlign: TextAlign.end)),
+        Expanded(
+            flex: 2, child: Text('COGS', style: s, textAlign: TextAlign.end)),
+        Expanded(
+            flex: 2,
+            child: Text('NET PROFIT', style: s, textAlign: TextAlign.end)),
+        Expanded(
+            flex: 2,
+            child: Text('MARGIN', style: s, textAlign: TextAlign.end)),
+      ],
     );
   }
 }
@@ -193,10 +366,9 @@ class LegendDot extends StatelessWidget {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 5),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-        ),
+        Text(label,
+            style: const TextStyle(
+                fontSize: 12, color: AppColors.textSecondary)),
       ],
     );
   }

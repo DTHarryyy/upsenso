@@ -1182,6 +1182,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
                     imagePath: state.imagePath,
                     onPick: (source) => cubit.pickImage(source),
                     onClear: cubit.clearImage,
+                    isLoading: state.isUploadingImage,
                   ),
                 )
               : const SizedBox(width: double.infinity, height: 0),
@@ -1234,6 +1235,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
                     imagePath: state.imagePath,
                     onPick: (source) => cubit.pickImage(source),
                     onClear: cubit.clearImage,
+                    isLoading: state.isUploadingImage,
                   ),
                 )
               : const SizedBox(width: double.infinity, height: 0),

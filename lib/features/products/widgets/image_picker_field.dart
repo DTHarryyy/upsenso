@@ -9,12 +9,14 @@ class ImagePickerField extends StatelessWidget {
   final String? imagePath;
   final Future<void> Function(ImageSource source) onPick;
   final VoidCallback onClear;
+  final bool isLoading;
 
   const ImagePickerField({
     super.key,
     required this.imagePath,
     required this.onPick,
     required this.onClear,
+    this.isLoading = false,
   });
 
   Future<void> _showSourcePicker(BuildContext context) async {
@@ -66,18 +68,40 @@ class ImagePickerField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return Container(
+        width: double.infinity,
+        height: 140,
+        decoration: BoxDecoration(
+          color: AppColors.inputFill,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.borderSoft, width: 1.5),
+        ),
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     if (imagePath != null) {
+      final isNetwork = imagePath!.startsWith('http');
       return Stack(
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
-            child: Image.file(
-              File(imagePath!),
-              width: double.infinity,
-              height: 140,
-              fit: BoxFit.cover,
-              errorBuilder: (ctx, err, stack) => _emptyPicker(ctx),
-            ),
+            child: isNetwork
+                ? Image.network(
+                    imagePath!,
+                    width: double.infinity,
+                    height: 140,
+                    fit: BoxFit.cover,
+                    errorBuilder: (ctx, err, stack) => _emptyPicker(ctx),
+                  )
+                : Image.file(
+                    File(imagePath!),
+                    width: double.infinity,
+                    height: 140,
+                    fit: BoxFit.cover,
+                    errorBuilder: (ctx, err, stack) => _emptyPicker(ctx),
+                  ),
           ),
           Positioned(
             top: 6,

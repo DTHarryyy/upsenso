@@ -18,6 +18,7 @@ class ProductsRemoteDs {
     String sellBy = 'unit',
     required bool hasVariants,
     required bool isActive,
+    String? imagePath,
   }) async {
     await client.from('products').upsert({
       'id': id,
@@ -30,6 +31,7 @@ class ProductsRemoteDs {
       'sell_by': sellBy,
       'has_variants': hasVariants,
       'is_active': isActive,
+      'image_path': imagePath,
     });
   }
 
@@ -44,6 +46,7 @@ class ProductsRemoteDs {
     required String sellBy,
     required bool hasVariants,
     required bool isActive,
+    String? imagePath,
   }) async {
     await client.from('products').update({
       'category_id': categoryId,
@@ -54,6 +57,7 @@ class ProductsRemoteDs {
       'sell_by': sellBy,
       'has_variants': hasVariants,
       'is_active': isActive,
+      'image_path': imagePath,
     }).eq('id', id);
   }
 

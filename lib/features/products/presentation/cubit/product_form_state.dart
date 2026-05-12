@@ -12,6 +12,7 @@ class ProductFormState {
   final String? selectedCategoryId;
   final List<CategoriesTableData> categories;
   final bool isSaving;
+  final bool isUploadingImage;
   final bool isSuccess;
   final String? error;
   final String? imagePath;
@@ -34,6 +35,7 @@ class ProductFormState {
     this.selectedCategoryId,
     required this.categories,
     required this.isSaving,
+    required this.isUploadingImage,
     required this.isSuccess,
     this.error,
     this.imagePath,
@@ -50,6 +52,7 @@ class ProductFormState {
         selectedCategoryId: null,
         categories: [],
         isSaving: false,
+        isUploadingImage: false,
         isSuccess: false,
         error: null,
         imagePath: null,
@@ -68,6 +71,7 @@ class ProductFormState {
     bool clearCategoryId = false,
     List<CategoriesTableData>? categories,
     bool? isSaving,
+    bool? isUploadingImage,
     bool? isSuccess,
     String? error,
     bool clearError = false,
@@ -91,6 +95,7 @@ class ProductFormState {
           : (selectedCategoryId ?? this.selectedCategoryId),
       categories: categories ?? this.categories,
       isSaving: isSaving ?? this.isSaving,
+      isUploadingImage: isUploadingImage ?? this.isUploadingImage,
       isSuccess: isSuccess ?? this.isSuccess,
       error: clearError ? null : (error ?? this.error),
       imagePath: clearImagePath ? null : (imagePath ?? this.imagePath),

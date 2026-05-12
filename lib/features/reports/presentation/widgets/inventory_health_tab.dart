@@ -3,8 +3,6 @@ import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/features/reports/data/reports_data.dart';
 import 'package:pos/features/reports/presentation/widgets/report_card.dart';
 
-// ─── Inventory Health tab ─────────────────────────────────────────────────────
-
 class InventoryHealthTab extends StatelessWidget {
   final ReportsData data;
   const InventoryHealthTab({super.key, required this.data});
@@ -15,7 +13,7 @@ class InventoryHealthTab extends StatelessWidget {
   }
 }
 
-// ─── Inventory status table ───────────────────────────────────────────────────
+// ─── Table ────────────────────────────────────────────────────────────────────
 
 class _InventoryTable extends StatelessWidget {
   final List<InventoryStatusItem> items;
@@ -27,18 +25,37 @@ class _InventoryTable extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Inventory Status',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Inventory Status',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              if (items.isNotEmpty)
+                Text(
+                  '${items.length} items',
+                  style: const TextStyle(
+                      fontSize: 12, color: AppColors.textMuted),
+                ),
+            ],
           ),
-          const SizedBox(height: 16),
-          const _TableHeader(),
-          const Divider(height: 1, color: AppColors.borderSoft),
-          const SizedBox(height: 4),
+          const SizedBox(height: 14),
+          // Sticky header
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: const _TableHeader(),
+          ),
+          const SizedBox(height: 2),
           if (items.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 32),
@@ -49,8 +66,14 @@ class _InventoryTable extends StatelessWidget {
                 ),
               ),
             )
-          else
-            ...items.map((item) => _InventoryRow(item: item)),
+          else ...[
+            ...List.generate(
+              items.length,
+              (i) => _InventoryRow(item: items[i], index: i),
+            ),
+            const SizedBox(height: 4),
+            _TotalsRow(items: items),
+          ],
         ],
       ),
     );
@@ -68,71 +91,56 @@ class _TableHeader extends StatelessWidget {
       color: AppColors.textMuted,
       letterSpacing: 0.3,
     );
-    return const Padding(
-      padding: EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Expanded(flex: 5, child: Text('PRODUCT', style: style)),
-          Expanded(flex: 2, child: Text('STATUS', style: style)),
-          Expanded(
+    return const Row(
+      children: [
+        Expanded(flex: 5, child: Text('PRODUCT', style: style)),
+        Expanded(flex: 2, child: Text('STATUS', style: style)),
+        Expanded(
             flex: 2,
-            child: Text('STOCK', style: style, textAlign: TextAlign.center),
-          ),
-          Expanded(
+            child: Text('STOCK', style: style, textAlign: TextAlign.center)),
+        Expanded(
             flex: 2,
-            child: Text('AVG/DAY', style: style, textAlign: TextAlign.center),
-          ),
-          Expanded(
+            child: Text('AVG/DAY', style: style, textAlign: TextAlign.center)),
+        Expanded(
             flex: 2,
-            child: Text('DAYS LEFT', style: style, textAlign: TextAlign.center),
-          ),
-          Expanded(flex: 3, child: Text('NOTES', style: style)),
-        ],
-      ),
+            child:
+                Text('DAYS LEFT', style: style, textAlign: TextAlign.center)),
+        Expanded(flex: 3, child: Text('NOTES', style: style)),
+      ],
     );
   }
 }
 
 class _InventoryRow extends StatelessWidget {
   final InventoryStatusItem item;
-  const _InventoryRow({required this.item});
+  final int index;
+  const _InventoryRow({required this.item, required this.index});
 
-  static Color _statusColor(InventoryStatusType s) {
-    switch (s) {
-      case InventoryStatusType.low:
-        return AppColors.error;
-      case InventoryStatusType.warning:
-        return AppColors.warning;
-      case InventoryStatusType.ok:
-        return AppColors.success;
-      case InventoryStatusType.slowMoving:
-        return AppColors.brand;
-    }
-  }
+  static Color _statusColor(InventoryStatusType s) => switch (s) {
+        InventoryStatusType.low => AppColors.error,
+        InventoryStatusType.warning => AppColors.warning,
+        InventoryStatusType.ok => AppColors.success,
+        InventoryStatusType.slowMoving => AppColors.brand,
+      };
 
-  static Color _statusBg(InventoryStatusType s) {
-    switch (s) {
-      case InventoryStatusType.low:
-        return AppColors.errorSoft;
-      case InventoryStatusType.warning:
-        return AppColors.warningSoft;
-      case InventoryStatusType.ok:
-        return AppColors.successSoft;
-      case InventoryStatusType.slowMoving:
-        return AppColors.brandSoft;
-    }
-  }
+  static Color _statusBg(InventoryStatusType s) => switch (s) {
+        InventoryStatusType.low => AppColors.errorSoft,
+        InventoryStatusType.warning => AppColors.warningSoft,
+        InventoryStatusType.ok => AppColors.successSoft,
+        InventoryStatusType.slowMoving => AppColors.brandSoft,
+      };
 
   @override
   Widget build(BuildContext context) {
     final daysText = item.daysLeft == null
         ? '∞'
         : item.daysLeft! > 999
-        ? '999+'
-        : item.daysLeft!.toStringAsFixed(1);
+            ? '999+'
+            : item.daysLeft!.toStringAsFixed(1);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+    return Container(
+      color: index.isOdd ? const Color(0xFFF7F9FC) : Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       child: Row(
         children: [
           Expanded(
@@ -150,7 +158,7 @@ class _InventoryRow extends StatelessWidget {
           Expanded(
             flex: 2,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
               decoration: BoxDecoration(
                 color: _statusBg(item.status),
                 borderRadius: BorderRadius.circular(6),
@@ -173,10 +181,7 @@ class _InventoryRow extends StatelessWidget {
                   ? item.currentStock.toInt().toString()
                   : item.currentStock.toStringAsFixed(1),
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textPrimary,
-              ),
+              style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
             ),
           ),
           Expanded(
@@ -187,9 +192,7 @@ class _InventoryRow extends StatelessWidget {
                   : item.avgDailySale.toStringAsFixed(1),
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-              ),
+                  fontSize: 13, color: AppColors.textSecondary),
             ),
           ),
           Expanded(
@@ -198,19 +201,80 @@ class _InventoryRow extends StatelessWidget {
               daysText,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-              ),
+                  fontSize: 13, color: AppColors.textSecondary),
             ),
           ),
           Expanded(
             flex: 3,
             child: Text(
               item.notes ?? '-',
-              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+              style:
+                  const TextStyle(fontSize: 12, color: AppColors.textMuted),
               overflow: TextOverflow.ellipsis,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TotalsRow extends StatelessWidget {
+  final List<InventoryStatusItem> items;
+  const _TotalsRow({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    final totalStock = items.fold(0.0, (s, i) => s + i.currentStock);
+    final lowCount = items.where((i) => i.status == InventoryStatusType.low).length;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.brandSoft,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+      child: Row(
+        children: [
+          const Expanded(
+            flex: 5,
+            child: Text(
+              'TOTALS',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.brand,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              '$lowCount low',
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppColors.error,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              totalStock % 1 == 0
+                  ? totalStock.toInt().toString()
+                  : totalStock.toStringAsFixed(1),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          const Expanded(flex: 2, child: SizedBox()),
+          const Expanded(flex: 2, child: SizedBox()),
+          const Expanded(flex: 3, child: SizedBox()),
         ],
       ),
     );

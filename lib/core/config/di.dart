@@ -145,7 +145,7 @@ Future<void> initDI() async {
   );
 
   sl.registerLazySingleton<CartService>(() => CartService());
-  sl.registerLazySingleton<ImageService>(() => ImageService());
+  sl.registerLazySingleton<ImageService>(() => ImageService(sl<SupabaseClient>()));
   sl.registerLazySingleton<ResolveBarcodeUseCase>(
     () => ResolveBarcodeUseCase(repository: sl<IProductsRepository>()),
   );

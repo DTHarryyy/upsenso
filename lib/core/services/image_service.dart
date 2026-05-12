@@ -1,25 +1,24 @@
-import 'dart:io';
-
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
-/// Picks a product image from the camera or gallery, copies it to the app's
-/// permanent documents directory, and returns the stable local path.
-/// For gallery: image_picker uses the system photo picker (no permission needed).
-/// For camera: requests camera permission before opening.
-/// Returns null if the user cancels or denies permission.
 class ImageService {
+  ImageService(this._client);
+
+  final SupabaseClient _client;
   final _picker = ImagePicker();
 
-  Future<String?> pickAndSaveImage({
+  /// Picks a product image and uploads it to the `product-images` bucket.
+  /// Path: `{businessId}/{uuid}.ext`
+  /// Returns the public URL on success, null if cancelled or permission denied.
+  Future<String?> pickAndUploadProductImage({
+    required String businessId,
     ImageSource source = ImageSource.gallery,
   }) async {
-    // Gallery uses the Android system photo picker — no permission required.
-    // Only camera needs an explicit permission check.
-    if (source == ImageSource.camera) {
+    if (!kIsWeb && source == ImageSource.camera) {
       final granted = await _requestCameraPermission();
       if (!granted) return null;
     }
@@ -31,35 +30,32 @@ class ImageService {
     );
     if (picked == null) return null;
 
-    final docsDir = await getApplicationDocumentsDirectory();
-    final imagesDir = Directory(p.join(docsDir.path, 'product_images'));
-    if (!imagesDir.existsSync()) {
-      imagesDir.createSync(recursive: true);
-    }
+    final bytes = await picked.readAsBytes();
+    final ext = p.extension(picked.path).toLowerCase();
+    final safeExt = ext.isNotEmpty ? ext : '.jpg';
+    final storagePath = '$businessId/${const Uuid().v4()}$safeExt';
 
-    final ext = p.extension(picked.path).isNotEmpty
-        ? p.extension(picked.path)
-        : '.jpg';
-    final filename = '${const Uuid().v4()}$ext';
-    final destPath = p.join(imagesDir.path, filename);
+    final contentType = safeExt == '.png' ? 'image/png'
+        : safeExt == '.webp' ? 'image/webp'
+        : 'image/jpeg';
 
-    await File(picked.path).copy(destPath);
-    return destPath;
+    await _client.storage.from('product-images').uploadBinary(
+      storagePath,
+      Uint8List.fromList(bytes),
+      fileOptions: FileOptions(upsert: true, contentType: contentType),
+    );
+
+    return _client.storage.from('product-images').getPublicUrl(storagePath);
   }
 
-  /// Requests camera permission.
-  /// Opens app settings if permanently denied, then re-checks.
   Future<bool> _requestCameraPermission() async {
     var status = await Permission.camera.status;
-
     if (status.isGranted) return true;
-
     if (status.isPermanentlyDenied) {
       await openAppSettings();
       status = await Permission.camera.status;
       return status.isGranted;
     }
-
     status = await Permission.camera.request();
     return status.isGranted;
   }

@@ -96,14 +96,23 @@ class ProductCard extends StatelessWidget {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: product.imagePath != null
-                            ? Image.file(
-                                File(product.imagePath!),
-                                width: double.infinity,
-                                height: double.infinity,
-                                fit: BoxFit.cover,
-                                errorBuilder: (ctx, err, stack) =>
-                                    _imagePlaceholder(isFraction),
-                              )
+                            ? (product.imagePath!.startsWith('http')
+                                ? Image.network(
+                                    product.imagePath!,
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (ctx, err, stack) =>
+                                        _imagePlaceholder(isFraction),
+                                  )
+                                : Image.file(
+                                    File(product.imagePath!),
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (ctx, err, stack) =>
+                                        _imagePlaceholder(isFraction),
+                                  ))
                             : _imagePlaceholder(isFraction),
                       ),
 

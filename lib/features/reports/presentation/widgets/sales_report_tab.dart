@@ -5,8 +5,6 @@ import 'package:pos/features/dashboard/data/dashboard_data.dart';
 import 'package:pos/features/reports/data/reports_data.dart';
 import 'package:pos/features/reports/presentation/widgets/report_card.dart';
 
-// ─── Sales Report tab ─────────────────────────────────────────────────────────
-
 class SalesReportTab extends StatelessWidget {
   final ReportsData data;
   final ReportPeriod period;
@@ -47,6 +45,8 @@ class SalesReportTab extends StatelessWidget {
             );
           },
         ),
+        const SizedBox(height: 16),
+        _CategoryTable(stats: data.categoryBreakdown),
       ],
     );
   }
@@ -171,7 +171,7 @@ class SalesTrendChart extends StatelessWidget {
                     isStrokeCapRound: true,
                     dotData: FlDotData(
                       show: true,
-                      getDotPainter: (spot, _, _, _) => FlDotCirclePainter(
+                      getDotPainter: (_, _, _, _) => FlDotCirclePainter(
                         radius: 3,
                         color: AppColors.brand,
                         strokeWidth: 2,
@@ -193,11 +193,10 @@ class SalesTrendChart extends StatelessWidget {
   }
 }
 
-// ─── Sales by Category donut chart ───────────────────────────────────────────
+// ─── Category donut chart ─────────────────────────────────────────────────────
 
 class CategoryDonutChart extends StatelessWidget {
   final List<CategoryStat> stats;
-
   static const _palette = AppColors.chartPalette;
 
   const CategoryDonutChart({super.key, required this.stats});
@@ -230,9 +229,10 @@ class CategoryDonutChart extends StatelessWidget {
               ),
             )
           else
-            LayoutBuilder(
-              builder: (_, c) {
-                final chart = SizedBox(
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(
                   width: 140,
                   height: 140,
                   child: PieChart(
@@ -252,8 +252,9 @@ class CategoryDonutChart extends StatelessWidget {
                       }),
                     ),
                   ),
-                );
-                final legend = Expanded(
+                ),
+                const SizedBox(width: 16),
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: List.generate(stats.length.clamp(0, 6), (i) {
@@ -301,13 +302,196 @@ class CategoryDonutChart extends StatelessWidget {
                       );
                     }),
                   ),
-                );
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [chart, const SizedBox(width: 16), legend],
-                );
-              },
+                ),
+              ],
             ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Category breakdown table ─────────────────────────────────────────────────
+
+class _CategoryTable extends StatelessWidget {
+  final List<CategoryStat> stats;
+  static const _palette = AppColors.chartPalette;
+
+  const _CategoryTable({required this.stats});
+
+  @override
+  Widget build(BuildContext context) {
+    if (stats.isEmpty) return const SizedBox.shrink();
+
+    final total = stats.fold(0.0, (s, c) => s + c.total);
+
+    return ReportCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Category Breakdown',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 14),
+          // Header
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: const Row(
+              children: [
+                SizedBox(width: 14),
+                Expanded(
+                  flex: 5,
+                  child: Text(
+                    'CATEGORY',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textMuted,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    'REVENUE',
+                    textAlign: TextAlign.end,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textMuted,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    'SHARE',
+                    textAlign: TextAlign.end,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textMuted,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 2),
+          ...List.generate(stats.length, (i) {
+            final pct = total > 0 ? stats[i].total / total * 100 : 0.0;
+            return Container(
+              color: i.isOdd ? const Color(0xFFF7F9FC) : Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+              child: Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    margin: const EdgeInsets.only(right: 6),
+                    decoration: BoxDecoration(
+                      color: _palette[i % _palette.length],
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  Expanded(
+                    flex: 5,
+                    child: Text(
+                      stats[i].name,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textPrimary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      fmtCurrency(stats[i].total),
+                      textAlign: TextAlign.end,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      '${pct.toStringAsFixed(1)}%',
+                      textAlign: TextAlign.end,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          // Totals row
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.brandSoft,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+            child: Row(
+              children: [
+                const SizedBox(width: 14),
+                const Expanded(
+                  flex: 5,
+                  child: Text(
+                    'TOTAL',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.brand,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    fmtCurrency(total),
+                    textAlign: TextAlign.end,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                const Expanded(
+                  flex: 2,
+                  child: Text(
+                    '100%',
+                    textAlign: TextAlign.end,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

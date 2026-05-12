@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
@@ -11,6 +12,7 @@ import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/reports/data/reports_data.dart';
 import 'package:pos/features/reports/domain/repositories/i_reports_repository.dart';
+import 'package:pos/features/reports/export/report_excel_exporter.dart';
 import 'package:pos/features/reports/pdf/report_pdf_exporter.dart';
 import 'package:pos/features/reports/presentation/cubit/reports_cubit.dart';
 import 'package:pos/features/reports/presentation/cubit/reports_state.dart';
@@ -36,7 +38,8 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
 
   int _selectedTab = 0;
   ReportPeriod _period = ReportPeriod.last7Days;
-  bool _exporting = false;
+  bool _exportingPdf = false;
+  bool _exportingExcel = false;
 
   static const _tabs = [
     ReportTab(icon: Icons.bar_chart_rounded, label: 'Sales Report'),
@@ -62,14 +65,9 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
     if (!mounted) return;
     final authState = context.read<AuthBloc>().state;
     if (authState is! AuthAuthenticated) return;
-
-    final branchId = context
-        .read<BranchCubit>()
-        .getSelectedBranchIdForFiltering();
-
     _cubit.startWatching(
       businessId: authState.user.businessId ?? '',
-      branchId: branchId,
+      branchId: context.read<BranchCubit>().getSelectedBranchIdForFiltering(),
       period: _period,
     );
   }
@@ -79,18 +77,16 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
     _cubit.changePeriod(p);
   }
 
-  Future<void> _onExport(BuildContext context, ReportsData data) async {
-    if (_exporting) return;
+  // ── Export handlers ──────────────────────────────────────────────────────────
 
-    // Capture context-dependent values before any async gap.
-    final authState = context.read<AuthBloc>().state;
-    final businessName = authState is AuthAuthenticated
-        ? (authState.user.businessName ?? '')
-        : '';
-    final branchLabel =
-        context.read<BranchCubit>().state.selectedBranch ?? 'All Branches';
-
-    setState(() => _exporting = true);
+  Future<void> _onExportPdf(
+    BuildContext ctx,
+    ReportsData data,
+    String businessName,
+    String branchLabel,
+  ) async {
+    if (_exportingPdf || _exportingExcel) return;
+    setState(() => _exportingPdf = true);
     try {
       await ReportPdfExporter.export(
         data: data,
@@ -100,7 +96,7 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
       );
       if (mounted) {
         StatusSnack.show(
-          this.context,
+          context,
           type: StatusType.success,
           title: 'PDF Ready',
           message: 'Choose where to save from the share sheet.',
@@ -110,16 +106,59 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
     } catch (e) {
       if (mounted) {
         StatusSnack.show(
-          this.context,
+          context,
           type: StatusType.error,
           title: 'Export Failed',
           message: e.toString(),
         );
       }
     } finally {
-      if (mounted) setState(() => _exporting = false);
+      if (mounted) setState(() => _exportingPdf = false);
     }
   }
+
+  Future<void> _onExportExcel(
+    BuildContext ctx,
+    ReportsData data,
+    String businessName,
+    String branchLabel,
+  ) async {
+    if (_exportingPdf || _exportingExcel) return;
+    setState(() => _exportingExcel = true);
+    try {
+      final result = await ReportExcelExporter.export(
+        data: data,
+        period: _period,
+        businessName: businessName,
+        branchLabel: branchLabel,
+      );
+      if (mounted) {
+        final msg = kIsWeb
+            ? 'Download started.'
+            : 'Saved: ${result.split('/').last}';
+        StatusSnack.show(
+          context,
+          type: StatusType.success,
+          title: 'Excel Exported',
+          message: msg,
+          duration: const Duration(seconds: 4),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        StatusSnack.show(
+          context,
+          type: StatusType.error,
+          title: 'Export Failed',
+          message: e.toString(),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _exportingExcel = false);
+    }
+  }
+
+  // ── Build ────────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -136,10 +175,16 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
         ],
         child: BlocBuilder<ReportsCubit, ReportsState>(
           builder: (ctx, state) {
-            final data = state is ReportsLoaded
-                ? state.data
-                : ReportsData.empty();
+            final data =
+                state is ReportsLoaded ? state.data : ReportsData.empty();
             final isLoading = state is ReportsLoading;
+
+            final authState = ctx.read<AuthBloc>().state;
+            final businessName = authState is AuthAuthenticated
+                ? (authState.user.businessName ?? '')
+                : '';
+            final branchLabel =
+                ctx.read<BranchCubit>().state.selectedBranch ?? 'All Branches';
 
             return Scaffold(
               backgroundColor: AppColors.background,
@@ -151,24 +196,34 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ① KPI summary cards – always visible at top
+                      // ① Report header
+                      _ReportHeaderCard(
+                        businessName: businessName,
+                        branchLabel: branchLabel,
+                        period: _period,
+                      ),
+                      const SizedBox(height: 16),
+                      // ② KPI summary cards
                       _buildPageSummaryCards(data),
                       const SizedBox(height: 16),
-                      // ② Filter row: period picker + export
-                      _buildFilterRow(ctx, data),
+                      // ③ Filter row: period picker + export dropdown
+                      _buildFilterRow(
+                          ctx, data, businessName, branchLabel),
                       const SizedBox(height: 12),
-                      // ③ Tab navigation chips
+                      // ④ Tab chips
                       ReportNavChipBar(
                         tabs: _tabs,
                         selectedIndex: _selectedTab,
-                        onTabSelected: (i) => setState(() => _selectedTab = i),
+                        onTabSelected: (i) =>
+                            setState(() => _selectedTab = i),
                       ),
                       const SizedBox(height: 20),
-                      // ④ Detailed tab content
+                      // ⑤ Tab content
                       if (isLoading)
                         const SizedBox(
                           height: 300,
-                          child: Center(child: CircularProgressIndicator()),
+                          child:
+                              Center(child: CircularProgressIndicator()),
                         )
                       else if (state is ReportsError)
                         _ErrorView(
@@ -188,7 +243,12 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
     );
   }
 
-  Widget _buildFilterRow(BuildContext context, ReportsData data) {
+  Widget _buildFilterRow(
+    BuildContext ctx,
+    ReportsData data,
+    String businessName,
+    String branchLabel,
+  ) {
     return Row(
       children: [
         Expanded(
@@ -196,13 +256,11 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
             value: _period,
             dense: true,
             items: ReportPeriod.values
-                .map(
-                  (p) => AppDropdownItem(
-                    value: p,
-                    label: p.label,
-                    icon: Icons.calendar_today_outlined,
-                  ),
-                )
+                .map((p) => AppDropdownItem(
+                      value: p,
+                      label: p.label,
+                      icon: Icons.calendar_today_outlined,
+                    ))
                 .toList(),
             onChanged: (v) {
               if (v != null) _onPeriodChanged(v);
@@ -210,9 +268,12 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
           ),
         ),
         const SizedBox(width: 8),
-        _ExportButton(
-          isLoading: _exporting,
-          onTap: () => _onExport(context, data),
+        _ExportDropdown(
+          isExportingPdf: _exportingPdf,
+          isExportingExcel: _exportingExcel,
+          onExportPdf: () => _onExportPdf(ctx, data, businessName, branchLabel),
+          onExportExcel: () =>
+              _onExportExcel(ctx, data, businessName, branchLabel),
         ),
       ],
     );
@@ -235,7 +296,7 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
 
   Widget _buildPageSummaryCards(ReportsData data) {
     switch (_selectedTab) {
-      case 0: // Sales Report
+      case 0:
         final revChange = pctChange(data.totalRevenue, data.prevTotalRevenue);
         final txnChange = data.totalTransactions - data.prevTotalTransactions;
         final avgChange = pctChange(data.avgTicket, data.prevAvgTicket);
@@ -283,7 +344,7 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
           ],
         );
 
-      case 1: // Inventory Health
+      case 1:
         return ReportStatCardsRow(
           cards: [
             ReportStatCard(
@@ -317,7 +378,7 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
           ],
         );
 
-      case 2: // Profit Summary
+      case 2:
         final netChange = pctChange(data.netProfit, data.prevNetProfit);
         return ReportStatCardsRow(
           cards: [
@@ -354,13 +415,12 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
           ],
         );
 
-      case 3: // Branch Comparison
+      case 3:
         final branchCount = data.branchStats.length;
-        final totalBranchSales = data.branchStats.fold<double>(
-          0,
-          (s, b) => s + b.totalSales,
-        );
-        final topBranch = data.branchStats.where((b) => b.isTop).firstOrNull;
+        final totalBranchSales =
+            data.branchStats.fold<double>(0, (s, b) => s + b.totalSales);
+        final topBranch =
+            data.branchStats.where((b) => b.isTop).firstOrNull;
         return ReportStatCardsRow(
           cards: [
             ReportStatCard(
@@ -402,15 +462,173 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
   }
 }
 
-class _ExportButton extends StatelessWidget {
-  final VoidCallback onTap;
-  final bool isLoading;
-  const _ExportButton({required this.onTap, this.isLoading = false});
+// ─── Report header card ───────────────────────────────────────────────────────
+
+class _ReportHeaderCard extends StatelessWidget {
+  final String businessName;
+  final String branchLabel;
+  final ReportPeriod period;
+
+  const _ReportHeaderCard({
+    required this.businessName,
+    required this.branchLabel,
+    required this.period,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: isLoading ? null : onTap,
+    final now = DateTime.now();
+    final stamp =
+        '${now.day}/${now.month}/${now.year}  ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderSoft),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: AppColors.brandSoft,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.analytics_outlined,
+                color: AppColors.brand, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  businessName.isNotEmpty ? businessName : 'Reports & Analytics',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    _Chip(Icons.calendar_today_outlined, period.label),
+                    const SizedBox(width: 10),
+                    _Chip(Icons.store_outlined, branchLabel),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              const Text(
+                'Generated',
+                style: TextStyle(fontSize: 10, color: AppColors.textMuted),
+              ),
+              Text(
+                stamp,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _Chip(this.icon, this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 11, color: AppColors.textMuted),
+        const SizedBox(width: 3),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Export dropdown ──────────────────────────────────────────────────────────
+
+enum _ExportType { pdf, excel }
+
+class _ExportDropdown extends StatelessWidget {
+  final bool isExportingPdf;
+  final bool isExportingExcel;
+  final VoidCallback onExportPdf;
+  final VoidCallback onExportExcel;
+
+  const _ExportDropdown({
+    required this.isExportingPdf,
+    required this.isExportingExcel,
+    required this.onExportPdf,
+    required this.onExportExcel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final busy = isExportingPdf || isExportingExcel;
+    final label = isExportingPdf
+        ? 'Exporting PDF…'
+        : isExportingExcel
+            ? 'Exporting…'
+            : 'Export';
+
+    return PopupMenuButton<_ExportType>(
+      enabled: !busy,
+      offset: const Offset(0, 40),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      color: Colors.white,
+      onSelected: (t) {
+        if (t == _ExportType.pdf) onExportPdf();
+        if (t == _ExportType.excel) onExportExcel();
+      },
+      itemBuilder: (_) => [
+        PopupMenuItem(
+          value: _ExportType.pdf,
+          child: Row(
+            children: [
+              Icon(Icons.picture_as_pdf_rounded,
+                  size: 15, color: AppColors.error),
+              const SizedBox(width: 10),
+              const Text('Export as PDF',
+                  style: TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: _ExportType.excel,
+          child: Row(
+            children: [
+              Icon(Icons.table_chart_rounded,
+                  size: 15, color: AppColors.success),
+              const SizedBox(width: 10),
+              const Text('Export as Excel (.xlsx)',
+                  style: TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+            ],
+          ),
+        ),
+      ],
       child: Container(
         height: 36,
         padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -422,7 +640,7 @@ class _ExportButton extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (isLoading)
+            if (busy)
               const SizedBox(
                 width: 13,
                 height: 13,
@@ -432,26 +650,30 @@ class _ExportButton extends StatelessWidget {
                 ),
               )
             else
-              const Icon(
-                Icons.download_rounded,
-                size: 15,
-                color: AppColors.textSecondary,
-              ),
+              const Icon(Icons.download_rounded,
+                  size: 15, color: AppColors.textSecondary),
             const SizedBox(width: 6),
             Text(
-              isLoading ? 'Exporting…' : 'Export PDF',
+              label,
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
                 color: AppColors.textPrimary,
               ),
             ),
+            if (!busy) ...[
+              const SizedBox(width: 2),
+              const Icon(Icons.arrow_drop_down_rounded,
+                  size: 16, color: AppColors.textMuted),
+            ],
           ],
         ),
       ),
     );
   }
 }
+
+// ─── Error view ───────────────────────────────────────────────────────────────
 
 class _ErrorView extends StatelessWidget {
   final String message;
@@ -466,23 +688,18 @@ class _ErrorView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.error_outline,
-              size: 40,
-              color: AppColors.textMuted,
-            ),
+            const Icon(Icons.error_outline, size: 40, color: AppColors.textMuted),
             const SizedBox(height: 12),
             const Text(
               'Failed to load reports',
               style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
+                  fontWeight: FontWeight.w600, color: AppColors.textPrimary),
             ),
             const SizedBox(height: 4),
             Text(
               message,
-              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+              style:
+                  const TextStyle(fontSize: 12, color: AppColors.textMuted),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
