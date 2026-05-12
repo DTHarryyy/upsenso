@@ -14,9 +14,20 @@ class SalesRepository implements ISalesRepository {
   const SalesRepository(this._txDao);
 
   @override
-  Stream<List<SaleTransaction>> watchTransactions({String? branchId}) => _txDao
-      .watchTransactions(branchId: branchId)
-      .map((rows) => rows.map(_mapTransaction).toList());
+  Stream<List<SaleTransaction>> watchTransactions({String? branchId}) =>
+      _txDao.watchTransactions(branchId: branchId).asyncMap((rows) async {
+        final ids = rows.map((r) => r.id).toList();
+        final counts = await _txDao.getItemCountsForTransactions(ids);
+        return rows.map((r) {
+          // Use actual count from transaction_items; fall back to stored
+          // itemCount only if no items exist yet (brand-new transaction
+          // not yet committed to the items table).
+          final realCount = counts.containsKey(r.id)
+              ? counts[r.id]!
+              : r.itemCount;
+          return _mapTransaction(r, itemCount: realCount);
+        }).toList();
+      });
 
   @override
   Future<List<SaleItem>> getTransactionItems(String transactionId) async {
@@ -26,22 +37,24 @@ class SalesRepository implements ISalesRepository {
 
   // ── Mappers ───────────────────────────────────────────────────────────────
 
-  static SaleTransaction _mapTransaction(TransactionsTableData row) =>
-      SaleTransaction(
-        id: row.id,
-        createdAt: row.createdAt,
-        totalAmount: row.totalAmount,
-        subtotal: row.subtotal,
-        taxAmount: row.taxAmount,
-        discountAmount: row.discountAmount,
-        amountReceived: row.amountReceived,
-        changeDue: row.changeDue,
-        paymentMethod: row.paymentMethod,
-        customerName: row.customerName,
-        cashierId: row.cashierId,
-        branchId: row.branchId,
-        itemCount: row.itemCount,
-      );
+  static SaleTransaction _mapTransaction(
+    TransactionsTableData row, {
+    int? itemCount,
+  }) => SaleTransaction(
+    id: row.id,
+    createdAt: row.createdAt,
+    totalAmount: row.totalAmount,
+    subtotal: row.subtotal,
+    taxAmount: row.taxAmount,
+    discountAmount: row.discountAmount,
+    amountReceived: row.amountReceived,
+    changeDue: row.changeDue,
+    paymentMethod: row.paymentMethod,
+    customerName: row.customerName,
+    cashierId: row.cashierId,
+    branchId: row.branchId,
+    itemCount: itemCount ?? row.itemCount,
+  );
 
   static SaleItem _mapItem(TransactionItemsTableData row) => SaleItem(
     transactionId: row.transactionId,

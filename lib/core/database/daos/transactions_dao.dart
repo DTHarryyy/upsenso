@@ -63,46 +63,44 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
   /// Local-only fields (itemCount, customerName, paymentMethod, subtotal,
   /// amountReceived, changeDue) are preserved if the row already exists.
   Future<void> upsertFromServer(Map<String, dynamic> row) async {
-    final companion = TransactionsTableCompanion.insert(
-      id: row['id'] as String,
-      cashierId: row['cashier_id'] as String,
-      branchId: Value(row['branch_id'] as String?),
-      shiftId: Value(row['shift_id'] as String?),
-      totalAmount: (row['total_amount'] as num).toDouble(),
-      taxAmount: (row['tax_amount'] as num).toDouble(),
-      subtotal: (row['total_amount'] as num).toDouble(), // best estimate
-      itemCount: 0,
-      syncStatus: const Value(3), // synced
-      lastSyncAttempt: Value(DateTime.now()),
-      createdAt: Value(DateTime.parse(row['created_at'] as String)),
-    );
+    final id = row['id'] as String;
+    final createdAt = DateTime.parse(row['created_at'] as String);
+    final existing = await (select(
+      transactionsTable,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
 
-    await into(transactionsTable).insert(
-      companion,
-      onConflict: DoUpdate(
-        (old) => TransactionsTableCompanion.custom(
-          // Overwrite server-side fields
-          cashierId: companion.cashierId,
-          branchId: companion.branchId,
-          shiftId: companion.shiftId,
-          totalAmount: companion.totalAmount,
-          taxAmount: companion.taxAmount,
-          createdAt: companion.createdAt,
-          syncStatus: companion.syncStatus,
-          lastSyncAttempt: companion.lastSyncAttempt,
-          // Preserve local-only fields that Supabase does not store:
-          // itemCount, subtotal, customerName, paymentMethod,
-          // amountReceived, changeDue are kept from the existing row.
-          itemCount: old.itemCount,
-          subtotal: old.subtotal,
-          customerName: old.customerName,
-          paymentMethod: old.paymentMethod,
-          amountReceived: old.amountReceived,
-          changeDue: old.changeDue,
+    if (existing != null) {
+      // Row exists — only overwrite server-side fields, preserve local-only ones.
+      await (update(transactionsTable)..where((t) => t.id.equals(id))).write(
+        TransactionsTableCompanion(
+          cashierId: Value(row['cashier_id'] as String),
+          branchId: Value(row['branch_id'] as String?),
+          shiftId: Value(row['shift_id'] as String?),
+          totalAmount: Value((row['total_amount'] as num).toDouble()),
+          taxAmount: Value((row['tax_amount'] as num).toDouble()),
+          createdAt: Value(createdAt),
+          syncStatus: const Value(3),
+          lastSyncAttempt: Value(DateTime.now()),
         ),
-        target: [transactionsTable.id],
-      ),
-    );
+      );
+    } else {
+      // New row from server — insert with zeroed local-only fields.
+      await into(transactionsTable).insert(
+        TransactionsTableCompanion.insert(
+          id: id,
+          cashierId: row['cashier_id'] as String,
+          branchId: Value(row['branch_id'] as String?),
+          shiftId: Value(row['shift_id'] as String?),
+          totalAmount: (row['total_amount'] as num).toDouble(),
+          taxAmount: (row['tax_amount'] as num).toDouble(),
+          subtotal: (row['total_amount'] as num).toDouble(),
+          itemCount: 0,
+          syncStatus: const Value(3),
+          lastSyncAttempt: Value(DateTime.now()),
+          createdAt: Value(createdAt),
+        ),
+      );
+    }
   }
 
   /// Reactive count of transactions that need syncing (for status bar).
@@ -186,5 +184,22 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
     return (select(
       transactionItemsTable,
     )..where((t) => t.transactionId.isIn(transactionIds))).get();
+  }
+
+  /// Returns a map of transactionId → actual line-item count from
+  /// transaction_items. Used to show the real count even when the
+  /// stored itemCount column is stale (e.g. rows synced from Supabase).
+  Future<Map<String, int>> getItemCountsForTransactions(
+    List<String> transactionIds,
+  ) async {
+    if (transactionIds.isEmpty) return {};
+    final rows = await (select(
+      transactionItemsTable,
+    )..where((t) => t.transactionId.isIn(transactionIds))).get();
+    final counts = <String, int>{};
+    for (final row in rows) {
+      counts[row.transactionId] = (counts[row.transactionId] ?? 0) + 1;
+    }
+    return counts;
   }
 }
