@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
@@ -164,6 +166,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                             userEmail: userEmail,
                             userAvatar: userAvatar,
                             businessName: businessName,
+                            businessId: authState.user.businessId,
                             isOnline: isOnline,
                             pendingSyncCount: pendingSyncCount,
                             branches: visibleBranches,
@@ -339,6 +342,7 @@ class _AppSidebar extends StatefulWidget {
   final String userEmail;
   final String? userAvatar;
   final String businessName;
+  final String? businessId;
   final bool isOnline;
   final int pendingSyncCount;
   final List<String> branches;
@@ -355,6 +359,7 @@ class _AppSidebar extends StatefulWidget {
     required this.userEmail,
     required this.userAvatar,
     required this.businessName,
+    this.businessId,
     required this.isOnline,
     required this.pendingSyncCount,
     required this.branches,
@@ -371,10 +376,12 @@ class _AppSidebarState extends State<_AppSidebar>
   bool _settingsExpanded = false;
   late final AnimationController _settingsAnimCtrl;
   late final Animation<double> _settingsExpandAnim;
+  String? _businessLogoUrl;
 
   @override
   void initState() {
     super.initState();
+    if (widget.businessId != null) _loadBusinessLogo(widget.businessId!);
     _settingsAnimCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 200),
@@ -397,12 +404,38 @@ class _AppSidebarState extends State<_AppSidebar>
       setState(() => _settingsExpanded = true);
       _settingsAnimCtrl.forward();
     }
+    if (widget.businessId != oldWidget.businessId &&
+        widget.businessId != null) {
+      _loadBusinessLogo(widget.businessId!);
+    }
   }
 
   @override
   void dispose() {
     _settingsAnimCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadBusinessLogo(String businessId) async {
+    // 1. Show cached value instantly
+    final prefs = await SharedPreferences.getInstance();
+    final cached = prefs.getString('biz_logo_$businessId');
+    if (cached != null && mounted) setState(() => _businessLogoUrl = cached);
+
+    // 2. Background-fetch authoritative URL from Supabase
+    try {
+      final row = await sl<SupabaseClient>()
+          .from('businesses')
+          .select('logo_url')
+          .eq('id', businessId)
+          .maybeSingle();
+      final remote = row?['logo_url'] as String?;
+      if (remote != null && remote.isNotEmpty && mounted) {
+        final url = '$remote?t=${DateTime.now().millisecondsSinceEpoch}';
+        setState(() => _businessLogoUrl = url);
+        await prefs.setString('biz_logo_$businessId', url);
+      }
+    } catch (_) {}
   }
 
   void _toggleSettings() {
@@ -454,18 +487,10 @@ class _AppSidebarState extends State<_AppSidebar>
                 ? Row(
                     children: [
                       const SizedBox(width: 12),
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: AppColors.brand,
-                          borderRadius: BorderRadius.circular(9),
-                        ),
-                        child: const Icon(
-                          Icons.point_of_sale_rounded,
-                          size: 18,
-                          color: AppColors.textInverse,
-                        ),
+                      _BusinessLogo(
+                        logoUrl: _businessLogoUrl,
+                        businessName: widget.businessName,
+                        size: 32,
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -499,7 +524,7 @@ class _AppSidebarState extends State<_AppSidebar>
                     ],
                   )
                 : Tooltip(
-                    message: 'Expand sidebar',
+                    message: widget.businessName,
                     preferBelow: false,
                     waitDuration: const Duration(milliseconds: 400),
                     child: Material(
@@ -507,12 +532,12 @@ class _AppSidebarState extends State<_AppSidebar>
                       child: InkWell(
                         onTap: widget.onToggle,
                         mouseCursor: SystemMouseCursors.click,
-                        child: const SizedBox.expand(
+                        child: SizedBox.expand(
                           child: Center(
-                            child: Icon(
-                              Icons.chevron_right_rounded,
-                              size: 20,
-                              color: AppColors.textMuted,
+                            child: _BusinessLogo(
+                              logoUrl: _businessLogoUrl,
+                              businessName: widget.businessName,
+                              size: 32,
                             ),
                           ),
                         ),
@@ -647,6 +672,78 @@ class _AppSidebarState extends State<_AppSidebar>
       ),
     );
   }
+}
+
+// ── Business logo widget ───────────────────────────────────────────────────
+// Shows the uploaded business logo, falling back to a branded initial block.
+
+class _BusinessLogo extends StatelessWidget {
+  final String? logoUrl;
+  final String businessName;
+  final double size;
+
+  const _BusinessLogo({
+    required this.logoUrl,
+    required this.businessName,
+    required this.size,
+  });
+
+  String _initial() {
+    final clean = businessName.trim();
+    if (clean.isEmpty) return 'B';
+    final words =
+        clean.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    if (words.length >= 2) {
+      return '${words[0][0]}${words[1][0]}'.toUpperCase();
+    }
+    return clean.substring(0, clean.length > 1 ? 2 : 1).toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = size / 3.5;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: AppColors.brand,
+        borderRadius: BorderRadius.circular(radius),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        child: logoUrl != null
+            ? Image.network(
+                logoUrl!,
+                fit: BoxFit.cover,
+                width: size,
+                height: size,
+                errorBuilder: (_, _, _) => _Initial(
+                  initial: _initial(),
+                  size: size,
+                ),
+              )
+            : _Initial(initial: _initial(), size: size),
+      ),
+    );
+  }
+}
+
+class _Initial extends StatelessWidget {
+  final String initial;
+  final double size;
+  const _Initial({required this.initial, required this.size});
+
+  @override
+  Widget build(BuildContext context) => Center(
+        child: Text(
+          initial,
+          style: getOutfitStyle(
+            fontSize: size * 0.36,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+          ),
+        ),
+      );
 }
 
 // ── Settings accordion ─────────────────────────────────────────────────────

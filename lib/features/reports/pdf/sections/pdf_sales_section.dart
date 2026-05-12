@@ -2,112 +2,85 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:pos/features/reports/data/reports_data.dart';
 import 'package:pos/features/reports/pdf/report_pdf_styles.dart';
 import 'package:pos/features/reports/presentation/widgets/report_card.dart'
-    show fmtPct, pctChange;
+    show pctChange;
 
 List<pw.Widget> buildSalesSection(ReportsData data) {
   final revChg = pctChange(data.totalRevenue, data.prevTotalRevenue);
   final txnChg = pctChange(
       data.totalTransactions.toDouble(), data.prevTotalTransactions.toDouble());
-  final ticketChg = pctChange(data.avgTicket, data.prevAvgTicket);
-  final itemsChg = pctChange(
+  final tickChg = pctChange(data.avgTicket, data.prevAvgTicket);
+  final itemChg = pctChange(
       data.itemsSold.toDouble(), data.prevItemsSold.toDouble());
 
-  return [
-    PdfS.sectionHeader('Sales Report'),
+  String s(double v) =>
+      '${v >= 0 ? '+' : ''}${v.toStringAsFixed(1)}% vs prev';
 
-    // ── Stat boxes ───────────────────────────────────────────────────────────
-    pw.Row(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Expanded(
-          child: PdfS.statBox(
-            label: 'Total Revenue',
-            value: pdfCurrency(data.totalRevenue),
-            change: '${fmtPct(revChg)} vs prev period',
-            isPositive: revChg >= 0,
-          ),
-        ),
-        pw.SizedBox(width: 8),
-        pw.Expanded(
-          child: PdfS.statBox(
-            label: 'Transactions',
-            value: data.totalTransactions.toString(),
-            change: '${fmtPct(txnChg)} vs prev period',
-            isPositive: txnChg >= 0,
-          ),
-        ),
-        pw.SizedBox(width: 8),
-        pw.Expanded(
-          child: PdfS.statBox(
-            label: 'Avg. Ticket',
-            value: pdfCurrency(data.avgTicket),
-            change: '${fmtPct(ticketChg)} vs prev period',
-            isPositive: ticketChg >= 0,
-          ),
-        ),
-        pw.SizedBox(width: 8),
-        pw.Expanded(
-          child: PdfS.statBox(
-            label: 'Items Sold',
-            value: data.itemsSold.toString(),
-            change: '${fmtPct(itemsChg)} vs prev period',
-            isPositive: itemsChg >= 0,
-          ),
-        ),
-      ],
+  return [
+    // ── Section header ─────────────────────────────────────────────────────
+    PdfS.sectionHeader(
+      '01',
+      'Sales Performance',
+      description:
+          'Revenue, transaction volume, and average order value for the reporting period.',
     ),
 
-    // ── Sales trend ──────────────────────────────────────────────────────────
+    // ── KPI metrics ────────────────────────────────────────────────────────
+    PdfS.metricRow([
+      PdfMetric('Total Revenue', pdfCurrency(data.totalRevenue),
+          change: s(revChg), isPositive: revChg >= 0),
+      PdfMetric('Transactions', '${data.totalTransactions}',
+          change: s(txnChg), isPositive: txnChg >= 0),
+      PdfMetric('Avg. Order Value', pdfCurrency(data.avgTicket),
+          change: s(tickChg), isPositive: tickChg >= 0),
+      PdfMetric('Items Sold', '${data.itemsSold}',
+          change: s(itemChg), isPositive: itemChg >= 0),
+    ]),
+
+    // ── Period trend table ─────────────────────────────────────────────────
     if (data.salesTrend.isNotEmpty) ...[
-      PdfS.subHeader('Sales Trend'),
+      PdfS.subHead('Period Breakdown'),
       _salesTrendTable(data),
     ],
 
-    // ── Category breakdown ───────────────────────────────────────────────────
+    // ── Category breakdown ─────────────────────────────────────────────────
     if (data.categoryBreakdown.isNotEmpty) ...[
-      PdfS.subHeader('Sales by Category'),
+      PdfS.subHead('Sales by Category'),
       _categoryTable(data),
     ],
   ];
 }
 
 pw.Widget _salesTrendTable(ReportsData data) {
-  final points =
-      data.salesTrend.where((p) => p.label.isNotEmpty).toList();
-  return pw.Table(
+  final pts = data.salesTrend.where((p) => p.label.isNotEmpty).toList();
+  final total = pts.fold(0.0, (s, p) => s + p.total);
+
+  return PdfS.financialTable(
     columnWidths: {
-      0: const pw.FlexColumnWidth(2.5),
+      0: const pw.FlexColumnWidth(3),
       1: const pw.FlexColumnWidth(2),
     },
-    children: [
-      PdfS.tableHeaderRow(['Period', 'Revenue']),
-      ...List.generate(points.length, (i) {
-        final p = points[i];
-        return PdfS.tableDataRow([p.label, pdfCurrency(p.total)], i);
-      }),
-    ],
+    headers: ['Period', 'Revenue'],
+    rows: pts.map((p) => [p.label, pdfCurrency(p.total)]).toList(),
+    totalsRow: ['Total', pdfCurrency(total)],
+    rightAlignCols: [1],
   );
 }
 
 pw.Widget _categoryTable(ReportsData data) {
-  final total =
-      data.categoryBreakdown.fold(0.0, (sum, c) => sum + c.total);
-  return pw.Table(
+  final total = data.categoryBreakdown.fold(0.0, (s, c) => s + c.total);
+
+  return PdfS.financialTable(
     columnWidths: {
       0: const pw.FlexColumnWidth(3),
       1: const pw.FlexColumnWidth(2),
       2: const pw.FlexColumnWidth(1.5),
     },
-    children: [
-      PdfS.tableHeaderRow(['Category', 'Revenue', '% of Total']),
-      ...List.generate(data.categoryBreakdown.length, (i) {
-        final c = data.categoryBreakdown[i];
-        final pct = total > 0 ? c.total / total * 100 : 0.0;
-        return PdfS.tableDataRow(
-          [c.name, pdfCurrency(c.total), '${pct.toStringAsFixed(1)}%'],
-          i,
-        );
-      }),
-    ],
+    headers: ['Category', 'Revenue', '% of Total'],
+    rows: data.categoryBreakdown.map((c) {
+      final pct = total > 0 ? c.total / total * 100 : 0.0;
+      return [c.name, pdfCurrency(c.total), '${pct.toStringAsFixed(1)}%'];
+    }).toList(),
+    totalsRow: ['Total', pdfCurrency(total), '100%'],
+    rightAlignCols: [1, 2],
   );
 }

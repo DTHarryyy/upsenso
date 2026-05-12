@@ -1,13 +1,17 @@
-import 'dart:async';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:pos/core/branch/branch_cubit.dart';
-import 'package:pos/core/branch/branch_state.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as p;
+import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
-import 'package:pos/core/const/app_typography.dart';
-import 'package:pos/core/sync/connectivity_service.dart';
+import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/ui/status/status_snack.dart';
+import 'package:pos/core/ui/status/status_type.dart';
+import 'package:pos/features/auth/domain/entities/app_user.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 
@@ -19,237 +23,437 @@ class BusinessProfilePage extends StatefulWidget {
 }
 
 class _BusinessProfilePageState extends State<BusinessProfilePage> {
-  late final ConnectivityService _connectivityService;
-  StreamSubscription<bool>? _connectivitySub;
-  bool _isOnline = true;
+  String? _businessId;
+  String? _logoUrl;
+  bool _isUploading = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _connectivityService = sl<ConnectivityService>();
-    _connectivitySub = _connectivityService.onConnectivityChanged.listen((
-      isConnected,
-    ) {
-      if (mounted && _isOnline != isConnected) {
-        setState(() {
-          _isOnline = isConnected;
-        });
+  // ── Logo loading ─────────────────────────────────────────────────────────────
+
+  Future<void> _initLogo(String businessId) async {
+    if (_businessId == businessId) return;
+    _businessId = businessId;
+
+    // 1. Check local cache for instant display
+    final prefs = await SharedPreferences.getInstance();
+    final cached = prefs.getString('biz_logo_$businessId');
+    if (cached != null && mounted) setState(() => _logoUrl = cached);
+
+    // 2. Fetch from Supabase DB in background (authoritative source)
+    try {
+      final row = await sl<SupabaseClient>()
+          .from('businesses')
+          .select('logo_url')
+          .eq('id', businessId)
+          .maybeSingle();
+      final remote = row?['logo_url'] as String?;
+      if (remote != null && remote.isNotEmpty && mounted) {
+        final url = '$remote?t=${DateTime.now().millisecondsSinceEpoch}';
+        setState(() => _logoUrl = url);
+        await prefs.setString('biz_logo_$businessId', url);
       }
-    });
-    _loadInitialConnectivity();
-  }
-
-  Future<void> _loadInitialConnectivity() async {
-    final isConnected = await _connectivityService.isConnected;
-    if (mounted && _isOnline != isConnected) {
-      setState(() {
-        _isOnline = isConnected;
-      });
+    } catch (_) {
+      // Silently use cached value
     }
   }
 
-  @override
-  void dispose() {
-    _connectivitySub?.cancel();
-    super.dispose();
+  // ── Logo upload ──────────────────────────────────────────────────────────────
+
+  Future<void> _pickLogo() async {
+    if (_isUploading || _businessId == null) return;
+
+    final source = await _showSourceSheet();
+    if (source == null) return;
+
+    // Camera needs runtime permission on native
+    if (!kIsWeb && source == ImageSource.camera) {
+      var status = await Permission.camera.status;
+      if (status.isPermanentlyDenied) {
+        await openAppSettings();
+        status = await Permission.camera.status;
+      } else if (!status.isGranted) {
+        status = await Permission.camera.request();
+      }
+      if (!status.isGranted) return;
+    }
+
+    final picked = await ImagePicker().pickImage(
+      source: source,
+      maxWidth: 512,
+      imageQuality: 90,
+    );
+    if (picked == null) return;
+
+    setState(() => _isUploading = true);
+    try {
+      final bytes = Uint8List.fromList(await picked.readAsBytes());
+      final ext = p.extension(picked.path).toLowerCase();
+      final safeExt = ext.isNotEmpty ? ext : '.jpg';
+      final contentType = safeExt == '.png'
+          ? 'image/png'
+          : safeExt == '.webp'
+              ? 'image/webp'
+              : 'image/jpeg';
+
+      final storagePath = '$_businessId/logo$safeExt';
+      final client = sl<SupabaseClient>();
+
+      await client.storage.from('business-logos').uploadBinary(
+            storagePath,
+            bytes,
+            fileOptions:
+                FileOptions(upsert: true, contentType: contentType),
+          );
+
+      final rawUrl =
+          client.storage.from('business-logos').getPublicUrl(storagePath);
+      final url = '$rawUrl?t=${DateTime.now().millisecondsSinceEpoch}';
+
+      // Persist URL to DB and local cache
+      await client
+          .from('businesses')
+          .update({'logo_url': rawUrl}).eq('id', _businessId!);
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('biz_logo_$_businessId', url);
+
+      if (mounted) {
+        setState(() => _logoUrl = url);
+        StatusSnack.show(
+          context,
+          type: StatusType.success,
+          title: 'Logo Updated',
+          message: 'Business logo saved successfully.',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        StatusSnack.show(
+          context,
+          type: StatusType.error,
+          title: 'Upload Failed',
+          message: e.toString(),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Eto muna okay na to!!!!'),
-        backgroundColor: AppColors.surface,
-        foregroundColor: AppColors.textPrimary,
-        elevation: 0,
+  Future<ImageSource?> _showSourceSheet() {
+    return showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      body: BlocBuilder<AuthBloc, AuthState>(
-        builder: (context, authState) {
-          if (authState is! AuthAuthenticated) {
-            return const Center(child: Text('Not authenticated'));
-          }
-
-          final user = authState.user;
-
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _isOnline
-                        ? Colors.green.withValues(alpha: 0.12)
-                        : Colors.orange.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    _isOnline ? 'ONLINE' : 'OFFLINE',
-                    style: AppTextStyles.body(context).copyWith(
-                      color: _isOnline ? Colors.green : Colors.orange,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _buildInfoCard(
-                  title: 'User Information',
-                  items: [
-                    _InfoItem('User ID', user.id),
-                    _InfoItem('Email', user.email ?? 'N/A'),
-                    _InfoItem('Full Name', user.fullName ?? 'N/A'),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _buildInfoCard(
-                  title: 'Business Information',
-                  items: [
-                    _InfoItem('Business ID', user.businessId ?? 'N/A'),
-                    _InfoItem('Business Name', user.businessName ?? 'N/A'),
-                    _InfoItem('Category', user.businessTemplateName ?? 'N/A'),
-                    _InfoItem('Role ID', user.roleId ?? 'N/A'),
-                    _InfoItem('Role Name', user.roleName ?? 'N/A'),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                BlocBuilder<BranchCubit, BranchState>(
-                  builder: (context, branchState) {
-                    return _buildInfoCard(
-                      title: 'Branch Information',
-                      items: [
-                        _InfoItem('Branch ID', user.branchId ?? 'N/A'),
-                        _InfoItem('Branch Name', user.branchName ?? 'N/A'),
-                        _InfoItem(
-                          'Selected Branch (Cubit)',
-                          branchState.selectedBranch?.isEmpty ?? true
-                              ? 'Not set'
-                              : branchState.selectedBranch!,
-                        ),
-                        _InfoItem(
-                          'Selected Branch ID (Cubit)',
-                          branchState.selectedBranchId?.isEmpty ?? true
-                              ? 'Not set'
-                              : branchState.selectedBranchId!,
-                        ),
-                      ],
-                    );
-                  },
-                ),
-                const SizedBox(height: 24),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: _isOnline ? Colors.green : Colors.orange,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _isOnline
-                            ? 'All systems operational'
-                            : 'Working offline with cached data',
-                        style: AppTextStyles.subtitle(context).copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _isOnline
-                            ? 'Connected to server. All features available.'
-                            : 'Offline mode active. Using cached business and user data.',
-                        style: AppTextStyles.body(
-                          context,
-                        ).copyWith(color: AppColors.textSecondary),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Has Business: ${user.businessId != null ? "YES" : "NO"}',
-                        style: AppTextStyles.body(context).copyWith(
-                          color: user.businessId != null
-                              ? Colors.green
-                              : Colors.red,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.borderSoft,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          );
-        },
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'Update Business Logo',
+                style: getOutfitStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'Choose a square image for best results.',
+                style: getOutfitStyle(
+                    fontSize: 12, color: AppColors.textMuted),
+              ),
+            ),
+            const SizedBox(height: 12),
+            ListTile(
+              leading: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.brandSoft,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: const Icon(Icons.camera_alt_outlined,
+                    color: AppColors.brand, size: 18),
+              ),
+              title: Text('Take Photo',
+                  style: getOutfitStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary)),
+              subtitle: Text('Open camera',
+                  style: getOutfitStyle(
+                      fontSize: 12, color: AppColors.textMuted)),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.brandSoft,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: const Icon(Icons.photo_library_outlined,
+                    color: AppColors.brand, size: 18),
+              ),
+              title: Text('Choose from Gallery',
+                  style: getOutfitStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary)),
+              subtitle: Text('Browse your photos',
+                  style: getOutfitStyle(
+                      fontSize: 12, color: AppColors.textMuted)),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildInfoCard({
-    required String title,
-    required List<_InfoItem> items,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: AppTextStyles.subtitle(context).copyWith(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.bold,
+  // ── Build ────────────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        final user = state is AuthAuthenticated ? state.user : null;
+
+        if (user?.businessId != null) {
+          _initLogo(user!.businessId!);
+        }
+
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: AppBar(
+            title: Text(
+              'Business Profile',
+              style: getOutfitStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            backgroundColor: AppColors.surface,
+            foregroundColor: AppColors.textPrimary,
+            elevation: 0,
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(1),
+              child: Container(height: 1, color: AppColors.borderSoft),
             ),
           ),
-          const SizedBox(height: 12),
-          const Divider(),
-          const SizedBox(height: 8),
-          ...items.map(
-            (item) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    width: 120,
-                    child: Text(
-                      item.label,
-                      style: AppTextStyles.body(context).copyWith(
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
+          body: user == null
+              ? const Center(child: CircularProgressIndicator())
+              : _Body(
+                  user: user,
+                  logoUrl: _logoUrl,
+                  isUploading: _isUploading,
+                  onUploadLogo: _pickLogo,
+                ),
+        );
+      },
+    );
+  }
+}
+
+// ─── Body ─────────────────────────────────────────────────────────────────────
+
+class _Body extends StatelessWidget {
+  final AppUser user;
+  final String? logoUrl;
+  final bool isUploading;
+  final VoidCallback onUploadLogo;
+
+  const _Body({
+    required this.user,
+    required this.logoUrl,
+    required this.isUploading,
+    required this.onUploadLogo,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final isDesktop = width >= 1024;
+    final hPad = isDesktop ? 32.0 : 20.0;
+    final maxW = isDesktop ? 1080.0 : double.infinity;
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(hPad, 20, hPad, 32),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxW),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _BusinessHeader(
+                user: user,
+                logoUrl: logoUrl,
+                isUploading: isUploading,
+                onUpload: onUploadLogo,
+              ),
+              const SizedBox(height: 16),
+              if (isDesktop)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: _BusinessDetailsCard(user: user)),
+                    const SizedBox(width: 16),
+                    Expanded(child: _AccountCard(user: user)),
+                  ],
+                )
+              else ...[
+                _BusinessDetailsCard(user: user),
+                const SizedBox(height: 16),
+                _AccountCard(user: user),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Business identity header ─────────────────────────────────────────────────
+
+class _BusinessHeader extends StatelessWidget {
+  final AppUser user;
+  final String? logoUrl;
+  final bool isUploading;
+  final VoidCallback onUpload;
+
+  const _BusinessHeader({
+    required this.user,
+    required this.logoUrl,
+    required this.isUploading,
+    required this.onUpload,
+  });
+
+  String _initial(String name) {
+    final clean = name.trim();
+    if (clean.isEmpty) return 'B';
+    final words =
+        clean.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    if (words.length >= 2) {
+      return '${words[0][0]}${words[1][0]}'.toUpperCase();
+    }
+    return clean.substring(0, clean.length > 1 ? 2 : 1).toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final name = user.businessName ?? 'My Business';
+    final type = user.businessTemplateName;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderSoft),
+      ),
+      child: Row(
+        children: [
+          // Tappable logo block
+          GestureDetector(
+            onTap: onUpload,
+            child: Stack(
+              children: [
+                Container(
+                  width: 68,
+                  height: 68,
+                  decoration: BoxDecoration(
+                    color: AppColors.brand,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: _LogoContent(
+                      logoUrl: logoUrl,
+                      isUploading: isUploading,
+                      initial: _initial(name),
                     ),
                   ),
-                  Expanded(
-                    child: Text(
-                      item.value,
-                      style: AppTextStyles.body(
-                        context,
-                      ).copyWith(color: AppColors.textPrimary),
+                ),
+                // Camera badge
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                          color: AppColors.borderSoft, width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withAlpha(20),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt_rounded,
+                      size: 12,
+                      color: AppColors.brand,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: getOutfitStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                if (type != null && type.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    type,
+                    style: getOutfitStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
                     ),
                   ),
                 ],
-              ),
+                const SizedBox(height: 8),
+                _StatusBadge(
+                  icon: Icons.check_circle_rounded,
+                  label: 'Active',
+                  color: AppColors.success,
+                  bg: AppColors.successSoft,
+                ),
+              ],
             ),
           ),
         ],
@@ -258,9 +462,303 @@ class _BusinessProfilePageState extends State<BusinessProfilePage> {
   }
 }
 
-class _InfoItem {
-  final String label;
-  final String value;
+class _LogoContent extends StatelessWidget {
+  final String? logoUrl;
+  final bool isUploading;
+  final String initial;
 
-  _InfoItem(this.label, this.value);
+  const _LogoContent({
+    required this.logoUrl,
+    required this.isUploading,
+    required this.initial,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (isUploading) {
+      return const Center(
+        child: CircularProgressIndicator(
+          color: Colors.white,
+          strokeWidth: 2.5,
+        ),
+      );
+    }
+
+    if (logoUrl != null) {
+      return Image.network(
+        logoUrl!,
+        fit: BoxFit.cover,
+        width: 68,
+        height: 68,
+        errorBuilder: (_, _, _) => _Initial(initial: initial),
+      );
+    }
+
+    return _Initial(initial: initial);
+  }
+}
+
+class _Initial extends StatelessWidget {
+  final String initial;
+  const _Initial({required this.initial});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(
+        initial,
+        style: getOutfitStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.w800,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Business details card ────────────────────────────────────────────────────
+
+class _BusinessDetailsCard extends StatelessWidget {
+  final AppUser user;
+  const _BusinessDetailsCard({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionCard(
+      icon: Icons.store_rounded,
+      title: 'Business Information',
+      rows: [
+        _InfoRow(
+          icon: Icons.business_rounded,
+          label: 'Business Name',
+          value: user.businessName ?? '—',
+        ),
+        if (user.businessTemplateName?.isNotEmpty == true)
+          _InfoRow(
+            icon: Icons.category_outlined,
+            label: 'Business Type',
+            value: user.businessTemplateName!,
+          ),
+        _InfoRow(
+          icon: Icons.verified_rounded,
+          label: 'Account Status',
+          valueWidget: const _StatusBadge(
+            icon: Icons.check_circle_rounded,
+            label: 'Active',
+            color: AppColors.success,
+            bg: AppColors.successSoft,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Account card ─────────────────────────────────────────────────────────────
+
+class _AccountCard extends StatelessWidget {
+  final AppUser user;
+  const _AccountCard({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    final branch = user.branchName?.isNotEmpty == true
+        ? user.branchName!
+        : 'All Branches';
+
+    return _SectionCard(
+      icon: Icons.person_rounded,
+      title: 'Your Account',
+      rows: [
+        _InfoRow(
+          icon: Icons.badge_outlined,
+          label: 'Full Name',
+          value: user.fullName ?? '—',
+        ),
+        _InfoRow(
+          icon: Icons.email_outlined,
+          label: 'Email',
+          value: user.email ?? '—',
+        ),
+        _InfoRow(
+          icon: Icons.admin_panel_settings_outlined,
+          label: 'Role',
+          value: user.roleName ?? '—',
+          valueStyle: getOutfitStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppColors.brand,
+          ),
+        ),
+        _InfoRow(
+          icon: Icons.location_on_outlined,
+          label: 'Assigned Branch',
+          value: branch,
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Shared primitives ────────────────────────────────────────────────────────
+
+class _SectionCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final List<_InfoRow> rows;
+
+  const _SectionCard({
+    required this.icon,
+    required this.title,
+    required this.rows,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.borderSoft),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: AppColors.brandSoft,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, size: 16, color: AppColors.brand),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  title,
+                  style: getOutfitStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(height: 1, color: AppColors.borderSoft),
+          Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Column(
+              children: List.generate(rows.length, (i) {
+                return Column(
+                  children: [
+                    rows[i],
+                    if (i < rows.length - 1)
+                      Container(height: 1, color: AppColors.borderSoft),
+                  ],
+                );
+              }),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String? value;
+  final Widget? valueWidget;
+  final TextStyle? valueStyle;
+
+  const _InfoRow({
+    required this.icon,
+    required this.label,
+    this.value,
+    this.valueWidget,
+    this.valueStyle,
+  }) : assert(value != null || valueWidget != null);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: AppColors.textMuted),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 130,
+            child: Text(
+              label,
+              style: getOutfitStyle(
+                  fontSize: 13, color: AppColors.textSecondary),
+            ),
+          ),
+          Expanded(
+            child: valueWidget ??
+                Text(
+                  value!,
+                  textAlign: TextAlign.end,
+                  style: valueStyle ??
+                      getOutfitStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textPrimary,
+                      ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final Color bg;
+
+  const _StatusBadge({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.bg,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: getOutfitStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
