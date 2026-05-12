@@ -155,26 +155,6 @@
     Math.ceil always returns a value ≥ actual DPR.  Using the live getter (not
     a captured constant) means browser zoom changes are still reflected.
   ──────────────────────────────────────────────────────────────────────── -->
-  <!-- Convert history.pushState → replaceState during the initial page load so
-       GoRouter's programmatic navigation doesn't create a "skippable" history entry.
-       Once the user first interacts with the page, pushState is restored to normal. -->
-  <script>
-    (function () {
-      var _interacted = false;
-      var _origPush = history.pushState.bind(history);
-      history.pushState = function (state, title, url) {
-        if (!_interacted) return history.replaceState(state, title, url);
-        return _origPush(state, title, url);
-      };
-      ['click', 'keydown', 'pointerdown', 'touchstart'].forEach(function (e) {
-        window.addEventListener(e, function () {
-          _interacted = true;
-          history.pushState = _origPush;
-        }, { once: true, capture: true });
-      });
-    })();
-  </script>
-
   <!-- Shim Intl.v8BreakIterator → Intl.Segmenter to suppress the Chrome
        deprecation warning emitted by the Dart web SDK's text-segmentation code.
        Defining an own property on Intl shadows the deprecated built-in so Chrome's

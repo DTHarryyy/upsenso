@@ -288,6 +288,15 @@ class AppRouter {
         ],
       ),
 
+      // Root path redirect — visiting the bare domain (/) has no matching
+      // route so GoRouter would fall through to onException (→ /login).
+      // Redirect it cleanly to /dashboard and let the auth guard sort out
+      // whether the user needs to sign in first.
+      GoRoute(
+        path: '/',
+        redirect: (context, state) => AppRoutes.dashboard,
+      ),
+
       // Keep /home redirect for any saved links or old references
       GoRoute(
         path: AppRoutes.home,
