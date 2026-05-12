@@ -19,12 +19,10 @@ class TransactionsRemoteDs {
       'business_id': businessId,
       'branch_id': branchId,
       'cashier_id': cashierId,
-      'shift_id': null,
       'total_amount': totalAmount,
       'discount_amount': discountAmount,
       'tax_amount': taxAmount,
       'status': 'completed',
-      'transaction_hash': null,
       'created_at': createdAt.toIso8601String(),
     });
   }

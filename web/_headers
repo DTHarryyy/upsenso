@@ -3,6 +3,13 @@
 # which breaks WebAssembly.instantiateStreaming(), and .js workers may
 # be served without charset causing MIME sniffing warnings in some browsers.
 
+# Cross-origin isolation headers required for SharedArrayBuffer (used by
+# SQLite WASM shared worker). Without these, Drift falls back to a slower
+# single-threaded WASM mode and the "Buffers cannot be shared" warning appears.
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+
 /sqlite3.wasm
   Content-Type: application/wasm
 
