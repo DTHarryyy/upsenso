@@ -41,7 +41,9 @@ class SyncService {
   final ReceiptSettingsRepository _receiptSettingsRepo;
 
   StreamSubscription<bool>? _connectivitySubscription;
+  Timer? _retryTimer;
   bool _isSyncing = false;
+  bool _initCalled = false;
 
   SyncService({
     required AuthContextDao authContextDao,
@@ -87,23 +89,33 @@ class SyncService {
   }
 
   /// Initialize sync service and listen for connectivity changes.
-  /// On each reconnect: push pending local changes, then pull from server.
+  /// Guards against being called multiple times (e.g. if MainNavigationPage
+  /// is rebuilt) so we never accumulate duplicate listeners.
   void init() {
+    if (_initCalled) return;
+    _initCalled = true;
+
     // Sync immediately if already online at startup.
     _connectivityService.isConnected.then((online) {
       if (online) syncAll();
     });
 
-    // sync whenever connectivity is restored.
+    // Sync whenever connectivity is restored.
     _connectivitySubscription = _connectivityService.onConnectivityChanged
         .listen((isConnected) {
-          if (isConnected) {
-            syncAll();
-          }
+          if (isConnected) syncAll();
         });
+
+    // Periodic retry every 60 s so that a failed initial sync doesn't leave
+    // data pending forever (which would otherwise require a connectivity change
+    // or app restart to trigger another attempt).
+    _retryTimer = Timer.periodic(const Duration(seconds: 60), (_) {
+      syncAll().ignore();
+    });
   }
 
   void dispose() {
+    _retryTimer?.cancel();
     _connectivitySubscription?.cancel();
   }
 
@@ -161,13 +173,15 @@ class SyncService {
     if (_isSyncing) {
       return SyncResult(success: false, message: 'Sync already in progress');
     }
+    // Set the flag immediately — before any await — so concurrent calls that
+    // arrive during the isOnline check are correctly blocked.
+    _isSyncing = true;
 
     final online = await isOnline;
     if (!online) {
+      _isSyncing = false;
       return SyncResult(success: false, message: 'No internet connection');
     }
-
-    _isSyncing = true;
 
     try {
       // upload na here  bag o i pull

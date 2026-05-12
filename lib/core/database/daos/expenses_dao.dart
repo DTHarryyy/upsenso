@@ -52,6 +52,7 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
       ..where(expensesTable.syncStatus.isIn([
           SyncStatus.pendingUpload.toInt(),
           SyncStatus.pendingUpdate.toInt(),
+          SyncStatus.pendingDelete.toInt(),
           SyncStatus.failed.toInt(),
         ]));
     return query.watchSingle().map((row) => row.read(countExp) ?? 0);

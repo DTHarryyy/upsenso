@@ -44,14 +44,15 @@ class ProductsDao extends DatabaseAccessor<AppDatabase>
     final countExp = productsTable.id.count();
     final query = selectOnly(productsTable)
       ..addColumns([countExp])
-      ..where(productsTable.syncStatus.isIn([0, 1, 4]));
+      ..where(productsTable.syncStatus.isIn([0, 1, 2, 4]));
     return query.watchSingle().map((row) => row.read(countExp) ?? 0);
   }
 
-  /// Records with pending sync: pendingUpload (0), pendingUpdate (1), failed (4).
+  /// Records with pending sync: pendingUpload (0), pendingUpdate (1),
+  /// pendingDelete (2), failed (4).
   Future<List<ProductsTableData>> getPendingSync() {
     return (select(productsTable)
-          ..where((t) => t.syncStatus.isIn([0, 1, 4])))
+          ..where((t) => t.syncStatus.isIn([0, 1, 2, 4])))
         .get();
   }
 

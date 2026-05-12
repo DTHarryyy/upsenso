@@ -58,14 +58,14 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
     final countExp = categoriesTable.id.count();
     final query = selectOnly(categoriesTable)
       ..addColumns([countExp])
-      ..where(categoriesTable.syncStatus.isIn([0, 1, 4]));
+      ..where(categoriesTable.syncStatus.isIn([0, 1, 2, 4]));
     return query.watchSingle().map((row) => row.read(countExp) ?? 0);
   }
 
-  /// Records pending upload, update, or retry.
+  /// Records pending upload, update, delete, or retry.
   Future<List<CategoriesTableData>> getPendingSync() {
     return (select(categoriesTable)
-          ..where((t) => t.syncStatus.isIn([0, 1, 4])))
+          ..where((t) => t.syncStatus.isIn([0, 1, 2, 4])))
         .get();
   }
 

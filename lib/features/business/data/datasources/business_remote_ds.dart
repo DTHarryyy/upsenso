@@ -13,7 +13,7 @@ class BusinessRemoteDs {
     return List<Map<String, dynamic>>.from(response);
   }
 
-  /// Create a new business
+  /// Create a new business (upsert so re-sync never fails with duplicate key).
   Future<Map<String, dynamic>> createBusiness({
     required String id,
     required String name,
@@ -22,7 +22,7 @@ class BusinessRemoteDs {
   }) async {
     final response = await client
         .from('businesses')
-        .insert({
+        .upsert({
           'id': id,
           'name': name,
           'owner_id': ownerId,
