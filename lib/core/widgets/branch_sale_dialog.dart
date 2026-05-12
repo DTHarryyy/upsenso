@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 
 /// A record returned when the user confirms a branch selection.
@@ -16,6 +17,26 @@ Future<BranchSelection?> showBranchSaleDialog(BuildContext context) {
   final cubit = context.read<BranchCubit>();
   final options = cubit.getAvailableBranchOptions();
 
+  if (Breakpoints.isTablet(context)) {
+    return showDialog<BranchSelection>(
+      context: context,
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: BlocProvider.value(
+              value: cubit,
+              child: _BranchSaleSheet(options: options, isDialog: true),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   return showModalBottomSheet<BranchSelection>(
     context: context,
     isScrollControlled: true,
@@ -29,8 +50,9 @@ Future<BranchSelection?> showBranchSaleDialog(BuildContext context) {
 
 class _BranchSaleSheet extends StatefulWidget {
   final List<BranchSelection> options;
+  final bool isDialog;
 
-  const _BranchSaleSheet({required this.options});
+  const _BranchSaleSheet({required this.options, this.isDialog = false});
 
   @override
   State<_BranchSaleSheet> createState() => _BranchSaleSheetState();
@@ -53,25 +75,29 @@ class _BranchSaleSheetState extends State<_BranchSaleSheet> {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
 
     return Padding(
-      padding: EdgeInsets.only(bottom: bottom),
+      padding: EdgeInsets.only(bottom: widget.isDialog ? 0 : bottom),
       child: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: widget.isDialog
+              ? BorderRadius.circular(20)
+              : const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Drag handle
-            const SizedBox(height: 12),
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.borderSoft,
-                borderRadius: BorderRadius.circular(2),
+            // Drag handle — hidden in dialog mode
+            if (!widget.isDialog) ...[
+              const SizedBox(height: 12),
+              Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.borderSoft,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-            ),
+            ],
             const SizedBox(height: 20),
 
             // Header
@@ -126,11 +152,16 @@ class _BranchSaleSheetState extends State<_BranchSaleSheet> {
             if (widget.options.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(
-                    vertical: 32, horizontal: 24),
+                  vertical: 32,
+                  horizontal: 24,
+                ),
                 child: Column(
                   children: [
-                    const Icon(Icons.store_mall_directory_outlined,
-                        size: 48, color: AppColors.textMuted),
+                    const Icon(
+                      Icons.store_mall_directory_outlined,
+                      size: 48,
+                      color: AppColors.textMuted,
+                    ),
                     const SizedBox(height: 12),
                     Text(
                       'No branches available',
@@ -159,11 +190,12 @@ class _BranchSaleSheetState extends State<_BranchSaleSheet> {
                 ),
                 child: ListView.separated(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 4),
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
                   shrinkWrap: true,
                   itemCount: widget.options.length,
-                  separatorBuilder: (_, _) =>
-                      const SizedBox(height: 6),
+                  separatorBuilder: (_, _) => const SizedBox(height: 6),
                   itemBuilder: (_, i) {
                     final branch = widget.options[i];
                     final isSelected = _selected?.name == branch.name;
@@ -184,16 +216,15 @@ class _BranchSaleSheetState extends State<_BranchSaleSheet> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
               child: SafeArea(
                 top: false,
+                bottom: !widget.isDialog,
                 child: Row(
                   children: [
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () => Navigator.of(context).pop(),
                         style: OutlinedButton.styleFrom(
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 14),
-                          side: const BorderSide(
-                              color: AppColors.borderSoft),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: const BorderSide(color: AppColors.borderSoft),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -218,8 +249,7 @@ class _BranchSaleSheetState extends State<_BranchSaleSheet> {
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.brand,
                           disabledBackgroundColor: AppColors.disabled,
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -278,8 +308,7 @@ class _BranchTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
               AnimatedContainer(
@@ -288,18 +317,18 @@ class _BranchTile extends StatelessWidget {
                 height: 22,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color:
-                      isSelected ? AppColors.brand : Colors.transparent,
+                  color: isSelected ? AppColors.brand : Colors.transparent,
                   border: Border.all(
-                    color: isSelected
-                        ? AppColors.brand
-                        : AppColors.borderSoft,
+                    color: isSelected ? AppColors.brand : AppColors.borderSoft,
                     width: 2,
                   ),
                 ),
                 child: isSelected
-                    ? const Icon(Icons.check_rounded,
-                        size: 13, color: Colors.white)
+                    ? const Icon(
+                        Icons.check_rounded,
+                        size: 13,
+                        color: Colors.white,
+                      )
                     : null,
               ),
               const SizedBox(width: 14),
@@ -307,19 +336,18 @@ class _BranchTile extends StatelessWidget {
                 child: Text(
                   name,
                   style: getOutfitStyle(
-                    color: isSelected
-                        ? AppColors.brand
-                        : AppColors.textPrimary,
-                    fontWeight: isSelected
-                        ? FontWeight.w700
-                        : FontWeight.w500,
+                    color: isSelected ? AppColors.brand : AppColors.textPrimary,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                     fontSize: 15,
                   ),
                 ),
               ),
               if (isSelected)
-                const Icon(Icons.store_rounded,
-                    size: 18, color: AppColors.brand),
+                const Icon(
+                  Icons.store_rounded,
+                  size: 18,
+                  color: AppColors.brand,
+                ),
             ],
           ),
         ),

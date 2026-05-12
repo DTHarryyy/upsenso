@@ -135,6 +135,7 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
         amountReceived: Value(_isCash ? _amountReceived : null),
         changeDue: Value(_isCash ? _change : null),
         itemCount: widget.items.fold(0, (s, i) => s + i.qty.round()),
+        createdAt: Value(DateTime.now()),
       );
 
       final txItems = widget.items

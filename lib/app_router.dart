@@ -26,9 +26,9 @@ import 'package:pos/features/business/presentation/bloc/business_bloc.dart';
 import 'package:pos/features/business/presentation/business_profile_page.dart';
 import 'package:pos/features/business/presentation/business_profile_setup.dart';
 import 'package:pos/features/home/presentation/main_navigation_page.dart';
-import 'package:pos/core/database/app_database.dart';
 import 'package:pos/features/inventory/inventory.dart';
 import 'package:pos/features/pos/presentation/pos_terminal_page.dart';
+import 'package:pos/features/products/domain/entities/product.dart';
 import 'package:pos/features/products/pages/add_products.dart';
 import 'package:pos/features/products/products_page.dart';
 import 'package:pos/features/profile/presentation/profile_page.dart';
@@ -181,7 +181,7 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.editProduct,
         builder: (context, state) =>
-            AddProductsPage(productToEdit: state.extra as ProductsTableData?),
+            AddProductsPage(productToEdit: state.extra as Product?),
       ),
       GoRoute(
         path: AppRoutes.aiChat,
@@ -292,10 +292,7 @@ class AppRouter {
       // route so GoRouter would fall through to onException (→ /login).
       // Redirect it cleanly to /dashboard and let the auth guard sort out
       // whether the user needs to sign in first.
-      GoRoute(
-        path: '/',
-        redirect: (context, state) => AppRoutes.dashboard,
-      ),
+      GoRoute(path: '/', redirect: (context, state) => AppRoutes.dashboard),
 
       // Keep /home redirect for any saved links or old references
       GoRoute(

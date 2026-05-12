@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/features/products/domain/entities/product.dart';
 import 'package:pos/features/products/domain/entities/product_variant.dart';
@@ -13,19 +14,43 @@ void showProductSelectionSheet(
   void Function(ProductVariant variant, double quantity)? onConfirm,
   VoidCallback? onEdit,
 }) {
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    backgroundColor: Colors.transparent,
-    builder: (_) => _ProductSelectionSheet(
-      product: product,
-      variants: variants,
-      variantStock: variantStock,
-      onConfirm: onConfirm,
-      onEdit: onEdit,
-    ),
-  );
+  if (Breakpoints.isTablet(context)) {
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: _ProductSelectionSheet(
+              product: product,
+              variants: variants,
+              variantStock: variantStock,
+              onConfirm: onConfirm,
+              onEdit: onEdit,
+              isDialog: true,
+            ),
+          ),
+        ),
+      ),
+    );
+  } else {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ProductSelectionSheet(
+        product: product,
+        variants: variants,
+        variantStock: variantStock,
+        onConfirm: onConfirm,
+        onEdit: onEdit,
+      ),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -36,6 +61,7 @@ class _ProductSelectionSheet extends StatefulWidget {
   final Map<String, int> variantStock;
   final void Function(ProductVariant, double)? onConfirm;
   final VoidCallback? onEdit;
+  final bool isDialog;
 
   const _ProductSelectionSheet({
     required this.product,
@@ -43,6 +69,7 @@ class _ProductSelectionSheet extends StatefulWidget {
     this.variantStock = const {},
     this.onConfirm,
     this.onEdit,
+    this.isDialog = false,
   });
 
   @override
@@ -101,25 +128,30 @@ class _ProductSelectionSheetState extends State<_ProductSelectionSheet> {
     final bool hasVariants = widget.product.hasVariants;
 
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: widget.isDialog
+            ? BorderRadius.circular(20)
+            : const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Drag handle
-          Padding(
-            padding: const EdgeInsets.only(top: 10, bottom: 4),
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.borderSoft,
-                borderRadius: BorderRadius.circular(2),
+          // Drag handle — hidden in dialog mode
+          if (!widget.isDialog)
+            Padding(
+              padding: const EdgeInsets.only(top: 10, bottom: 4),
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.borderSoft,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-            ),
-          ),
+            )
+          else
+            const SizedBox(height: 16),
 
           // Scrollable content
           Flexible(
@@ -149,7 +181,9 @@ class _ProductSelectionSheetState extends State<_ProductSelectionSheet> {
               20,
               8,
               20,
-              MediaQuery.viewInsetsOf(context).bottom + 16,
+              widget.isDialog
+                  ? 16
+                  : MediaQuery.viewInsetsOf(context).bottom + 16,
             ),
             child: AppFilledButton(
               label: _selected != null

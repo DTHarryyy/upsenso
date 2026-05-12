@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:pos/core/database/app_database.dart';
+import 'package:pos/features/products/domain/entities/product.dart';
 import 'package:pos/core/database/daos/categories_dao.dart';
 import 'package:pos/core/database/daos/inventory_levels_dao.dart';
 import 'package:pos/core/database/daos/products_dao.dart';
@@ -13,10 +14,8 @@ import 'package:pos/core/services/image_service.dart';
 import 'product_form_state.dart';
 
 class ProductFormCubit extends Cubit<ProductFormState> {
-  ProductFormCubit({
-    required this.businessId,
-    this.selectedBranchId,
-  }) : super(ProductFormState.initial()) {
+  ProductFormCubit({required this.businessId, this.selectedBranchId})
+    : super(ProductFormState.initial()) {
     _loadCategories();
   }
 
@@ -61,8 +60,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     }
   }
 
-  void setExpiryDate(DateTime date) =>
-      emit(state.copyWith(expiryDate: date));
+  void setExpiryDate(DateTime date) => emit(state.copyWith(expiryDate: date));
 
   void toggleMoreOptions() =>
       emit(state.copyWith(moreOptionsExpanded: !state.moreOptionsExpanded));
@@ -79,15 +77,19 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         businessId: businessId,
         source: source,
       );
-      emit(state.copyWith(
-        isUploadingImage: false,
-        imagePath: url ?? state.imagePath,
-      ));
+      emit(
+        state.copyWith(
+          isUploadingImage: false,
+          imagePath: url ?? state.imagePath,
+        ),
+      );
     } catch (e) {
-      emit(state.copyWith(
-        isUploadingImage: false,
-        error: AppErrorMapper.message(e),
-      ));
+      emit(
+        state.copyWith(
+          isUploadingImage: false,
+          error: AppErrorMapper.message(e),
+        ),
+      );
     }
   }
 
@@ -103,21 +105,27 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         .where((w) => w.isNotEmpty)
         .map((w) => w[0].toUpperCase())
         .join('');
-    final suffix = DateTime.now().millisecondsSinceEpoch.toString().substring(8);
+    final suffix = DateTime.now().millisecondsSinceEpoch.toString().substring(
+      8,
+    );
     return '$prefix-$suffix';
   }
 
   // ── Edit existing product ─────────────────────────────────────────────────
 
   /// Initialise cubit state from an existing product (called when editing).
-  void initEditState(ProductsTableData product) {
-    emit(state.copyWith(
-      mode: product.hasVariants ? ProductFormMode.advanced : ProductFormMode.simple,
-      hasVariants: product.hasVariants,
-      selectedCategoryId: product.categoryId,
-      imagePath: product.imagePath,
-      trackInventory: false, // updated after loading variants
-    ));
+  void initEditState(Product product) {
+    emit(
+      state.copyWith(
+        mode: product.hasVariants
+            ? ProductFormMode.advanced
+            : ProductFormMode.simple,
+        hasVariants: product.hasVariants,
+        selectedCategoryId: product.categoryId,
+        imagePath: product.imagePath,
+        trackInventory: false, // updated after loading variants
+      ),
+    );
   }
 
   /// Load the variants for a product (used to pre-fill the edit form).
@@ -179,7 +187,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         ProductsTableCompanion(
           name: Value(data.name.trim()),
           categoryId: Value(state.selectedCategoryId),
-          sku: Value(data.sku?.trim().isNotEmpty == true ? data.sku!.trim() : null),
+          sku: Value(
+            data.sku?.trim().isNotEmpty == true ? data.sku!.trim() : null,
+          ),
           hasVariants: Value(hasVariants),
           tax: Value(tax),
           sellBy: Value(data.sellBy),
@@ -193,8 +203,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       // so other branches don't lose their stock when one branch edits.
       final oldVariants = await _productVariantsDao.getByProductId(productId);
       // variantName → { branchId → (qty, qtyDecimal) }
-      final savedLevels =
-          <String, Map<String, ({int qty, double? qtyDec})>>{};
+      final savedLevels = <String, Map<String, ({int qty, double? qtyDec})>>{};
       for (final v in oldVariants) {
         final levels = await _levelsDao.getByVariantId(v.id);
         if (levels.isNotEmpty) {
@@ -238,22 +247,24 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           final vBarcode = (v.barcode?.trim().isNotEmpty == true)
               ? v.barcode!.trim()
               : null;
-          companions.add(ProductVariantsTableCompanion.insert(
-            id: id,
-            productId: productId,
-            businessId: businessId,
-            name: name,
-            price: Value(vPrice),
-            costPrice: Value(vCost),
-            retailPrice: const Value(null),
-            barcode: Value(vBarcode),
-            stock: Value(vStockInt),
-            stockDecimal: Value(vStockReal),
-            lowStockAlert: Value(vLowAlert),
-            trackStock: Value(state.trackInventory),
-            trackExpiry: Value(state.trackExpiry),
-            expiryDate: Value(state.trackExpiry ? state.expiryDate : null),
-          ));
+          companions.add(
+            ProductVariantsTableCompanion.insert(
+              id: id,
+              productId: productId,
+              businessId: businessId,
+              name: name,
+              price: Value(vPrice),
+              costPrice: Value(vCost),
+              retailPrice: const Value(null),
+              barcode: Value(vBarcode),
+              stock: Value(vStockInt),
+              stockDecimal: Value(vStockReal),
+              lowStockAlert: Value(vLowAlert),
+              trackStock: Value(state.trackInventory),
+              trackExpiry: Value(state.trackExpiry),
+              expiryDate: Value(state.trackExpiry ? state.expiryDate : null),
+            ),
+          );
           variantNameToNewId[name] = id;
           seeds.add((variantId: id, qty: vStockInt, qtyDecimal: vStockReal));
         }
@@ -316,7 +327,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             stock: const Value(0),
             stockDecimal: const Value(null),
             lowStockAlert: const Value(null),
-            barcode: Value(simpleBarcode?.isNotEmpty == true ? simpleBarcode : null),
+            barcode: Value(
+              simpleBarcode?.isNotEmpty == true ? simpleBarcode : null,
+            ),
             trackStock: const Value(false),
             trackExpiry: const Value(false),
             expiryDate: const Value(null),
@@ -399,7 +412,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           businessId: businessId,
           name: data.name.trim(),
           categoryId: Value(state.selectedCategoryId),
-          sku: Value(data.sku?.trim().isNotEmpty == true ? data.sku!.trim() : null),
+          sku: Value(
+            data.sku?.trim().isNotEmpty == true ? data.sku!.trim() : null,
+          ),
           barcode: const Value(null),
           hasVariants: Value(hasVariants),
           tax: Value(tax),
@@ -433,22 +448,24 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           final vBarcode = (v.barcode?.trim().isNotEmpty == true)
               ? v.barcode!.trim()
               : null;
-          companions.add(ProductVariantsTableCompanion.insert(
-            id: id,
-            productId: productId,
-            businessId: businessId,
-            name: v.name.trim().isEmpty ? 'Default' : v.name.trim(),
-            price: Value(vPrice),
-            costPrice: Value(vCost),
-            retailPrice: const Value(null),
-            barcode: Value(vBarcode),
-            stock: Value(vStockInt),
-            stockDecimal: Value(vStockReal),
-            lowStockAlert: Value(vLowAlert),
-            trackStock: Value(state.trackInventory),
-            trackExpiry: Value(state.trackExpiry),
-            expiryDate: Value(state.trackExpiry ? state.expiryDate : null),
-          ));
+          companions.add(
+            ProductVariantsTableCompanion.insert(
+              id: id,
+              productId: productId,
+              businessId: businessId,
+              name: v.name.trim().isEmpty ? 'Default' : v.name.trim(),
+              price: Value(vPrice),
+              costPrice: Value(vCost),
+              retailPrice: const Value(null),
+              barcode: Value(vBarcode),
+              stock: Value(vStockInt),
+              stockDecimal: Value(vStockReal),
+              lowStockAlert: Value(vLowAlert),
+              trackStock: Value(state.trackInventory),
+              trackExpiry: Value(state.trackExpiry),
+              expiryDate: Value(state.trackExpiry ? state.expiryDate : null),
+            ),
+          );
           seeds.add((variantId: id, qty: vStockInt, qtyDecimal: vStockReal));
         }
         await _productVariantsDao.insertVariants(companions);
@@ -509,7 +526,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             stock: const Value(0),
             stockDecimal: const Value(null),
             lowStockAlert: const Value(null),
-            barcode: Value(simpleBarcode?.isNotEmpty == true ? simpleBarcode : null),
+            barcode: Value(
+              simpleBarcode?.isNotEmpty == true ? simpleBarcode : null,
+            ),
             trackStock: const Value(false),
             trackExpiry: const Value(false),
             expiryDate: const Value(null),
@@ -526,11 +545,16 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         if (selectedBranchId == null && hasActualStock) {
           // All Branches + real opening stock → defer seeding; show dialog so
           // the user can nominate which branch receives the entered quantity.
-          emit(state.copyWith(
-            isSaving: false,
-            isSuccess: true,
-            pendingBranchAssignment: (variants: seeds, isFraction: isFraction),
-          ));
+          emit(
+            state.copyWith(
+              isSaving: false,
+              isSuccess: true,
+              pendingBranchAssignment: (
+                variants: seeds,
+                isFraction: isFraction,
+              ),
+            ),
+          );
           return;
         }
 

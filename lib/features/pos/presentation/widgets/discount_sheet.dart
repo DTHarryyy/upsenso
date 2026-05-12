@@ -1,32 +1,57 @@
 import 'package:flutter/material.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/services/cart_service.dart';
 import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/features/pos/data/models/cart_model.dart';
 
-/// Shows the discount bottom sheet and applies the chosen discount to [cartService].
+/// Shows the discount sheet – as a dialog on tablet/desktop, bottom-sheet on mobile.
 void showDiscountSheet(
   BuildContext context,
   CartService cartService,
   double subtotal,
 ) {
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (_) => DiscountSheet(cartService: cartService, subtotal: subtotal),
-  );
+  if (Breakpoints.isTablet(context)) {
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: DiscountSheet(
+              cartService: cartService,
+              subtotal: subtotal,
+              isDialog: true,
+            ),
+          ),
+        ),
+      ),
+    );
+  } else {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) =>
+          DiscountSheet(cartService: cartService, subtotal: subtotal),
+    );
+  }
 }
 
 class DiscountSheet extends StatefulWidget {
   final CartService cartService;
   final double subtotal;
+  final bool isDialog;
 
   const DiscountSheet({
     super.key,
     required this.cartService,
     required this.subtotal,
+    this.isDialog = false,
   });
 
   @override
@@ -89,30 +114,37 @@ class _DiscountSheetState extends State<DiscountSheet> {
     final presets = _type == DiscountType.percentage
         ? _pctPresets
         : _fixedPresets;
-    final bottomPad = MediaQuery.viewInsetsOf(context).bottom;
+    final bottomPad = widget.isDialog
+        ? 0.0
+        : MediaQuery.viewInsetsOf(context).bottom;
 
     return Container(
       padding: EdgeInsets.fromLTRB(20, 6, 20, 20 + bottomPad),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: widget.isDialog
+            ? BorderRadius.circular(20)
+            : const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Handle
-          Center(
-            child: Container(
-              width: 36,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: AppColors.borderSoft,
-                borderRadius: BorderRadius.circular(100),
+          // Handle — hidden in dialog mode
+          if (!widget.isDialog)
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.borderSoft,
+                  borderRadius: BorderRadius.circular(100),
+                ),
               ),
-            ),
-          ),
+            )
+          else
+            const SizedBox(height: 10),
 
           // Title
           Row(

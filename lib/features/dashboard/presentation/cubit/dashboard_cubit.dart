@@ -52,7 +52,12 @@ class DashboardCubit extends Cubit<DashboardState> {
     _isLoading = true;
     _pendingReload = false;
 
-    if (showSpinner) emit(const DashboardLoading());
+    // Only show the loading spinner when there is no data to display yet.
+    // On subsequent refreshes keep the stale data visible so the chart never
+    // flashes back to zeros while a reload is in-flight.
+    if (showSpinner && state is! DashboardLoaded) {
+      emit(const DashboardLoading());
+    }
 
     try {
       final data = await _repository.load(

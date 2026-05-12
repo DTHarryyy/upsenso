@@ -32,16 +32,16 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
   Future<List<TransactionItemsTableData>> getItemsByTransactionId(
     String transactionId,
   ) {
-    return (select(transactionItemsTable)
-          ..where((t) => t.transactionId.equals(transactionId)))
-        .get();
+    return (select(
+      transactionItemsTable,
+    )..where((t) => t.transactionId.equals(transactionId))).get();
   }
 
   /// Records pending upload or retry (transactions are immutable).
   Future<List<TransactionsTableData>> getPendingSync() {
-    return (select(transactionsTable)
-          ..where((t) => t.syncStatus.isIn([0, 4])))
-        .get();
+    return (select(
+      transactionsTable,
+    )..where((t) => t.syncStatus.isIn([0, 4]))).get();
   }
 
   /// Update sync status after a sync attempt.
@@ -60,20 +60,47 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Upsert a transaction row pulled from Supabase (marks as synced).
-  Future<void> upsertFromServer(Map<String, dynamic> row) {
-    return into(transactionsTable).insertOnConflictUpdate(
-      TransactionsTableCompanion.insert(
-        id: row['id'] as String,
-        cashierId: row['cashier_id'] as String,
-        branchId: Value(row['branch_id'] as String?),
-        shiftId: Value(row['shift_id'] as String?),
-        totalAmount: (row['total_amount'] as num).toDouble(),
-        taxAmount: (row['tax_amount'] as num).toDouble(),
-        subtotal: (row['total_amount'] as num).toDouble(), // best estimate
-        itemCount: 0,
-        syncStatus: const Value(3), // synced
-        lastSyncAttempt: Value(DateTime.now()),
-        createdAt: Value(DateTime.parse(row['created_at'] as String)),
+  /// Local-only fields (itemCount, customerName, paymentMethod, subtotal,
+  /// amountReceived, changeDue) are preserved if the row already exists.
+  Future<void> upsertFromServer(Map<String, dynamic> row) async {
+    final companion = TransactionsTableCompanion.insert(
+      id: row['id'] as String,
+      cashierId: row['cashier_id'] as String,
+      branchId: Value(row['branch_id'] as String?),
+      shiftId: Value(row['shift_id'] as String?),
+      totalAmount: (row['total_amount'] as num).toDouble(),
+      taxAmount: (row['tax_amount'] as num).toDouble(),
+      subtotal: (row['total_amount'] as num).toDouble(), // best estimate
+      itemCount: 0,
+      syncStatus: const Value(3), // synced
+      lastSyncAttempt: Value(DateTime.now()),
+      createdAt: Value(DateTime.parse(row['created_at'] as String)),
+    );
+
+    await into(transactionsTable).insert(
+      companion,
+      onConflict: DoUpdate(
+        (old) => TransactionsTableCompanion.custom(
+          // Overwrite server-side fields
+          cashierId: companion.cashierId,
+          branchId: companion.branchId,
+          shiftId: companion.shiftId,
+          totalAmount: companion.totalAmount,
+          taxAmount: companion.taxAmount,
+          createdAt: companion.createdAt,
+          syncStatus: companion.syncStatus,
+          lastSyncAttempt: companion.lastSyncAttempt,
+          // Preserve local-only fields that Supabase does not store:
+          // itemCount, subtotal, customerName, paymentMethod,
+          // amountReceived, changeDue are kept from the existing row.
+          itemCount: old.itemCount,
+          subtotal: old.subtotal,
+          customerName: old.customerName,
+          paymentMethod: old.paymentMethod,
+          amountReceived: old.amountReceived,
+          changeDue: old.changeDue,
+        ),
+        target: [transactionsTable.id],
       ),
     );
   }
@@ -88,9 +115,7 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Watch all completed transactions ordered by date, optionally filtered by branch.
-  Stream<List<TransactionsTableData>> watchTransactions({
-    String? branchId,
-  }) {
+  Stream<List<TransactionsTableData>> watchTransactions({String? branchId}) {
     final query = select(transactionsTable)
       ..orderBy([
         (t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
@@ -103,8 +128,9 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
 
   /// Fetch a single transaction by ID.
   Future<TransactionsTableData?> getById(String id) {
-    return (select(transactionsTable)..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    return (select(
+      transactionsTable,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
   /// Clear all transactions and items (e.g., on logout/reset).
@@ -122,9 +148,11 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
   }) {
     final query = select(transactionsTable)
       ..where((t) {
-        Expression<bool> cond = t.createdAt.isBiggerOrEqualValue(cutoff) &
+        Expression<bool> cond =
+            t.createdAt.isBiggerOrEqualValue(cutoff) &
             (t.businessId.equals(businessId) |
-                t.businessId.isNull()); // null rows = pre-v20 data, include them
+                t.businessId
+                    .isNull()); // null rows = pre-v20 data, include them
         if (branchId != null) {
           cond = cond & t.branchId.equals(branchId);
         }
@@ -141,9 +169,11 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
     required String businessId,
   }) {
     return (select(transactionsTable)
-          ..where((t) =>
-              t.createdAt.isBiggerOrEqualValue(cutoff) &
-              (t.businessId.equals(businessId) | t.businessId.isNull()))
+          ..where(
+            (t) =>
+                t.createdAt.isBiggerOrEqualValue(cutoff) &
+                (t.businessId.equals(businessId) | t.businessId.isNull()),
+          )
           ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
         .get();
   }
@@ -153,8 +183,8 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
     List<String> transactionIds,
   ) {
     if (transactionIds.isEmpty) return Future.value([]);
-    return (select(transactionItemsTable)
-          ..where((t) => t.transactionId.isIn(transactionIds)))
-        .get();
+    return (select(
+      transactionItemsTable,
+    )..where((t) => t.transactionId.isIn(transactionIds))).get();
   }
 }

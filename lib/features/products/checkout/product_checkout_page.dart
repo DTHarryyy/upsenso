@@ -7,6 +7,7 @@ import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
+import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/transactions_dao.dart';
@@ -144,6 +145,7 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
         amountReceived: Value(_isCash ? _amountReceived : null),
         changeDue: Value(_isCash ? _change : null),
         itemCount: widget.items.fold(0, (s, i) => s + i.qty.round()),
+        createdAt: Value(DateTime.now()),
       );
 
       final txItems = widget.items
@@ -233,6 +235,7 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = Breakpoints.isTablet(context);
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -246,157 +249,359 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: Column(
-        children: [
-          _buildOrderSummary(),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Customer name
-                  const AppFieldLabel('Customer (optional)'),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: _customerController,
-                    textCapitalization: TextCapitalization.words,
-                    textInputAction: TextInputAction.done,
-                    decoration: appInputDeco('Customer name'),
-                    style: getOutfitStyle(color: AppColors.textPrimary),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Payment method (visual cards)
-                  const AppFieldLabel('Payment Method'),
-                  const SizedBox(height: 10),
-                  _buildPaymentMethodSelector(),
-
-                  // Cash section
-                  AnimatedSize(
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeInOut,
-                    child: _isCash
-                        ? Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 20),
-                              const AppFieldLabel('Amount Received'),
-                              const SizedBox(height: 6),
-                              TextField(
-                                controller: _amountController,
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                      decimal: true,
-                                    ),
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.allow(
-                                    RegExp(r'^\d*\.?\d{0,2}'),
-                                  ),
-                                ],
-                                decoration: appInputDeco(
-                                  '0.00',
-                                  prefixText: '₱ ',
-                                ),
-                                style: getOutfitStyle(
-                                  color: AppColors.textPrimary,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 18,
-                                ),
-                                onChanged: (v) => setState(
-                                  () =>
-                                      _amountReceived = double.tryParse(v) ?? 0,
-                                ),
-                              ),
-                              const SizedBox(height: 14),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: [
-                                  ..._denoms.map(
-                                    (d) => DenomChip(
-                                      label: '₱${d.toInt()}',
-                                      onTap: () => _addDenom(d),
-                                    ),
-                                  ),
-                                  DenomChip(
-                                    label: 'Exact',
-                                    isExact: true,
-                                    onTap: _setExact,
-                                  ),
-                                ],
-                              ),
-                              if (_amountReceived > 0) ...[
-                                const SizedBox(height: 16),
-                                AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 14,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _change >= 0
-                                        ? AppColors.successSoft
-                                        : AppColors.errorSoft,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        _change >= 0 ? 'Change' : 'Short',
-                                        style: getOutfitStyle(
-                                          color: _change >= 0
-                                              ? AppColors.success
-                                              : AppColors.error,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                      Text(
-                                        ProductCartPage.fmtPrice(_change.abs()),
-                                        style: getOutfitStyle(
-                                          color: _change >= 0
-                                              ? AppColors.success
-                                              : AppColors.error,
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 20,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ],
-                          )
-                        : const SizedBox(width: double.infinity, height: 0),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Confirm button
-          Container(
-            margin: const EdgeInsets.all(15),
-            child: SafeArea(
-              top: false,
-              child: AppFilledButton(
-                label:
-                    'Confirm Payment  ·  ${ProductCartPage.fmtPrice(widget.total)}',
-                loading: _confirming,
-                onPressed: (_canConfirm && !_confirming) ? _confirm : null,
-              ),
-            ),
-          ),
-        ],
-      ),
+      body: isWide ? _buildWideBody(context) : _buildNarrowBody(context),
     );
   }
 
-  // ── Order summary header ──────────────────────────────────────────────────
+  // ── Wide layout (tablet / desktop) ────────────────────────────────────────
+
+  Widget _buildWideBody(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Left: full-height order summary panel
+        Container(
+          width: 400,
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            border: Border(right: BorderSide(color: AppColors.borderSoft)),
+          ),
+          child: _buildOrderSummaryPanel(),
+        ),
+        // Right: payment form + confirm button
+        Expanded(
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(28, 24, 28, 16),
+                  child: _buildPaymentFormContent(),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(28, 0, 28, 20),
+                child: SafeArea(
+                  top: false,
+                  child: AppFilledButton(
+                    label:
+                        'Confirm Payment  ·  ${ProductCartPage.fmtPrice(widget.total)}',
+                    loading: _confirming,
+                    onPressed: (_canConfirm && !_confirming) ? _confirm : null,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Narrow layout (phone) ─────────────────────────────────────────────────
+
+  Widget _buildNarrowBody(BuildContext context) {
+    return Column(
+      children: [
+        _buildOrderSummary(),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+            child: _buildPaymentFormContent(),
+          ),
+        ),
+        Container(
+          margin: const EdgeInsets.all(15),
+          child: SafeArea(
+            top: false,
+            child: AppFilledButton(
+              label:
+                  'Confirm Payment  ·  ${ProductCartPage.fmtPrice(widget.total)}',
+              loading: _confirming,
+              onPressed: (_canConfirm && !_confirming) ? _confirm : null,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Shared payment form content ───────────────────────────────────────────
+
+  Widget _buildPaymentFormContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Customer name
+        const AppFieldLabel('Customer (optional)'),
+        const SizedBox(height: 6),
+        TextField(
+          controller: _customerController,
+          textCapitalization: TextCapitalization.words,
+          textInputAction: TextInputAction.done,
+          decoration: appInputDeco('Customer name'),
+          style: getOutfitStyle(color: AppColors.textPrimary),
+        ),
+        const SizedBox(height: 20),
+
+        // Payment method (visual cards)
+        const AppFieldLabel('Payment Method'),
+        const SizedBox(height: 10),
+        _buildPaymentMethodSelector(),
+
+        // Cash section
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          child: _isCash
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 20),
+                    const AppFieldLabel('Amount Received'),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: _amountController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'^\d*\.?\d{0,2}'),
+                        ),
+                      ],
+                      decoration: appInputDeco('0.00', prefixText: '₱ '),
+                      style: getOutfitStyle(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 18,
+                      ),
+                      onChanged: (v) => setState(
+                        () => _amountReceived = double.tryParse(v) ?? 0,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        ..._denoms.map(
+                          (d) => DenomChip(
+                            label: '₱${d.toInt()}',
+                            onTap: () => _addDenom(d),
+                          ),
+                        ),
+                        DenomChip(
+                          label: 'Exact',
+                          isExact: true,
+                          onTap: _setExact,
+                        ),
+                      ],
+                    ),
+                    if (_amountReceived > 0) ...[
+                      const SizedBox(height: 16),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _change >= 0
+                              ? AppColors.successSoft
+                              : AppColors.errorSoft,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              _change >= 0 ? 'Change' : 'Short',
+                              style: getOutfitStyle(
+                                color: _change >= 0
+                                    ? AppColors.success
+                                    : AppColors.error,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
+                            Text(
+                              ProductCartPage.fmtPrice(_change.abs()),
+                              style: getOutfitStyle(
+                                color: _change >= 0
+                                    ? AppColors.success
+                                    : AppColors.error,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 20,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                )
+              : const SizedBox(width: double.infinity, height: 0),
+        ),
+      ],
+    );
+  }
+
+  // ── Wide-only: full order summary side panel ──────────────────────────────
+
+  Widget _buildOrderSummaryPanel() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Header
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.brandSoft,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.receipt_long_rounded,
+                  size: 18,
+                  color: AppColors.brand,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Order Summary',
+                    style: getOutfitStyle(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                  Text(
+                    '${widget.items.length} item${widget.items.length == 1 ? '' : 's'}',
+                    style: getOutfitStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              Text(
+                ProductCartPage.fmtPrice(widget.total),
+                style: getOutfitStyle(
+                  color: AppColors.brand,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        const Divider(height: 1, color: AppColors.borderSoft),
+        // Items list
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            children: widget.items.map((item) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.name,
+                            style: getOutfitStyle(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 13,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (item.variant.isNotEmpty)
+                            Text(
+                              item.variant,
+                              style: getOutfitStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 11,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      '×${item.qty.toInt()}',
+                      style: getOutfitStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Text(
+                      ProductCartPage.fmtPrice(item.total),
+                      style: getOutfitStyle(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        const Divider(height: 1, color: AppColors.borderSoft),
+        // Totals
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+          child: Column(
+            children: [
+              _summaryLine(
+                'Subtotal',
+                ProductCartPage.fmtPrice(widget.subtotal),
+              ),
+              if (widget.discountAmount > 0) ...[
+                const SizedBox(height: 4),
+                _summaryLine(
+                  'Discount',
+                  '− ${ProductCartPage.fmtPrice(widget.discountAmount)}',
+                  valueColor: AppColors.success,
+                ),
+              ],
+              if (widget.tax > 0) ...[
+                const SizedBox(height: 4),
+                _summaryLine('Tax', ProductCartPage.fmtPrice(widget.tax)),
+              ],
+              const SizedBox(height: 10),
+              const Divider(height: 1, color: AppColors.borderSoft),
+              const SizedBox(height: 10),
+              _summaryLine(
+                'Total',
+                ProductCartPage.fmtPrice(widget.total),
+                isBold: true,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Order summary collapsible header (narrow only) ────────────────────────
 
   Widget _buildOrderSummary() {
     return Container(

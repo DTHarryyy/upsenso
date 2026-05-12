@@ -96,45 +96,74 @@ class ProductCartPage extends StatelessWidget {
           ),
           body: cartService.isEmpty
               ? _buildEmptyState(context)
-              : Column(
-                  children: [
-                    Expanded(
-                      child: ListView.separated(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        itemCount: items.length,
-                        separatorBuilder: (_, _) => const Divider(
-                          height: 1,
-                          color: AppColors.borderSoft,
-                        ),
-                        itemBuilder: (_, i) => _CartItemRow(
-                          item: items[i],
-                          cartService: cartService,
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isWide = constraints.maxWidth >= 600;
+                    Future<dynamic> onCheckout() => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ProductCheckoutPage(
+                          items: List.from(cartService.items),
+                          subtotal: subtotal,
+                          tax: tax,
+                          total: total,
+                          discountAmount: discountAmount,
+                          onPaymentConfirmed: cartService.clear,
                         ),
                       ),
-                    ),
-                    _CartFooter(
-                      subtotal: subtotal,
-                      tax: tax,
-                      total: total,
-                      discountAmount: discountAmount,
-                      cartService: cartService,
-                      onCheckout: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => ProductCheckoutPage(
-                            items: List.from(cartService.items),
-                            subtotal: subtotal,
-                            tax: tax,
-                            total: total,
-                            discountAmount: discountAmount,
-                            onPaymentConfirmed: cartService.clear,
+                    );
+                    final itemList = ListView.separated(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isWide ? 24 : 16,
+                        vertical: 12,
+                      ),
+                      itemCount: items.length,
+                      separatorBuilder: (_, _) =>
+                          const Divider(height: 1, color: AppColors.borderSoft),
+                      itemBuilder: (_, i) => _CartItemRow(
+                        item: items[i],
+                        cartService: cartService,
+                      ),
+                    );
+                    if (isWide) {
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(child: itemList),
+                          Container(
+                            width: 380,
+                            decoration: const BoxDecoration(
+                              color: AppColors.surface,
+                              border: Border(
+                                left: BorderSide(color: AppColors.borderSoft),
+                              ),
+                            ),
+                            child: _CartFooter(
+                              subtotal: subtotal,
+                              tax: tax,
+                              total: total,
+                              discountAmount: discountAmount,
+                              cartService: cartService,
+                              isWide: true,
+                              onCheckout: onCheckout,
+                            ),
                           ),
+                        ],
+                      );
+                    }
+                    return Column(
+                      children: [
+                        Expanded(child: itemList),
+                        _CartFooter(
+                          subtotal: subtotal,
+                          tax: tax,
+                          total: total,
+                          discountAmount: discountAmount,
+                          cartService: cartService,
+                          onCheckout: onCheckout,
                         ),
-                      ),
-                    ),
-                  ],
+                      ],
+                    );
+                  },
                 ),
         );
       },
@@ -372,6 +401,7 @@ class _CartFooter extends StatelessWidget {
   final double discountAmount;
   final CartService cartService;
   final VoidCallback onCheckout;
+  final bool isWide;
 
   const _CartFooter({
     required this.subtotal,
@@ -380,11 +410,160 @@ class _CartFooter extends StatelessWidget {
     required this.discountAmount,
     required this.cartService,
     required this.onCheckout,
+    this.isWide = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final hasDiscount = cartService.hasDiscount;
+    final inner = SafeArea(
+      top: false,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isWide) ...[
+            Row(
+              children: [
+                Text(
+                  'Order Summary',
+                  style: AppTextStyles.subtitle(context).copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            const Divider(height: 1, color: AppColors.borderSoft),
+            const SizedBox(height: 14),
+          ],
+          _row('Subtotal', ProductCartPage.fmtPrice(subtotal)),
+          if (hasDiscount) ...[
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      cartService.discountType?.name == 'percentage'
+                          ? 'Discount (${cartService.discountValue.toStringAsFixed(cartService.discountValue % 1 == 0 ? 0 : 1)}%)'
+                          : 'Discount (Fixed)',
+                      style: getOutfitStyle(
+                        fontSize: 14,
+                        color: AppColors.success,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    GestureDetector(
+                      onTap: cartService.clearDiscount,
+                      child: const Icon(
+                        Icons.close_rounded,
+                        size: 14,
+                        color: AppColors.success,
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  '− ${ProductCartPage.fmtPrice(discountAmount)}',
+                  style: getOutfitStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.success,
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (tax > 0) ...[
+            const SizedBox(height: 4),
+            _row('Tax', ProductCartPage.fmtPrice(tax)),
+          ],
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 10),
+            child: Divider(height: 1, color: AppColors.borderSoft),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Total',
+                style: AppTextStyles.subtitle(context).copyWith(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                ProductCartPage.fmtPrice(total),
+                style: getOutfitStyle(
+                  color: AppColors.brand,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 20,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Discount button
+          GestureDetector(
+            onTap: () => showDiscountSheet(context, cartService, subtotal),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(
+                color: hasDiscount
+                    ? AppColors.successSoft
+                    : AppColors.surfaceAlt,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: hasDiscount ? AppColors.success : AppColors.borderSoft,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    hasDiscount
+                        ? Icons.local_offer_rounded
+                        : Icons.local_offer_outlined,
+                    size: 15,
+                    color: hasDiscount
+                        ? AppColors.success
+                        : AppColors.textSecondary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    hasDiscount
+                        ? 'Discount applied · tap to change'
+                        : 'Add Discount',
+                    style: getOutfitStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: hasDiscount
+                          ? AppColors.success
+                          : AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          AppFilledButton(label: 'Proceed to Checkout', onPressed: onCheckout),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+
+    if (isWide) {
+      return SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+        child: inner,
+      );
+    }
+
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.surface,
@@ -397,138 +576,7 @@ class _CartFooter extends StatelessWidget {
         ],
       ),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _row('Subtotal', ProductCartPage.fmtPrice(subtotal)),
-            if (hasDiscount) ...[
-              const SizedBox(height: 4),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        cartService.discountType?.name == 'percentage'
-                            ? 'Discount (${cartService.discountValue.toStringAsFixed(cartService.discountValue % 1 == 0 ? 0 : 1)}%)'
-                            : 'Discount (Fixed)',
-                        style: getOutfitStyle(
-                          fontSize: 14,
-                          color: AppColors.success,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      GestureDetector(
-                        onTap: cartService.clearDiscount,
-                        child: const Icon(
-                          Icons.close_rounded,
-                          size: 14,
-                          color: AppColors.success,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Text(
-                    '− ${ProductCartPage.fmtPrice(discountAmount)}',
-                    style: getOutfitStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.success,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            if (tax > 0) ...[
-              const SizedBox(height: 4),
-              _row('Tax', ProductCartPage.fmtPrice(tax)),
-            ],
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 10),
-              child: Divider(height: 1, color: AppColors.borderSoft),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Total',
-                  style: AppTextStyles.subtitle(context).copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                Text(
-                  ProductCartPage.fmtPrice(total),
-                  style: getOutfitStyle(
-                    color: AppColors.brand,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 20,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // Discount button
-            GestureDetector(
-              onTap: () => showDiscountSheet(context, cartService, subtotal),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 160),
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 9,
-                ),
-                decoration: BoxDecoration(
-                  color: hasDiscount
-                      ? AppColors.successSoft
-                      : AppColors.surfaceAlt,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: hasDiscount
-                        ? AppColors.success
-                        : AppColors.borderSoft,
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      hasDiscount
-                          ? Icons.local_offer_rounded
-                          : Icons.local_offer_outlined,
-                      size: 15,
-                      color: hasDiscount
-                          ? AppColors.success
-                          : AppColors.textSecondary,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      hasDiscount
-                          ? 'Discount applied · tap to change'
-                          : 'Add Discount',
-                      style: getOutfitStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: hasDiscount
-                            ? AppColors.success
-                            : AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            AppFilledButton(
-              label: 'Proceed to Checkout',
-              onPressed: onCheckout,
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
+      child: inner,
     );
   }
 

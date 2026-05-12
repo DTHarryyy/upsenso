@@ -15,6 +15,7 @@ import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/products/data/holder/variant_form.dart';
+import 'package:pos/features/products/domain/entities/product.dart';
 import 'package:pos/features/products/presentation/cubit/product_form_cubit.dart';
 import 'package:pos/features/products/presentation/cubit/product_form_state.dart';
 import 'package:pos/features/products/widgets/barcode_togggle_section.dart';
@@ -34,7 +35,7 @@ String _formatDate(DateTime d) =>
 
 class AddProductsPage extends StatelessWidget {
   final String? initialBarcode;
-  final ProductsTableData? productToEdit;
+  final Product? productToEdit;
 
   const AddProductsPage({super.key, this.initialBarcode, this.productToEdit});
 
@@ -51,7 +52,8 @@ class AddProductsPage extends StatelessWidget {
         // own assigned branch from the synchronous auth context.
         final String? effectiveBranchId;
         if (branchCubit.state.selectedBranch == BranchCubit.allBranchesLabel) {
-          effectiveBranchId = null; // Explicitly "All Branches" — seed all branches
+          effectiveBranchId =
+              null; // Explicitly "All Branches" — seed all branches
         } else {
           effectiveBranchId =
               branchCubit.state.selectedBranchId ?? authState.user.branchId;
@@ -73,7 +75,7 @@ class AddProductsPage extends StatelessWidget {
 
 class _AddProductsView extends StatefulWidget {
   final String? initialBarcode;
-  final ProductsTableData? productToEdit;
+  final Product? productToEdit;
 
   const _AddProductsView({this.initialBarcode, this.productToEdit});
 
@@ -123,7 +125,9 @@ class _AddProductsViewState extends State<_AddProductsView> {
   void initState() {
     super.initState();
     if (widget.productToEdit != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _initForEdit(widget.productToEdit!));
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _initForEdit(widget.productToEdit!),
+      );
     } else if (widget.initialBarcode?.isNotEmpty == true) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -135,7 +139,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
     }
   }
 
-  Future<void> _initForEdit(ProductsTableData product) async {
+  Future<void> _initForEdit(Product product) async {
     if (!mounted) return;
     final cubit = context.read<ProductFormCubit>();
 
@@ -170,9 +174,13 @@ class _AddProductsViewState extends State<_AddProductsView> {
         final form = VariantForm();
         form.name.text = v.name == 'Default' ? '' : v.name;
         form.price.text = v.price.toStringAsFixed(2);
-        if (v.costPrice != null) form.cost.text = v.costPrice!.toStringAsFixed(2);
+        if (v.costPrice != null) {
+          form.cost.text = v.costPrice!.toStringAsFixed(2);
+        }
         form.stock.text = stockFor(v).toString();
-        if (v.lowStockAlert != null) form.lowStock.text = v.lowStockAlert.toString();
+        if (v.lowStockAlert != null) {
+          form.lowStock.text = v.lowStockAlert.toString();
+        }
         if (v.barcode != null) form.barcode.text = v.barcode!;
         _variants.add(form);
       }
@@ -187,14 +195,18 @@ class _AddProductsViewState extends State<_AddProductsView> {
         final basePrice = taxRate > 0 ? v.price / (1 + taxRate) : v.price;
         _simplePriceController.text = basePrice.toStringAsFixed(2);
         _sellingPriceController.text = basePrice.toStringAsFixed(2);
-        if (v.costPrice != null) _costPriceController.text = v.costPrice!.toStringAsFixed(2);
+        if (v.costPrice != null) {
+          _costPriceController.text = v.costPrice!.toStringAsFixed(2);
+        }
         if (v.barcode != null) {
           _simpleBarcodeController.text = v.barcode!;
           _barcodeControllers[0].text = v.barcode!;
         }
         final qty = stockFor(v);
         if (qty > 0) _stockController.text = qty.toString();
-        if (v.lowStockAlert != null) _lowStockController.text = v.lowStockAlert.toString();
+        if (v.lowStockAlert != null) {
+          _lowStockController.text = v.lowStockAlert.toString();
+        }
         // Retail price — must be loaded or it will be wiped on next save
         if (v.retailPrice != null) {
           _retailPriceController.text = v.retailPrice!.toStringAsFixed(2);
@@ -234,7 +246,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
     _skuController.dispose();
     _expiryController.dispose();
     _newCategoryController.dispose();
-    
+
     for (final c in _barcodeControllers) {
       c.dispose();
     }
@@ -259,7 +271,8 @@ class _AddProductsViewState extends State<_AddProductsView> {
     final cubit = context.read<ProductFormCubit>();
     final picked = await showDatePicker(
       context: context,
-      initialDate: cubit.state.expiryDate ??
+      initialDate:
+          cubit.state.expiryDate ??
           DateTime.now().add(const Duration(days: 30)),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365 * 10)),
@@ -295,7 +308,9 @@ class _AddProductsViewState extends State<_AddProductsView> {
       builder: (sheetCtx) {
         return Padding(
           padding: EdgeInsets.fromLTRB(
-            20, 16, 20,
+            20,
+            16,
+            20,
             MediaQuery.of(sheetCtx).viewInsets.bottom + 28,
           ),
           child: Column(
@@ -304,7 +319,8 @@ class _AddProductsViewState extends State<_AddProductsView> {
             children: [
               Center(
                 child: Container(
-                  width: 40, height: 4,
+                  width: 40,
+                  height: 4,
                   decoration: BoxDecoration(
                     color: AppColors.borderSoft,
                     borderRadius: BorderRadius.circular(2),
@@ -316,8 +332,9 @@ class _AddProductsViewState extends State<_AddProductsView> {
               const SizedBox(height: 4),
               Text(
                 'Saved locally and synced when online.',
-                style: AppTextStyles.caption(sheetCtx)
-                    .copyWith(color: AppColors.textMuted),
+                style: AppTextStyles.caption(
+                  sheetCtx,
+                ).copyWith(color: AppColors.textMuted),
               ),
               const SizedBox(height: 16),
               TextField(
@@ -355,9 +372,11 @@ class _AddProductsViewState extends State<_AddProductsView> {
                           if (!sheetCtx.mounted) return;
                           Navigator.of(sheetCtx).pop();
                           if (mounted) {
-                            StatusSnack.show(context,
-                                type: StatusType.success,
-                                message: 'Category saved');
+                            StatusSnack.show(
+                              context,
+                              type: StatusType.success,
+                              message: 'Category saved',
+                            );
                           }
                         },
                 ),
@@ -382,14 +401,18 @@ class _AddProductsViewState extends State<_AddProductsView> {
       simplePrice: !isAdvanced ? _simplePriceController.text : null,
       simpleBarcode: !isAdvanced ? _simpleBarcodeController.text : null,
       // Advanced no-variants
-      sellingPrice:
-          (isAdvanced && !state.hasVariants) ? _sellingPriceController.text : null,
-      retailPrice:
-          (isAdvanced && !state.hasVariants) ? _retailPriceController.text : null,
-      costPrice:
-          (isAdvanced && !state.hasVariants) ? _costPriceController.text : null,
-      taxPercent:
-          (isAdvanced && !state.hasVariants) ? _taxController.text : null,
+      sellingPrice: (isAdvanced && !state.hasVariants)
+          ? _sellingPriceController.text
+          : null,
+      retailPrice: (isAdvanced && !state.hasVariants)
+          ? _retailPriceController.text
+          : null,
+      costPrice: (isAdvanced && !state.hasVariants)
+          ? _costPriceController.text
+          : null,
+      taxPercent: (isAdvanced && !state.hasVariants)
+          ? _taxController.text
+          : null,
       stock: (isAdvanced && !state.hasVariants && state.trackInventory)
           ? _stockController.text
           : null,
@@ -406,15 +429,17 @@ class _AddProductsViewState extends State<_AddProductsView> {
       // Variants
       variants: (isAdvanced && state.hasVariants)
           ? _variants
-              .map((v) => VariantFormData(
+                .map(
+                  (v) => VariantFormData(
                     name: v.name.text,
                     price: v.price.text,
                     costPrice: v.cost.text,
                     stock: v.stock.text,
                     lowStockAlert: v.lowStock.text,
                     barcode: v.barcode.text,
-                  ))
-              .toList()
+                  ),
+                )
+                .toList()
           : [],
     );
 
@@ -464,9 +489,11 @@ class _AddProductsViewState extends State<_AddProductsView> {
         } else if (state.isSuccess) {
           ctx.pop();
         } else if (state.error != null) {
-          StatusSnack.show(context,
-              type: StatusType.error,
-              message: 'Failed to save: ${state.error}');
+          StatusSnack.show(
+            context,
+            type: StatusType.error,
+            message: 'Failed to save: ${state.error}',
+          );
         }
       },
       child: BlocBuilder<ProductFormCubit, ProductFormState>(
@@ -613,7 +640,9 @@ class _AddProductsViewState extends State<_AddProductsView> {
   // ── Advanced — Basic Info ─────────────────────────────────────────────────
 
   Widget _buildBasicInfoSection(
-      ProductFormState state, ProductFormCubit cubit) {
+    ProductFormState state,
+    ProductFormCubit cubit,
+  ) {
     return AppSectionCard(
       title: 'Basic Info',
       icon: Icons.info_outline_rounded,
@@ -690,74 +719,89 @@ class _AddProductsViewState extends State<_AddProductsView> {
             fontSize: 18,
             fontWeight: FontWeight.w700,
           ),
-          validator: (v) =>
-              (v == null || v.trim().isEmpty) ? 'Selling price is required' : null,
+          validator: (v) => (v == null || v.trim().isEmpty)
+              ? 'Selling price is required'
+              : null,
         ),
         // Live tax-inclusive final price preview
         ValueListenableBuilder<TextEditingValue>(
           valueListenable: _sellingPriceController,
           builder: (context, sellVal, child) =>
               ValueListenableBuilder<TextEditingValue>(
-            valueListenable: _taxController,
-            builder: (context, taxVal, child) {
-              final base = double.tryParse(sellVal.text.trim());
-              final taxPct = double.tryParse(taxVal.text.trim());
-              if (base == null || base <= 0 || taxPct == null || taxPct <= 0) {
-                return const SizedBox.shrink();
-              }
-              final taxAmt = base * taxPct / 100;
-              final finalPrice = base + taxAmt;
-              final taxStr = taxPct % 1 == 0
-                  ? taxPct.toInt().toString()
-                  : taxPct.toStringAsFixed(1);
-              return Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 9),
-                  decoration: BoxDecoration(
-                    color: AppColors.brandSoft,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                        color: AppColors.brand.withAlpha(40)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.receipt_outlined,
-                          size: 14, color: AppColors.brand),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text.rich(
-                          TextSpan(children: [
-                            TextSpan(
-                              text: 'Customer sees  ',
-                              style: getOutfitStyle(
-                                  color: AppColors.brand, fontSize: 12),
-                            ),
-                            TextSpan(
-                              text: '₱${finalPrice.toStringAsFixed(2)}',
-                              style: getOutfitStyle(
-                                color: AppColors.brand,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            TextSpan(
-                              text:
-                                  '   ₱${base.toStringAsFixed(2)} + ₱${taxAmt.toStringAsFixed(2)} ($taxStr% tax)',
-                              style: getOutfitStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 11),
-                            ),
-                          ]),
+                valueListenable: _taxController,
+                builder: (context, taxVal, child) {
+                  final base = double.tryParse(sellVal.text.trim());
+                  final taxPct = double.tryParse(taxVal.text.trim());
+                  if (base == null ||
+                      base <= 0 ||
+                      taxPct == null ||
+                      taxPct <= 0) {
+                    return const SizedBox.shrink();
+                  }
+                  final taxAmt = base * taxPct / 100;
+                  final finalPrice = base + taxAmt;
+                  final taxStr = taxPct % 1 == 0
+                      ? taxPct.toInt().toString()
+                      : taxPct.toStringAsFixed(1);
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 9,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.brandSoft,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppColors.brand.withAlpha(40),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.receipt_outlined,
+                            size: 14,
+                            color: AppColors.brand,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text.rich(
+                              TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: 'Customer sees  ',
+                                    style: getOutfitStyle(
+                                      color: AppColors.brand,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: '₱${finalPrice.toStringAsFixed(2)}',
+                                    style: getOutfitStyle(
+                                      color: AppColors.brand,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text:
+                                        '   ₱${base.toStringAsFixed(2)} + ₱${taxAmt.toStringAsFixed(2)} ($taxStr% tax)',
+                                    style: getOutfitStyle(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
         ),
         const SizedBox(height: 12),
 
@@ -807,12 +851,14 @@ class _AddProductsViewState extends State<_AddProductsView> {
                                 readOnly: isAllBranchesEdit,
                                 keyboardType: isFraction
                                     ? const TextInputType.numberWithOptions(
-                                        decimal: true)
+                                        decimal: true,
+                                      )
                                     : TextInputType.number,
                                 inputFormatters: isFraction
                                     ? [
                                         FilteringTextInputFormatter.allow(
-                                            RegExp(r'^\d*\.?\d{0,3}'))
+                                          RegExp(r'^\d*\.?\d{0,3}'),
+                                        ),
                                       ]
                                     : [FilteringTextInputFormatter.digitsOnly],
                                 textInputAction: TextInputAction.next,
@@ -824,7 +870,9 @@ class _AddProductsViewState extends State<_AddProductsView> {
                                       : AppColors.surface,
                                 ),
                                 style: getOutfitStyle(
-                                    color: AppColors.textPrimary, fontSize: 16),
+                                  color: AppColors.textPrimary,
+                                  fontSize: 16,
+                                ),
                                 validator: (v) {
                                   if (!isAllBranchesEdit &&
                                       state.trackInventory &&
@@ -851,7 +899,9 @@ class _AddProductsViewState extends State<_AddProductsView> {
                                 label: 'Low stock alert',
                               ),
                               style: getOutfitStyle(
-                                  color: AppColors.textPrimary, fontSize: 16),
+                                color: AppColors.textPrimary,
+                                fontSize: 16,
+                              ),
                             ),
                           ),
                         ],
@@ -860,25 +910,33 @@ class _AddProductsViewState extends State<_AddProductsView> {
                         const SizedBox(height: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.infoSoft,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                                color: AppColors.info.withAlpha(60)),
+                              color: AppColors.info.withAlpha(60),
+                            ),
                           ),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(Icons.info_outline_rounded,
-                                  size: 15, color: AppColors.info),
+                              const Icon(
+                                Icons.info_outline_rounded,
+                                size: 15,
+                                color: AppColors.info,
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   'Showing total stock across all branches. '
                                   'To adjust stock for a specific branch, use the Inventory page.',
                                   style: getOutfitStyle(
-                                      color: AppColors.info, fontSize: 12),
+                                    color: AppColors.info,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ),
                             ],
@@ -896,8 +954,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
 
   // ── Advanced — Variants ───────────────────────────────────────────────────
 
-  Widget _buildVariantsSection(
-      ProductFormState state, ProductFormCubit cubit) {
+  Widget _buildVariantsSection(ProductFormState state, ProductFormCubit cubit) {
     final isFraction = _sellBy == 'fraction';
     final isAllBranchesEdit =
         widget.productToEdit != null && cubit.selectedBranchId == null;
@@ -919,8 +976,11 @@ class _AddProductsViewState extends State<_AddProductsView> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.qr_code_rounded,
-                    size: 16, color: AppColors.brand),
+                const Icon(
+                  Icons.qr_code_rounded,
+                  size: 16,
+                  color: AppColors.brand,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
@@ -971,14 +1031,19 @@ class _AddProductsViewState extends State<_AddProductsView> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.lightbulb_outline_rounded,
-                  size: 15, color: AppColors.textMuted),
+              const Icon(
+                Icons.lightbulb_outline_rounded,
+                size: 15,
+                color: AppColors.textMuted,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'Give each option a name and price. Optionally add a barcode.',
                   style: getOutfitStyle(
-                      color: AppColors.textSecondary, fontSize: 12),
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ],
@@ -1019,26 +1084,26 @@ class _AddProductsViewState extends State<_AddProductsView> {
         if (isAllBranchesEdit && state.trackInventory) ...[
           const SizedBox(height: 4),
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               color: AppColors.infoSoft,
               borderRadius: BorderRadius.circular(10),
-              border:
-                  Border.all(color: AppColors.info.withAlpha(60)),
+              border: Border.all(color: AppColors.info.withAlpha(60)),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.info_outline_rounded,
-                    size: 15, color: AppColors.info),
+                const Icon(
+                  Icons.info_outline_rounded,
+                  size: 15,
+                  color: AppColors.info,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Showing total stock across all branches. '
                     'To adjust stock for a specific branch, use the Inventory page.',
-                    style: getOutfitStyle(
-                        color: AppColors.info, fontSize: 12),
+                    style: getOutfitStyle(color: AppColors.info, fontSize: 12),
                   ),
                 ),
               ],
@@ -1053,14 +1118,17 @@ class _AddProductsViewState extends State<_AddProductsView> {
           icon: const Icon(Icons.add_rounded, size: 16),
           label: Text(
             'Add Variant',
-            style:
-                getOutfitStyle(color: AppColors.brand, fontWeight: FontWeight.w600),
+            style: getOutfitStyle(
+              color: AppColors.brand,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.brand,
             side: const BorderSide(color: AppColors.brand),
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10)),
+              borderRadius: BorderRadius.circular(10),
+            ),
             minimumSize: const Size(double.infinity, 44),
           ),
         ),
@@ -1071,7 +1139,9 @@ class _AddProductsViewState extends State<_AddProductsView> {
   // ── Advanced — More Options (collapsible) ─────────────────────────────────
 
   Widget _buildMoreOptionsSection(
-      ProductFormState state, ProductFormCubit cubit) {
+    ProductFormState state,
+    ProductFormCubit cubit,
+  ) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -1086,12 +1156,14 @@ class _AddProductsViewState extends State<_AddProductsView> {
             onTap: cubit.toggleMoreOptions,
             borderRadius: BorderRadius.circular(14),
             child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               child: Row(
                 children: [
-                  const Icon(Icons.tune_rounded,
-                      size: 18, color: AppColors.textSecondary),
+                  const Icon(
+                    Icons.tune_rounded,
+                    size: 18,
+                    color: AppColors.textSecondary,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -1124,8 +1196,11 @@ class _AddProductsViewState extends State<_AddProductsView> {
                   AnimatedRotation(
                     turns: state.moreOptionsExpanded ? 0.5 : 0,
                     duration: const Duration(milliseconds: 200),
-                    child: const Icon(Icons.keyboard_arrow_down_rounded,
-                        color: AppColors.textMuted, size: 20),
+                    child: const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: AppColors.textMuted,
+                      size: 20,
+                    ),
                   ),
                 ],
               ),
@@ -1136,8 +1211,8 @@ class _AddProductsViewState extends State<_AddProductsView> {
             curve: Curves.easeInOut,
             child: state.moreOptionsExpanded
                 ? (state.mode == ProductFormMode.simple
-                    ? _buildSimpleMoreOptionsBody(state, cubit)
-                    : _buildMoreOptionsBody(state, cubit))
+                      ? _buildSimpleMoreOptionsBody(state, cubit)
+                      : _buildMoreOptionsBody(state, cubit))
                 : const SizedBox(width: double.infinity, height: 0),
           ),
         ],
@@ -1148,7 +1223,9 @@ class _AddProductsViewState extends State<_AddProductsView> {
   // ── Simple — More Options body (Sell By · Image · Barcode only) ─────────────
 
   Widget _buildSimpleMoreOptionsBody(
-      ProductFormState state, ProductFormCubit cubit) {
+    ProductFormState state,
+    ProductFormCubit cubit,
+  ) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1200,8 +1277,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
 
   // ── Advanced — More Options body ──────────────────────────────────────────
 
-  Widget _buildMoreOptionsBody(
-      ProductFormState state, ProductFormCubit cubit) {
+  Widget _buildMoreOptionsBody(ProductFormState state, ProductFormCubit cubit) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1280,10 +1356,12 @@ class _AddProductsViewState extends State<_AddProductsView> {
                       TextFormField(
                         controller: _retailPriceController,
                         keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
+                          decimal: true,
+                        ),
                         inputFormatters: [
                           FilteringTextInputFormatter.allow(
-                              RegExp(r'^\d*\.?\d{0,2}')),
+                            RegExp(r'^\d*\.?\d{0,2}'),
+                          ),
                         ],
                         textInputAction: TextInputAction.done,
                         decoration: appInputDeco(
@@ -1292,74 +1370,80 @@ class _AddProductsViewState extends State<_AddProductsView> {
                           prefixText: '₱ ',
                         ),
                         style: getOutfitStyle(
-                            color: AppColors.textPrimary, fontSize: 16),
+                          color: AppColors.textPrimary,
+                          fontSize: 16,
+                        ),
                       ),
                       // Live SRP comparison indicator
                       ValueListenableBuilder<TextEditingValue>(
                         valueListenable: _retailPriceController,
                         builder: (context, retailVal, child) =>
                             ValueListenableBuilder<TextEditingValue>(
-                          valueListenable: _sellingPriceController,
-                          builder: (context, sellVal, child) {
-                            final srp =
-                                double.tryParse(retailVal.text.trim());
-                            final sell =
-                                double.tryParse(sellVal.text.trim());
-                            if (srp == null || sell == null || srp <= 0) {
-                              return const SizedBox.shrink();
-                            }
-                            final diff = sell - srp;
-                            final pct = (diff / srp * 100).abs();
-                            final isAbove = diff > 0.005;
-                            final isBelow = diff < -0.005;
-                            final Color bg = isAbove
-                                ? AppColors.warningSoft
-                                : isBelow
+                              valueListenable: _sellingPriceController,
+                              builder: (context, sellVal, child) {
+                                final srp = double.tryParse(
+                                  retailVal.text.trim(),
+                                );
+                                final sell = double.tryParse(
+                                  sellVal.text.trim(),
+                                );
+                                if (srp == null || sell == null || srp <= 0) {
+                                  return const SizedBox.shrink();
+                                }
+                                final diff = sell - srp;
+                                final pct = (diff / srp * 100).abs();
+                                final isAbove = diff > 0.005;
+                                final isBelow = diff < -0.005;
+                                final Color bg = isAbove
+                                    ? AppColors.warningSoft
+                                    : isBelow
                                     ? AppColors.successSoft
                                     : AppColors.surfaceAlt;
-                            final Color fg = isAbove
-                                ? AppColors.warning
-                                : isBelow
+                                final Color fg = isAbove
+                                    ? AppColors.warning
+                                    : isBelow
                                     ? AppColors.success
                                     : AppColors.textMuted;
-                            final String label = isAbove
-                                ? '${pct.toStringAsFixed(1)}% above SRP — selling above suggested price'
-                                : isBelow
+                                final String label = isAbove
+                                    ? '${pct.toStringAsFixed(1)}% above SRP — selling above suggested price'
+                                    : isBelow
                                     ? '${pct.toStringAsFixed(1)}% below SRP'
                                     : 'Selling at SRP';
-                            final IconData icon = isAbove
-                                ? Icons.arrow_upward_rounded
-                                : isBelow
+                                final IconData icon = isAbove
+                                    ? Icons.arrow_upward_rounded
+                                    : isBelow
                                     ? Icons.arrow_downward_rounded
                                     : Icons.horizontal_rule_rounded;
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: bg,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(icon, size: 12, color: fg),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      label,
-                                      style: getOutfitStyle(
-                                        color: fg,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
                                     ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
+                                    decoration: BoxDecoration(
+                                      color: bg,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(icon, size: 12, color: fg),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          label,
+                                          style: getOutfitStyle(
+                                            color: fg,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
                       ),
                     ],
                   ),
@@ -1387,10 +1471,12 @@ class _AddProductsViewState extends State<_AddProductsView> {
                   child: TextFormField(
                     controller: _taxController,
                     keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true),
+                      decimal: true,
+                    ),
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(
-                          RegExp(r'^\d*\.?\d{0,2}')),
+                        RegExp(r'^\d*\.?\d{0,2}'),
+                      ),
                     ],
                     textInputAction: TextInputAction.done,
                     decoration: appInputDeco(
@@ -1399,7 +1485,9 @@ class _AddProductsViewState extends State<_AddProductsView> {
                       prefixText: '% ',
                     ),
                     style: getOutfitStyle(
-                        color: AppColors.textPrimary, fontSize: 16),
+                      color: AppColors.textPrimary,
+                      fontSize: 16,
+                    ),
                     validator: (v) {
                       if (v != null && v.trim().isNotEmpty) {
                         final p = double.tryParse(v);
@@ -1431,21 +1519,22 @@ class _AddProductsViewState extends State<_AddProductsView> {
                     controller: _expiryController,
                     readOnly: true,
                     onTap: _pickExpiryDate,
-                    decoration: appInputDeco(
-                      'dd/mm/yyyy',
-                      label: 'Expiry date',
-                    ).copyWith(
-                      suffixIcon: const Icon(
-                          Icons.calendar_today_rounded,
-                          size: 17,
-                          color: AppColors.textMuted),
-                    ),
+                    decoration: appInputDeco('dd/mm/yyyy', label: 'Expiry date')
+                        .copyWith(
+                          suffixIcon: const Icon(
+                            Icons.calendar_today_rounded,
+                            size: 17,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
                     style: getOutfitStyle(
-                        color: AppColors.textPrimary, fontSize: 16),
+                      color: AppColors.textPrimary,
+                      fontSize: 16,
+                    ),
                     validator: (_) =>
                         (state.trackExpiry && state.expiryDate == null)
-                            ? 'Please select an expiry date'
-                            : null,
+                        ? 'Please select an expiry date'
+                        : null,
                   ),
                 )
               : const SizedBox(width: double.infinity, height: 0),
@@ -1453,7 +1542,6 @@ class _AddProductsViewState extends State<_AddProductsView> {
       ],
     );
   }
-
 }
 
 // ── Mode Toggle ───────────────────────────────────────────────────────────────
@@ -1486,8 +1574,9 @@ class _ModeToggle extends StatelessWidget {
                 AnimatedAlign(
                   duration: const Duration(milliseconds: 220),
                   curve: Curves.easeOutCubic,
-                  alignment:
-                      isSimple ? Alignment.centerLeft : Alignment.centerRight,
+                  alignment: isSimple
+                      ? Alignment.centerLeft
+                      : Alignment.centerRight,
                   child: Container(
                     width: pillWidth,
                     height: 28,
@@ -1618,7 +1707,10 @@ class _BranchAssignmentSheetState extends State<_BranchAssignmentSheet> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       padding: EdgeInsets.fromLTRB(
-        24, 16, 24, MediaQuery.of(context).viewInsets.bottom + 24,
+        24,
+        16,
+        24,
+        MediaQuery.of(context).viewInsets.bottom + 24,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1636,15 +1728,13 @@ class _BranchAssignmentSheetState extends State<_BranchAssignmentSheet> {
             ),
           ),
           const SizedBox(height: 20),
-          Text(
-            'Assign Opening Inventory',
-            style: AppTextStyles.title(context),
-          ),
+          Text('Assign Opening Inventory', style: AppTextStyles.title(context)),
           const SizedBox(height: 6),
           Text(
             'You\'re viewing All Branches. Choose which branch should receive the initial inventory you entered.',
-            style: AppTextStyles.body(context)
-                .copyWith(color: AppColors.textSecondary),
+            style: AppTextStyles.body(
+              context,
+            ).copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 20),
           if (_branches == null)
@@ -1662,8 +1752,9 @@ class _BranchAssignmentSheetState extends State<_BranchAssignmentSheet> {
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Text(
                 'No active branches found.',
-                style: AppTextStyles.body(context)
-                    .copyWith(color: AppColors.textSecondary),
+                style: AppTextStyles.body(
+                  context,
+                ).copyWith(color: AppColors.textSecondary),
               ),
             )
           else
@@ -1716,8 +1807,7 @@ class _BranchAssignmentSheetState extends State<_BranchAssignmentSheet> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.brand,
                     foregroundColor: Colors.white,
-                    disabledBackgroundColor:
-                        AppColors.brand.withAlpha(80),
+                    disabledBackgroundColor: AppColors.brand.withAlpha(80),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -1751,4 +1841,3 @@ class _BranchAssignmentSheetState extends State<_BranchAssignmentSheet> {
 }
 
 // ── Reusable switch row (compact, no border container) ───────────────────────
-
