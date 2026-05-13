@@ -27,10 +27,13 @@ class _ReceiptSettingsPageState extends State<ReceiptSettingsPage> {
       if (!mounted) return;
       final auth = context.read<AuthBloc>().state;
       if (auth is AuthAuthenticated) {
+        final user = auth.user;
         _cubit.startWatching(
-          businessId: auth.user.businessId ?? '',
-          businessName: auth.user.businessName,
-          branchName: auth.user.branchName,
+          businessId: user.businessId ?? '',
+          businessName: user.businessName,
+          branchName: user.branchName,
+          ownerName: user.fullName,
+          email: user.email,
         );
       }
     });
@@ -66,8 +69,11 @@ class _ReceiptSettingsPageState extends State<ReceiptSettingsPage> {
             scrolledUnderElevation: 0,
             surfaceTintColor: Colors.transparent,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                  size: 18, color: AppColors.textSecondary),
+              icon: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                size: 18,
+                color: AppColors.textSecondary,
+              ),
               onPressed: () => Navigator.of(context).maybePop(),
             ),
             title: Text(
@@ -107,8 +113,11 @@ class _ReceiptSettingsPageState extends State<ReceiptSettingsPage> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.check_circle_rounded,
-                              size: 16, color: AppColors.success),
+                          const Icon(
+                            Icons.check_circle_rounded,
+                            size: 16,
+                            color: AppColors.success,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             'Saved',

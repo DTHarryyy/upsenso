@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:printing/printing.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
@@ -11,6 +12,7 @@ import 'package:pos/features/settings/domain/receipt_settings.dart';
 import 'package:pos/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:pos/features/settings/presentation/cubit/settings_state.dart';
 import 'package:pos/features/settings/presentation/widgets/receipt_preview.dart';
+import 'package:pos/features/settings/services/receipt_printer_service.dart';
 
 class ReceiptSettingsSection extends StatelessWidget {
   const ReceiptSettingsSection({super.key});
@@ -47,8 +49,8 @@ class ReceiptSettingsSection extends StatelessWidget {
                   label: 'Business Name',
                   value: s.businessName,
                   hint: 'e.g. Mang Juan Store',
-                  onChanged: (v) => _save(
-                      context, (x) => x.copyWith(businessName: v)),
+                  onChanged: (v) =>
+                      _save(context, (x) => x.copyWith(businessName: v)),
                 ),
                 _FieldRow(
                   label: 'Store / Branch Name',
@@ -85,8 +87,7 @@ class ReceiptSettingsSection extends StatelessWidget {
                   value: s.email,
                   hint: 'hello@mybusiness.com',
                   keyboardType: TextInputType.emailAddress,
-                  onChanged: (v) =>
-                      _save(context, (x) => x.copyWith(email: v)),
+                  onChanged: (v) => _save(context, (x) => x.copyWith(email: v)),
                 ),
                 _FieldRow(
                   label: 'Website / Social',
@@ -250,20 +251,30 @@ class ReceiptSettingsSection extends StatelessWidget {
                   label: 'Auto Print After Checkout',
                   value: s.autoPrintAfterCheckout,
                   onChanged: (v) => _save(
-                      context, (x) => x.copyWith(autoPrintAfterCheckout: v)),
+                    context,
+                    (x) => x.copyWith(autoPrintAfterCheckout: v),
+                  ),
                 ),
                 _SwitchRow(
                   label: 'Print Duplicate Copy',
                   value: s.printDuplicateCopy,
-                  onChanged: (v) => _save(
-                      context, (x) => x.copyWith(printDuplicateCopy: v)),
+                  onChanged: (v) =>
+                      _save(context, (x) => x.copyWith(printDuplicateCopy: v)),
                 ),
                 _SwitchRow(
                   label: 'Thermal Printer Support',
+                  subtitle:
+                      'Direct-print to your POS thermal printer (skip dialog)',
                   value: s.thermalPrinterEnabled,
                   onChanged: (v) => _save(
-                      context, (x) => x.copyWith(thermalPrinterEnabled: v)),
+                    context,
+                    (x) => x.copyWith(thermalPrinterEnabled: v),
+                  ),
                 ),
+                if (s.thermalPrinterEnabled) ...[
+                  const SizedBox(height: 8),
+                  _PrinterSelector(enabled: s.thermalPrinterEnabled),
+                ],
               ],
             ),
             const SizedBox(height: 16),
@@ -290,7 +301,9 @@ class ReceiptSettingsSection extends StatelessWidget {
                   label: 'Service Charge (%)',
                   value: s.serviceChargePercentage,
                   onChanged: (v) => _save(
-                      context, (x) => x.copyWith(serviceChargePercentage: v)),
+                    context,
+                    (x) => x.copyWith(serviceChargePercentage: v),
+                  ),
                 ),
                 _SwitchRow(
                   label: 'VAT Inclusive',
@@ -308,8 +321,10 @@ class ReceiptSettingsSection extends StatelessWidget {
     );
   }
 
-  void _save(BuildContext context,
-      ReceiptSettings Function(ReceiptSettings) patch) {
+  void _save(
+    BuildContext context,
+    ReceiptSettings Function(ReceiptSettings) patch,
+  ) {
     context.read<SettingsCubit>().update(patch);
   }
 }
@@ -336,8 +351,7 @@ class _PreviewBanner extends StatelessWidget {
             builder: (_, ctrl) => Container(
               decoration: const BoxDecoration(
                 color: AppColors.background,
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
               ),
               child: Column(
                 children: [
@@ -395,8 +409,11 @@ class _PreviewBanner extends StatelessWidget {
                 color: AppColors.brand,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.receipt_long_rounded,
-                  size: 20, color: AppColors.textInverse),
+              child: const Icon(
+                Icons.receipt_long_rounded,
+                size: 20,
+                color: AppColors.textInverse,
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -421,8 +438,11 @@ class _PreviewBanner extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios_rounded,
-                size: 14, color: AppColors.brand),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 14,
+              color: AppColors.brand,
+            ),
           ],
         ),
       ),
@@ -468,7 +488,9 @@ class _LogoPicker extends StatelessWidget {
                 child: Padding(
                   padding: EdgeInsets.symmetric(vertical: 12),
                   child: CircularProgressIndicator(
-                      strokeWidth: 2, color: AppColors.brand),
+                    strokeWidth: 2,
+                    color: AppColors.brand,
+                  ),
                 ),
               );
             }
@@ -482,7 +504,8 @@ class _LogoPicker extends StatelessWidget {
                   foregroundColor: AppColors.brand,
                   side: const BorderSide(color: AppColors.brand),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
               ),
@@ -526,20 +549,20 @@ class _LogoPicker extends StatelessWidget {
     final mimeType = _mimeFromExt(ext);
 
     await cubit.uploadLogo(
-          businessId: businessId,
-          fileName: 'logo_${DateTime.now().millisecondsSinceEpoch}.$ext',
-          bytes: bytes,
-          mimeType: mimeType,
-          localPath: kIsWeb ? null : picked.path,
-        );
+      businessId: businessId,
+      fileName: 'logo_${DateTime.now().millisecondsSinceEpoch}.$ext',
+      bytes: bytes,
+      mimeType: mimeType,
+      localPath: kIsWeb ? null : picked.path,
+    );
   }
 
   String _mimeFromExt(String ext) => switch (ext) {
-        'jpg' || 'jpeg' => 'image/jpeg',
-        'png' => 'image/png',
-        'webp' => 'image/webp',
-        _ => 'image/jpeg',
-      };
+    'jpg' || 'jpeg' => 'image/jpeg',
+    'png' => 'image/png',
+    'webp' => 'image/webp',
+    _ => 'image/jpeg',
+  };
 }
 
 // ── Shared card wrapper ───────────────────────────────────────────────────────
@@ -684,12 +707,16 @@ class _FieldRowState extends State<_FieldRow> {
             style: getOutfitStyle(fontSize: 13.5, color: AppColors.textPrimary),
             decoration: InputDecoration(
               hintText: widget.hint,
-              hintStyle:
-                  getOutfitStyle(fontSize: 13, color: AppColors.textMuted),
+              hintStyle: getOutfitStyle(
+                fontSize: 13,
+                color: AppColors.textMuted,
+              ),
               filled: true,
               fillColor: AppColors.surfaceAlt,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide: const BorderSide(color: AppColors.borderSoft),
@@ -700,8 +727,10 @@ class _FieldRowState extends State<_FieldRow> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide:
-                    const BorderSide(color: AppColors.brand, width: 1.5),
+                borderSide: const BorderSide(
+                  color: AppColors.brand,
+                  width: 1.5,
+                ),
               ),
             ),
             onChanged: (v) {
@@ -709,6 +738,201 @@ class _FieldRowState extends State<_FieldRow> {
               widget.onChanged(v);
             },
             onEditingComplete: () => _isDirty = false,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Printer selector ──────────────────────────────────────────────────────────
+
+class _PrinterSelector extends StatefulWidget {
+  final bool enabled;
+  const _PrinterSelector({required this.enabled});
+
+  @override
+  State<_PrinterSelector> createState() => _PrinterSelectorState();
+}
+
+class _PrinterSelectorState extends State<_PrinterSelector> {
+  String _printerName = '';
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSaved();
+  }
+
+  Future<void> _loadSaved() async {
+    final name = await ReceiptPrinterService.loadPrinterName();
+    if (mounted) setState(() => _printerName = name);
+  }
+
+  Future<void> _pickPrinter() async {
+    setState(() => _loading = true);
+    try {
+      final printers = await Printing.listPrinters();
+      if (!mounted) return;
+      if (printers.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No printers found on this device.')),
+        );
+        return;
+      }
+      final chosen = await showDialog<Printer>(
+        context: context,
+        builder: (_) => SimpleDialog(
+          backgroundColor: AppColors.surface,
+          title: Text(
+            'Select Thermal Printer',
+            style: getOutfitStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          children: printers
+              .map(
+                (p) => SimpleDialogOption(
+                  onPressed: () => Navigator.of(context).pop(p),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.print_rounded,
+                          size: 20,
+                          color: AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            p.name,
+                            style: getOutfitStyle(
+                              fontSize: 13,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+              .toList(),
+        ),
+      );
+      if (chosen != null) {
+        await ReceiptPrinterService.savePrinter(
+          url: chosen.url,
+          name: chosen.name,
+        );
+        if (mounted) setState(() => _printerName = chosen.name);
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _clearPrinter() async {
+    await ReceiptPrinterService.clearPrinter();
+    if (mounted) setState(() => _printerName = '');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.borderSoft),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.print_rounded,
+                size: 16,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Configured Printer',
+                style: getOutfitStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _printerName.isEmpty ? 'No printer selected' : _printerName,
+            style: getOutfitStyle(
+              fontSize: 13,
+              fontWeight: _printerName.isEmpty
+                  ? FontWeight.w400
+                  : FontWeight.w600,
+              color: _printerName.isEmpty
+                  ? AppColors.textMuted
+                  : AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _loading ? null : _pickPrinter,
+                  icon: _loading
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.brand,
+                          ),
+                        )
+                      : const Icon(Icons.search_rounded, size: 16),
+                  label: Text(
+                    _printerName.isEmpty ? 'Select Printer' : 'Change Printer',
+                    style: getOutfitStyle(fontSize: 12.5),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.brand,
+                    side: const BorderSide(color: AppColors.brand),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+              if (_printerName.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  onPressed: _loading ? null : _clearPrinter,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.error,
+                    side: const BorderSide(color: AppColors.error),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 10,
+                      horizontal: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Icon(Icons.delete_outline_rounded, size: 16),
+                ),
+              ],
+            ],
           ),
         ],
       ),
@@ -816,13 +1040,17 @@ class _DropdownRow<T> extends StatelessWidget {
               child: DropdownButton<T>(
                 value: value,
                 items: items.asMap().entries.map((e) {
-                  final display = labels != null ? labels![e.key] : '${e.value}';
+                  final display = labels != null
+                      ? labels![e.key]
+                      : '${e.value}';
                   return DropdownMenuItem<T>(
                     value: e.value,
                     child: Text(
                       display,
                       style: getOutfitStyle(
-                          fontSize: 13, color: AppColors.textPrimary),
+                        fontSize: 13,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                   );
                 }).toList(),
@@ -830,7 +1058,9 @@ class _DropdownRow<T> extends StatelessWidget {
                   if (v != null) onChanged(v);
                 },
                 style: getOutfitStyle(
-                    fontSize: 13, color: AppColors.textPrimary),
+                  fontSize: 13,
+                  color: AppColors.textPrimary,
+                ),
                 dropdownColor: AppColors.surface,
                 borderRadius: BorderRadius.circular(10),
                 isDense: true,
@@ -867,7 +1097,8 @@ class _PercentRowState extends State<_PercentRow> {
   void initState() {
     super.initState();
     _ctrl = TextEditingController(
-        text: widget.value == 0 ? '' : widget.value.toString());
+      text: widget.value == 0 ? '' : widget.value.toString(),
+    );
   }
 
   @override
@@ -896,19 +1127,26 @@ class _PercentRowState extends State<_PercentRow> {
             width: 90,
             child: TextFormField(
               controller: _ctrl,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               textAlign: TextAlign.center,
-              style:
-                  getOutfitStyle(fontSize: 13.5, color: AppColors.textPrimary),
+              style: getOutfitStyle(
+                fontSize: 13.5,
+                color: AppColors.textPrimary,
+              ),
               decoration: InputDecoration(
                 suffixText: '%',
-                suffixStyle:
-                    getOutfitStyle(fontSize: 13, color: AppColors.textMuted),
+                suffixStyle: getOutfitStyle(
+                  fontSize: 13,
+                  color: AppColors.textMuted,
+                ),
                 filled: true,
                 fillColor: AppColors.surfaceAlt,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 10,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide: const BorderSide(color: AppColors.borderSoft),
@@ -919,8 +1157,10 @@ class _PercentRowState extends State<_PercentRow> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide:
-                      const BorderSide(color: AppColors.brand, width: 1.5),
+                  borderSide: const BorderSide(
+                    color: AppColors.brand,
+                    width: 1.5,
+                  ),
                 ),
               ),
               onChanged: (v) {

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pos/features/pos/data/models/cart_model.dart';
 import 'package:pos/features/settings/domain/receipt_settings.dart';
 
@@ -12,6 +13,40 @@ import 'package:pos/features/settings/domain/receipt_settings.dart';
 /// non-Latin glyphs render correctly — Helvetica/built-in fonts lack them.
 class ReceiptPrinterService {
   const ReceiptPrinterService();
+
+  // ── Thermal printer persistence ────────────────────────────────────────
+
+  static const _kPrinterUrl = 'receipt_thermal_printer_url';
+  static const _kPrinterName = 'receipt_thermal_printer_name';
+
+  /// Persist the user-chosen thermal printer URL + display name.
+  static Future<void> savePrinter({
+    required String url,
+    required String name,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kPrinterUrl, url);
+    await prefs.setString(_kPrinterName, name);
+  }
+
+  /// Returns the saved thermal printer URL, or empty string if none saved.
+  static Future<String> loadPrinterUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_kPrinterUrl) ?? '';
+  }
+
+  /// Returns the saved thermal printer display name, or empty string if none.
+  static Future<String> loadPrinterName() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_kPrinterName) ?? '';
+  }
+
+  /// Clears the saved thermal printer selection.
+  static Future<void> clearPrinter() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kPrinterUrl);
+    await prefs.remove(_kPrinterName);
+  }
 
   // ── Public API ────────────────────────────────────────────────────────────
 
@@ -51,12 +86,43 @@ class ReceiptPrinterService {
 
     if (share) {
       await Printing.sharePdf(bytes: bytes, filename: '$name.pdf');
-    } else {
-      await Printing.layoutPdf(onLayout: (_) async => bytes, name: name);
-      if (settings.printDuplicateCopy) {
-        await Printing.layoutPdf(
-            onLayout: (_) async => bytes, name: '${name}_copy');
+      return;
+    }
+
+    // ── Direct thermal print (skip dialog) ──────────────────────────────
+    if (settings.thermalPrinterEnabled) {
+      final printerUrl = await loadPrinterUrl();
+      if (printerUrl.isNotEmpty) {
+        final printers = await Printing.listPrinters();
+        final Printer? printer = printers
+            .where((p) => p.url == printerUrl)
+            .cast<Printer?>()
+            .firstOrNull;
+        if (printer != null) {
+          await Printing.directPrintPdf(
+            printer: printer,
+            onLayout: (_) async => bytes,
+            name: name,
+          );
+          if (settings.printDuplicateCopy) {
+            await Printing.directPrintPdf(
+              printer: printer,
+              onLayout: (_) async => bytes,
+              name: '${name}_copy',
+            );
+          }
+          return;
+        }
       }
+    }
+
+    // ── Fall back to OS print dialog ─────────────────────────────────────
+    await Printing.layoutPdf(onLayout: (_) async => bytes, name: name);
+    if (settings.printDuplicateCopy) {
+      await Printing.layoutPdf(
+        onLayout: (_) async => bytes,
+        name: '${name}_copy',
+      );
     }
   }
 
@@ -85,10 +151,16 @@ class ReceiptPrinterService {
     final doc = pw.Document();
 
     final paperWidth = settings.paperSize == '58mm'
-        ? PdfPageFormat(58 * PdfPageFormat.mm, double.infinity,
-            marginAll: 3 * PdfPageFormat.mm)
-        : PdfPageFormat(80 * PdfPageFormat.mm, double.infinity,
-            marginAll: 4 * PdfPageFormat.mm);
+        ? PdfPageFormat(
+            58 * PdfPageFormat.mm,
+            double.infinity,
+            marginAll: 3 * PdfPageFormat.mm,
+          )
+        : PdfPageFormat(
+            80 * PdfPageFormat.mm,
+            double.infinity,
+            marginAll: 4 * PdfPageFormat.mm,
+          );
 
     final baseFs = switch (settings.fontSize) {
       'small' => 7.0,
@@ -121,41 +193,72 @@ class ReceiptPrinterService {
 
             // ── Header text ──────────────────────────────────────────
             if (settings.headerText.isNotEmpty) ...[
-              _text(settings.headerText, baseFs - 0.5, fonts,
-                  align: align, color: PdfColors.grey600),
+              _text(
+                settings.headerText,
+                baseFs - 0.5,
+                fonts,
+                align: align,
+                color: PdfColors.grey600,
+              ),
               pw.SizedBox(height: 3),
             ],
 
             // ── Business info ────────────────────────────────────────
             if (settings.businessName.isNotEmpty)
-              _text(settings.businessName, baseFs + 2, fonts,
-                  bold: true, align: align),
+              _text(
+                settings.businessName,
+                baseFs + 2,
+                fonts,
+                bold: true,
+                align: align,
+              ),
             if (settings.storeName.isNotEmpty)
               _text(settings.storeName, baseFs, fonts, align: align),
             if (settings.address.isNotEmpty)
-              _text(settings.address, baseFs - 0.5, fonts,
-                  align: align, color: PdfColors.grey600),
+              _text(
+                settings.address,
+                baseFs - 0.5,
+                fonts,
+                align: align,
+                color: PdfColors.grey600,
+              ),
             if (settings.contactNumber.isNotEmpty)
-              _text('Tel: ${settings.contactNumber}', baseFs - 0.5, fonts,
-                  align: align, color: PdfColors.grey600),
+              _text(
+                'Tel: ${settings.contactNumber}',
+                baseFs - 0.5,
+                fonts,
+                align: align,
+                color: PdfColors.grey600,
+              ),
             if (settings.email.isNotEmpty)
-              _text(settings.email, baseFs - 0.5, fonts,
-                  align: align, color: PdfColors.grey600),
+              _text(
+                settings.email,
+                baseFs - 0.5,
+                fonts,
+                align: align,
+                color: PdfColors.grey600,
+              ),
             if (settings.tinNumber.isNotEmpty)
-              _text('TIN: ${settings.tinNumber}', baseFs - 0.5, fonts,
-                  align: align, color: PdfColors.grey600),
+              _text(
+                'TIN: ${settings.tinNumber}',
+                baseFs - 0.5,
+                fonts,
+                align: align,
+                color: PdfColors.grey600,
+              ),
 
             _divider(fonts, baseFs),
 
             // ── Transaction meta ─────────────────────────────────────
             if (settings.showOrderId)
               _metaRow(
-                  'Invoice #:',
-                  transactionId.length > 8
-                      ? transactionId.substring(0, 8).toUpperCase()
-                      : transactionId,
-                  baseFs,
-                  fonts),
+                'Invoice #:',
+                transactionId.length > 8
+                    ? transactionId.substring(0, 8).toUpperCase()
+                    : transactionId,
+                baseFs,
+                fonts,
+              ),
             if (settings.showDateTime)
               _metaRow('Date:', _fmtDate(dateTime), baseFs, fonts),
             if (settings.showCashierName && cashierName.isNotEmpty)
@@ -174,30 +277,54 @@ class ReceiptPrinterService {
             // ── Totals ───────────────────────────────────────────────
             _totalRow('Subtotal', _fmt(subtotal, currency), baseFs, fonts),
             if (discountAmount > 0)
-              _totalRow('Discount', '- ${_fmt(discountAmount, currency)}',
-                  baseFs, fonts,
-                  color: PdfColors.red700),
+              _totalRow(
+                'Discount',
+                '- ${_fmt(discountAmount, currency)}',
+                baseFs,
+                fonts,
+                color: PdfColors.red700,
+              ),
             if (settings.showTaxBreakdown && taxAmount > 0)
               _totalRow(
-                  settings.vatInclusive ? 'VAT (incl.)' : 'VAT',
-                  _fmt(taxAmount, currency),
-                  baseFs,
-                  fonts,
-                  color: PdfColors.grey600),
+                settings.vatInclusive ? 'VAT (incl.)' : 'VAT',
+                _fmt(taxAmount, currency),
+                baseFs,
+                fonts,
+                color: PdfColors.grey600,
+              ),
             _totalRow(
-                'TOTAL', _fmt(total, currency), baseFs + 1.5, fonts,
-                bold: true),
+              'TOTAL',
+              _fmt(total, currency),
+              baseFs + 1.5,
+              fonts,
+              bold: true,
+            ),
             if (amountReceived > 0 && paymentMethod == 'cash') ...[
-              _totalRow('Cash Received', _fmt(amountReceived, currency),
-                  baseFs, fonts),
-              _totalRow('Change', _fmt(change, currency), baseFs, fonts,
-                  color: PdfColors.green700, bold: true),
+              _totalRow(
+                'Cash Received',
+                _fmt(amountReceived, currency),
+                baseFs,
+                fonts,
+              ),
+              _totalRow(
+                'Change',
+                _fmt(change, currency),
+                baseFs,
+                fonts,
+                color: PdfColors.green700,
+                bold: true,
+              ),
             ],
 
             if (settings.vatInclusive && taxAmount > 0) ...[
               pw.SizedBox(height: 3),
-              _text('(VAT inclusive)', baseFs - 1.5, fonts,
-                  align: pw.TextAlign.center, color: PdfColors.grey500),
+              _text(
+                '(VAT inclusive)',
+                baseFs - 1.5,
+                fonts,
+                align: pw.TextAlign.center,
+                color: PdfColors.grey500,
+              ),
             ],
 
             _divider(fonts, baseFs),
@@ -205,22 +332,42 @@ class ReceiptPrinterService {
             // ── Footer ───────────────────────────────────────────────
             if (settings.footerText.isNotEmpty) ...[
               pw.SizedBox(height: 2),
-              _text(settings.footerText, baseFs, fonts,
-                  bold: true, align: pw.TextAlign.center),
+              _text(
+                settings.footerText,
+                baseFs,
+                fonts,
+                bold: true,
+                align: pw.TextAlign.center,
+              ),
             ],
             if (settings.returnPolicy.isNotEmpty) ...[
               pw.SizedBox(height: 3),
-              _text(settings.returnPolicy, baseFs - 1, fonts,
-                  align: pw.TextAlign.center, color: PdfColors.grey600),
+              _text(
+                settings.returnPolicy,
+                baseFs - 1,
+                fonts,
+                align: pw.TextAlign.center,
+                color: PdfColors.grey600,
+              ),
             ],
             if (settings.customNotes.isNotEmpty) ...[
               pw.SizedBox(height: 3),
-              _text(settings.customNotes, baseFs - 1, fonts,
-                  align: pw.TextAlign.center, color: PdfColors.grey600),
+              _text(
+                settings.customNotes,
+                baseFs - 1,
+                fonts,
+                align: pw.TextAlign.center,
+                color: PdfColors.grey600,
+              ),
             ],
             pw.SizedBox(height: 4),
-            _text('* * *', baseFs - 1, fonts,
-                align: pw.TextAlign.center, color: PdfColors.grey400),
+            _text(
+              '* * *',
+              baseFs - 1,
+              fonts,
+              align: pw.TextAlign.center,
+              color: PdfColors.grey400,
+            ),
             pw.SizedBox(height: 8),
           ],
         ),
@@ -236,7 +383,8 @@ class ReceiptPrinterService {
     try {
       if (s.logoLocalPath.isNotEmpty && !kIsWeb) {
         final file = File(s.logoLocalPath);
-        if (await file.exists()) return pw.MemoryImage(await file.readAsBytes());
+        if (await file.exists())
+          return pw.MemoryImage(await file.readAsBytes());
       }
       if (s.logoUrl.isNotEmpty) return await networkImage(s.logoUrl);
     } catch (_) {}
@@ -254,26 +402,25 @@ class ReceiptPrinterService {
     bool bold = false,
     pw.TextAlign align = pw.TextAlign.left,
     PdfColor? color,
-  }) =>
-      pw.Text(
-        text,
-        textAlign: align,
-        style: pw.TextStyle(
-          font: bold ? fonts.bold : fonts.regular,
-          fontSize: fontSize,
-          color: color,
-        ),
-      );
+  }) => pw.Text(
+    text,
+    textAlign: align,
+    style: pw.TextStyle(
+      font: bold ? fonts.bold : fonts.regular,
+      fontSize: fontSize,
+      color: color,
+    ),
+  );
 
   pw.Widget _divider(_Fonts fonts, double baseFs) => pw.Padding(
-        padding: const pw.EdgeInsets.symmetric(vertical: 4),
-        child: _text('- ' * 40, 6, fonts, color: PdfColors.grey400),
-      );
+    padding: const pw.EdgeInsets.symmetric(vertical: 4),
+    child: _text('- ' * 40, 6, fonts, color: PdfColors.grey400),
+  );
 
   pw.Widget _solidDivider() => pw.Padding(
-        padding: const pw.EdgeInsets.symmetric(vertical: 4),
-        child: pw.Divider(color: PdfColors.grey400, thickness: 0.5),
-      );
+    padding: const pw.EdgeInsets.symmetric(vertical: 4),
+    child: pw.Divider(color: PdfColors.grey400, thickness: 0.5),
+  );
 
   pw.Widget _metaRow(String label, String value, double fs, _Fonts fonts) =>
       pw.Padding(
@@ -287,8 +434,7 @@ class ReceiptPrinterService {
         ),
       );
 
-  pw.Widget _itemRow(
-      CartItem item, double fs, String currency, _Fonts fonts) {
+  pw.Widget _itemRow(CartItem item, double fs, String currency, _Fonts fonts) {
     final qty = item.qty % 1 == 0
         ? item.qty.toInt().toString()
         : item.qty.toStringAsFixed(2);
@@ -307,8 +453,12 @@ class ReceiptPrinterService {
               _text(_fmt(item.total, currency), fs, fonts, bold: true),
             ],
           ),
-          _text('  $qty x ${_fmt(item.unitPrice, currency)}', fs - 1.5, fonts,
-              color: PdfColors.grey500),
+          _text(
+            '  $qty x ${_fmt(item.unitPrice, currency)}',
+            fs - 1.5,
+            fonts,
+            color: PdfColors.grey500,
+          ),
         ],
       ),
     );
@@ -321,17 +471,16 @@ class ReceiptPrinterService {
     _Fonts fonts, {
     bool bold = false,
     PdfColor? color,
-  }) =>
-      pw.Padding(
-        padding: const pw.EdgeInsets.only(bottom: 2),
-        child: pw.Row(
-          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-          children: [
-            _text(label, fs, fonts, bold: bold, color: color),
-            _text(value, fs, fonts, bold: bold, color: color),
-          ],
-        ),
-      );
+  }) => pw.Padding(
+    padding: const pw.EdgeInsets.only(bottom: 2),
+    child: pw.Row(
+      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+      children: [
+        _text(label, fs, fonts, bold: bold, color: color),
+        _text(value, fs, fonts, bold: bold, color: color),
+      ],
+    ),
+  );
 
   // ── Formatters ────────────────────────────────────────────────────────────
 
@@ -339,10 +488,7 @@ class ReceiptPrinterService {
     if (v >= 1_000_000) {
       return '$currency${(v / 1_000_000).toStringAsFixed(2)}M';
     }
-    return '$currency${v.toStringAsFixed(2).replaceAllMapped(
-          RegExp(r'(\d)(?=(\d{3})+\.)'),
-          (m) => '${m[1]},',
-        )}';
+    return '$currency${v.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+\.)'), (m) => '${m[1]},')}';
   }
 
   String _fmtDate(DateTime dt) {
@@ -351,12 +497,12 @@ class ReceiptPrinterService {
   }
 
   String _fmtPayment(String method) => switch (method.toLowerCase()) {
-        'cash' => 'Cash',
-        'card' => 'Card',
-        'gcash' => 'GCash',
-        'maya' => 'Maya',
-        _ => method,
-      };
+    'cash' => 'Cash',
+    'card' => 'Card',
+    'gcash' => 'GCash',
+    'maya' => 'Maya',
+    _ => method,
+  };
 }
 
 // ── Font holder ───────────────────────────────────────────────────────────────

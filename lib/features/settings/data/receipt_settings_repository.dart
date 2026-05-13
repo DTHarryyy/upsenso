@@ -18,9 +18,9 @@ class ReceiptSettingsRepository {
     required ReceiptSettingsDao dao,
     required ReceiptSettingsRemoteDs remote,
     required ConnectivityService connectivity,
-  })  : _dao = dao,
-        _remote = remote,
-        _connectivity = connectivity;
+  }) : _dao = dao,
+       _remote = remote,
+       _connectivity = connectivity;
 
   // ── Read ─────────────────────────────────────────────────────────────────
 
@@ -41,8 +41,7 @@ class ReceiptSettingsRepository {
   Future<void> save(ReceiptSettings s) async {
     final existing = await _dao.getByBusinessId(s.businessId);
     final isNew = existing == null;
-    final status =
-        isNew ? SyncStatus.pendingUpload : SyncStatus.pendingUpdate;
+    final status = isNew ? SyncStatus.pendingUpload : SyncStatus.pendingUpdate;
     final now = DateTime.now();
 
     await _dao.upsert(_toCompanion(s, now, status));
@@ -59,7 +58,8 @@ class ReceiptSettingsRepository {
     required String mimeType,
   }) async {
     final online = await _connectivity.isConnected;
-    if (!online) throw Exception('Logo upload requires an internet connection.');
+    if (!online)
+      throw Exception('Logo upload requires an internet connection.');
 
     final url = await _remote.uploadLogo(
       businessId: businessId,
@@ -72,7 +72,9 @@ class ReceiptSettingsRepository {
     final existing = await _dao.getByBusinessId(businessId);
     if (existing != null) {
       await _dao.upsert(
-        existing.toCompanion(true).copyWith(
+        existing
+            .toCompanion(true)
+            .copyWith(
               logoUrl: Value(url),
               syncStatus: Value(SyncStatus.pendingUpdate.toInt()),
               localUpdatedAt: Value(DateTime.now()),
@@ -93,12 +95,17 @@ class ReceiptSettingsRepository {
       } catch (e) {
         debugPrint('[ReceiptSettings] Push failed for ${row.id}: $e');
         await _dao.updateSyncStatus(
-            id: row.id, status: SyncStatus.failed, error: e.toString());
+          id: row.id,
+          status: SyncStatus.failed,
+          error: e.toString(),
+        );
       }
     }
   }
 
   Future<void> pullFromServer(String businessId) async {
+    final online = await _connectivity.isConnected;
+    if (!online) return;
     try {
       final data = await _remote.getByBusinessId(businessId);
       if (data != null) await _dao.upsertFromServer(data);
@@ -158,45 +165,48 @@ class ReceiptSettingsRepository {
   // ── Mappers ──────────────────────────────────────────────────────────────
 
   static ReceiptSettings _fromRow(ReceiptSettingsRow r) => ReceiptSettings(
-        id: r.id,
-        businessId: r.businessId,
-        businessName: r.businessName,
-        storeName: r.storeName,
-        ownerName: r.ownerName,
-        address: r.address,
-        contactNumber: r.contactNumber,
-        email: r.email,
-        website: r.website,
-        tinNumber: r.tinNumber,
-        permitNumber: r.permitNumber,
-        headerText: r.headerText,
-        footerText: r.footerText,
-        returnPolicy: r.returnPolicy,
-        customNotes: r.customNotes,
-        showLogo: r.showLogo,
-        logoLocalPath: r.logoLocalPath,
-        logoUrl: r.logoUrl,
-        showQrCode: r.showQrCode,
-        showTaxBreakdown: r.showTaxBreakdown,
-        showCashierName: r.showCashierName,
-        showCustomerName: r.showCustomerName,
-        showDateTime: r.showDateTime,
-        showOrderId: r.showOrderId,
-        paperSize: r.paperSize,
-        fontSize: r.fontSize,
-        textAlignment: r.textAlignment,
-        autoPrintAfterCheckout: r.autoPrintAfterCheckout,
-        printDuplicateCopy: r.printDuplicateCopy,
-        thermalPrinterEnabled: r.thermalPrinterEnabled,
-        currencySymbol: r.currencySymbol,
-        taxPercentage: r.taxPercentage,
-        serviceChargePercentage: r.serviceChargePercentage,
-        vatInclusive: r.vatInclusive,
-        updatedAt: r.updatedAt,
-      );
+    id: r.id,
+    businessId: r.businessId,
+    businessName: r.businessName,
+    storeName: r.storeName,
+    ownerName: r.ownerName,
+    address: r.address,
+    contactNumber: r.contactNumber,
+    email: r.email,
+    website: r.website,
+    tinNumber: r.tinNumber,
+    permitNumber: r.permitNumber,
+    headerText: r.headerText,
+    footerText: r.footerText,
+    returnPolicy: r.returnPolicy,
+    customNotes: r.customNotes,
+    showLogo: r.showLogo,
+    logoLocalPath: r.logoLocalPath,
+    logoUrl: r.logoUrl,
+    showQrCode: r.showQrCode,
+    showTaxBreakdown: r.showTaxBreakdown,
+    showCashierName: r.showCashierName,
+    showCustomerName: r.showCustomerName,
+    showDateTime: r.showDateTime,
+    showOrderId: r.showOrderId,
+    paperSize: r.paperSize,
+    fontSize: r.fontSize,
+    textAlignment: r.textAlignment,
+    autoPrintAfterCheckout: r.autoPrintAfterCheckout,
+    printDuplicateCopy: r.printDuplicateCopy,
+    thermalPrinterEnabled: r.thermalPrinterEnabled,
+    currencySymbol: r.currencySymbol,
+    taxPercentage: r.taxPercentage,
+    serviceChargePercentage: r.serviceChargePercentage,
+    vatInclusive: r.vatInclusive,
+    updatedAt: r.updatedAt,
+  );
 
   static ReceiptSettingsTableCompanion _toCompanion(
-      ReceiptSettings s, DateTime now, SyncStatus status) {
+    ReceiptSettings s,
+    DateTime now,
+    SyncStatus status,
+  ) {
     return ReceiptSettingsTableCompanion.insert(
       id: s.id,
       businessId: s.businessId,

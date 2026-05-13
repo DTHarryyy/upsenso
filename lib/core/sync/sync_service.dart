@@ -44,6 +44,10 @@ class SyncService {
   Timer? _retryTimer;
   bool _isSyncing = false;
   bool _initCalled = false;
+  // Holds the most recent businessId provided to syncAll() while a sync was
+  // already running. After the current sync finishes we re-run pullFromServer
+  // with this id so no data is missed.
+  String? _pendingBusinessId;
 
   SyncService({
     required AuthContextDao authContextDao,
@@ -140,7 +144,14 @@ class SyncService {
 
   /// Reactive total count of pending sync records across ALL tables.
   Stream<int> watchTotalPendingSyncCount() {
-    int cat = 0, prod = 0, vars = 0, orders = 0, exp = 0, inv = 0, led = 0, rcpt = 0;
+    int cat = 0,
+        prod = 0,
+        vars = 0,
+        orders = 0,
+        exp = 0,
+        inv = 0,
+        led = 0,
+        rcpt = 0;
     final controller = StreamController<int>.broadcast();
 
     void emit() {
@@ -149,19 +160,49 @@ class SyncService {
       }
     }
 
-    final s1 = _categoriesDao.watchPendingSyncCount().listen((n) { cat = n; emit(); });
-    final s2 = _productsDao.watchPendingSyncCount().listen((n) { prod = n; emit(); });
-    final s3 = _productVariantsDao.watchPendingSyncCount().listen((n) { vars = n; emit(); });
-    final s4 = _transactionsDao.watchPendingSyncCount().listen((n) { orders = n; emit(); });
-    final s5 = _expensesDao.watchPendingSyncCount().listen((n) { exp = n; emit(); });
-    final s6 = _inventoryLevelsDao.watchPendingSyncCount().listen((n) { inv = n; emit(); });
-    final s7 = _stockLedgerDao.watchPendingSyncCount().listen((n) { led = n; emit(); });
+    final s1 = _categoriesDao.watchPendingSyncCount().listen((n) {
+      cat = n;
+      emit();
+    });
+    final s2 = _productsDao.watchPendingSyncCount().listen((n) {
+      prod = n;
+      emit();
+    });
+    final s3 = _productVariantsDao.watchPendingSyncCount().listen((n) {
+      vars = n;
+      emit();
+    });
+    final s4 = _transactionsDao.watchPendingSyncCount().listen((n) {
+      orders = n;
+      emit();
+    });
+    final s5 = _expensesDao.watchPendingSyncCount().listen((n) {
+      exp = n;
+      emit();
+    });
+    final s6 = _inventoryLevelsDao.watchPendingSyncCount().listen((n) {
+      inv = n;
+      emit();
+    });
+    final s7 = _stockLedgerDao.watchPendingSyncCount().listen((n) {
+      led = n;
+      emit();
+    });
     // ignore: avoid_function_literals_in_foreach_calls — DAO doesn't expose stream directly
-    final s8 = _receiptSettingsRepo.watchPendingSyncCount().listen((n) { rcpt = n; emit(); });
+    final s8 = _receiptSettingsRepo.watchPendingSyncCount().listen((n) {
+      rcpt = n;
+      emit();
+    });
 
     controller.onCancel = () {
-      s1.cancel(); s2.cancel(); s3.cancel(); s4.cancel();
-      s5.cancel(); s6.cancel(); s7.cancel(); s8.cancel();
+      s1.cancel();
+      s2.cancel();
+      s3.cancel();
+      s4.cancel();
+      s5.cancel();
+      s6.cancel();
+      s7.cancel();
+      s8.cancel();
       controller.close();
     };
 
@@ -171,11 +212,21 @@ class SyncService {
   /// Push all pending local changes to Supabase, then pull from server.
   Future<SyncResult> syncAll({String? businessId}) async {
     if (_isSyncing) {
+      // If the caller provided a businessId, keep it so the running sync (or
+      // the follow-up pull after it) can use it.  This prevents the common
+      // startup race where AuthBloc calls syncAll(businessId: id) while
+      // SyncService.init() already kicked off a no-businessId syncAll().
+      if (businessId != null) _pendingBusinessId = businessId;
       return SyncResult(success: false, message: 'Sync already in progress');
     }
     // Set the flag immediately — before any await — so concurrent calls that
     // arrive during the isOnline check are correctly blocked.
     _isSyncing = true;
+    // Capture and clear any pending businessId queued during a prior sync.
+    final queued = _pendingBusinessId;
+    _pendingBusinessId = null;
+    // Prefer the explicitly-provided businessId; fall back to the queued one.
+    businessId ??= queued;
 
     final online = await isOnline;
     if (!online) {
@@ -195,7 +246,8 @@ class SyncService {
       final ledgerResult = await _syncStockLedger();
       await _syncReceiptSettings(); // fire-and-forget style; errors logged internally
 
-      final int totalSynced = businessResult.syncedCount +
+      final int totalSynced =
+          businessResult.syncedCount +
           categoryResult.syncedCount +
           productResult.syncedCount +
           variantResult.syncedCount +
@@ -203,7 +255,8 @@ class SyncService {
           expenseResult.syncedCount +
           inventoryResult.syncedCount +
           ledgerResult.syncedCount;
-      final int totalFailed = businessResult.failedCount +
+      final int totalFailed =
+          businessResult.failedCount +
           categoryResult.failedCount +
           productResult.failedCount +
           variantResult.failedCount +
@@ -223,7 +276,8 @@ class SyncService {
       }
 
       return SyncResult(
-        success: businessResult.success &&
+        success:
+            businessResult.success &&
             categoryResult.success &&
             productResult.success &&
             variantResult.success &&
@@ -248,6 +302,16 @@ class SyncService {
       );
     } finally {
       _isSyncing = false;
+      // If a sync call with a businessId arrived while we were running (e.g.
+      // AuthBloc._backgroundSync during the startup init sync), schedule a
+      // quick pull-only pass so that server data is never missed.
+      final followUp = _pendingBusinessId;
+      if (followUp != null) {
+        _pendingBusinessId = null;
+        _connectivityService.isConnected.then((online) {
+          if (online) pullFromServer(followUp).ignore();
+        });
+      }
     }
   }
 
@@ -505,18 +569,22 @@ class SyncService {
         final items = await _transactionsDao.getItemsByTransactionId(tx.id);
         if (items.isNotEmpty) {
           await _transactionsRemoteDs.upsertTransactionItems(
-            items.map((i) => {
-              'id': i.id,
-              'transaction_id': i.transactionId,
-              'variant_id': i.variantId,
-              'product_name': i.productName,
-              'variant_name': i.variantName,
-              'unit_price': i.unitPrice,
-              'tax_rate': i.taxRate,
-              'qty': i.qty,
-              'line_total': i.lineTotal,
-              'line_tax': i.lineTax,
-            }).toList(),
+            items
+                .map(
+                  (i) => {
+                    'id': i.id,
+                    'transaction_id': i.transactionId,
+                    'variant_id': i.variantId,
+                    'product_name': i.productName,
+                    'variant_name': i.variantName,
+                    'unit_price': i.unitPrice,
+                    'tax_rate': i.taxRate,
+                    'qty': i.qty,
+                    'line_total': i.lineTotal,
+                    'line_tax': i.lineTax,
+                  },
+                )
+                .toList(),
           );
         }
         await _transactionsDao.updateSyncStatus(
@@ -838,8 +906,9 @@ class SyncService {
     }
 
     try {
-      final levels =
-          await _productsRemoteDs.getInventoryLevelsByBusiness(businessId);
+      final levels = await _productsRemoteDs.getInventoryLevelsByBusiness(
+        businessId,
+      );
       for (final row in levels) {
         await _inventoryLevelsDao.upsertFromServer(row);
         pulled++;
@@ -850,8 +919,9 @@ class SyncService {
     }
 
     try {
-      final ledger =
-          await _productsRemoteDs.getStockLedgerByBusiness(businessId);
+      final ledger = await _productsRemoteDs.getStockLedgerByBusiness(
+        businessId,
+      );
       for (final row in ledger) {
         await _stockLedgerDao.upsertFromServer(row);
         pulled++;
@@ -862,8 +932,8 @@ class SyncService {
     }
 
     try {
-      final transactions =
-          await _transactionsRemoteDs.getTransactionsByBusiness(businessId);
+      final transactions = await _transactionsRemoteDs
+          .getTransactionsByBusiness(businessId);
       for (final row in transactions) {
         await _transactionsDao.upsertFromServer(row);
         pulled++;
@@ -874,7 +944,9 @@ class SyncService {
     }
 
     try {
-      final expenses = await _expensesRemoteDs.getExpensesByBusiness(businessId);
+      final expenses = await _expensesRemoteDs.getExpensesByBusiness(
+        businessId,
+      );
       for (final row in expenses) {
         await _expensesDao.upsertFromServer(row);
         pulled++;
@@ -885,19 +957,38 @@ class SyncService {
     }
 
     try {
-      final branches = await _businessRemoteDs.getActiveBranchesByBusiness(businessId);
+      final branches = await _businessRemoteDs.getActiveBranchesByBusiness(
+        businessId,
+      );
       for (final row in branches) {
-        await _branchesDao.upsertFromServer(Branch(
-          id: row['id'] as String,
-          businessId: row['business_id'] as String,
-          name: row['name'] as String,
-          isActive: (row['is_active'] as bool?) ?? true,
-        ));
+        await _branchesDao.upsertFromServer(
+          Branch(
+            id: row['id'] as String,
+            businessId: row['business_id'] as String,
+            name: row['name'] as String,
+            address: row['address'] as String?,
+            phone: row['phone'] as String?,
+            isActive: (row['is_active'] as bool?) ?? true,
+          ),
+        );
         pulled++;
       }
     } catch (e) {
       failed++;
       errors.add('Pull branches: ${e.toString()}');
+    }
+
+    try {
+      final businessData = await _businessRemoteDs.getBusinessById(businessId);
+      if (businessData != null) {
+        await _businessesDao.upsertFromServer(
+          BusinessModel.fromJson(businessData),
+        );
+        pulled++;
+      }
+    } catch (e) {
+      failed++;
+      errors.add('Pull business: ${e.toString()}');
     }
 
     try {

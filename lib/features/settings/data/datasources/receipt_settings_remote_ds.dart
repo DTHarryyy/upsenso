@@ -38,23 +38,26 @@ class ReceiptSettingsRemoteDs {
       throw Exception('Logo must be smaller than 2 MB.');
     }
 
-    final path = 'logos/$businessId/$fileName';
-    await _client.storage.from('receipt-assets').uploadBinary(
+    final path = 'receipt-logos/$businessId/$fileName';
+    await _client.storage
+        .from('business-logos')
+        .uploadBinary(
           path,
           bytes,
           fileOptions: FileOptions(contentType: mimeType, upsert: true),
         );
-    return _client.storage.from('receipt-assets').getPublicUrl(path);
+    return _client.storage.from('business-logos').getPublicUrl(path);
   }
 
   Future<void> deleteLogo(String businessId) async {
     final files = await _client.storage
-        .from('receipt-assets')
-        .list(path: 'logos/$businessId');
-    final paths =
-        files.map((f) => 'logos/$businessId/${f.name}').toList();
+        .from('business-logos')
+        .list(path: 'receipt-logos/$businessId');
+    final paths = files
+        .map((f) => 'receipt-logos/$businessId/${f.name}')
+        .toList();
     if (paths.isNotEmpty) {
-      await _client.storage.from('receipt-assets').remove(paths);
+      await _client.storage.from('business-logos').remove(paths);
     }
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/features/settings/data/receipt_settings_repository.dart';
 import 'package:pos/features/settings/domain/receipt_settings.dart';
@@ -13,39 +14,66 @@ class SettingsCubit extends Cubit<SettingsState> {
   SettingsCubit(this._repo) : super(const SettingsState());
 
   /// Start watching local DB for this business.
-  /// [businessName] and [branchName] are used to pre-fill defaults on first run.
+  /// All named parameters are used to pre-fill defaults on first run
+  /// (when no receipt_settings row exists yet in the local DB).
+  /// When online, also pulls the latest data from Supabase in the background
+  /// so the local DB (and thus the stream) reflects the server state.
   void startWatching({
     required String businessId,
     String? businessName,
     String? branchName,
+    String? ownerName,
+    String? email,
+    String? contactNumber,
+    String? address,
   }) {
     _sub?.cancel();
     emit(const SettingsState(isLoading: true));
 
-    _sub = _repo.watch(businessId).listen(
-      (settings) {
-        // First time — no row yet: pre-fill with user's business info
-        final effective = settings ??
-            ReceiptSettings(
-              id: businessId,
-              businessId: businessId,
-              businessName: businessName ?? '',
-              storeName: branchName ?? '',
-              updatedAt: DateTime.now(),
+    _sub = _repo
+        .watch(businessId)
+        .listen(
+          (settings) {
+            // First time — no row yet: pre-fill with user's business info
+            final effective =
+                settings ??
+                ReceiptSettings(
+                  id: businessId,
+                  businessId: businessId,
+                  businessName: businessName ?? '',
+                  storeName: branchName ?? '',
+                  ownerName: ownerName ?? '',
+                  email: email ?? '',
+                  contactNumber: contactNumber ?? '',
+                  address: address ?? '',
+                  updatedAt: DateTime.now(),
+                );
+            emit(
+              state.copyWith(
+                settings: effective,
+                isLoading: false,
+                saveStatus: SettingsSaveStatus.idle,
+              ),
             );
-        emit(state.copyWith(
-          settings: effective,
-          isLoading: false,
-          saveStatus: SettingsSaveStatus.idle,
-        ));
-      },
-      onError: (e) {
-        emit(state.copyWith(
-          isLoading: false,
-          errorMessage: e.toString(),
-        ));
-      },
-    );
+          },
+          onError: (e) {
+            emit(state.copyWith(isLoading: false, errorMessage: e.toString()));
+          },
+        );
+
+    // Fire-and-forget: pull fresh data from Supabase if online.
+    // The stream above will automatically emit the updated row once the
+    // local DB is written by pullFromServer.
+    _pullIfOnline(businessId);
+  }
+
+  Future<void> _pullIfOnline(String businessId) async {
+    try {
+      await _repo.pullFromServer(businessId);
+    } catch (e) {
+      // Non-fatal — local data is still shown; log and move on.
+      debugPrint('[SettingsCubit] Remote pull failed: $e');
+    }
   }
 
   /// Patch the in-memory draft and auto-save to local DB.
@@ -55,10 +83,9 @@ class SettingsCubit extends Cubit<SettingsState> {
 
     final updated = patch(current);
     // Optimistic UI — emit updated state before save completes
-    emit(state.copyWith(
-      settings: updated,
-      saveStatus: SettingsSaveStatus.saving,
-    ));
+    emit(
+      state.copyWith(settings: updated, saveStatus: SettingsSaveStatus.saving),
+    );
 
     try {
       await _repo.save(updated);
@@ -66,14 +93,17 @@ class SettingsCubit extends Cubit<SettingsState> {
         emit(state.copyWith(saveStatus: SettingsSaveStatus.saved));
         // Reset to idle after brief delay so UI can show a "Saved" indicator
         await Future.delayed(const Duration(seconds: 2));
-        if (!isClosed) emit(state.copyWith(saveStatus: SettingsSaveStatus.idle));
+        if (!isClosed)
+          emit(state.copyWith(saveStatus: SettingsSaveStatus.idle));
       }
     } catch (e) {
       if (!isClosed) {
-        emit(state.copyWith(
-          saveStatus: SettingsSaveStatus.error,
-          errorMessage: e.toString(),
-        ));
+        emit(
+          state.copyWith(
+            saveStatus: SettingsSaveStatus.error,
+            errorMessage: e.toString(),
+          ),
+        );
       }
     }
   }
@@ -97,22 +127,26 @@ class SettingsCubit extends Cubit<SettingsState> {
       // Patch in-memory settings with both the local path and remote URL
       final current = state.settings;
       if (current != null && !isClosed) {
-        emit(state.copyWith(
-          isUploadingLogo: false,
-          settings: current.copyWith(
-            logoLocalPath: localPath ?? '',
-            logoUrl: url,
+        emit(
+          state.copyWith(
+            isUploadingLogo: false,
+            settings: current.copyWith(
+              logoLocalPath: localPath ?? '',
+              logoUrl: url,
+            ),
+            saveStatus: SettingsSaveStatus.saved,
           ),
-          saveStatus: SettingsSaveStatus.saved,
-        ));
+        );
       }
     } catch (e) {
       if (!isClosed) {
-        emit(state.copyWith(
-          isUploadingLogo: false,
-          errorMessage: e.toString(),
-          saveStatus: SettingsSaveStatus.error,
-        ));
+        emit(
+          state.copyWith(
+            isUploadingLogo: false,
+            errorMessage: e.toString(),
+            saveStatus: SettingsSaveStatus.error,
+          ),
+        );
       }
     }
   }
