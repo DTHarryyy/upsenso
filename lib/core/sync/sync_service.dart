@@ -938,6 +938,12 @@ class SyncService {
         await _transactionsDao.upsertFromServer(row);
         pulled++;
       }
+      // Pull line items for all transactions so dashboard top-items & reports work.
+      final items = await _transactionsRemoteDs.getItemsByBusiness(businessId);
+      for (final item in items) {
+        await _transactionsDao.upsertItemFromServer(item);
+        pulled++;
+      }
     } catch (e) {
       failed++;
       errors.add('Pull transactions: ${e.toString()}');

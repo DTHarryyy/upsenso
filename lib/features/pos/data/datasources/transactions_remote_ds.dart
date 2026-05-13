@@ -27,9 +27,7 @@ class TransactionsRemoteDs {
     });
   }
 
-  Future<void> upsertTransactionItems(
-    List<Map<String, dynamic>> items,
-  ) async {
+  Future<void> upsertTransactionItems(List<Map<String, dynamic>> items) async {
     if (items.isEmpty) return;
     await client.from('transaction_items').upsert(items);
   }
@@ -52,6 +50,18 @@ class TransactionsRemoteDs {
         .from('transaction_items')
         .select()
         .eq('transaction_id', transactionId);
+    return List<Map<String, dynamic>>.from(response as List);
+  }
+
+  /// Fetch all transaction items for a business by joining through transactions.
+  /// Used during pull sync so all line-item data is available locally.
+  Future<List<Map<String, dynamic>>> getItemsByBusiness(
+    String businessId,
+  ) async {
+    final response = await client
+        .from('transaction_items')
+        .select('*, transactions!inner(business_id)')
+        .eq('transactions.business_id', businessId);
     return List<Map<String, dynamic>>.from(response as List);
   }
 }

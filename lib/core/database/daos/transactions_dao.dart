@@ -59,6 +59,24 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  /// Upsert a transaction_item row pulled from Supabase.
+  Future<void> upsertItemFromServer(Map<String, dynamic> row) {
+    return into(transactionItemsTable).insertOnConflictUpdate(
+      TransactionItemsTableCompanion.insert(
+        id: row['id'] as String,
+        transactionId: row['transaction_id'] as String,
+        variantId: row['variant_id'] as String,
+        productName: row['product_name'] as String,
+        variantName: row['variant_name'] as String,
+        unitPrice: (row['unit_price'] as num).toDouble(),
+        taxRate: Value((row['tax_rate'] as num?)?.toDouble()),
+        qty: (row['qty'] as num).toDouble(),
+        lineTotal: (row['line_total'] as num).toDouble(),
+        lineTax: (row['line_tax'] as num).toDouble(),
+      ),
+    );
+  }
+
   /// Upsert a transaction row pulled from Supabase (marks as synced).
   /// Local-only fields (itemCount, customerName, paymentMethod, subtotal,
   /// amountReceived, changeDue) are preserved if the row already exists.
