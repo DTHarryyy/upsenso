@@ -12,7 +12,11 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
 
   Stream<List<ExpenseRow>> watchByBusinessId(String businessId) {
     return (select(expensesTable)
-          ..where((t) => t.businessId.equals(businessId))
+          ..where(
+            (t) =>
+                t.businessId.equals(businessId) &
+                t.syncStatus.isNotIn([SyncStatus.pendingDelete.toInt()]),
+          )
           ..orderBy([
             (t) => OrderingTerm.desc(t.expenseDate),
             (t) => OrderingTerm.desc(t.createdAt),
@@ -22,7 +26,11 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
 
   Future<List<ExpenseRow>> getByBusinessId(String businessId) {
     return (select(expensesTable)
-          ..where((t) => t.businessId.equals(businessId))
+          ..where(
+            (t) =>
+                t.businessId.equals(businessId) &
+                t.syncStatus.isNotIn([SyncStatus.pendingDelete.toInt()]),
+          )
           ..orderBy([(t) => OrderingTerm.desc(t.expenseDate)]))
         .get();
   }
@@ -31,14 +39,32 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
     return into(expensesTable).insert(companion);
   }
 
-  Future<void> updateExpense(
-      String id, ExpensesTableCompanion companion) {
-    return (update(expensesTable)..where((t) => t.id.equals(id)))
-        .write(companion);
+  Future<void> updateExpense(String id, ExpensesTableCompanion companion) {
+    return (update(
+      expensesTable,
+    )..where((t) => t.id.equals(id))).write(companion);
   }
 
-  Future<void> deleteExpense(String id) {
-    return (delete(expensesTable)..where((t) => t.id.equals(id))).go();
+  /// Offline-first delete: marks the record as pendingDelete so the sync
+  /// service will remove it from Supabase on the next run, then hard-deletes
+  /// it locally. Rows that have never been uploaded are hard-deleted
+  /// immediately since they never reached the server.
+  Future<void> deleteExpense(String id) async {
+    final row = await (select(
+      expensesTable,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
+    if (row == null) return;
+    if (row.syncStatus == SyncStatus.pendingUpload.toInt()) {
+      // Never uploaded — safe to hard-delete right away.
+      await (delete(expensesTable)..where((t) => t.id.equals(id))).go();
+    } else {
+      // Already on server — mark for deletion; sync will clean up Supabase.
+      await (update(expensesTable)..where((t) => t.id.equals(id))).write(
+        ExpensesTableCompanion(
+          syncStatus: Value(SyncStatus.pendingDelete.toInt()),
+        ),
+      );
+    }
   }
 
   Future<void> clearAll() {
@@ -49,25 +75,26 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
     final countExp = expensesTable.id.count();
     final query = selectOnly(expensesTable)
       ..addColumns([countExp])
-      ..where(expensesTable.syncStatus.isIn([
+      ..where(
+        expensesTable.syncStatus.isIn([
           SyncStatus.pendingUpload.toInt(),
           SyncStatus.pendingUpdate.toInt(),
           SyncStatus.pendingDelete.toInt(),
           SyncStatus.failed.toInt(),
-        ]));
+        ]),
+      );
     return query.watchSingle().map((row) => row.read(countExp) ?? 0);
   }
 
   Future<List<ExpenseRow>> getPendingSync() {
-    return (select(expensesTable)
-          ..where(
-            (t) => t.syncStatus.isIn([
-              SyncStatus.pendingUpload.toInt(),
-              SyncStatus.pendingUpdate.toInt(),
-              SyncStatus.pendingDelete.toInt(),
-              SyncStatus.failed.toInt(),
-            ]),
-          ))
+    return (select(expensesTable)..where(
+          (t) => t.syncStatus.isIn([
+            SyncStatus.pendingUpload.toInt(),
+            SyncStatus.pendingUpdate.toInt(),
+            SyncStatus.pendingDelete.toInt(),
+            SyncStatus.failed.toInt(),
+          ]),
+        ))
         .get();
   }
 
@@ -103,8 +130,11 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
         note: Value(row['note'] as String?),
         expenseDate: DateTime.parse(row['expense_date'] as String),
         createdAt: Value(DateTime.parse(row['created_at'] as String)),
-        updatedAt: Value(DateTime.parse(
-            row['updated_at'] as String? ?? row['created_at'] as String)),
+        updatedAt: Value(
+          DateTime.parse(
+            row['updated_at'] as String? ?? row['created_at'] as String,
+          ),
+        ),
         syncStatus: Value(SyncStatus.synced.toInt()),
       ),
     );

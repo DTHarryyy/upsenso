@@ -78,17 +78,19 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Upsert a transaction row pulled from Supabase (marks as synced).
-  /// Local-only fields (itemCount, customerName, paymentMethod, subtotal,
-  /// amountReceived, changeDue) are preserved if the row already exists.
+  /// payment_method is now synced via Supabase; other local-only fields
+  /// (itemCount, customerName, subtotal, amountReceived, changeDue) are
+  /// preserved if the row already exists.
   Future<void> upsertFromServer(Map<String, dynamic> row) async {
     final id = row['id'] as String;
     final createdAt = DateTime.parse(row['created_at'] as String);
+    final paymentMethod = (row['payment_method'] as String?) ?? 'cash';
     final existing = await (select(
       transactionsTable,
     )..where((t) => t.id.equals(id))).getSingleOrNull();
 
     if (existing != null) {
-      // Row exists — only overwrite server-side fields, preserve local-only ones.
+      // Row exists — overwrite server-side fields including payment_method.
       await (update(transactionsTable)..where((t) => t.id.equals(id))).write(
         TransactionsTableCompanion(
           cashierId: Value(row['cashier_id'] as String),
@@ -96,13 +98,14 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
           shiftId: Value(row['shift_id'] as String?),
           totalAmount: Value((row['total_amount'] as num).toDouble()),
           taxAmount: Value((row['tax_amount'] as num).toDouble()),
+          paymentMethod: Value(paymentMethod),
           createdAt: Value(createdAt),
           syncStatus: const Value(3),
           lastSyncAttempt: Value(DateTime.now()),
         ),
       );
     } else {
-      // New row from server — insert with zeroed local-only fields.
+      // New row from server — insert with payment_method from server.
       await into(transactionsTable).insert(
         TransactionsTableCompanion.insert(
           id: id,
@@ -113,6 +116,7 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
           taxAmount: (row['tax_amount'] as num).toDouble(),
           subtotal: (row['total_amount'] as num).toDouble(),
           itemCount: 0,
+          paymentMethod: Value(paymentMethod),
           syncStatus: const Value(3),
           lastSyncAttempt: Value(DateTime.now()),
           createdAt: Value(createdAt),

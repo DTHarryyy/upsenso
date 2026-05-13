@@ -29,36 +29,48 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
 
   /// Get a single variant by its ID.
   Future<ProductVariantsTableData?> getById(String id) {
-    return (select(productVariantsTable)
-          ..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    return (select(
+      productVariantsTable,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
   /// Get all variants for a product.
   Future<List<ProductVariantsTableData>> getByProductId(String productId) {
-    return (select(productVariantsTable)
-          ..where((t) => t.productId.equals(productId)))
+    return (select(productVariantsTable)..where(
+          (t) =>
+              t.productId.equals(productId) &
+              t.syncStatus.isNotIn([SyncStatus.pendingDelete.toInt()]),
+        ))
         .get();
   }
 
   /// Reactive stream of variants for a product.
   Stream<List<ProductVariantsTableData>> watchByProductId(String productId) {
-    return (select(productVariantsTable)
-          ..where((t) => t.productId.equals(productId)))
+    return (select(productVariantsTable)..where(
+          (t) =>
+              t.productId.equals(productId) &
+              t.syncStatus.isNotIn([SyncStatus.pendingDelete.toInt()]),
+        ))
         .watch();
   }
 
   /// Get all variants for a business (used during sync).
   Future<List<ProductVariantsTableData>> getByBusinessId(String businessId) {
-    return (select(productVariantsTable)
-          ..where((t) => t.businessId.equals(businessId)))
+    return (select(productVariantsTable)..where(
+          (t) =>
+              t.businessId.equals(businessId) &
+              t.syncStatus.isNotIn([SyncStatus.pendingDelete.toInt()]),
+        ))
         .get();
   }
 
   /// Reactive stream of all variants for a business (used in products listing).
   Stream<List<ProductVariantsTableData>> watchByBusinessId(String businessId) {
-    return (select(productVariantsTable)
-          ..where((t) => t.businessId.equals(businessId)))
+    return (select(productVariantsTable)..where(
+          (t) =>
+              t.businessId.equals(businessId) &
+              t.syncStatus.isNotIn([SyncStatus.pendingDelete.toInt()]),
+        ))
         .watch();
   }
 
@@ -67,15 +79,15 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
     final countExp = productVariantsTable.id.count();
     final query = selectOnly(productVariantsTable)
       ..addColumns([countExp])
-      ..where(productVariantsTable.syncStatus.isIn([0, 1, 4]));
+      ..where(productVariantsTable.syncStatus.isIn([0, 1, 2, 4]));
     return query.watchSingle().map((row) => row.read(countExp) ?? 0);
   }
 
   /// Records with pending sync: pendingUpload (0), pendingUpdate (1), pendingDelete (2), failed (4).
   Future<List<ProductVariantsTableData>> getPendingSync() {
-    return (select(productVariantsTable)
-          ..where((t) => t.syncStatus.isIn([0, 1, 2, 4])))
-        .get();
+    return (select(
+      productVariantsTable,
+    )..where((t) => t.syncStatus.isIn([0, 1, 2, 4]))).get();
   }
 
   /// Update sync status after a sync attempt.
@@ -93,11 +105,39 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
-  /// Delete all variants belonging to a product (used when editing a product).
+  /// Offline-first delete of all variants for a product (used when editing).
+  /// Variants already uploaded to the server are marked pendingDelete so the
+  /// sync service will remove them from Supabase. Variants never uploaded are
+  /// hard-deleted immediately.
+  Future<void> markDeleteByProductId(String productId) async {
+    final rows = await (select(
+      productVariantsTable,
+    )..where((t) => t.productId.equals(productId))).get();
+    for (final row in rows) {
+      if (row.syncStatus == SyncStatus.pendingUpload.toInt()) {
+        // Never reached the server — safe to remove locally right away.
+        await (delete(
+          productVariantsTable,
+        )..where((t) => t.id.equals(row.id))).go();
+      } else {
+        // Already on server — mark for deletion; sync will clean up Supabase.
+        await (update(
+          productVariantsTable,
+        )..where((t) => t.id.equals(row.id))).write(
+          ProductVariantsTableCompanion(
+            syncStatus: Value(SyncStatus.pendingDelete.toInt()),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Hard-delete all variants for a product — only call after server
+  /// deletion is confirmed (i.e. from the sync service).
   Future<void> deleteByProductId(String productId) {
-    return (delete(productVariantsTable)
-          ..where((t) => t.productId.equals(productId)))
-        .go();
+    return (delete(
+      productVariantsTable,
+    )..where((t) => t.productId.equals(productId))).go();
   }
 
   /// Hard-delete a variant (after successful server deletion).
@@ -137,11 +177,12 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
     String barcode,
     String businessId,
   ) {
-    return (select(productVariantsTable)
-          ..where(
-            (t) =>
-                t.barcode.equals(barcode) & t.businessId.equals(businessId),
-          ))
+    return (select(productVariantsTable)..where(
+          (t) =>
+              t.barcode.equals(barcode) &
+              t.businessId.equals(businessId) &
+              t.syncStatus.isNotIn([SyncStatus.pendingDelete.toInt()]),
+        ))
         .getSingleOrNull();
   }
 
@@ -155,19 +196,21 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
   /// - Fraction products (stockDecimal != null): deducts from [stockDecimal].
   /// Marks the variant as pendingUpdate so it syncs to the server.
   Future<void> decrementStockIfTracked(String variantId, double qty) async {
-    final variant = await (select(productVariantsTable)
-          ..where((v) => v.id.equals(variantId)))
-        .getSingleOrNull();
+    final variant = await (select(
+      productVariantsTable,
+    )..where((v) => v.id.equals(variantId))).getSingleOrNull();
 
     if (variant == null || !variant.trackStock) return;
 
     if (variant.stockDecimal != null) {
       // Fraction / weight product
-      final newStock =
-          (variant.stockDecimal! - qty).clamp(0.0, double.maxFinite);
-      await (update(productVariantsTable)
-            ..where((v) => v.id.equals(variantId)))
-          .write(
+      final newStock = (variant.stockDecimal! - qty).clamp(
+        0.0,
+        double.maxFinite,
+      );
+      await (update(
+        productVariantsTable,
+      )..where((v) => v.id.equals(variantId))).write(
         ProductVariantsTableCompanion(
           stockDecimal: Value(newStock),
           syncStatus: const Value(1), // pendingUpdate
@@ -177,9 +220,9 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
     } else {
       // Unit product — clamp to [0, current stock]
       final newStock = (variant.stock - qty.round()).clamp(0, variant.stock);
-      await (update(productVariantsTable)
-            ..where((v) => v.id.equals(variantId)))
-          .write(
+      await (update(
+        productVariantsTable,
+      )..where((v) => v.id.equals(variantId))).write(
         ProductVariantsTableCompanion(
           stock: Value(newStock),
           syncStatus: const Value(1), // pendingUpdate
@@ -194,14 +237,15 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
   Future<List<ProductVariantsTableData>> getLowStockByBusinessId(
     String businessId,
   ) async {
-    final rows = await (select(productVariantsTable)
-          ..where(
-            (v) =>
-                v.businessId.equals(businessId) &
-                v.trackStock.equals(true) &
-                v.isActive.equals(true),
-          ))
-        .get();
+    final rows =
+        await (select(productVariantsTable)..where(
+              (v) =>
+                  v.businessId.equals(businessId) &
+                  v.trackStock.equals(true) &
+                  v.isActive.equals(true) &
+                  v.syncStatus.isNotIn([SyncStatus.pendingDelete.toInt()]),
+            ))
+            .get();
     return rows.where((v) {
       final threshold = v.lowStockAlert;
       if (threshold != null) {
@@ -233,12 +277,14 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
   /// Used after editing to keep product_variants.stock in sync with
   /// the authoritative sum from inventory_levels.
   Future<void> updateVariantStock(String variantId, int stock) {
-    return (update(productVariantsTable)
-          ..where((t) => t.id.equals(variantId)))
-        .write(ProductVariantsTableCompanion(
-          stock: Value(stock),
-          syncStatus: const Value(1),
-          localUpdatedAt: Value(DateTime.now()),
-        ));
+    return (update(
+      productVariantsTable,
+    )..where((t) => t.id.equals(variantId))).write(
+      ProductVariantsTableCompanion(
+        stock: Value(stock),
+        syncStatus: const Value(1),
+        localUpdatedAt: Value(DateTime.now()),
+      ),
+    );
   }
 }

@@ -2,8 +2,9 @@ import 'package:drift/drift.dart';
 
 /// Local table for completed POS transactions.
 /// Syncs to the existing Supabase `transactions` table.
-/// Local-only fields (customer_name, payment_method, subtotal, amount_received,
+/// Local-only fields (customer_name, subtotal, amount_received,
 /// change_due, item_count) are NOT sent to Supabase.
+/// payment_method IS synced to Supabase since migration 20260513000000.
 class TransactionsTable extends Table {
   @override
   String get tableName => 'transactions';
@@ -21,13 +22,11 @@ class TransactionsTable extends Table {
       text().withDefault(const Constant('completed'))(); // → status
   TextColumn get transactionHash =>
       text().nullable()(); // → transaction_hash (null)
-  DateTimeColumn get createdAt =>
-      dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
   // ── Local-only fields (not present in Supabase schema) ──────────────────
   TextColumn get customerName => text().nullable()();
-  TextColumn get paymentMethod =>
-      text().withDefault(const Constant('cash'))();
+  TextColumn get paymentMethod => text().withDefault(const Constant('cash'))();
   RealColumn get subtotal => real()();
   RealColumn get amountReceived => real().nullable()();
   RealColumn get changeDue => real().nullable()();

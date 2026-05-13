@@ -215,7 +215,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       }
 
       // Delete all existing variants and re-insert from form data
-      await _productVariantsDao.deleteByProductId(productId);
+      await _productVariantsDao.markDeleteByProductId(productId);
 
       final variantBarcode = data.barcodes
           .map((s) => s.trim())
