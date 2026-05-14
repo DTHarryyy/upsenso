@@ -115,6 +115,7 @@ class _ReceiptBody extends StatelessWidget {
           _metaRow('Cashier:', 'Sample Cashier', baseFontSize),
         if (s.showCustomerName)
           _metaRow('Customer:', 'Walk-in Customer', baseFontSize),
+        _metaRow('Payment:', 'Cash', baseFontSize),
 
         _dottedDivider(),
 

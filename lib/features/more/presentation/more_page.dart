@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:iconly/iconly.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
@@ -136,17 +137,17 @@ class _MorePageState extends State<MorePage>
                       // OPERATIONS
                       _SectionLabel('OPERATIONS'),
                       _DrawerTile(
-                        icon: Icons.history_rounded,
+                        icon: IconlyLight.time_circle,
                         label: 'Sales History',
                         onTap: () => _navigate(AppRoutes.saleshistory),
                       ),
                       _DrawerTile(
-                        icon: Icons.stacked_bar_chart_outlined,
+                        icon: IconlyLight.chart,
                         label: 'Stock Level',
                         onTap: () => _navigate(AppRoutes.inventory),
                       ),
                       _DrawerTile(
-                        icon: Icons.request_page_outlined,
+                        icon: IconlyLight.wallet,
                         label: 'Expenses',
                         onTap: () => _navigate(AppRoutes.expenses),
                       ),
@@ -251,7 +252,7 @@ class _DrawerHeader extends StatelessWidget {
               ),
             ),
             const Icon(
-              Icons.arrow_outward_rounded,
+              IconlyLight.arrow_right,
               size: 18,
               color: AppColors.textMuted,
             ),
@@ -302,7 +303,7 @@ class _DrawerTile extends StatelessWidget {
                   ),
                 ),
                 const Icon(
-                  Icons.arrow_outward_rounded,
+                  IconlyLight.arrow_right,
                   size: 14,
                   color: AppColors.textMuted,
                 ),
@@ -337,7 +338,7 @@ class _SettingsTile extends StatelessWidget {
             child: Row(
               children: [
                 Icon(
-                  Icons.settings_rounded,
+                  isExpanded ? IconlyBold.setting : IconlyLight.setting,
                   size: 20,
                   color: isExpanded ? AppColors.brand : AppColors.textSecondary,
                 ),
@@ -362,7 +363,7 @@ class _SettingsTile extends StatelessWidget {
                   turns: isExpanded ? 0.5 : 0.0,
                   duration: const Duration(milliseconds: 240),
                   child: const Icon(
-                    Icons.keyboard_arrow_down_rounded,
+                    IconlyLight.arrow_down_2,
                     size: 20,
                     color: AppColors.textMuted,
                   ),
@@ -387,17 +388,17 @@ class _SettingsSubItems extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = [
       (
-        icon: Icons.receipt_long_rounded,
+        icon: IconlyLight.paper,
         label: 'Receipt Settings',
         route: AppRoutes.receiptSettings,
       ),
       (
-        icon: Icons.business_rounded,
+        icon: IconlyLight.work,
         label: 'Business Profile',
         route: AppRoutes.businessProfile,
       ),
       (
-        icon: Icons.person_rounded,
+        icon: IconlyLight.profile,
         label: 'My Profile',
         route: AppRoutes.profile,
       ),
@@ -443,7 +444,7 @@ class _SettingsSubItems extends StatelessWidget {
                       ),
                     ),
                     const Icon(
-                      Icons.chevron_right,
+                      IconlyLight.arrow_right,
                       size: 16,
                       color: AppColors.textMuted,
                     ),
@@ -510,7 +511,7 @@ class _LogoutButton extends StatelessWidget {
         width: double.infinity,
         child: FilledButton.icon(
           onPressed: onTap,
-          icon: const Icon(Icons.logout_rounded, size: 18),
+          icon: const Icon(IconlyLight.logout, size: 18),
           label: const Text('Log Out'),
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.error,

@@ -54,24 +54,8 @@ class CheckoutSuccessPage extends StatefulWidget {
 
 class _CheckoutSuccessPageState extends State<CheckoutSuccessPage> {
   bool _printing = false;
-  bool _autoPrinted = false;
 
   bool get _isCash => widget.paymentMethod == 'cash';
-
-  @override
-  void initState() {
-    super.initState();
-    // Auto-print after a short delay so the success animation shows first
-    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoPrint());
-  }
-
-  Future<void> _maybeAutoPrint() async {
-    if (_autoPrinted) return;
-    final settings = await _loadSettings();
-    if (settings == null || !settings.autoPrintAfterCheckout) return;
-    _autoPrinted = true;
-    if (mounted) await _doPrint(settings: settings);
-  }
 
   Future<ReceiptSettings?> _loadSettings() async {
     try {

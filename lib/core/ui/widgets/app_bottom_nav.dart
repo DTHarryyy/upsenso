@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 
 class AppBottomNav extends StatelessWidget {
@@ -32,28 +33,28 @@ class AppBottomNav extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _buildNavItem(
-                icon: Icons.dashboard_rounded,
-                activeIcon: Icons.dashboard_rounded,
+                icon: IconlyLight.home,
+                activeIcon: IconlyBold.home,
                 label: 'Dashboard',
                 index: 0,
               ),
               _buildNavItem(
-                icon: Icons.inventory_2_rounded,
-                activeIcon: Icons.inventory_2_rounded,
+                icon: IconlyLight.bag,
+                activeIcon: IconlyBold.bag,
                 label: 'Products',
                 index: 1,
               ),
               // Center POS button
               _buildCenterPOSButton(),
               _buildNavItem(
-                icon: Icons.analytics,
-                activeIcon: Icons.analytics,
+                icon: IconlyLight.chart,
+                activeIcon: IconlyBold.chart,
                 label: 'Reports',
                 index: 3,
               ),
               _buildNavItem(
-                icon: Icons.inventory_rounded,
-                activeIcon: Icons.inventory_rounded,
+                icon: IconlyLight.category,
+                activeIcon: IconlyBold.category,
                 label: 'Inventory',
                 index: 4,
               ),
@@ -81,7 +82,7 @@ class AppBottomNav extends StatelessWidget {
                 color: AppColors.brand,
               ),
               child: Icon(
-                Icons.qr_code_scanner_rounded,
+                IconlyBold.scan,
                 color: AppColors.textInverse,
                 size: 28,
               ),

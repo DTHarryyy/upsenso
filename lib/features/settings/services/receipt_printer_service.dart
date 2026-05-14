@@ -238,6 +238,14 @@ class ReceiptPrinterService {
                 align: align,
                 color: PdfColors.grey600,
               ),
+            if (settings.website.isNotEmpty)
+              _text(
+                settings.website,
+                baseFs - 0.5,
+                fonts,
+                align: align,
+                color: PdfColors.grey600,
+              ),
             if (settings.tinNumber.isNotEmpty)
               _text(
                 'TIN: ${settings.tinNumber}',
@@ -360,6 +368,18 @@ class ReceiptPrinterService {
                 color: PdfColors.grey600,
               ),
             ],
+            if (settings.showQrCode) ...[
+              pw.SizedBox(height: 6),
+              pw.Center(
+                child: pw.BarcodeWidget(
+                  barcode: pw.Barcode.qrCode(),
+                  data: transactionId,
+                  width: 60,
+                  height: 60,
+                ),
+              ),
+              pw.SizedBox(height: 6),
+            ],
             pw.SizedBox(height: 4),
             _text(
               '* * *',
@@ -413,24 +433,32 @@ class ReceiptPrinterService {
     ),
   );
 
+  // Uses pw.Divider to avoid the overflow that '- ' * N causes when the
+  // repeated string exceeds the printable width and wraps onto extra lines.
   pw.Widget _divider(_Fonts fonts, double baseFs) => pw.Padding(
     padding: const pw.EdgeInsets.symmetric(vertical: 4),
-    child: _text('- ' * 40, 6, fonts, color: PdfColors.grey400),
+    child: pw.Divider(color: PdfColors.grey400, thickness: 0.5),
   );
 
   pw.Widget _solidDivider() => pw.Padding(
     padding: const pw.EdgeInsets.symmetric(vertical: 4),
-    child: pw.Divider(color: PdfColors.grey400, thickness: 0.5),
+    child: pw.Divider(color: PdfColors.grey700, thickness: 0.8),
   );
 
   pw.Widget _metaRow(String label, String value, double fs, _Fonts fonts) =>
       pw.Padding(
         padding: const pw.EdgeInsets.only(bottom: 1.5),
         child: pw.Row(
-          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
           children: [
             _text(label, fs - 1, fonts, color: PdfColors.grey600),
-            _text(value, fs - 1, fonts, bold: true),
+            pw.SizedBox(width: 4),
+            pw.Expanded(
+              child: pw.Text(
+                value,
+                textAlign: pw.TextAlign.right,
+                style: pw.TextStyle(font: fonts.bold, fontSize: fs - 1),
+              ),
+            ),
           ],
         ),
       );
@@ -475,9 +503,8 @@ class ReceiptPrinterService {
   }) => pw.Padding(
     padding: const pw.EdgeInsets.only(bottom: 2),
     child: pw.Row(
-      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       children: [
-        _text(label, fs, fonts, bold: bold, color: color),
+        pw.Expanded(child: _text(label, fs, fonts, bold: bold, color: color)),
         _text(value, fs, fonts, bold: bold, color: color),
       ],
     ),

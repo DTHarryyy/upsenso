@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:iconly/iconly.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
@@ -537,7 +538,7 @@ class _AppSidebarState extends State<_AppSidebar>
                           child: Padding(
                             padding: const EdgeInsets.all(8),
                             child: const Icon(
-                              Icons.chevron_left_rounded,
+                              IconlyLight.arrow_left_2,
                               size: 20,
                               color: AppColors.textMuted,
                             ),
@@ -559,7 +560,7 @@ class _AppSidebarState extends State<_AppSidebar>
                         child: SizedBox.expand(
                           child: Center(
                             child: const Icon(
-                              Icons.chevron_right_rounded,
+                              IconlyLight.arrow_right_2,
                               size: 24,
                               color: AppColors.textMuted,
                             ),
@@ -580,7 +581,8 @@ class _AppSidebarState extends State<_AppSidebar>
                   // ── MAIN section ──
                   if (layoutExpanded) const _SectionLabel(label: 'MAIN'),
                   _NavItem(
-                    icon: Icons.dashboard_rounded,
+                    icon: IconlyLight.home,
+                    activeIcon: IconlyBold.home,
                     label: 'Dashboard',
                     index: 0,
                     currentIndex: widget.currentIndex,
@@ -588,7 +590,8 @@ class _AppSidebarState extends State<_AppSidebar>
                     onTap: widget.onNavTap,
                   ),
                   _NavItem(
-                    icon: Icons.inventory_2_rounded,
+                    icon: IconlyLight.bag,
+                    activeIcon: IconlyBold.bag,
                     label: 'Products',
                     index: 1,
                     currentIndex: widget.currentIndex,
@@ -596,7 +599,8 @@ class _AppSidebarState extends State<_AppSidebar>
                     onTap: widget.onNavTap,
                   ),
                   _NavItem(
-                    icon: Icons.qr_code_scanner_rounded,
+                    icon: IconlyLight.scan,
+                    activeIcon: IconlyBold.scan,
                     label: 'POS Terminal',
                     index: 2,
                     currentIndex: widget.currentIndex,
@@ -605,7 +609,8 @@ class _AppSidebarState extends State<_AppSidebar>
                     accent: true,
                   ),
                   _NavItem(
-                    icon: Icons.analytics_rounded,
+                    icon: IconlyLight.chart,
+                    activeIcon: IconlyBold.chart,
                     label: 'Reports',
                     index: 3,
                     currentIndex: widget.currentIndex,
@@ -613,7 +618,8 @@ class _AppSidebarState extends State<_AppSidebar>
                     onTap: widget.onNavTap,
                   ),
                   _NavItem(
-                    icon: Icons.inventory_rounded,
+                    icon: IconlyLight.category,
+                    activeIcon: IconlyBold.category,
                     label: 'Inventory',
                     index: 4,
                     currentIndex: widget.currentIndex,
@@ -628,7 +634,8 @@ class _AppSidebarState extends State<_AppSidebar>
                   // ── OPERATIONS section ──
                   if (layoutExpanded) const _SectionLabel(label: 'OPERATIONS'),
                   _NavItem(
-                    icon: Icons.history_rounded,
+                    icon: IconlyLight.time_circle,
+                    activeIcon: IconlyBold.time_circle,
                     label: 'Sales History',
                     index: 5,
                     currentIndex: widget.currentIndex,
@@ -636,7 +643,8 @@ class _AppSidebarState extends State<_AppSidebar>
                     onTap: widget.onNavTap,
                   ),
                   _NavItem(
-                    icon: Icons.request_page_outlined,
+                    icon: IconlyLight.wallet,
+                    activeIcon: IconlyBold.wallet,
                     label: 'Expenses',
                     index: 6,
                     currentIndex: widget.currentIndex,
@@ -816,7 +824,7 @@ class _SettingsAccordion extends StatelessWidget {
             child: Row(
               mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,
               children: [
-                Icon(Icons.settings_rounded, size: 20, color: headerColor),
+                Icon(isActive ? IconlyBold.setting : IconlyLight.setting, size: 20, color: headerColor),
                 if (expanded) ...[
                   const SizedBox(width: 10),
                   Expanded(
@@ -837,7 +845,7 @@ class _SettingsAccordion extends StatelessWidget {
                     turns: isAccordionOpen ? 0.5 : 0.0,
                     duration: const Duration(milliseconds: 200),
                     child: Icon(
-                      Icons.keyboard_arrow_down_rounded,
+                      IconlyLight.arrow_down_2,
                       size: 18,
                       color: AppColors.textMuted,
                     ),
@@ -856,17 +864,17 @@ class _SettingsAccordion extends StatelessWidget {
 
     final subItems = [
       (
-        icon: Icons.receipt_long_rounded,
+        icon: IconlyLight.paper,
         label: 'Receipt Settings',
         subPage: SettingsSubPage.receipt,
       ),
       (
-        icon: Icons.business_rounded,
+        icon: IconlyLight.work,
         label: 'Business Profile',
         subPage: SettingsSubPage.businessProfile,
       ),
       (
-        icon: Icons.person_rounded,
+        icon: IconlyLight.profile,
         label: 'My Profile',
         subPage: SettingsSubPage.profile,
       ),
@@ -952,6 +960,7 @@ class _SettingsAccordion extends StatelessWidget {
 
 class _NavItem extends StatelessWidget {
   final IconData icon;
+  final IconData? activeIcon;
   final String label;
   final int index;
   final int currentIndex;
@@ -961,6 +970,7 @@ class _NavItem extends StatelessWidget {
 
   const _NavItem({
     required this.icon,
+    this.activeIcon,
     required this.label,
     required this.index,
     required this.currentIndex,
@@ -995,7 +1005,7 @@ class _NavItem extends StatelessWidget {
           child: Row(
             mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,
             children: [
-              Icon(icon, size: 20, color: color),
+              Icon(isActive ? (activeIcon ?? icon) : icon, size: 20, color: color),
               if (expanded) ...[
                 const SizedBox(width: 10),
                 Expanded(
@@ -1123,7 +1133,7 @@ class _SidebarFooter extends StatelessWidget {
                         ),
                       ),
                       const Icon(
-                        Icons.logout_rounded,
+                        IconlyLight.logout,
                         size: 16,
                         color: AppColors.textMuted,
                       ),
