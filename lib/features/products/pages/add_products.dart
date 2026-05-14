@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -5,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
+import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/core/ui/status/status_snack.dart';
@@ -19,7 +23,6 @@ import 'package:pos/features/products/domain/entities/product.dart';
 import 'package:pos/features/products/presentation/cubit/product_form_cubit.dart';
 import 'package:pos/features/products/presentation/cubit/product_form_state.dart';
 import 'package:pos/features/products/widgets/barcode_togggle_section.dart';
-import 'package:pos/features/products/widgets/barcode_toggle_field.dart';
 import 'package:pos/features/products/widgets/image_picker_field.dart';
 import 'package:pos/features/products/widgets/sku_section_toggle.dart';
 import 'package:pos/features/products/widgets/switch_row.dart';
@@ -46,14 +49,9 @@ class AddProductsPage extends StatelessWidget {
     return BlocProvider(
       create: (context) {
         final branchCubit = context.read<BranchCubit>();
-        // Prefer the explicitly selected branch UUID from BranchCubit.
-        // If BranchCubit state hasn't loaded its async prefs yet (selectedBranchId
-        // is null but the user isn't on "All Branches"), fall back to the user's
-        // own assigned branch from the synchronous auth context.
         final String? effectiveBranchId;
         if (branchCubit.state.selectedBranch == BranchCubit.allBranchesLabel) {
-          effectiveBranchId =
-              null; // Explicitly "All Branches" — seed all branches
+          effectiveBranchId = null;
         } else {
           effectiveBranchId =
               branchCubit.state.selectedBranchId ?? authState.user.branchId;
@@ -102,9 +100,10 @@ class _AddProductsViewState extends State<_AddProductsView> {
   final _stockController = TextEditingController();
   final _lowStockController = TextEditingController();
 
-  // More Options local toggles (retail price + tax — UI-only, not in cubit)
+  // More Options local toggles (UI-only, not in cubit)
   bool _showRetailPrice = false;
   bool _showTax = false;
+  bool _showSimpleBarcode = false;
 
   // More options
   final _skuController = TextEditingController();
@@ -143,14 +142,11 @@ class _AddProductsViewState extends State<_AddProductsView> {
     if (!mounted) return;
     final cubit = context.read<ProductFormCubit>();
 
-    // Set cubit-managed state
     cubit.initEditState(product);
 
-    // Pre-fill shared fields
     _nameController.text = product.name;
     setState(() => _sellBy = product.sellBy);
 
-    // Load existing variants + branch-specific stock
     final variants = await cubit.loadVariants(product.id);
     if (!mounted) return;
     final branchStock = await cubit.loadBranchStockMap(
@@ -161,14 +157,9 @@ class _AddProductsViewState extends State<_AddProductsView> {
     final hasStock = variants.any((v) => v.trackStock);
     if (hasStock) cubit.setTrackInventory(true);
 
-    // branchStock now always contains real sums from inventory_levels
-    // (per-branch for specific mode, summed across all branches for All Branches
-    // mode). Fall back to the stale product_variants.stock only if this variant
-    // has no inventory_levels rows yet (e.g. brand-new product, no stock seeded).
     int stockFor(ProductVariantsTableData v) => branchStock[v.id] ?? v.stock;
 
     if (product.hasVariants) {
-      // Advanced + variants: populate variant forms
       _variants.clear();
       for (final v in variants.where((v) => v.isActive)) {
         final form = VariantForm();
@@ -186,11 +177,8 @@ class _AddProductsViewState extends State<_AddProductsView> {
       }
       if (_variants.isEmpty) _variants.add(VariantForm());
     } else {
-      // Simple or advanced no-variants
       final v = variants.firstOrNull;
       if (v != null) {
-        // Reverse out any stored tax so the form shows the pre-tax base price.
-        // (On save we re-apply tax, so we must show base here to avoid double-taxing.)
         final taxRate = (product.tax ?? 0.0) / 100.0;
         final basePrice = taxRate > 0 ? v.price / (1 + taxRate) : v.price;
         _simplePriceController.text = basePrice.toStringAsFixed(2);
@@ -201,13 +189,13 @@ class _AddProductsViewState extends State<_AddProductsView> {
         if (v.barcode != null) {
           _simpleBarcodeController.text = v.barcode!;
           _barcodeControllers[0].text = v.barcode!;
+          _showSimpleBarcode = true;
         }
         final qty = stockFor(v);
         if (qty > 0) _stockController.text = qty.toString();
         if (v.lowStockAlert != null) {
           _lowStockController.text = v.lowStockAlert.toString();
         }
-        // Retail price — must be loaded or it will be wiped on next save
         if (v.retailPrice != null) {
           _retailPriceController.text = v.retailPrice!.toStringAsFixed(2);
           _showRetailPrice = true;
@@ -221,7 +209,6 @@ class _AddProductsViewState extends State<_AddProductsView> {
     }
     if (product.sku != null) _skuController.text = product.sku!;
 
-    // Auto-expand More Options when the product already has any advanced fields
     final hasMoreData =
         _showRetailPrice || _showTax || product.sku?.isNotEmpty == true;
     if (hasMoreData && !cubit.state.moreOptionsExpanded) {
@@ -246,7 +233,6 @@ class _AddProductsViewState extends State<_AddProductsView> {
     _skuController.dispose();
     _expiryController.dispose();
     _newCategoryController.dispose();
-
     for (final c in _barcodeControllers) {
       c.dispose();
     }
@@ -332,9 +318,9 @@ class _AddProductsViewState extends State<_AddProductsView> {
               const SizedBox(height: 4),
               Text(
                 'Saved locally and synced when online.',
-                style: AppTextStyles.caption(
-                  sheetCtx,
-                ).copyWith(color: AppColors.textMuted),
+                style: AppTextStyles.caption(sheetCtx).copyWith(
+                  color: AppColors.textMuted,
+                ),
               ),
               const SizedBox(height: 16),
               TextField(
@@ -397,10 +383,8 @@ class _AddProductsViewState extends State<_AddProductsView> {
     final formData = ProductFormData(
       name: _nameController.text,
       sellBy: _sellBy,
-      // Simple
       simplePrice: !isAdvanced ? _simplePriceController.text : null,
       simpleBarcode: !isAdvanced ? _simpleBarcodeController.text : null,
-      // Advanced no-variants
       sellingPrice: (isAdvanced && !state.hasVariants)
           ? _sellingPriceController.text
           : null,
@@ -410,23 +394,20 @@ class _AddProductsViewState extends State<_AddProductsView> {
       costPrice: (isAdvanced && !state.hasVariants)
           ? _costPriceController.text
           : null,
-      taxPercent: (isAdvanced && !state.hasVariants)
-          ? _taxController.text
-          : null,
+      taxPercent:
+          (isAdvanced && !state.hasVariants) ? _taxController.text : null,
       stock: (isAdvanced && !state.hasVariants && state.trackInventory)
           ? _stockController.text
           : null,
-      lowStockAlert: (isAdvanced && !state.hasVariants && state.trackInventory)
+      lowStockAlert:
+          (isAdvanced && !state.hasVariants && state.trackInventory)
           ? _lowStockController.text
           : null,
-      // Image
       imagePath: state.imagePath,
-      // More options
       barcodes: isAdvanced
           ? _barcodeControllers.map((c) => c.text).toList()
           : [],
       sku: isAdvanced ? _skuController.text : null,
-      // Variants
       variants: (isAdvanced && state.hasVariants)
           ? _variants
                 .map(
@@ -452,9 +433,6 @@ class _AddProductsViewState extends State<_AddProductsView> {
 
   // ── Branch assignment dialog ──────────────────────────────────────────────
 
-  /// Shown after a successful new-product save when "All Branches" was active
-  /// and the user entered opening stock > 0. Lets the user nominate which
-  /// branch receives the opening inventory, then pops the page.
   Future<void> _showBranchAssignmentDialog(
     BuildContext ctx,
     ProductFormCubit cubit,
@@ -499,81 +477,555 @@ class _AddProductsViewState extends State<_AddProductsView> {
       child: BlocBuilder<ProductFormCubit, ProductFormState>(
         builder: (ctx, state) {
           final cubit = ctx.read<ProductFormCubit>();
+          final screenWidth = MediaQuery.sizeOf(ctx).width;
+          final isDesktop = screenWidth >= 1024;
+
           return Scaffold(
             backgroundColor: AppColors.background,
-            appBar: AppBar(
-              backgroundColor: AppColors.surface,
-              elevation: 0,
-              scrolledUnderElevation: 0,
-              centerTitle: true,
-              title: Text(
-                widget.productToEdit != null ? 'Edit Product' : 'Add Product',
-                style: AppTextStyles.title(context),
-              ),
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-                onPressed: () => context.pop(),
-              ),
-            ),
-            // ── Sticky save bar with soft top shadow ────────────────────────
-            bottomNavigationBar: SafeArea(
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                decoration: const BoxDecoration(
-                  color: AppColors.surface,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x0F101828),
-                      blurRadius: 24,
-                      offset: Offset(0, -8),
-                    ),
-                  ],
-                ),
-                child: AppFilledButton(
-                  label: widget.productToEdit != null
-                      ? 'Update Product'
-                      : 'Save Product',
-                  loading: state.isSaving,
-                  onPressed: state.isSaving ? null : _save,
-                ),
-              ),
-            ),
-            body: Column(
-              children: [
-                _ModeToggle(mode: state.mode, onChanged: cubit.switchMode),
-                Expanded(
-                  child: Form(
-                    key: _formKey,
-                    child: ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                      children: [
-                        if (state.mode == ProductFormMode.simple) ...[
-                          _buildSimpleSection(state, cubit),
-                          const SizedBox(height: 16),
-                          _buildMoreOptionsSection(state, cubit),
-                          const SizedBox(height: 8),
-                        ] else ...[
-                          _buildBasicInfoSection(state, cubit),
-                          const SizedBox(height: 16),
-                          if (!state.hasVariants) ...[
-                            _buildPricingSection(state, cubit),
-                            const SizedBox(height: 16),
-                          ] else ...[
-                            _buildVariantsSection(state, cubit),
-                            const SizedBox(height: 16),
-                          ],
-                          _buildMoreOptionsSection(state, cubit),
-                          const SizedBox(height: 8),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+            appBar: _buildAppBar(ctx, state),
+            // Sticky bottom save bar — mobile & tablet only
+            bottomNavigationBar: isDesktop
+                ? null
+                : _buildBottomSaveBar(state),
+            body: Form(
+              key: _formKey,
+              child: isDesktop
+                  ? _buildDesktopLayout(ctx, state, cubit)
+                  : _buildMobileLayout(ctx, state, cubit),
             ),
           );
         },
       ),
+    );
+  }
+
+  // ── AppBar ─────────────────────────────────────────────────────────────────
+
+  PreferredSizeWidget _buildAppBar(
+    BuildContext ctx,
+    ProductFormState state,
+  ) {
+    final isEdit = widget.productToEdit != null;
+    final pageTitle = isEdit ? 'Edit Product' : 'Add Product';
+
+    return AppBar(
+      backgroundColor: AppColors.surface,
+      elevation: 0,
+      scrolledUnderElevation: 0.5,
+      shadowColor: const Color(0x0A101828),
+      centerTitle: false,
+      toolbarHeight: 64,
+      leading: Padding(
+        padding: const EdgeInsets.only(left: 8),
+        child: IconButton(
+          icon: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.borderSoft),
+            ),
+            child: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              size: 15,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          onPressed: () => context.pop(),
+        ),
+      ),
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Products',
+                style: getOutfitStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(
+                Icons.chevron_right_rounded,
+                size: 13,
+                color: AppColors.textMuted,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                pageTitle,
+                style: getOutfitStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 1),
+          Text(pageTitle, style: AppTextStyles.title(ctx)),
+        ],
+      ),
+      actions: [
+        if (state.isSaving)
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: AppColors.brandSoft,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  width: 10,
+                  height: 10,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 1.5,
+                    color: AppColors.brand,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Saving…',
+                  style: getOutfitStyle(
+                    color: AppColors.brand,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  // ── Bottom save bar (mobile / tablet) ─────────────────────────────────────
+
+  Widget _buildBottomSaveBar(ProductFormState state) {
+    return SafeArea(
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x0F101828),
+              blurRadius: 24,
+              offset: Offset(0, -8),
+            ),
+          ],
+        ),
+        child: AppFilledButton(
+          label: widget.productToEdit != null
+              ? 'Update Product'
+              : 'Save Product',
+          loading: state.isSaving,
+          onPressed: state.isSaving ? null : _save,
+        ),
+      ),
+    );
+  }
+
+  // ── Mobile layout ──────────────────────────────────────────────────────────
+
+  Widget _buildMobileLayout(
+    BuildContext ctx,
+    ProductFormState state,
+    ProductFormCubit cubit,
+  ) {
+    return Column(
+      children: [
+        // Floating premium mode toggle
+        Container(
+          color: AppColors.surface,
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          child: _ModeToggle(mode: state.mode, onChanged: cubit.switchMode),
+        ),
+        const Divider(height: 1, color: AppColors.borderSoft),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+            children: _buildFormSections(ctx, state, cubit),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Desktop layout (2-column) ──────────────────────────────────────────────
+
+  Widget _buildDesktopLayout(
+    BuildContext ctx,
+    ProductFormState state,
+    ProductFormCubit cubit,
+  ) {
+    final maxW = Breakpoints.maxContentWidth(ctx);
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxW),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Main form — scrolls independently
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(32, 28, 20, 48),
+                children: _buildFormSections(ctx, state, cubit),
+              ),
+            ),
+            // Sticky sidebar
+            SizedBox(
+              width: 292,
+              child: _buildDesktopSidebar(ctx, state, cubit),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Form sections (shared between mobile + desktop) ────────────────────────
+
+  List<Widget> _buildFormSections(
+    BuildContext ctx,
+    ProductFormState state,
+    ProductFormCubit cubit,
+  ) {
+    if (state.mode == ProductFormMode.simple) {
+      return [
+        _buildSimpleSection(state, cubit),
+        const SizedBox(height: 16),
+        _buildMoreOptionsSection(state, cubit),
+        const SizedBox(height: 8),
+      ];
+    }
+    return [
+      _buildBasicInfoSection(state, cubit),
+      const SizedBox(height: 16),
+      if (!state.hasVariants) ...[
+        _buildPricingSection(state, cubit),
+        const SizedBox(height: 16),
+      ] else ...[
+        _buildVariantsSection(state, cubit),
+        const SizedBox(height: 16),
+      ],
+      _buildMoreOptionsSection(state, cubit),
+      const SizedBox(height: 8),
+    ];
+  }
+
+  // ── Desktop sidebar ────────────────────────────────────────────────────────
+
+  Widget _buildDesktopSidebar(
+    BuildContext ctx,
+    ProductFormState state,
+    ProductFormCubit cubit,
+  ) {
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(left: BorderSide(color: AppColors.borderSoft)),
+      ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 28, 28, 48),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ── Mode toggle ──
+            _SidebarSectionLabel(label: 'Mode'),
+            const SizedBox(height: 8),
+            _ModeToggle(mode: state.mode, onChanged: cubit.switchMode),
+
+            const SizedBox(height: 24),
+
+            // ── Product preview ──
+            _SidebarSectionLabel(label: 'Preview'),
+            const SizedBox(height: 8),
+            _buildProductPreview(state),
+
+            const SizedBox(height: 24),
+
+            // ── Save panel ──
+            _SidebarSectionLabel(label: 'Publish'),
+            const SizedBox(height: 8),
+            _buildSidebarSavePanel(state),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Product preview card ───────────────────────────────────────────────────
+
+  Widget _buildProductPreview(ProductFormState state) {
+    final categories = state.categories;
+    final selectedCat = categories
+        .where((c) => c.id == state.selectedCategoryId)
+        .firstOrNull;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderSoft),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x06101828),
+            blurRadius: 16,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Status badge
+          Row(
+            children: [
+              Text(
+                'PRODUCT',
+                style: getOutfitStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 3,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.successSoft,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'Active',
+                  style: getOutfitStyle(
+                    color: AppColors.success,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Image
+          Container(
+            width: double.infinity,
+            height: 108,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.borderSoft),
+            ),
+            child: _buildPreviewImage(state),
+          ),
+          const SizedBox(height: 12),
+
+          // Live name
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _nameController,
+            builder: (_, nameVal, _) {
+              final name = nameVal.text.trim();
+              return Text(
+                name.isEmpty ? 'Product name' : name,
+                style: getOutfitStyle(
+                  color: name.isEmpty
+                      ? AppColors.textMuted
+                      : AppColors.textPrimary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              );
+            },
+          ),
+
+          // Live price
+          const SizedBox(height: 6),
+          _buildPreviewPrice(state),
+
+          // Category chip
+          if (selectedCat != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.brandSoft,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                selectedCat.name,
+                style: getOutfitStyle(
+                  color: AppColors.brand,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPreviewImage(ProductFormState state) {
+    final path = state.imagePath;
+    if (path == null) {
+      return const Center(
+        child: Icon(
+          Icons.image_outlined,
+          color: AppColors.textMuted,
+          size: 28,
+        ),
+      );
+    }
+    if (path.startsWith('http')) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Image.network(
+          path,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => const Center(
+            child: Icon(
+              Icons.broken_image_outlined,
+              color: AppColors.textMuted,
+              size: 28,
+            ),
+          ),
+        ),
+      );
+    }
+    if (!kIsWeb) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Image.file(
+          File(path),
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => const Center(
+            child: Icon(
+              Icons.image_outlined,
+              color: AppColors.textMuted,
+              size: 28,
+            ),
+          ),
+        ),
+      );
+    }
+    return const Center(
+      child: Icon(Icons.image_outlined, color: AppColors.textMuted, size: 28),
+    );
+  }
+
+  Widget _buildPreviewPrice(ProductFormState state) {
+    final ctrl = state.mode == ProductFormMode.simple
+        ? _simplePriceController
+        : _sellingPriceController;
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: ctrl,
+      builder: (_, priceVal, _) {
+        final raw = priceVal.text.trim();
+        final price = double.tryParse(raw);
+        if (price == null || price <= 0) {
+          return Text(
+            '—',
+            style: getOutfitStyle(color: AppColors.textMuted, fontSize: 13),
+          );
+        }
+        return Text(
+          '₱ ${price.toStringAsFixed(2)}',
+          style: getOutfitStyle(
+            color: AppColors.brand,
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+          ),
+        );
+      },
+    );
+  }
+
+  // ── Sidebar save panel ─────────────────────────────────────────────────────
+
+  Widget _buildSidebarSavePanel(ProductFormState state) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          child: state.isSaving
+              ? Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.brandSoft,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: AppColors.brand.withAlpha(30),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(
+                          width: 12,
+                          height: 12,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 1.5,
+                            color: AppColors.brand,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Saving changes…',
+                          style: getOutfitStyle(
+                            color: AppColors.brand,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+        AppFilledButton(
+          label: widget.productToEdit != null
+              ? 'Update Product'
+              : 'Save Product',
+          loading: state.isSaving,
+          onPressed: state.isSaving ? null : _save,
+        ),
+        const SizedBox(height: 10),
+        // Keyboard shortcut hint
+        Center(
+          child: Text(
+            '⌘ + S  to save',
+            style: getOutfitStyle(
+              color: AppColors.textMuted,
+              fontSize: 11,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -584,7 +1036,6 @@ class _AddProductsViewState extends State<_AddProductsView> {
       title: 'Basic Info',
       icon: Icons.info_outline_rounded,
       children: [
-        // Name
         TextFormField(
           controller: _nameController,
           focusNode: _nameFocusNode,
@@ -596,13 +1047,10 @@ class _AddProductsViewState extends State<_AddProductsView> {
             label: 'Product name',
           ),
           style: getOutfitStyle(color: AppColors.textPrimary, fontSize: 16),
-          validator: (v) => (v == null || v.trim().isEmpty)
-              ? 'Product name is required'
-              : null,
+          validator: (v) =>
+              (v == null || v.trim().isEmpty) ? 'Product name is required' : null,
         ),
-        const SizedBox(height: 12),
-
-        // Category (optional)
+        const SizedBox(height: 14),
         const AppFieldLabel('Category'),
         AppDropdown<String>(
           value: state.selectedCategoryId,
@@ -614,9 +1062,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
               .toList(),
           onChanged: cubit.selectCategory,
         ),
-        const SizedBox(height: 12),
-
-        // Price
+        const SizedBox(height: 14),
         TextFormField(
           controller: _simplePriceController,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -624,7 +1070,8 @@ class _AddProductsViewState extends State<_AddProductsView> {
             FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
           ],
           textInputAction: TextInputAction.next,
-          decoration: appInputDeco('0.00', label: 'Price', prefixText: '₱ '),
+          decoration:
+              appInputDeco('0.00', label: 'Price', prefixText: '₱ '),
           style: getOutfitStyle(
             color: AppColors.textPrimary,
             fontSize: 18,
@@ -647,7 +1094,6 @@ class _AddProductsViewState extends State<_AddProductsView> {
       title: 'Basic Info',
       icon: Icons.info_outline_rounded,
       children: [
-        // Name
         TextFormField(
           controller: _nameController,
           focusNode: _nameFocusNode,
@@ -658,13 +1104,10 @@ class _AddProductsViewState extends State<_AddProductsView> {
             label: 'Product name',
           ),
           style: getOutfitStyle(color: AppColors.textPrimary, fontSize: 16),
-          validator: (v) => (v == null || v.trim().isEmpty)
-              ? 'Product name is required'
-              : null,
+          validator: (v) =>
+              (v == null || v.trim().isEmpty) ? 'Product name is required' : null,
         ),
-        const SizedBox(height: 12),
-
-        // Category (optional)
+        const SizedBox(height: 14),
         const AppFieldLabel('Category'),
         AppDropdown<String>(
           value: state.selectedCategoryId,
@@ -676,9 +1119,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
               .toList(),
           onChanged: cubit.selectCategory,
         ),
-        const SizedBox(height: 8),
-
-        // Multiple sizes / options
+        const SizedBox(height: 10),
         SwitchRow(
           icon: Icons.tune_rounded,
           label: 'Multiple sizes or options',
@@ -701,7 +1142,6 @@ class _AddProductsViewState extends State<_AddProductsView> {
       title: 'Pricing & Inventory',
       icon: Icons.attach_money_rounded,
       children: [
-        // Selling Price *
         TextFormField(
           controller: _sellingPriceController,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -719,11 +1159,10 @@ class _AddProductsViewState extends State<_AddProductsView> {
             fontSize: 18,
             fontWeight: FontWeight.w700,
           ),
-          validator: (v) => (v == null || v.trim().isEmpty)
-              ? 'Selling price is required'
-              : null,
+          validator: (v) =>
+              (v == null || v.trim().isEmpty) ? 'Selling price is required' : null,
         ),
-        // Live tax-inclusive final price preview
+        // Live tax-inclusive preview
         ValueListenableBuilder<TextEditingValue>(
           valueListenable: _sellingPriceController,
           builder: (context, sellVal, child) =>
@@ -752,7 +1191,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
                       ),
                       decoration: BoxDecoration(
                         color: AppColors.brandSoft,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                           color: AppColors.brand.withAlpha(40),
                         ),
@@ -777,7 +1216,8 @@ class _AddProductsViewState extends State<_AddProductsView> {
                                     ),
                                   ),
                                   TextSpan(
-                                    text: '₱${finalPrice.toStringAsFixed(2)}',
+                                    text:
+                                        '₱${finalPrice.toStringAsFixed(2)}',
                                     style: getOutfitStyle(
                                       color: AppColors.brand,
                                       fontSize: 13,
@@ -803,9 +1243,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
                 },
               ),
         ),
-        const SizedBox(height: 12),
-
-        // Cost Price (full-width; Retail Price moved to More Options)
+        const SizedBox(height: 14),
         TextFormField(
           controller: _costPriceController,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -820,9 +1258,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
           ),
           style: getOutfitStyle(color: AppColors.textPrimary, fontSize: 16),
         ),
-        const SizedBox(height: 8),
-
-        // Track stock
+        const SizedBox(height: 10),
         SwitchRow(
           icon: Icons.inventory_2_outlined,
           label: 'Track stock',
@@ -835,14 +1271,13 @@ class _AddProductsViewState extends State<_AddProductsView> {
           curve: Curves.easeInOut,
           child: state.trackInventory
               ? Padding(
-                  padding: const EdgeInsets.only(top: 10),
+                  padding: const EdgeInsets.only(top: 12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Stock *
                           Expanded(
                             child: Opacity(
                               opacity: isAllBranchesEdit ? 0.6 : 1.0,
@@ -860,14 +1295,18 @@ class _AddProductsViewState extends State<_AddProductsView> {
                                           RegExp(r'^\d*\.?\d{0,3}'),
                                         ),
                                       ]
-                                    : [FilteringTextInputFormatter.digitsOnly],
+                                    : [
+                                        FilteringTextInputFormatter
+                                            .digitsOnly,
+                                      ],
                                 textInputAction: TextInputAction.next,
                                 decoration: appInputDeco(
                                   isFraction ? '0.000' : '0',
-                                  label: isFraction ? 'Stock (kg)' : 'Stock',
+                                  label:
+                                      isFraction ? 'Stock (kg)' : 'Stock',
                                   fillColor: isAllBranchesEdit
                                       ? AppColors.surfaceAlt
-                                      : AppColors.surface,
+                                      : null,
                                 ),
                                 style: getOutfitStyle(
                                   color: AppColors.textPrimary,
@@ -885,7 +1324,6 @@ class _AddProductsViewState extends State<_AddProductsView> {
                             ),
                           ),
                           const SizedBox(width: 10),
-                          // Low Stock Alert (optional)
                           Expanded(
                             child: TextFormField(
                               controller: _lowStockController,
@@ -907,40 +1345,13 @@ class _AddProductsViewState extends State<_AddProductsView> {
                         ],
                       ),
                       if (isAllBranchesEdit) ...[
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.infoSoft,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: AppColors.info.withAlpha(60),
-                            ),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Icon(
-                                Icons.info_outline_rounded,
-                                size: 15,
-                                color: AppColors.info,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Showing total stock across all branches. '
-                                  'To adjust stock for a specific branch, use the Inventory page.',
-                                  style: getOutfitStyle(
-                                    color: AppColors.info,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                        const SizedBox(height: 10),
+                        _buildInfoBanner(
+                          'Showing total stock across all branches. '
+                          'To adjust stock for a specific branch, use the Inventory page.',
+                          icon: Icons.info_outline_rounded,
+                          color: AppColors.info,
+                          background: AppColors.infoSoft,
                         ),
                       ],
                     ],
@@ -963,94 +1374,24 @@ class _AddProductsViewState extends State<_AddProductsView> {
       title: 'Variants',
       icon: Icons.tune_rounded,
       children: [
-        // Barcode assignment banner — shown when opened from a POS scan
         if (widget.initialBarcode?.isNotEmpty == true) ...[
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppColors.brandSoft,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.brand.withAlpha(60)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(
-                  Icons.qr_code_rounded,
-                  size: 16,
-                  color: AppColors.brand,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Barcode pre-assigned to Variant 1',
-                        style: getOutfitStyle(
-                          color: AppColors.brand,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        widget.initialBarcode!,
-                        style: getOutfitStyle(
-                          color: AppColors.brand,
-                          fontSize: 11,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Move it to the correct variant using the barcode field below.',
-                        style: getOutfitStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+          _buildInfoBanner(
+            'Barcode pre-assigned to Variant 1 — '
+            '${widget.initialBarcode!}\n'
+            'Move it to the correct variant using the barcode field below.',
+            icon: Icons.qr_code_rounded,
+            color: AppColors.brand,
+            background: AppColors.brandSoft,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
         ],
-
-        // Variants intro hint
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          margin: const EdgeInsets.only(bottom: 10),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceAlt,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(
-                Icons.lightbulb_outline_rounded,
-                size: 15,
-                color: AppColors.textMuted,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Give each option a name and price. Optionally add a barcode.',
-                  style: getOutfitStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
+        _buildInfoBanner(
+          'Give each option a name and price. Optionally add a barcode.',
+          icon: Icons.lightbulb_outline_rounded,
+          color: AppColors.textSecondary,
+          background: AppColors.surfaceAlt,
         ),
-
-        // Global Track Inventory
+        const SizedBox(height: 12),
         SwitchRow(
           icon: Icons.inventory_2_outlined,
           label: 'Track stock',
@@ -1058,9 +1399,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
           value: state.trackInventory,
           onChanged: cubit.setTrackInventory,
         ),
-        const SizedBox(height: 10),
-
-        // Variant cards
+        const SizedBox(height: 12),
         ..._variants.asMap().entries.map((entry) {
           final i = entry.key;
           final v = entry.value;
@@ -1080,39 +1419,17 @@ class _AddProductsViewState extends State<_AddProductsView> {
             ),
           );
         }),
-
         if (isAllBranchesEdit && state.trackInventory) ...[
           const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppColors.infoSoft,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.info.withAlpha(60)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(
-                  Icons.info_outline_rounded,
-                  size: 15,
-                  color: AppColors.info,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Showing total stock across all branches. '
-                    'To adjust stock for a specific branch, use the Inventory page.',
-                    style: getOutfitStyle(color: AppColors.info, fontSize: 12),
-                  ),
-                ),
-              ],
-            ),
+          _buildInfoBanner(
+            'Showing total stock across all branches. '
+            'To adjust stock for a specific branch, use the Inventory page.',
+            icon: Icons.info_outline_rounded,
+            color: AppColors.info,
+            background: AppColors.infoSoft,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
         ],
-
-        // Add Variant button
         OutlinedButton.icon(
           onPressed: () => setState(() => _variants.add(VariantForm())),
           icon: const Icon(Icons.add_rounded, size: 16),
@@ -1127,16 +1444,16 @@ class _AddProductsViewState extends State<_AddProductsView> {
             foregroundColor: AppColors.brand,
             side: const BorderSide(color: AppColors.brand),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
             ),
-            minimumSize: const Size(double.infinity, 44),
+            minimumSize: const Size(double.infinity, 46),
           ),
         ),
       ],
     );
   }
 
-  // ── Advanced — More Options (collapsible) ─────────────────────────────────
+  // ── More Options (collapsible) ────────────────────────────────────────────
 
   Widget _buildMoreOptionsSection(
     ProductFormState state,
@@ -1145,26 +1462,49 @@ class _AddProductsViewState extends State<_AddProductsView> {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppColors.borderSoft),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x07101828),
+            blurRadius: 20,
+            offset: Offset(0, 4),
+          ),
+          BoxShadow(
+            color: Color(0x04101828),
+            blurRadius: 6,
+            offset: Offset(0, 1),
+          ),
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Header toggle
+          // Collapsible header
           InkWell(
             onTap: cubit.toggleMoreOptions,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(18),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 16,
+              ),
               child: Row(
                 children: [
-                  const Icon(
-                    Icons.tune_rounded,
-                    size: 18,
-                    color: AppColors.textSecondary,
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: AppColors.textMuted.withAlpha(18),
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: const Icon(
+                      Icons.tune_rounded,
+                      size: 17,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1172,10 +1512,9 @@ class _AddProductsViewState extends State<_AddProductsView> {
                       children: [
                         Text(
                           'More options',
-                          style: getOutfitStyle(
+                          style: AppTextStyles.subtitle(context).copyWith(
                             color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                         if (!state.moreOptionsExpanded) ...[
@@ -1195,7 +1534,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
                   ),
                   AnimatedRotation(
                     turns: state.moreOptionsExpanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 200),
+                    duration: const Duration(milliseconds: 220),
                     child: const Icon(
                       Icons.keyboard_arrow_down_rounded,
                       color: AppColors.textMuted,
@@ -1220,7 +1559,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
     );
   }
 
-  // ── Simple — More Options body (Sell By · Image · Barcode only) ─────────────
+  // ── Simple — More Options body ─────────────────────────────────────────────
 
   Widget _buildSimpleMoreOptionsBody(
     ProductFormState state,
@@ -1229,7 +1568,6 @@ class _AddProductsViewState extends State<_AddProductsView> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Sold by weight
         ToggleRow(
           icon: Icons.straighten_rounded,
           label: 'Sold by weight',
@@ -1237,8 +1575,6 @@ class _AddProductsViewState extends State<_AddProductsView> {
           enabled: _sellBy == 'fraction',
           onChanged: (v) => setState(() => _sellBy = v ? 'fraction' : 'unit'),
         ),
-
-        // Product Image
         ToggleRow(
           icon: Icons.image_outlined,
           label: 'Product photo',
@@ -1264,24 +1600,54 @@ class _AddProductsViewState extends State<_AddProductsView> {
                 )
               : const SizedBox(width: double.infinity, height: 0),
         ),
-
-        // Barcode
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: BarcodeToggleField(controller: _simpleBarcodeController),
+        ToggleRow(
+          icon: Icons.qr_code_rounded,
+          label: 'Barcode',
+          subtitle: 'Scan or type the product barcode',
+          enabled: _showSimpleBarcode,
+          onChanged: (v) => setState(() {
+            _showSimpleBarcode = v;
+            if (!v) _simpleBarcodeController.clear();
+          }),
         ),
-        const SizedBox(height: 8),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          child: _showSimpleBarcode
+              ? Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: TextFormField(
+                    controller: _simpleBarcodeController,
+                    keyboardType: TextInputType.number,
+                    textInputAction: TextInputAction.done,
+                    decoration: appInputDeco(
+                      'Scan or type barcode',
+                    ).copyWith(
+                      prefixIcon: const Icon(
+                        Icons.qr_code_rounded,
+                        size: 17,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                    style: getOutfitStyle(color: AppColors.textPrimary),
+                  ),
+                )
+              : const SizedBox(width: double.infinity, height: 0),
+        ),
+        const SizedBox(height: 4),
       ],
     );
   }
 
   // ── Advanced — More Options body ──────────────────────────────────────────
 
-  Widget _buildMoreOptionsBody(ProductFormState state, ProductFormCubit cubit) {
+  Widget _buildMoreOptionsBody(
+    ProductFormState state,
+    ProductFormCubit cubit,
+  ) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Sold by weight
         ToggleRow(
           icon: Icons.straighten_rounded,
           label: 'Sold by weight',
@@ -1289,8 +1655,6 @@ class _AddProductsViewState extends State<_AddProductsView> {
           enabled: _sellBy == 'fraction',
           onChanged: (v) => setState(() => _sellBy = v ? 'fraction' : 'unit'),
         ),
-
-        // Product Image (optional)
         ToggleRow(
           icon: Icons.image_outlined,
           label: 'Product photo',
@@ -1316,24 +1680,21 @@ class _AddProductsViewState extends State<_AddProductsView> {
                 )
               : const SizedBox(width: double.infinity, height: 0),
         ),
-
-        // Barcodes
         BarcodesSectionToggle(
           controllers: _barcodeControllers,
           onAdd: _addBarcode,
           onRemove: _removeBarcode,
         ),
-
-        // SKU
         SkuSectionToggle(
           controller: _skuController,
           onAutoSku: () {
-            final sku = cubit.generateSku(_nameController.text);
+            final sku = context
+                .read<ProductFormCubit>()
+                .generateSku(_nameController.text);
             if (sku.isNotEmpty) setState(() => _skuController.text = sku);
           },
         ),
-
-        // Retail Price (optional, toggleable)
+        // Retail price (toggleable)
         ToggleRow(
           icon: Icons.price_change_outlined,
           label: 'Suggested retail price',
@@ -1374,7 +1735,6 @@ class _AddProductsViewState extends State<_AddProductsView> {
                           fontSize: 16,
                         ),
                       ),
-                      // Live SRP comparison indicator
                       ValueListenableBuilder<TextEditingValue>(
                         valueListenable: _retailPriceController,
                         builder: (context, retailVal, child) =>
@@ -1387,7 +1747,9 @@ class _AddProductsViewState extends State<_AddProductsView> {
                                 final sell = double.tryParse(
                                   sellVal.text.trim(),
                                 );
-                                if (srp == null || sell == null || srp <= 0) {
+                                if (srp == null ||
+                                    sell == null ||
+                                    srp <= 0) {
                                   return const SizedBox.shrink();
                                 }
                                 final diff = sell - srp;
@@ -1404,12 +1766,12 @@ class _AddProductsViewState extends State<_AddProductsView> {
                                     : isBelow
                                     ? AppColors.success
                                     : AppColors.textMuted;
-                                final String label = isAbove
+                                final String lbl = isAbove
                                     ? '${pct.toStringAsFixed(1)}% above SRP — selling above suggested price'
                                     : isBelow
                                     ? '${pct.toStringAsFixed(1)}% below SRP'
                                     : 'Selling at SRP';
-                                final IconData icon = isAbove
+                                final IconData ico = isAbove
                                     ? Icons.arrow_upward_rounded
                                     : isBelow
                                     ? Icons.arrow_downward_rounded
@@ -1423,15 +1785,15 @@ class _AddProductsViewState extends State<_AddProductsView> {
                                     ),
                                     decoration: BoxDecoration(
                                       color: bg,
-                                      borderRadius: BorderRadius.circular(6),
+                                      borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Icon(icon, size: 12, color: fg),
+                                        Icon(ico, size: 12, color: fg),
                                         const SizedBox(width: 4),
                                         Text(
-                                          label,
+                                          lbl,
                                           style: getOutfitStyle(
                                             color: fg,
                                             fontSize: 11,
@@ -1450,8 +1812,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
                 )
               : const SizedBox(width: double.infinity, height: 0),
         ),
-
-        // Tax % (optional, toggleable)
+        // VAT / sales tax (toggleable)
         ToggleRow(
           icon: Icons.receipt_long_outlined,
           label: 'VAT or sales tax',
@@ -1500,14 +1861,13 @@ class _AddProductsViewState extends State<_AddProductsView> {
                 )
               : const SizedBox(width: double.infinity, height: 0),
         ),
-
-        // Track Expiry
+        // Track expiry
         ToggleRow(
           icon: Icons.event_rounded,
           label: 'Track expiry',
           subtitle: 'Enable for perishable or dated items',
           enabled: state.trackExpiry,
-          onChanged: cubit.setTrackExpiry,
+          onChanged: context.read<ProductFormCubit>().setTrackExpiry,
         ),
         AnimatedSize(
           duration: const Duration(milliseconds: 200),
@@ -1519,14 +1879,16 @@ class _AddProductsViewState extends State<_AddProductsView> {
                     controller: _expiryController,
                     readOnly: true,
                     onTap: _pickExpiryDate,
-                    decoration: appInputDeco('dd/mm/yyyy', label: 'Expiry date')
-                        .copyWith(
-                          suffixIcon: const Icon(
-                            Icons.calendar_today_rounded,
-                            size: 17,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
+                    decoration: appInputDeco(
+                      'dd/mm/yyyy',
+                      label: 'Expiry date',
+                    ).copyWith(
+                      suffixIcon: const Icon(
+                        Icons.calendar_today_rounded,
+                        size: 17,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
                     style: getOutfitStyle(
                       color: AppColors.textPrimary,
                       fontSize: 16,
@@ -1542,95 +1904,135 @@ class _AddProductsViewState extends State<_AddProductsView> {
       ],
     );
   }
-}
 
-// ── Mode Toggle ───────────────────────────────────────────────────────────────
-// Slim 36px iOS-style segmented control with a sliding white pill.
+  // ── Shared info banner ─────────────────────────────────────────────────────
 
-class _ModeToggle extends StatelessWidget {
-  final ProductFormMode mode;
-  final ValueChanged<ProductFormMode> onChanged;
-  const _ModeToggle({required this.mode, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    final isSimple = mode == ProductFormMode.simple;
+  Widget _buildInfoBanner(
+    String message, {
+    required IconData icon,
+    required Color color,
+    required Color background,
+  }) {
     return Container(
-      color: AppColors.surface,
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-      child: LayoutBuilder(
-        builder: (ctx, c) {
-          final pillWidth = (c.maxWidth - 8) / 2; // 4px padding each side
-          return Container(
-            height: 36,
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceAlt,
-              borderRadius: BorderRadius.circular(10),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withAlpha(50)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 15, color: color),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: getOutfitStyle(color: color, fontSize: 12),
             ),
-            child: Stack(
-              children: [
-                // Sliding white pill
-                AnimatedAlign(
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeOutCubic,
-                  alignment: isSimple
-                      ? Alignment.centerLeft
-                      : Alignment.centerRight,
-                  child: Container(
-                    width: pillWidth,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x14101828),
-                          blurRadius: 3,
-                          offset: Offset(0, 1),
-                        ),
-                        BoxShadow(
-                          color: Color(0x0F101828),
-                          blurRadius: 2,
-                          offset: Offset(0, 1),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                // Labels
-                Row(
-                  children: [
-                    Expanded(
-                      child: _ModeChip(
-                        label: 'Simple',
-                        active: isSimple,
-                        onTap: () => onChanged(ProductFormMode.simple),
-                      ),
-                    ),
-                    Expanded(
-                      child: _ModeChip(
-                        label: 'Advanced',
-                        active: !isSimple,
-                        onTap: () => onChanged(ProductFormMode.advanced),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
 }
 
+// ── Premium Floating Mode Toggle ──────────────────────────────────────────────
+
+class _ModeToggle extends StatelessWidget {
+  final ProductFormMode mode;
+  final ValueChanged<ProductFormMode> onChanged;
+
+  const _ModeToggle({required this.mode, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final isSimple = mode == ProductFormMode.simple;
+    return LayoutBuilder(
+      builder: (ctx, c) {
+        final pillWidth = (c.maxWidth - 8) / 2;
+        return Container(
+          height: 46,
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.borderSoft, width: 1),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0D101828),
+                blurRadius: 20,
+                offset: Offset(0, 4),
+              ),
+              BoxShadow(
+                color: Color(0x06101828),
+                blurRadius: 6,
+                offset: Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              // Sliding brand indicator pill
+              AnimatedAlign(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                alignment:
+                    isSimple ? Alignment.centerLeft : Alignment.centerRight,
+                child: Container(
+                  width: pillWidth,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AppColors.brand,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.brand.withAlpha(55),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Labels on top
+              Row(
+                children: [
+                  Expanded(
+                    child: _ModeChip(
+                      icon: Icons.bolt_rounded,
+                      label: 'Simple',
+                      active: isSimple,
+                      onTap: () => onChanged(ProductFormMode.simple),
+                    ),
+                  ),
+                  Expanded(
+                    child: _ModeChip(
+                      icon: Icons.tune_rounded,
+                      label: 'Advanced',
+                      active: !isSimple,
+                      onTap: () => onChanged(ProductFormMode.advanced),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _ModeChip extends StatelessWidget {
+  final IconData icon;
   final String label;
   final bool active;
   final VoidCallback onTap;
+
   const _ModeChip({
+    required this.icon,
     required this.label,
     required this.active,
     required this.onTap,
@@ -1646,16 +2048,48 @@ class _ModeChip extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Center(
-          child: AnimatedDefaultTextStyle(
-            duration: const Duration(milliseconds: 180),
-            style: getOutfitStyle(
-              color: active ? AppColors.textPrimary : AppColors.textSecondary,
-              fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-              fontSize: 14,
-            ),
-            child: Text(label),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 14,
+                color: active ? Colors.white : AppColors.textSecondary,
+              ),
+              const SizedBox(width: 5),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 180),
+                style: getOutfitStyle(
+                  color: active ? Colors.white : AppColors.textSecondary,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                  fontSize: 13,
+                ),
+                child: Text(label),
+              ),
+            ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ── Sidebar section label ─────────────────────────────────────────────────────
+
+class _SidebarSectionLabel extends StatelessWidget {
+  final String label;
+
+  const _SidebarSectionLabel({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label.toUpperCase(),
+      style: getOutfitStyle(
+        color: AppColors.textMuted,
+        fontSize: 10,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.8,
       ),
     );
   }
@@ -1675,7 +2109,8 @@ class _BranchAssignmentSheet extends StatefulWidget {
   });
 
   @override
-  State<_BranchAssignmentSheet> createState() => _BranchAssignmentSheetState();
+  State<_BranchAssignmentSheet> createState() =>
+      _BranchAssignmentSheetState();
 }
 
 class _BranchAssignmentSheetState extends State<_BranchAssignmentSheet> {
@@ -1690,7 +2125,8 @@ class _BranchAssignmentSheetState extends State<_BranchAssignmentSheet> {
   }
 
   Future<void> _loadBranches() async {
-    final branches = await sl<BranchesDao>().getByBusinessId(widget.businessId);
+    final branches =
+        await sl<BranchesDao>().getByBusinessId(widget.businessId);
     final active = branches.where((b) => b.isActive).toList();
     if (!mounted) return;
     setState(() {
@@ -1716,7 +2152,6 @@ class _BranchAssignmentSheetState extends State<_BranchAssignmentSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Handle bar
           Center(
             child: Container(
               width: 40,
@@ -1728,13 +2163,16 @@ class _BranchAssignmentSheetState extends State<_BranchAssignmentSheet> {
             ),
           ),
           const SizedBox(height: 20),
-          Text('Assign Opening Inventory', style: AppTextStyles.title(context)),
+          Text(
+            'Assign Opening Inventory',
+            style: AppTextStyles.title(context),
+          ),
           const SizedBox(height: 6),
           Text(
             'You\'re viewing All Branches. Choose which branch should receive the initial inventory you entered.',
-            style: AppTextStyles.body(
-              context,
-            ).copyWith(color: AppColors.textSecondary),
+            style: AppTextStyles.body(context).copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
           const SizedBox(height: 20),
           if (_branches == null)
@@ -1752,9 +2190,9 @@ class _BranchAssignmentSheetState extends State<_BranchAssignmentSheet> {
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Text(
                 'No active branches found.',
-                style: AppTextStyles.body(
-                  context,
-                ).copyWith(color: AppColors.textSecondary),
+                style: AppTextStyles.body(context).copyWith(
+                  color: AppColors.textSecondary,
+                ),
               ),
             )
           else
@@ -1809,7 +2247,7 @@ class _BranchAssignmentSheetState extends State<_BranchAssignmentSheet> {
                     foregroundColor: Colors.white,
                     disabledBackgroundColor: AppColors.brand.withAlpha(80),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
@@ -1839,5 +2277,3 @@ class _BranchAssignmentSheetState extends State<_BranchAssignmentSheet> {
     );
   }
 }
-
-// ── Reusable switch row (compact, no border container) ───────────────────────

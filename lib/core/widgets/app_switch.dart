@@ -1,17 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:pos/core/const/app_colors.dart';
 
-/// A premium iOS-style switch with smooth thumb animation and a soft shadow.
-/// 44×26 track, 22 thumb. Use this in place of [Switch.adaptive] for SaaS-grade polish.
+/// A premium iOS-style switch with smooth thumb animation, a soft shadow, and
+/// a subtle brand glow when active. 44×26 track, 22 px thumb.
 class AppSwitch extends StatelessWidget {
   final bool value;
   final ValueChanged<bool>? onChanged;
 
-  const AppSwitch({
-    super.key,
-    required this.value,
-    this.onChanged,
-  });
+  const AppSwitch({super.key, required this.value, this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -33,11 +29,21 @@ class AppSwitch extends StatelessWidget {
             decoration: BoxDecoration(
               color: value ? AppColors.brand : AppColors.borderSoft,
               borderRadius: BorderRadius.circular(13),
+              boxShadow: value
+                  ? [
+                      BoxShadow(
+                        color: AppColors.brand.withAlpha(55),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
             ),
             child: AnimatedAlign(
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOutCubic,
-              alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+              alignment:
+                  value ? Alignment.centerRight : Alignment.centerLeft,
               child: Container(
                 width: 22,
                 height: 22,
