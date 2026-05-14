@@ -383,8 +383,9 @@ class ReceiptPrinterService {
     try {
       if (s.logoLocalPath.isNotEmpty && !kIsWeb) {
         final file = File(s.logoLocalPath);
-        if (await file.exists())
+        if (await file.exists()) {
           return pw.MemoryImage(await file.readAsBytes());
+        }
       }
       if (s.logoUrl.isNotEmpty) return await networkImage(s.logoUrl);
     } catch (_) {}

@@ -307,13 +307,141 @@ class _CartBar extends StatelessWidget {
 
 // ── State widgets ─────────────────────────────────────────────────────────────
 
-class _LoadingState extends StatelessWidget {
+class _LoadingState extends StatefulWidget {
   const _LoadingState();
 
   @override
-  Widget build(BuildContext context) => const Center(
-    child: CircularProgressIndicator(color: AppColors.brand, strokeWidth: 2.5),
-  );
+  State<_LoadingState> createState() => _LoadingStateState();
+}
+
+class _LoadingStateState extends State<_LoadingState>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, _) {
+        final shimmerPos = -0.3 + 1.6 * _ctrl.value;
+
+        Widget box({double? width, double height = 14, double radius = 8}) {
+          return Container(
+            width: width,
+            height: height,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(radius),
+              gradient: LinearGradient(
+                colors: const [
+                  Color(0xFFE2E8F0),
+                  Color(0xFFECF0F6),
+                  Color(0xFFF5F8FC),
+                  Color(0xFFECF0F6),
+                  Color(0xFFE2E8F0),
+                ],
+                stops: [
+                  (shimmerPos - 0.4).clamp(0.0, 1.0),
+                  (shimmerPos - 0.2).clamp(0.0, 1.0),
+                  shimmerPos.clamp(0.0, 1.0),
+                  (shimmerPos + 0.2).clamp(0.0, 1.0),
+                  (shimmerPos + 0.4).clamp(0.0, 1.0),
+                ],
+              ),
+            ),
+          );
+        }
+
+        Widget productCardSkeleton() {
+          return Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: box(radius: 8)),
+                const SizedBox(height: 6),
+                box(radius: 5),
+                const SizedBox(height: 4),
+                box(width: 64, height: 11, radius: 5),
+                const SizedBox(height: 6),
+                box(height: 26, radius: 6),
+              ],
+            ),
+          );
+        }
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Search bar skeleton
+              box(height: 44, radius: 12),
+              const SizedBox(height: 12),
+              // Category chips skeleton
+              SizedBox(
+                height: 34,
+                child: Row(
+                  children: [
+                    box(width: 72, height: 32, radius: 16),
+                    const SizedBox(width: 8),
+                    box(width: 90, height: 32, radius: 16),
+                    const SizedBox(width: 8),
+                    box(width: 80, height: 32, radius: 16),
+                    const SizedBox(width: 8),
+                    box(width: 68, height: 32, radius: 16),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Product grid skeleton
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (_, constraints) {
+                    final int cols = constraints.maxWidth >= 1024
+                        ? 7
+                        : constraints.maxWidth >= 600
+                        ? 5
+                        : 3;
+                    return GridView.builder(
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: cols,
+                        mainAxisSpacing: 2,
+                        crossAxisSpacing: 2,
+                        childAspectRatio: 0.72,
+                      ),
+                      itemCount: cols * 4,
+                      itemBuilder: (_, _) => productCardSkeleton(),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _EmptyProductsState extends StatelessWidget {

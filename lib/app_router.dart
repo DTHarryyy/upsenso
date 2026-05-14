@@ -38,6 +38,7 @@ import 'package:pos/features/settings/presentation/receipt_settings_page.dart';
 import 'package:pos/features/settings/presentation/settings_shell_page.dart';
 import 'package:pos/features/dashboard/presentation/dashboard_page.dart';
 import 'package:pos/features/reports/presentation/pages/reports_and_analytics.dart';
+import 'package:pos/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:pos/features/onboarding/onboarding.dart';
 
 class _AuthRefreshNotifier extends ChangeNotifier {
@@ -282,6 +283,16 @@ class AppRouter {
               GoRoute(
                 path: AppRoutes.settings,
                 builder: (context, _) => const SettingsShellPage(),
+              ),
+            ],
+          ),
+
+          // ── Branch 8: Notifications ──────────────────────────────────────
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.notifications,
+                builder: (context, _) => const NotificationsPage(),
               ),
             ],
           ),

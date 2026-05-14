@@ -123,12 +123,21 @@ Future<void> _waitForSessionRecovery() async {
         )
         .timeout(const Duration(seconds: 8));
   } catch (_) {
-    // Timed out — network too slow or truly no session. The auth bloc will
-    // handle the unauthenticated state correctly.
+    // Timed out. This can happen after a hot-restart or page re-init where the
+    // JS Supabase singleton is already "done" and won't fire new events.
+    // Call refreshSession() to force it to re-read the stored token.
+    if (auth.currentUser == null) {
+      try {
+        await auth.refreshSession();
+      } catch (_) {
+        // No valid refresh token — the user is genuinely signed out.
+      }
+    }
   }
 }
 
 Future<void> _initNobodyWho() async {
+  if (kIsWeb) return; // nobodywho has no web support
   try {
     await nobodywho.NobodyWho.init();
   } catch (e) {

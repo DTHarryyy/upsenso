@@ -35,4 +35,7 @@ class AppRoutes {
   // Settings
   static const String settings = '/settings';
   static const String receiptSettings = '/settings/receipt';
+
+  // Notifications
+  static const String notifications = '/notifications';
 }

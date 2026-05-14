@@ -58,8 +58,9 @@ class ReceiptSettingsRepository {
     required String mimeType,
   }) async {
     final online = await _connectivity.isConnected;
-    if (!online)
+    if (!online) {
       throw Exception('Logo upload requires an internet connection.');
+    }
 
     final url = await _remote.uploadLogo(
       businessId: businessId,

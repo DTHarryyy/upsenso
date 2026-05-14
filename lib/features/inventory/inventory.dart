@@ -162,12 +162,7 @@ class _InventoryState extends State<Inventory> {
                           const SizedBox(height: 16),
 
                           if (isLoading)
-                            const Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(56),
-                                child: CircularProgressIndicator(),
-                              ),
-                            )
+                            const _InventorySkeleton()
                           else if (useTable)
                             InventoryDesktopTable(
                               items: items,
@@ -475,6 +470,117 @@ class _CardList extends StatelessWidget {
             ),
           )
           .toList(),
+    );
+  }
+}
+
+// ── Inventory skeleton loader ─────────────────────────────────────────────────
+
+class _InventorySkeleton extends StatefulWidget {
+  const _InventorySkeleton();
+
+  @override
+  State<_InventorySkeleton> createState() => _InventorySkeletonState();
+}
+
+class _InventorySkeletonState extends State<_InventorySkeleton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, _) {
+        final shimmerPos = -0.3 + 1.6 * _ctrl.value;
+
+        Widget box({double? width, double height = 14, double radius = 8}) {
+          return Container(
+            width: width,
+            height: height,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(radius),
+              gradient: LinearGradient(
+                colors: const [
+                  Color(0xFFE2E8F0),
+                  Color(0xFFECF0F6),
+                  Color(0xFFF5F8FC),
+                  Color(0xFFECF0F6),
+                  Color(0xFFE2E8F0),
+                ],
+                stops: [
+                  (shimmerPos - 0.4).clamp(0.0, 1.0),
+                  (shimmerPos - 0.2).clamp(0.0, 1.0),
+                  shimmerPos.clamp(0.0, 1.0),
+                  (shimmerPos + 0.2).clamp(0.0, 1.0),
+                  (shimmerPos + 0.4).clamp(0.0, 1.0),
+                ],
+              ),
+            ),
+          );
+        }
+
+        Widget skRow() => Container(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        box(width: 160, height: 14),
+                        const SizedBox(height: 5),
+                        box(width: 100, height: 11, radius: 5),
+                        const SizedBox(height: 4),
+                        box(width: 72, height: 10, radius: 5),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  box(width: 72, height: 22, radius: 10),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  box(width: 70, height: 13, radius: 5),
+                  const SizedBox(width: 16),
+                  box(width: 70, height: 13, radius: 5),
+                  const SizedBox(width: 16),
+                  box(width: 70, height: 13, radius: 5),
+                ],
+              ),
+            ],
+          ),
+        );
+
+        return Column(children: List.generate(7, (_) => skRow()));
+      },
     );
   }
 }

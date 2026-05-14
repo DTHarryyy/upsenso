@@ -175,8 +175,9 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
         ],
         child: BlocBuilder<ReportsCubit, ReportsState>(
           builder: (ctx, state) {
-            final data =
-                state is ReportsLoaded ? state.data : ReportsData.empty();
+            final data = state is ReportsLoaded
+                ? state.data
+                : ReportsData.empty();
             final isLoading = state is ReportsLoading;
 
             final authState = ctx.read<AuthBloc>().state;
@@ -207,24 +208,18 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
                       _buildPageSummaryCards(data),
                       const SizedBox(height: 16),
                       // ③ Filter row: period picker + export dropdown
-                      _buildFilterRow(
-                          ctx, data, businessName, branchLabel),
+                      _buildFilterRow(ctx, data, businessName, branchLabel),
                       const SizedBox(height: 12),
                       // ④ Tab chips
                       ReportNavChipBar(
                         tabs: _tabs,
                         selectedIndex: _selectedTab,
-                        onTabSelected: (i) =>
-                            setState(() => _selectedTab = i),
+                        onTabSelected: (i) => setState(() => _selectedTab = i),
                       ),
                       const SizedBox(height: 20),
                       // ⑤ Tab content
                       if (isLoading)
-                        const SizedBox(
-                          height: 300,
-                          child:
-                              Center(child: CircularProgressIndicator()),
-                        )
+                        const _ReportsTabSkeleton()
                       else if (state is ReportsError)
                         _ErrorView(
                           message: state.message,
@@ -256,11 +251,13 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
             value: _period,
             dense: true,
             items: ReportPeriod.values
-                .map((p) => AppDropdownItem(
-                      value: p,
-                      label: p.label,
-                      icon: Icons.calendar_today_outlined,
-                    ))
+                .map(
+                  (p) => AppDropdownItem(
+                    value: p,
+                    label: p.label,
+                    icon: Icons.calendar_today_outlined,
+                  ),
+                )
                 .toList(),
             onChanged: (v) {
               if (v != null) _onPeriodChanged(v);
@@ -417,10 +414,11 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
 
       case 3:
         final branchCount = data.branchStats.length;
-        final totalBranchSales =
-            data.branchStats.fold<double>(0, (s, b) => s + b.totalSales);
-        final topBranch =
-            data.branchStats.where((b) => b.isTop).firstOrNull;
+        final totalBranchSales = data.branchStats.fold<double>(
+          0,
+          (s, b) => s + b.totalSales,
+        );
+        final topBranch = data.branchStats.where((b) => b.isTop).firstOrNull;
         return ReportStatCardsRow(
           cards: [
             ReportStatCard(
@@ -497,8 +495,11 @@ class _ReportHeaderCard extends StatelessWidget {
               color: AppColors.brandSoft,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.analytics_outlined,
-                color: AppColors.brand, size: 20),
+            child: const Icon(
+              Icons.analytics_outlined,
+              color: AppColors.brand,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -506,7 +507,9 @@ class _ReportHeaderCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  businessName.isNotEmpty ? businessName : 'Reports & Analytics',
+                  businessName.isNotEmpty
+                      ? businessName
+                      : 'Reports & Analytics',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -591,8 +594,8 @@ class _ExportDropdown extends StatelessWidget {
     final label = isExportingPdf
         ? 'Exporting PDF…'
         : isExportingExcel
-            ? 'Exporting…'
-            : 'Export';
+        ? 'Exporting…'
+        : 'Export';
 
     return PopupMenuButton<_ExportType>(
       enabled: !busy,
@@ -608,11 +611,16 @@ class _ExportDropdown extends StatelessWidget {
           value: _ExportType.pdf,
           child: Row(
             children: [
-              Icon(Icons.picture_as_pdf_rounded,
-                  size: 15, color: AppColors.error),
+              Icon(
+                Icons.picture_as_pdf_rounded,
+                size: 15,
+                color: AppColors.error,
+              ),
               const SizedBox(width: 10),
-              const Text('Export as PDF',
-                  style: TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+              const Text(
+                'Export as PDF',
+                style: TextStyle(fontSize: 13, color: AppColors.textPrimary),
+              ),
             ],
           ),
         ),
@@ -620,11 +628,16 @@ class _ExportDropdown extends StatelessWidget {
           value: _ExportType.excel,
           child: Row(
             children: [
-              Icon(Icons.table_chart_rounded,
-                  size: 15, color: AppColors.success),
+              Icon(
+                Icons.table_chart_rounded,
+                size: 15,
+                color: AppColors.success,
+              ),
               const SizedBox(width: 10),
-              const Text('Export as Excel (.xlsx)',
-                  style: TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+              const Text(
+                'Export as Excel (.xlsx)',
+                style: TextStyle(fontSize: 13, color: AppColors.textPrimary),
+              ),
             ],
           ),
         ),
@@ -650,8 +663,11 @@ class _ExportDropdown extends StatelessWidget {
                 ),
               )
             else
-              const Icon(Icons.download_rounded,
-                  size: 15, color: AppColors.textSecondary),
+              const Icon(
+                Icons.download_rounded,
+                size: 15,
+                color: AppColors.textSecondary,
+              ),
             const SizedBox(width: 6),
             Text(
               label,
@@ -663,8 +679,11 @@ class _ExportDropdown extends StatelessWidget {
             ),
             if (!busy) ...[
               const SizedBox(width: 2),
-              const Icon(Icons.arrow_drop_down_rounded,
-                  size: 16, color: AppColors.textMuted),
+              const Icon(
+                Icons.arrow_drop_down_rounded,
+                size: 16,
+                color: AppColors.textMuted,
+              ),
             ],
           ],
         ),
@@ -688,18 +707,23 @@ class _ErrorView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 40, color: AppColors.textMuted),
+            const Icon(
+              Icons.error_outline,
+              size: 40,
+              color: AppColors.textMuted,
+            ),
             const SizedBox(height: 12),
             const Text(
               'Failed to load reports',
               style: TextStyle(
-                  fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               message,
-              style:
-                  const TextStyle(fontSize: 12, color: AppColors.textMuted),
+              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
@@ -707,6 +731,136 @@ class _ErrorView extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Reports tab skeleton loader ───────────────────────────────────────────────
+
+class _ReportsTabSkeleton extends StatefulWidget {
+  const _ReportsTabSkeleton();
+
+  @override
+  State<_ReportsTabSkeleton> createState() => _ReportsTabSkeletonState();
+}
+
+class _ReportsTabSkeletonState extends State<_ReportsTabSkeleton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, _) {
+        final shimmerPos = -0.3 + 1.6 * _ctrl.value;
+
+        Widget box({double? width, double height = 14, double radius = 8}) {
+          return Container(
+            width: width,
+            height: height,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(radius),
+              gradient: LinearGradient(
+                colors: const [
+                  Color(0xFFE2E8F0),
+                  Color(0xFFECF0F6),
+                  Color(0xFFF5F8FC),
+                  Color(0xFFECF0F6),
+                  Color(0xFFE2E8F0),
+                ],
+                stops: [
+                  (shimmerPos - 0.4).clamp(0.0, 1.0),
+                  (shimmerPos - 0.2).clamp(0.0, 1.0),
+                  shimmerPos.clamp(0.0, 1.0),
+                  (shimmerPos + 0.2).clamp(0.0, 1.0),
+                  (shimmerPos + 0.4).clamp(0.0, 1.0),
+                ],
+              ),
+            ),
+          );
+        }
+
+        Widget skCard(Widget child) => Container(
+          padding: const EdgeInsets.all(16),
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: child,
+        );
+
+        Widget dataRow() => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            children: [
+              box(width: 32, height: 32, radius: 8),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    box(height: 13),
+                    const SizedBox(height: 4),
+                    box(width: 100, height: 11, radius: 5),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              box(width: 64, height: 13, radius: 5),
+            ],
+          ),
+        );
+
+        return Column(
+          children: [
+            skCard(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      box(width: 140, height: 14),
+                      box(width: 60, height: 12, radius: 6),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  box(height: 200, radius: 8),
+                ],
+              ),
+            ),
+            skCard(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  box(width: 120, height: 14),
+                  const SizedBox(height: 4),
+                  const Divider(color: Color(0xFFE2E8F0)),
+                  ...List.generate(5, (_) => dataRow()),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

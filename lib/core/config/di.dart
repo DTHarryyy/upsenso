@@ -73,6 +73,8 @@ import 'package:pos/features/settings/data/datasources/receipt_settings_remote_d
 import 'package:pos/features/settings/data/receipt_settings_repository.dart';
 import 'package:pos/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:pos/features/settings/services/receipt_printer_service.dart';
+import 'package:pos/features/notifications/data/notifications_repository.dart';
+import 'package:pos/features/notifications/domain/repositories/i_notifications_repository.dart';
 
 final sl = GetIt.instance;
 
@@ -145,7 +147,9 @@ Future<void> initDI() async {
   );
 
   sl.registerLazySingleton<CartService>(() => CartService());
-  sl.registerLazySingleton<ImageService>(() => ImageService(sl<SupabaseClient>()));
+  sl.registerLazySingleton<ImageService>(
+    () => ImageService(sl<SupabaseClient>()),
+  );
   sl.registerLazySingleton<ResolveBarcodeUseCase>(
     () => ResolveBarcodeUseCase(repository: sl<IProductsRepository>()),
   );
@@ -321,6 +325,10 @@ Future<void> initDI() async {
       branchesDao: sl<BranchesDao>(),
       prefs: sl<SharedPreferences>(),
     ),
+  );
+
+  sl.registerLazySingleton<INotificationsRepository>(
+    () => NotificationsRepository(sl<SupabaseClient>()),
   );
 
   // Ensures businessId is available immediately on startup

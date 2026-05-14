@@ -151,82 +151,87 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 1980),
                         child: Row(
-                      children: [
-                        // ── Sidebar ──────────────────────────────────────────
-                        if (!isPosTab)
-                          _AppSidebar(
-                            expanded: _sidebarExpanded,
-                            currentIndex: _currentIndex,
-                            onNavTap: _onNavTap,
-                            onToggle: () => setState(
-                              () => _sidebarExpanded = !_sidebarExpanded,
-                            ),
-                            userName: userName,
-                            userRole: userRole,
-                            userEmail: userEmail,
-                            userAvatar: userAvatar,
-                            businessName: businessName,
-                            businessId: authState.user.businessId,
-                            isOnline: isOnline,
-                            pendingSyncCount: pendingSyncCount,
-                            branches: visibleBranches,
-                            selectedBranch: selectedBranch,
-                            canSwitchBranches: branchState.canSwitchBranches,
-                          ),
-
-                        // ── Right column: top bar + page content ─────────────
-                        Expanded(
-                          child: Column(
-                            children: [
-                              // Shared top bar — same component as mobile so
-                              // branch selector, sync status, and user section
-                              // are always consistent across breakpoints.
-                              if (!isPosTab)
-                                CustomAppBar(
-                                  branches: visibleBranches,
-                                  selectedBranch: selectedBranch,
-                                  onBranchChanged: branchState.canSwitchBranches
-                                      ? (branch) => context
-                                            .read<BranchCubit>()
-                                            .selectBranch(branch)
-                                      : null,
-                                  userName: userName,
-                                  userRole: userRole,
-                                  userEmail: userEmail,
-                                  userId: userId,
-                                  userAvatar: userAvatar,
-                                  businessName: businessName,
-                                  isOnline: isOnline,
-                                  pendingSyncCount: pendingSyncCount,
-                                  onNotificationTapped: () => _onNavTap(3),
-                                  showThemeToggle: false,
+                          children: [
+                            // ── Sidebar ──────────────────────────────────────────
+                            if (!isPosTab)
+                              _AppSidebar(
+                                expanded: _sidebarExpanded,
+                                currentIndex: _currentIndex,
+                                onNavTap: _onNavTap,
+                                onToggle: () => setState(
+                                  () => _sidebarExpanded = !_sidebarExpanded,
                                 ),
-
-                              // Page content.  We override AppBarTheme with
-                              // toolbarHeight: 0 so any per-page AppBar that
-                              // individual pages declare occupies no space and
-                              // is visually hidden — the top bar above provides
-                              // all the chrome the user needs on desktop.
-                              Expanded(
-                                child: Theme(
-                                  data: Theme.of(context).copyWith(
-                                    appBarTheme: Theme.of(context).appBarTheme
-                                        .copyWith(
-                                          toolbarHeight: 0,
-                                          elevation: 0,
-                                          scrolledUnderElevation: 0,
-                                          backgroundColor: Colors.transparent,
-                                          surfaceTintColor: Colors.transparent,
-                                          shadowColor: Colors.transparent,
-                                        ),
-                                  ),
-                                  child: shell,
-                                ),
+                                userName: userName,
+                                userRole: userRole,
+                                userEmail: userEmail,
+                                userAvatar: userAvatar,
+                                businessName: businessName,
+                                businessId: authState.user.businessId,
+                                isOnline: isOnline,
+                                pendingSyncCount: pendingSyncCount,
+                                branches: visibleBranches,
+                                selectedBranch: selectedBranch,
+                                canSwitchBranches:
+                                    branchState.canSwitchBranches,
                               ),
-                            ],
-                          ),
-                        ),
-                      ],
+
+                            // ── Right column: top bar + page content ─────────────
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  // Shared top bar — same component as mobile so
+                                  // branch selector, sync status, and user section
+                                  // are always consistent across breakpoints.
+                                  if (!isPosTab)
+                                    CustomAppBar(
+                                      branches: visibleBranches,
+                                      selectedBranch: selectedBranch,
+                                      onBranchChanged:
+                                          branchState.canSwitchBranches
+                                          ? (branch) => context
+                                                .read<BranchCubit>()
+                                                .selectBranch(branch)
+                                          : null,
+                                      userName: userName,
+                                      userRole: userRole,
+                                      userEmail: userEmail,
+                                      userId: userId,
+                                      userAvatar: userAvatar,
+                                      businessName: businessName,
+                                      isOnline: isOnline,
+                                      pendingSyncCount: pendingSyncCount,
+                                      onNotificationTapped: () => _onNavTap(8),
+                                      showThemeToggle: false,
+                                    ),
+
+                                  // Page content.  We override AppBarTheme with
+                                  // toolbarHeight: 0 so any per-page AppBar that
+                                  // individual pages declare occupies no space and
+                                  // is visually hidden — the top bar above provides
+                                  // all the chrome the user needs on desktop.
+                                  Expanded(
+                                    child: Theme(
+                                      data: Theme.of(context).copyWith(
+                                        appBarTheme: Theme.of(context)
+                                            .appBarTheme
+                                            .copyWith(
+                                              toolbarHeight: 0,
+                                              elevation: 0,
+                                              scrolledUnderElevation: 0,
+                                              backgroundColor:
+                                                  Colors.transparent,
+                                              surfaceTintColor:
+                                                  Colors.transparent,
+                                              shadowColor: Colors.transparent,
+                                            ),
+                                      ),
+                                      child: shell,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -256,7 +261,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                           businessName: businessName,
                           isOnline: isOnline,
                           pendingSyncCount: pendingSyncCount,
-                          onNotificationTapped: () => _onNavTap(3),
+                          onNotificationTapped: () => _onNavTap(8),
                           onMenuTapped: () =>
                               _scaffoldKey.currentState?.openDrawer(),
                           showThemeToggle: false,
@@ -378,9 +383,15 @@ class _AppSidebarState extends State<_AppSidebar>
   late final Animation<double> _settingsExpandAnim;
   String? _businessLogoUrl;
 
+  // Tracks the layout mode separately from widget.expanded.
+  // On expand: waits for the animation to finish before switching content.
+  // On collapse: switches content immediately so icons show during animation.
+  bool _layoutExpanded = false;
+
   @override
   void initState() {
     super.initState();
+    _layoutExpanded = widget.expanded;
     if (widget.businessId != null) _loadBusinessLogo(widget.businessId!);
     _settingsAnimCtrl = AnimationController(
       vsync: this,
@@ -407,6 +418,17 @@ class _AppSidebarState extends State<_AppSidebar>
     if (widget.businessId != oldWidget.businessId &&
         widget.businessId != null) {
       _loadBusinessLogo(widget.businessId!);
+    }
+    if (widget.expanded != oldWidget.expanded) {
+      if (!widget.expanded) {
+        // Collapsing: switch content immediately.
+        setState(() => _layoutExpanded = false);
+      } else {
+        // Expanding: wait for the container animation to finish.
+        Future.delayed(const Duration(milliseconds: 220), () {
+          if (mounted) setState(() => _layoutExpanded = true);
+        });
+      }
     }
   }
 
@@ -459,12 +481,14 @@ class _AppSidebarState extends State<_AppSidebar>
   @override
   Widget build(BuildContext context) {
     final w = widget.expanded ? _kSidebarExpanded : _kSidebarCollapsed;
+    final layoutExpanded = _layoutExpanded;
     final settingsSubPage = context.watch<SidebarNavCubit>().state;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeInOut,
       width: w,
+      clipBehavior: Clip.hardEdge,
       decoration: const BoxDecoration(
         color: AppColors.surface,
         border: Border(
@@ -483,7 +507,7 @@ class _AppSidebarState extends State<_AppSidebar>
                 bottom: BorderSide(color: AppColors.borderSoft, width: 1),
               ),
             ),
-            child: widget.expanded
+            child: layoutExpanded
                 ? Row(
                     children: [
                       const SizedBox(width: 12),
@@ -524,7 +548,7 @@ class _AppSidebarState extends State<_AppSidebar>
                     ],
                   )
                 : Tooltip(
-                    message: widget.businessName,
+                    message: 'Expand sidebar',
                     preferBelow: false,
                     waitDuration: const Duration(milliseconds: 400),
                     child: Material(
@@ -534,10 +558,10 @@ class _AppSidebarState extends State<_AppSidebar>
                         mouseCursor: SystemMouseCursors.click,
                         child: SizedBox.expand(
                           child: Center(
-                            child: _BusinessLogo(
-                              logoUrl: _businessLogoUrl,
-                              businessName: widget.businessName,
-                              size: 32,
+                            child: const Icon(
+                              Icons.chevron_right_rounded,
+                              size: 24,
+                              color: AppColors.textMuted,
                             ),
                           ),
                         ),
@@ -554,13 +578,13 @@ class _AppSidebarState extends State<_AppSidebar>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // ── MAIN section ──
-                  if (widget.expanded) const _SectionLabel(label: 'MAIN'),
+                  if (layoutExpanded) const _SectionLabel(label: 'MAIN'),
                   _NavItem(
                     icon: Icons.dashboard_rounded,
                     label: 'Dashboard',
                     index: 0,
                     currentIndex: widget.currentIndex,
-                    expanded: widget.expanded,
+                    expanded: layoutExpanded,
                     onTap: widget.onNavTap,
                   ),
                   _NavItem(
@@ -568,7 +592,7 @@ class _AppSidebarState extends State<_AppSidebar>
                     label: 'Products',
                     index: 1,
                     currentIndex: widget.currentIndex,
-                    expanded: widget.expanded,
+                    expanded: layoutExpanded,
                     onTap: widget.onNavTap,
                   ),
                   _NavItem(
@@ -576,7 +600,7 @@ class _AppSidebarState extends State<_AppSidebar>
                     label: 'POS Terminal',
                     index: 2,
                     currentIndex: widget.currentIndex,
-                    expanded: widget.expanded,
+                    expanded: layoutExpanded,
                     onTap: widget.onNavTap,
                     accent: true,
                   ),
@@ -585,7 +609,7 @@ class _AppSidebarState extends State<_AppSidebar>
                     label: 'Reports',
                     index: 3,
                     currentIndex: widget.currentIndex,
-                    expanded: widget.expanded,
+                    expanded: layoutExpanded,
                     onTap: widget.onNavTap,
                   ),
                   _NavItem(
@@ -593,7 +617,7 @@ class _AppSidebarState extends State<_AppSidebar>
                     label: 'Inventory',
                     index: 4,
                     currentIndex: widget.currentIndex,
-                    expanded: widget.expanded,
+                    expanded: layoutExpanded,
                     onTap: widget.onNavTap,
                   ),
 
@@ -602,13 +626,13 @@ class _AppSidebarState extends State<_AppSidebar>
                   const SizedBox(height: 6),
 
                   // ── OPERATIONS section ──
-                  if (widget.expanded) const _SectionLabel(label: 'OPERATIONS'),
+                  if (layoutExpanded) const _SectionLabel(label: 'OPERATIONS'),
                   _NavItem(
                     icon: Icons.history_rounded,
                     label: 'Sales History',
                     index: 5,
                     currentIndex: widget.currentIndex,
-                    expanded: widget.expanded,
+                    expanded: layoutExpanded,
                     onTap: widget.onNavTap,
                   ),
                   _NavItem(
@@ -616,7 +640,7 @@ class _AppSidebarState extends State<_AppSidebar>
                     label: 'Expenses',
                     index: 6,
                     currentIndex: widget.currentIndex,
-                    expanded: widget.expanded,
+                    expanded: layoutExpanded,
                     onTap: widget.onNavTap,
                   ),
 
@@ -625,15 +649,15 @@ class _AppSidebarState extends State<_AppSidebar>
                   const SizedBox(height: 6),
 
                   // ── SETTINGS section ──
-                  if (widget.expanded) const _SectionLabel(label: 'SETTINGS'),
+                  if (layoutExpanded) const _SectionLabel(label: 'SETTINGS'),
                   _SettingsAccordion(
-                    expanded: widget.expanded,
+                    expanded: layoutExpanded,
                     isActive: widget.currentIndex == 7,
                     isAccordionOpen: _settingsExpanded,
                     expandAnim: _settingsExpandAnim,
                     activeSubPage: settingsSubPage,
                     onHeaderTap: () {
-                      if (!widget.expanded) {
+                      if (!layoutExpanded) {
                         // Collapsed sidebar: just navigate to settings
                         context.read<SidebarNavCubit>().setSubPage(
                           SettingsSubPage.receipt,
@@ -660,7 +684,7 @@ class _AppSidebarState extends State<_AppSidebar>
 
           const Divider(height: 1, color: AppColors.borderSoft),
           _SidebarFooter(
-            expanded: widget.expanded,
+            expanded: layoutExpanded,
             isOnline: widget.isOnline,
             pendingSyncCount: widget.pendingSyncCount,
             userName: widget.userName,
@@ -691,8 +715,10 @@ class _BusinessLogo extends StatelessWidget {
   String _initial() {
     final clean = businessName.trim();
     if (clean.isEmpty) return 'B';
-    final words =
-        clean.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    final words = clean
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .toList();
     if (words.length >= 2) {
       return '${words[0][0]}${words[1][0]}'.toUpperCase();
     }
@@ -717,10 +743,8 @@ class _BusinessLogo extends StatelessWidget {
                 fit: BoxFit.cover,
                 width: size,
                 height: size,
-                errorBuilder: (_, _, _) => _Initial(
-                  initial: _initial(),
-                  size: size,
-                ),
+                errorBuilder: (_, _, _) =>
+                    _Initial(initial: _initial(), size: size),
               )
             : _Initial(initial: _initial(), size: size),
       ),
@@ -735,15 +759,15 @@ class _Initial extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Text(
-          initial,
-          style: getOutfitStyle(
-            fontSize: size * 0.36,
-            fontWeight: FontWeight.w800,
-            color: Colors.white,
-          ),
-        ),
-      );
+    child: Text(
+      initial,
+      style: getOutfitStyle(
+        fontSize: size * 0.36,
+        fontWeight: FontWeight.w800,
+        color: Colors.white,
+      ),
+    ),
+  );
 }
 
 // ── Settings accordion ─────────────────────────────────────────────────────
@@ -1170,4 +1194,3 @@ class _SidebarFooter extends StatelessWidget {
     });
   }
 }
-

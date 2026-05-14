@@ -110,6 +110,9 @@ class _AvatarCircle extends StatelessWidget {
               width: size,
               height: size,
               fit: BoxFit.cover,
+              loadingBuilder: (ctx, child, progress) => progress == null
+                  ? child
+                  : _InitialsFill(initials: initials, radius: radius),
               errorBuilder: (ctx, e, _) =>
                   _InitialsFill(initials: initials, radius: radius),
             );

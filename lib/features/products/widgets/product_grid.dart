@@ -28,9 +28,9 @@ class ProductGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final int breakPoint = Breakpoints.isDesktop(context)
-        ? 5
+        ? 7
         : Breakpoints.isTablet(context)
-        ? 4
+        ? 5
         : 3;
     return GridView.builder(
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(

@@ -120,17 +120,19 @@ class _CustomAppBarState extends State<CustomAppBar> {
                       )
                     else ...[
                       // Sync status only — online/offline indicator removed.
-                      _StatusPill(
-                        color: widget.pendingSyncCount > 0
-                            ? AppColors.syncing
-                            : AppColors.synced,
-                        icon: widget.pendingSyncCount > 0
-                            ? Icons.sync_rounded
-                            : Icons.cloud_done_rounded,
-                        label: widget.pendingSyncCount > 0
-                            ? 'Sync: ${widget.pendingSyncCount} pending'
-                            : 'All synced',
-                        isSyncing: widget.pendingSyncCount > 0,
+                      Flexible(
+                        child: _StatusPill(
+                          color: widget.pendingSyncCount > 0
+                              ? AppColors.syncing
+                              : AppColors.synced,
+                          icon: widget.pendingSyncCount > 0
+                              ? Icons.sync_rounded
+                              : Icons.cloud_done_rounded,
+                          label: widget.pendingSyncCount > 0
+                              ? 'Sync: ${widget.pendingSyncCount} pending'
+                              : 'All synced',
+                          isSyncing: widget.pendingSyncCount > 0,
+                        ),
                       ),
                     ],
                   ],
@@ -782,12 +784,16 @@ class _StatusPillState extends State<_StatusPill>
         children: [
           _icon(13),
           const SizedBox(width: 5),
-          Text(
-            widget.label,
-            style: getOutfitStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: widget.color,
+          Flexible(
+            child: Text(
+              widget.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: getOutfitStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: widget.color,
+              ),
             ),
           ),
         ],

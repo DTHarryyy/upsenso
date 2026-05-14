@@ -1,4 +1,5 @@
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show DeviceOrientation, SystemChrome;
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -101,6 +102,12 @@ class _PosTerminalPageState extends State<PosTerminalPage>
   }
 
   Future<void> _checkCameraPermission() async {
+    if (kIsWeb) {
+      // On web the browser handles camera permission through MobileScanner.
+      // Start optimistically; errorBuilder will flip _permissionDenied if it fails.
+      if (mounted) setState(() => _permissionDenied = false);
+      return;
+    }
     var status = await Permission.camera.status;
     final wasNotGranted = !status.isGranted;
     if (!status.isGranted) {
@@ -396,8 +403,14 @@ class _PosTerminalPageState extends State<PosTerminalPage>
                   controller: _scannerController,
                   fit: BoxFit.cover,
                   onDetect: _onBarcodeDetected,
-                  errorBuilder: (context, error, child) =>
-                      const ColoredBox(color: Colors.black),
+                  errorBuilder: (context, error, child) {
+                    if (!_permissionDenied) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) setState(() => _permissionDenied = true);
+                      });
+                    }
+                    return const ColoredBox(color: Colors.black);
+                  },
                 ),
               )
             else
@@ -443,8 +456,16 @@ class _PosTerminalPageState extends State<PosTerminalPage>
                       controller: _scannerController,
                       fit: BoxFit.cover,
                       onDetect: _onBarcodeDetected,
-                      errorBuilder: (context, error, child) =>
-                          const ColoredBox(color: Colors.black),
+                      errorBuilder: (context, error, child) {
+                        if (!_permissionDenied) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) {
+                              setState(() => _permissionDenied = true);
+                            }
+                          });
+                        }
+                        return const ColoredBox(color: Colors.black);
+                      },
                     ),
                   )
                 else
@@ -998,24 +1019,43 @@ class _PosTerminalPageState extends State<PosTerminalPage>
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  'Grant camera access to scan barcodes',
-                  style: getOutfitStyle(color: Colors.white70, fontSize: 14),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 32),
-                FilledButton.icon(
-                  icon: const Icon(Icons.settings_rounded),
-                  label: const Text('Open Settings'),
-                  onPressed: openAppSettings,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.brand,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Text(
+                    kIsWeb
+                        ? 'No camera detected, or camera access was denied.\nPlease connect a camera and allow access in your browser\'s address bar.'
+                        : 'Grant camera access to scan barcodes',
+                    style: getOutfitStyle(color: Colors.white70, fontSize: 14),
+                    textAlign: TextAlign.center,
                   ),
                 ),
+                const SizedBox(height: 32),
+                if (!kIsWeb)
+                  FilledButton.icon(
+                    icon: const Icon(Icons.settings_rounded),
+                    label: const Text('Open Settings'),
+                    onPressed: openAppSettings,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.brand,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                    ),
+                  )
+                else
+                  FilledButton.icon(
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Retry'),
+                    onPressed: _checkCameraPermission,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.brand,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),

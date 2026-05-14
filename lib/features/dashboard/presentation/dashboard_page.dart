@@ -49,8 +49,9 @@ class _DashboardPageState extends State<DashboardPage> {
     if (!mounted) return;
     final authState = context.read<AuthBloc>().state;
     if (authState is AuthAuthenticated) {
-      final branchId =
-          context.read<BranchCubit>().getSelectedBranchIdForFiltering();
+      final branchId = context
+          .read<BranchCubit>()
+          .getSelectedBranchIdForFiltering();
       _cubit.startWatching(
         businessId: authState.user.businessId ?? '',
         branchId: branchId,
@@ -68,8 +69,9 @@ class _DashboardPageState extends State<DashboardPage> {
             listenWhen: (prev, curr) => curr is AuthAuthenticated,
             listener: (ctx, authState) {
               if (authState is AuthAuthenticated) {
-                final branchId =
-                    ctx.read<BranchCubit>().getSelectedBranchIdForFiltering();
+                final branchId = ctx
+                    .read<BranchCubit>()
+                    .getSelectedBranchIdForFiltering();
                 _cubit.startWatching(
                   businessId: authState.user.businessId ?? '',
                   branchId: branchId,
@@ -102,152 +104,162 @@ class _DashboardPageState extends State<DashboardPage> {
 
             return Scaffold(
               // floatingActionButton: const FloatingAIAssistantBar(),
-              body: RefreshIndicator(
-                onRefresh: () async => _triggerLoad(), // restarts watcher + loads fresh
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      // ── Stat Cards ──
-                      _StatCardsRow(data: data, isLoading: isLoading),
+              body: (state is DashboardInitial || state is DashboardLoading)
+                  ? const _DashboardSkeleton()
+                  : RefreshIndicator(
+                      onRefresh: () async => _triggerLoad(),
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            // ── Stat Cards ──
+                            _StatCardsRow(data: data, isLoading: isLoading),
 
-                      const SizedBox(height: 16),
-                      QuickActionsBar(onNewSale: widget.onNewSale),
-                      const SizedBox(height: 16),
+                            const SizedBox(height: 16),
+                            QuickActionsBar(onNewSale: widget.onNewSale),
+                            const SizedBox(height: 16),
 
-                      // ── ROW 1: Sales Trend (hero) + Low Stock Alerts (urgent) ──
-                      // Low stock is time-sensitive — a manager needs to see it
-                      // immediately, not buried at the bottom of the page.
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          if (constraints.maxWidth > 800) {
-                            return IntrinsicHeight(
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Expanded(
-                                    flex: 3,
-                                    child: SalesTrendChart(data: data),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    flex: 2,
-                                    child: LowStockAlertsCard(
+                            // ── ROW 1: Sales Trend (hero) + Low Stock Alerts (urgent) ──
+                            // Low stock is time-sensitive — a manager needs to see it
+                            // immediately, not buried at the bottom of the page.
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                if (constraints.maxWidth > 800) {
+                                  return IntrinsicHeight(
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        Expanded(
+                                          flex: 3,
+                                          child: SalesTrendChart(data: data),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          flex: 2,
+                                          child: LowStockAlertsCard(
+                                            items: data.lowStockItems,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }
+                                return Column(
+                                  children: [
+                                    SalesTrendChart(data: data),
+                                    const SizedBox(height: 16),
+                                    LowStockAlertsCard(
                                       items: data.lowStockItems,
                                     ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-                          return Column(
-                            children: [
-                              SalesTrendChart(data: data),
-                              const SizedBox(height: 16),
-                              LowStockAlertsCard(items: data.lowStockItems),
-                            ],
-                          );
-                        },
-                      ),
+                                  ],
+                                );
+                              },
+                            ),
 
-                      const SizedBox(height: 16),
+                            const SizedBox(height: 16),
 
-                      // ── ROW 2: Top Selling Items + Payment Methods + Recent Expenses ──
-                      // Operational insights: what sells, how customers pay, what costs.
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          if (constraints.maxWidth > 800) {
-                            return IntrinsicHeight(
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Expanded(
-                                    child: TopSellingItems(
-                                      items: data.topItems,
+                            // ── ROW 2: Top Selling Items + Payment Methods + Recent Expenses ──
+                            // Operational insights: what sells, how customers pay, what costs.
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                if (constraints.maxWidth > 800) {
+                                  return IntrinsicHeight(
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        Expanded(
+                                          child: TopSellingItems(
+                                            items: data.topItems,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          child: PaymentMethodsChart(
+                                            breakdown: data.paymentBreakdown,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          child: ExpensesSummaryCard(
+                                            summary: data.expenseSummary,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: PaymentMethodsChart(
+                                  );
+                                }
+                                return Column(
+                                  children: [
+                                    TopSellingItems(items: data.topItems),
+                                    const SizedBox(height: 16),
+                                    PaymentMethodsChart(
                                       breakdown: data.paymentBreakdown,
                                     ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: ExpensesSummaryCard(
+                                    const SizedBox(height: 16),
+                                    ExpensesSummaryCard(
                                       summary: data.expenseSummary,
                                     ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-                          return Column(
-                            children: [
-                              TopSellingItems(items: data.topItems),
-                              const SizedBox(height: 16),
-                              PaymentMethodsChart(
-                                breakdown: data.paymentBreakdown,
-                              ),
-                              const SizedBox(height: 16),
-                              ExpensesSummaryCard(summary: data.expenseSummary),
-                            ],
-                          );
-                        },
-                      ),
+                                  ],
+                                );
+                              },
+                            ),
 
-                      const SizedBox(height: 16),
+                            const SizedBox(height: 16),
 
-                      // ── ROW 3: Category Performance + Branch Comparison ──
-                      // Deeper analytics — reviewed less frequently.
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          if (constraints.maxWidth > 800) {
-                            return IntrinsicHeight(
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Expanded(
-                                    flex: 3,
-                                    child: CategoryPerformanceChart(
+                            // ── ROW 3: Category Performance + Branch Comparison ──
+                            // Deeper analytics — reviewed less frequently.
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                if (constraints.maxWidth > 800) {
+                                  return IntrinsicHeight(
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        Expanded(
+                                          flex: 3,
+                                          child: CategoryPerformanceChart(
+                                            stats: data.categoryStats,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          flex: 2,
+                                          child: BranchComparisonCard(
+                                            stats: data.branchStats,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }
+                                return Column(
+                                  children: [
+                                    CategoryPerformanceChart(
                                       stats: data.categoryStats,
                                     ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    flex: 2,
-                                    child: BranchComparisonCard(
+                                    const SizedBox(height: 16),
+                                    BranchComparisonCard(
                                       stats: data.branchStats,
                                     ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-                          return Column(
-                            children: [
-                              CategoryPerformanceChart(
-                                stats: data.categoryStats,
-                              ),
-                              const SizedBox(height: 16),
-                              BranchComparisonCard(stats: data.branchStats),
-                            ],
-                          );
-                        },
+                                  ],
+                                );
+                              },
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // ── ROW 4: AI Insights (full width) ──
+                            // Commented out — AI assistant not yet integrated.
+                            // const AiInsightsCard(),
+                            const SizedBox(height: 24),
+                          ],
+                        ),
                       ),
-
-                      const SizedBox(height: 16),
-
-                      // ── ROW 4: AI Insights (full width) ──
-                      // Commented out — AI assistant not yet integrated.
-                      // const AiInsightsCard(),
-
-                      const SizedBox(height: 24),
-                    ],
-                  ),
-                ),
-              ),
+                    ),
             );
           },
         ),
@@ -255,7 +267,6 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 }
-
 
 class _StatCardsRow extends StatelessWidget {
   final DashboardData data;
@@ -279,7 +290,9 @@ class _StatCardsRow extends StatelessWidget {
       AppStatCard(
         title: "Today's Sales",
         value: isLoading ? '—' : _fmtCurrency(todaySales),
-        changeLabel: isLoading ? null : _changeLabel(salesChange, 'from yesterday'),
+        changeLabel: isLoading
+            ? null
+            : _changeLabel(salesChange, 'from yesterday'),
         isPositive: salesChange >= 0,
         icon: Icons.attach_money,
         iconBg: const Color(0xFFDCFCE7),
@@ -288,7 +301,9 @@ class _StatCardsRow extends StatelessWidget {
       AppStatCard(
         title: 'This Week',
         value: isLoading ? '—' : _fmtCurrency(weekSales),
-        changeLabel: isLoading ? null : _changeLabel(weekChange, 'from last week'),
+        changeLabel: isLoading
+            ? null
+            : _changeLabel(weekChange, 'from last week'),
         isPositive: weekChange >= 0,
         icon: Icons.trending_up,
         iconBg: const Color(0xFFDCFCE7),
@@ -308,7 +323,9 @@ class _StatCardsRow extends StatelessWidget {
       AppStatCard(
         title: 'Avg. Order Value',
         value: isLoading ? '—' : _fmtCurrency(avgOrder),
-        changeLabel: isLoading ? null : _changeLabel(avgChange, 'from yesterday'),
+        changeLabel: isLoading
+            ? null
+            : _changeLabel(avgChange, 'from yesterday'),
         isPositive: avgChange >= 0,
         icon: Icons.bar_chart,
         iconBg: const Color(0xFFF3E8FF),
@@ -333,5 +350,279 @@ class _StatCardsRow extends StatelessWidget {
     if (v >= 1000000) return '₱${(v / 1000000).toStringAsFixed(1)}M';
     if (v >= 1000) return '₱${(v / 1000).toStringAsFixed(1)}k';
     return '₱${v.toStringAsFixed(2)}';
+  }
+}
+
+// ─── Dashboard skeleton loader ────────────────────────────────────────────────
+
+class _DashboardSkeleton extends StatefulWidget {
+  const _DashboardSkeleton();
+
+  @override
+  State<_DashboardSkeleton> createState() => _DashboardSkeletonState();
+}
+
+class _DashboardSkeletonState extends State<_DashboardSkeleton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, _) {
+        final shimmerPos = -0.3 + 1.6 * _ctrl.value;
+
+        Widget box({double? width, double height = 14, double radius = 8}) {
+          return Container(
+            width: width,
+            height: height,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(radius),
+              gradient: LinearGradient(
+                colors: const [
+                  Color(0xFFE2E8F0),
+                  Color(0xFFECF0F6),
+                  Color(0xFFF5F8FC),
+                  Color(0xFFECF0F6),
+                  Color(0xFFE2E8F0),
+                ],
+                stops: [
+                  (shimmerPos - 0.4).clamp(0.0, 1.0),
+                  (shimmerPos - 0.2).clamp(0.0, 1.0),
+                  shimmerPos.clamp(0.0, 1.0),
+                  (shimmerPos + 0.2).clamp(0.0, 1.0),
+                  (shimmerPos + 0.4).clamp(0.0, 1.0),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // White card shell matching AppCard
+        Widget skCard(Widget child) => Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: child,
+        );
+
+        // Stat card skeleton (icon badge + big value + change label)
+        Widget statCard() => skCard(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  box(width: 88, height: 12),
+                  box(width: 34, height: 34, radius: 10),
+                ],
+              ),
+              const SizedBox(height: 12),
+              box(width: 110, height: 26, radius: 6),
+              const SizedBox(height: 8),
+              box(width: 130, height: 11, radius: 5),
+            ],
+          ),
+        );
+
+        // Generic chart / list card skeleton
+        Widget chartCard(double bodyHeight) => skCard(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  box(width: 130, height: 14),
+                  box(width: 56, height: 12, radius: 6),
+                ],
+              ),
+              const SizedBox(height: 16),
+              box(height: bodyHeight, radius: 8),
+            ],
+          ),
+        );
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              // ── Stat cards ──
+              LayoutBuilder(
+                builder: (_, c) {
+                  if (c.maxWidth > 800) {
+                    return Row(
+                      children: [
+                        Expanded(child: statCard()),
+                        const SizedBox(width: 12),
+                        Expanded(child: statCard()),
+                        const SizedBox(width: 12),
+                        Expanded(child: statCard()),
+                        const SizedBox(width: 12),
+                        Expanded(child: statCard()),
+                      ],
+                    );
+                  }
+                  return Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(child: statCard()),
+                          const SizedBox(width: 12),
+                          Expanded(child: statCard()),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(child: statCard()),
+                          const SizedBox(width: 12),
+                          Expanded(child: statCard()),
+                        ],
+                      ),
+                    ],
+                  );
+                },
+              ),
+
+              const SizedBox(height: 16),
+
+              // ── Quick actions bar ──
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 10,
+                  horizontal: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: List.generate(
+                    4,
+                    (_) => Column(
+                      children: [
+                        box(width: 40, height: 40, radius: 12),
+                        const SizedBox(height: 6),
+                        box(width: 54, height: 10, radius: 5),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // ── Row 1: Sales trend + Low stock ──
+              LayoutBuilder(
+                builder: (_, c) {
+                  if (c.maxWidth > 800) {
+                    return IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(flex: 3, child: chartCard(220)),
+                          const SizedBox(width: 16),
+                          Expanded(flex: 2, child: chartCard(220)),
+                        ],
+                      ),
+                    );
+                  }
+                  return Column(
+                    children: [
+                      chartCard(200),
+                      const SizedBox(height: 16),
+                      chartCard(180),
+                    ],
+                  );
+                },
+              ),
+
+              const SizedBox(height: 16),
+
+              // ── Row 2: Top selling + Payment methods + Expenses ──
+              LayoutBuilder(
+                builder: (_, c) {
+                  if (c.maxWidth > 800) {
+                    return IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(child: chartCard(180)),
+                          const SizedBox(width: 16),
+                          Expanded(child: chartCard(180)),
+                          const SizedBox(width: 16),
+                          Expanded(child: chartCard(180)),
+                        ],
+                      ),
+                    );
+                  }
+                  return Column(
+                    children: [
+                      chartCard(180),
+                      const SizedBox(height: 16),
+                      chartCard(180),
+                      const SizedBox(height: 16),
+                      chartCard(180),
+                    ],
+                  );
+                },
+              ),
+
+              const SizedBox(height: 16),
+
+              // ── Row 3: Category performance + Branch comparison ──
+              LayoutBuilder(
+                builder: (_, c) {
+                  if (c.maxWidth > 800) {
+                    return IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(flex: 3, child: chartCard(220)),
+                          const SizedBox(width: 16),
+                          Expanded(flex: 2, child: chartCard(220)),
+                        ],
+                      ),
+                    );
+                  }
+                  return Column(
+                    children: [
+                      chartCard(200),
+                      const SizedBox(height: 16),
+                      chartCard(180),
+                    ],
+                  );
+                },
+              ),
+
+              const SizedBox(height: 24),
+            ],
+          ),
+        );
+      },
+    );
   }
 }

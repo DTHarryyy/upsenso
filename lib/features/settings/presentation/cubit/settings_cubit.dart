@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -93,8 +92,9 @@ class SettingsCubit extends Cubit<SettingsState> {
         emit(state.copyWith(saveStatus: SettingsSaveStatus.saved));
         // Reset to idle after brief delay so UI can show a "Saved" indicator
         await Future.delayed(const Duration(seconds: 2));
-        if (!isClosed)
+        if (!isClosed) {
           emit(state.copyWith(saveStatus: SettingsSaveStatus.idle));
+        }
       }
     } catch (e) {
       if (!isClosed) {
