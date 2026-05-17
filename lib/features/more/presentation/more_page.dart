@@ -54,9 +54,10 @@ class _MorePageState extends State<MorePage>
 
   void _pushFullPage(Widget page) {
     Navigator.of(context).pop(); // close drawer
-    Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute(builder: (_) => page),
-    );
+    Navigator.of(
+      context,
+      rootNavigator: true,
+    ).push(MaterialPageRoute(builder: (_) => page));
   }
 
   void _showLogoutDialog() {
@@ -261,11 +262,6 @@ class _DrawerHeader extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(
-              IconlyLight.arrow_right,
-              size: 18,
-              color: AppColors.textMuted,
-            ),
           ],
         ),
       ),
@@ -313,8 +309,8 @@ class _DrawerTile extends StatelessWidget {
                   ),
                 ),
                 const Icon(
-                  IconlyLight.arrow_right,
-                  size: 14,
+                  Icons.north_east_rounded,
+                  size: 16,
                   color: AppColors.textMuted,
                 ),
               ],
@@ -454,7 +450,7 @@ class _SettingsSubItems extends StatelessWidget {
                       ),
                     ),
                     const Icon(
-                      IconlyLight.arrow_right,
+                      Icons.north_east_rounded,
                       size: 16,
                       color: AppColors.textMuted,
                     ),

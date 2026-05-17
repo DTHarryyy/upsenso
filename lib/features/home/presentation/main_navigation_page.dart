@@ -243,7 +243,12 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
               return _SyncStatusProvider(
                 builder: (isOnline, pendingSyncCount) => Scaffold(
                   key: _scaffoldKey,
-                  drawer: const Drawer(child: MorePage()),
+                  drawer: const Drawer(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.zero,
+                    ),
+                    child: MorePage(),
+                  ),
                   appBar: isPosTab
                       ? null
                       : CustomAppBar(
@@ -824,7 +829,11 @@ class _SettingsAccordion extends StatelessWidget {
             child: Row(
               mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,
               children: [
-                Icon(isActive ? IconlyBold.setting : IconlyLight.setting, size: 20, color: headerColor),
+                Icon(
+                  isActive ? IconlyBold.setting : IconlyLight.setting,
+                  size: 20,
+                  color: headerColor,
+                ),
                 if (expanded) ...[
                   const SizedBox(width: 10),
                   Expanded(
@@ -1005,7 +1014,11 @@ class _NavItem extends StatelessWidget {
           child: Row(
             mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,
             children: [
-              Icon(isActive ? (activeIcon ?? icon) : icon, size: 20, color: color),
+              Icon(
+                isActive ? (activeIcon ?? icon) : icon,
+                size: 20,
+                color: color,
+              ),
               if (expanded) ...[
                 const SizedBox(width: 10),
                 Expanded(

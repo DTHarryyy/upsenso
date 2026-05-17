@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
+import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
@@ -124,6 +126,22 @@ class _InventoryState extends State<Inventory> {
 
             return Scaffold(
               backgroundColor: AppColors.background,
+              appBar: (ModalRoute.of(context)?.canPop ?? false)
+                  ? AppBar(
+                      backgroundColor: AppColors.surface,
+                      elevation: 0,
+                      scrolledUnderElevation: 0,
+                      centerTitle: true,
+                      title: Text(
+                        'Stock Level',
+                        style: AppTextStyles.title(context),
+                      ),
+                      leading: IconButton(
+                        icon: const Icon(IconlyLight.arrow_left, size: 20),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    )
+                  : null,
               body: RefreshIndicator(
                 onRefresh: () async => _triggerLoad(),
                 child: LayoutBuilder(

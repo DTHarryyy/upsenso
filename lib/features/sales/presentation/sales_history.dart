@@ -57,6 +57,22 @@ class _SalesHistoryState extends State<SalesHistory> {
             _cubit.startWatching(branchId: branchState.selectedBranchId),
         child: Scaffold(
           backgroundColor: AppColors.background,
+          appBar: (ModalRoute.of(context)?.canPop ?? false)
+              ? AppBar(
+                  backgroundColor: AppColors.surface,
+                  elevation: 0,
+                  scrolledUnderElevation: 0,
+                  centerTitle: true,
+                  title: Text(
+                    'Sales History',
+                    style: AppTextStyles.title(context),
+                  ),
+                  leading: IconButton(
+                    icon: const Icon(IconlyLight.arrow_left, size: 20),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                )
+              : null,
           body: BlocBuilder<SalesCubit, SalesState>(
             builder: (context, state) => _buildBody(context, state),
           ),

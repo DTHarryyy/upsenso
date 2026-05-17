@@ -5,6 +5,7 @@ import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
@@ -66,7 +67,22 @@ class _ExpensesViewState extends State<_ExpensesView> {
       listener: (ctx, s) => _startWatching(),
       child: Scaffold(
         backgroundColor: AppColors.background,
-
+        appBar: (ModalRoute.of(context)?.canPop ?? false)
+            ? AppBar(
+                backgroundColor: AppColors.surface,
+                elevation: 0,
+                scrolledUnderElevation: 0,
+                centerTitle: true,
+                title: Text(
+                  'Expenses',
+                  style: AppTextStyles.title(context),
+                ),
+                leading: IconButton(
+                  icon: const Icon(IconlyLight.arrow_left, size: 20),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              )
+            : null,
         floatingActionButton: const _AddFab(),
         body: BlocBuilder<ExpensesCubit, ExpensesState>(
           builder: (context, state) {
