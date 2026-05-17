@@ -9,6 +9,9 @@ import 'package:pos/core/widgets/user_avatar.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
+import 'package:pos/features/expenses/presentation/expenses_page.dart';
+import 'package:pos/features/inventory/inventory.dart';
+import 'package:pos/features/sales/presentation/sales_history.dart';
 
 class MorePage extends StatefulWidget {
   const MorePage({super.key});
@@ -47,6 +50,13 @@ class _MorePageState extends State<MorePage>
   void _navigate(String route) {
     Navigator.of(context).pop(); // close drawer
     context.push(route);
+  }
+
+  void _pushFullPage(Widget page) {
+    Navigator.of(context).pop(); // close drawer
+    Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute(builder: (_) => page),
+    );
   }
 
   void _showLogoutDialog() {
@@ -139,17 +149,17 @@ class _MorePageState extends State<MorePage>
                       _DrawerTile(
                         icon: IconlyLight.time_circle,
                         label: 'Sales History',
-                        onTap: () => _navigate(AppRoutes.saleshistory),
+                        onTap: () => _pushFullPage(const SalesHistory()),
                       ),
                       _DrawerTile(
                         icon: IconlyLight.chart,
                         label: 'Stock Level',
-                        onTap: () => _navigate(AppRoutes.inventory),
+                        onTap: () => _pushFullPage(const Inventory()),
                       ),
                       _DrawerTile(
                         icon: IconlyLight.wallet,
                         label: 'Expenses',
-                        onTap: () => _navigate(AppRoutes.expenses),
+                        onTap: () => _pushFullPage(const ExpensesPage()),
                       ),
 
                       const SizedBox(height: 4),
