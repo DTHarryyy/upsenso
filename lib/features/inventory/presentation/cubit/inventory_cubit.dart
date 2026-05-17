@@ -72,12 +72,21 @@ class InventoryCubit extends Cubit<InventoryState> {
   }) async {
     final businessId = _businessId;
     if (businessId == null) return;
+    final branchId = _branchId;
+    if (branchId == null || branchId.trim().isEmpty) {
+      if (!isClosed) {
+        emit(
+          const InventoryError('Select a branch first before adjusting stock.'),
+        );
+      }
+      return;
+    }
 
     await _repository.adjustStock(
       variantId: variantId,
       productId: productId,
       businessId: businessId,
-      branchId: _branchId,
+      branchId: branchId,
       isIncoming: isIncoming,
       quantity: quantity,
       reason: reason,

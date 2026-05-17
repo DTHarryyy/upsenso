@@ -8,6 +8,7 @@ export 'app_labeled_switch.dart';
 export 'app_search_bar.dart';
 export 'app_section_card.dart';
 export 'app_switch.dart';
+export 'branch_action_dialog.dart';
 export 'branch_sale_dialog.dart';
 export 'dashboard_card.dart';
 export 'stat_card.dart';

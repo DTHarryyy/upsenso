@@ -7,6 +7,7 @@ import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/widgets/branch_action_dialog.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/inventory/data/inventory_data.dart';
@@ -57,6 +58,27 @@ class _InventoryState extends State<Inventory> {
   }
 
   Future<void> _onAdjust(InventoryItem item, bool isIncoming) async {
+    final branchCubit = context.read<BranchCubit>();
+    var selectedBranchId = branchCubit.state.selectedBranchId;
+    if (selectedBranchId == null || selectedBranchId.trim().isEmpty) {
+      final selection = await showBranchActionDialog(
+        context,
+        title: 'Select Branch',
+        description:
+            "You're currently viewing all branches. Choose where to adjust stock:",
+        confirmPrefix: 'Use',
+        emptyTitle: 'No branches available',
+        emptyMessage: 'Please add a branch before adjusting stock.',
+        selectLabel: 'Select a Branch',
+      );
+
+      if (selection == null || !mounted) return;
+
+      await branchCubit.selectBranch(selection.name);
+      selectedBranchId = selection.id;
+      _cubit.setBranchFilter(selectedBranchId);
+    }
+
     final result = await showStockAdjustmentDialog(
       context: context,
       item: item,
