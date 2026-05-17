@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
@@ -223,7 +224,7 @@ class _BusinessProfilePageState extends State<BusinessProfilePage> {
                     borderRadius: BorderRadius.circular(9),
                   ),
                   child: const Icon(
-                    Icons.camera_alt_outlined,
+                    IconlyLight.camera,
                     color: AppColors.brand,
                     size: 18,
                   ),
@@ -253,7 +254,7 @@ class _BusinessProfilePageState extends State<BusinessProfilePage> {
                   borderRadius: BorderRadius.circular(9),
                 ),
                 child: const Icon(
-                  Icons.photo_library_outlined,
+                  IconlyLight.image,
                   color: AppColors.brand,
                   size: 18,
                 ),
@@ -468,7 +469,7 @@ class _BusinessHeader extends StatelessWidget {
                       ],
                     ),
                     child: const Icon(
-                      Icons.camera_alt_rounded,
+                      IconlyLight.camera,
                       size: 12,
                       color: AppColors.brand,
                     ),
@@ -496,7 +497,7 @@ class _BusinessHeader extends StatelessWidget {
                     Tooltip(
                       message: 'Account status: Active',
                       child: Icon(
-                        Icons.verified_rounded,
+                        IconlyBold.tick_square,
                         size: 16,
                         color: AppColors.success,
                       ),
@@ -584,17 +585,17 @@ class _BusinessDetailsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _SectionCard(
-      icon: Icons.store_rounded,
+      icon: IconlyLight.work,
       title: 'Business Information',
       rows: [
         _InfoRow(
-          icon: Icons.business_rounded,
+          icon: IconlyLight.work,
           label: 'Business Name',
           value: user.businessName ?? '—',
         ),
         if (user.businessTemplateName?.isNotEmpty == true)
           _InfoRow(
-            icon: Icons.category_outlined,
+            icon: IconlyLight.category,
             label: 'Business Type',
             value: user.businessTemplateName!,
           ),
@@ -616,21 +617,21 @@ class _AccountCard extends StatelessWidget {
         : 'All Branches';
 
     return _SectionCard(
-      icon: Icons.person_rounded,
+      icon: IconlyLight.profile,
       title: 'Your Account',
       rows: [
         _InfoRow(
-          icon: Icons.badge_outlined,
+          icon: IconlyLight.profile,
           label: 'Full Name',
           value: user.fullName ?? '—',
         ),
         _InfoRow(
-          icon: Icons.email_outlined,
+          icon: IconlyLight.message,
           label: 'Email',
           value: user.email ?? '—',
         ),
         _InfoRow(
-          icon: Icons.admin_panel_settings_outlined,
+          icon: IconlyLight.shield_done,
           label: 'Role',
           value: user.roleName ?? '—',
           valueStyle: getOutfitStyle(
@@ -640,7 +641,7 @@ class _AccountCard extends StatelessWidget {
           ),
         ),
         _InfoRow(
-          icon: Icons.location_on_outlined,
+          icon: IconlyLight.location,
           label: 'Assigned Branch',
           value: branch,
         ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/features/alert/data/alert_model.dart';
 import 'package:pos/features/alert/presentation/widgets/alert_detail_content.dart';
@@ -25,7 +26,7 @@ class AlertDetailDialog extends StatelessWidget {
                 children: [
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close_rounded,
+                    icon: const Icon(IconlyLight.close_square,
                         size: 20, color: AppColors.textMuted),
                     style: IconButton.styleFrom(
                       minimumSize: const Size(32, 32),

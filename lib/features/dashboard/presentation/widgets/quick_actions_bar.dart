@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/routes/app_routes.dart';
 
@@ -20,28 +21,28 @@ class QuickActionsBar extends StatelessWidget {
       child: Row(
       children: [
         _QuickAction(
-          icon: Icons.shopping_cart_rounded,
+          icon: IconlyBold.buy,
           label: 'New Sale',
           iconColor: AppColors.brand,
           bgColor: AppColors.brandSoft,
           onTap: () => onNewSale?.call(),
         ),
         _QuickAction(
-          icon: Icons.add_box_rounded,
+          icon: IconlyBold.plus,
           label: 'Add Product',
           iconColor: AppColors.success,
           bgColor: AppColors.successSoft,
           onTap: () => context.push(AppRoutes.addProduct),
         ),
         _QuickAction(
-          icon: Icons.inventory_2_rounded,
+          icon: IconlyBold.category,
           label: 'Stock Adjust',
           iconColor: AppColors.warning,
           bgColor: AppColors.warningSoft,
           onTap: () => context.push(AppRoutes.inventory),
         ),
         _QuickAction(
-          icon: Icons.receipt_long_rounded,
+          icon: IconlyBold.paper,
           label: 'Expense',
           iconColor: AppColors.error,
           bgColor: AppColors.errorSoft,

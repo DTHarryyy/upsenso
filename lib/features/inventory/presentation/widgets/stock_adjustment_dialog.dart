@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:flutter/services.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
@@ -105,7 +106,7 @@ class _StockAdjustmentDialogState extends State<_StockAdjustmentDialog> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
-                        isIn ? Icons.add_circle_outline : Icons.remove_circle_outline,
+                        isIn ? IconlyLight.plus : IconlyLight.delete,
                         color: accentColor,
                         size: 20,
                       ),
@@ -152,7 +153,7 @@ class _StockAdjustmentDialogState extends State<_StockAdjustmentDialog> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.inventory_2_outlined,
+                      Icon(IconlyLight.category,
                           size: 14, color: AppColors.textSecondary),
                       const SizedBox(width: 6),
                       Text(

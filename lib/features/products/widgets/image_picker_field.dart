@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
@@ -41,7 +42,7 @@ class ImagePickerField extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             ListTile(
-              leading: const Icon(Icons.camera_alt_outlined,
+              leading: const Icon(IconlyLight.camera,
                   color: AppColors.brand),
               title: Text('Take Photo',
                   style: getOutfitStyle(
@@ -50,7 +51,7 @@ class ImagePickerField extends StatelessWidget {
               onTap: () => Navigator.pop(sheetCtx, ImageSource.camera),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library_outlined,
+              leading: const Icon(IconlyLight.image,
                   color: AppColors.brand),
               title: Text('Choose from Gallery',
                   style: getOutfitStyle(
@@ -114,7 +115,7 @@ class ImagePickerField extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 padding: const EdgeInsets.all(4),
-                child: const Icon(Icons.close_rounded,
+                child: const Icon(IconlyLight.close_square,
                     color: Colors.white, size: 16),
               ),
             ),
@@ -134,7 +135,7 @@ class ImagePickerField extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.edit_outlined,
+                    const Icon(IconlyLight.edit,
                         color: Colors.white, size: 13),
                     const SizedBox(width: 4),
                     Text(
@@ -170,7 +171,7 @@ class ImagePickerField extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.add_photo_alternate_outlined,
+            Icon(IconlyLight.image,
                 size: 28, color: AppColors.textMuted),
             const SizedBox(height: 6),
             Text(

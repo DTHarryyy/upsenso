@@ -1,5 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/features/dashboard/data/dashboard_data.dart';
 import 'package:pos/features/dashboard/presentation/widgets/dashboard_empty_state.dart';
 
@@ -28,7 +29,7 @@ class CategoryPerformanceChart extends StatelessWidget {
             const SizedBox(
               height: 200,
               child: DashboardEmptyState(
-                icon: Icons.bar_chart_rounded,
+                icon: IconlyLight.chart,
                 iconColor: Color(0xFF7C3AED),
                 iconBg: Color(0xFFF5F3FF),
                 title: 'No category data',

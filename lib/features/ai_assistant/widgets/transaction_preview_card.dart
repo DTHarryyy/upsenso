@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/features/ai_assistant/models/ai_models.dart';
 
@@ -98,7 +99,7 @@ class _TransactionPreviewCardState extends State<TransactionPreviewCard> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.receipt_long_rounded,
+                const Icon(IconlyLight.paper,
                     size: 18, color: Colors.white),
                 const SizedBox(width: 8),
                 const Expanded(
@@ -168,7 +169,7 @@ class _TransactionPreviewCardState extends State<TransactionPreviewCard> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.warning_amber_rounded,
+                  const Icon(IconlyBold.danger,
                       size: 15, color: AppColors.warning),
                   const SizedBox(width: 8),
                   Expanded(
@@ -319,7 +320,7 @@ class _LineItemRow extends StatelessWidget {
                       color: AppColors.errorSoft,
                       borderRadius: BorderRadius.circular(5),
                     ),
-                    child: const Icon(Icons.close_rounded,
+                    child: const Icon(IconlyLight.close_square,
                         size: 13, color: AppColors.error),
                   ),
                 ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/widgets/stat_card.dart';
 import 'package:pos/features/reports/presentation/widgets/report_card.dart';
@@ -26,7 +27,7 @@ class ExpenseStatsRow extends StatelessWidget {
           value: fmtCurrency(totalApproved),
           changeLabel: 'This Month',
           isPositive: true,
-          icon: Icons.check_circle_outline_rounded,
+          icon: IconlyBold.tick_square,
           iconColor: AppColors.success,
           iconBg: AppColors.successSoft,
         ),
@@ -35,7 +36,7 @@ class ExpenseStatsRow extends StatelessWidget {
           value: fmtCurrency(totalPending),
           changeLabel: '$pendingCount item${pendingCount == 1 ? '' : 's'} waiting',
           isPositive: false,
-          icon: Icons.hourglass_top_rounded,
+          icon: IconlyLight.time_circle,
           iconColor: AppColors.warning,
           iconBg: AppColors.warningSoft,
         ),
@@ -44,7 +45,7 @@ class ExpenseStatsRow extends StatelessWidget {
           value: expenseCount.toString(),
           changeLabel: 'All time',
           isPositive: true,
-          icon: Icons.receipt_long_rounded,
+          icon: IconlyLight.paper,
           iconColor: AppColors.brand,
           iconBg: AppColors.brandSoft,
         ),

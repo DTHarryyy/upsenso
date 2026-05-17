@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/const/app_colors.dart';
@@ -112,7 +113,7 @@ class _BranchSaleSheetState extends State<_BranchSaleSheet> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
-                      Icons.store_rounded,
+                      IconlyLight.work,
                       color: AppColors.brand,
                       size: 22,
                     ),
@@ -158,7 +159,7 @@ class _BranchSaleSheetState extends State<_BranchSaleSheet> {
                 child: Column(
                   children: [
                     const Icon(
-                      Icons.store_mall_directory_outlined,
+                      IconlyLight.work,
                       size: 48,
                       color: AppColors.textMuted,
                     ),
@@ -325,7 +326,7 @@ class _BranchTile extends StatelessWidget {
                 ),
                 child: isSelected
                     ? const Icon(
-                        Icons.check_rounded,
+                        IconlyLight.tick_square,
                         size: 13,
                         color: Colors.white,
                       )
@@ -344,7 +345,7 @@ class _BranchTile extends StatelessWidget {
               ),
               if (isSelected)
                 const Icon(
-                  Icons.store_rounded,
+                  IconlyLight.work,
                   size: 18,
                   color: AppColors.brand,
                 ),

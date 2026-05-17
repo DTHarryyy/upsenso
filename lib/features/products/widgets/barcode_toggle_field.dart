@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/widgets/widgets.dart';
@@ -27,7 +28,7 @@ class BarcodeToggleFieldState extends State<BarcodeToggleField> {
       children: [
         Row(
           children: [
-            Icon(Icons.qr_code_rounded,
+            Icon(IconlyLight.scan,
                 size: 16,
                 color: _enabled ? AppColors.brand : AppColors.textMuted),
             const SizedBox(width: 10),
@@ -65,7 +66,7 @@ class BarcodeToggleFieldState extends State<BarcodeToggleField> {
                     keyboardType: TextInputType.number,
                     textInputAction: TextInputAction.done,
                     decoration: appInputDeco('Scan or type barcode').copyWith(
-                      prefixIcon: const Icon(Icons.qr_code_rounded,
+                      prefixIcon: const Icon(IconlyLight.scan,
                           size: 17, color: AppColors.textMuted),
                     ),
                     style: getOutfitStyle(color: AppColors.textPrimary),

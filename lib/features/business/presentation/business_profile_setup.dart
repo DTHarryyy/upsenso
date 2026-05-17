@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -142,7 +143,7 @@ class _BusinessProfilePageState extends State<BusinessProfileSetup> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: const Icon(
-                    Icons.store_rounded,
+                    IconlyLight.work,
                     size: 26,
                     color: AppColors.brand,
                   ),
@@ -175,7 +176,7 @@ class _BusinessProfilePageState extends State<BusinessProfileSetup> {
                   controller: _nameController,
                   decoration: const InputDecoration(
                     hintText: 'e.g., Dela Cruz Store',
-                    prefixIcon: Icon(Icons.business_rounded),
+                    prefixIcon: Icon(IconlyLight.work),
                   ),
                   textCapitalization: TextCapitalization.words,
                   textInputAction: TextInputAction.next,
@@ -198,7 +199,7 @@ class _BusinessProfilePageState extends State<BusinessProfileSetup> {
                   controller: _branchNameController,
                   decoration: const InputDecoration(
                     hintText: 'e.g., Main Branch, Downtown',
-                    prefixIcon: Icon(Icons.storefront_rounded),
+                    prefixIcon: Icon(IconlyBold.work),
                   ),
                   textCapitalization: TextCapitalization.words,
                   textInputAction: TextInputAction.next,
@@ -221,7 +222,7 @@ class _BusinessProfilePageState extends State<BusinessProfileSetup> {
                   initialValue: _selectedTemplate,
                   decoration: const InputDecoration(
                     hintText: 'Select a business type',
-                    prefixIcon: Icon(Icons.category_rounded),
+                    prefixIcon: Icon(IconlyLight.category),
                   ),
                   isExpanded: true,
                   items: templates.map((t) {
@@ -317,7 +318,7 @@ class _TemplateDetailsCard extends StatelessWidget {
           Row(
             children: [
               const Icon(
-                Icons.info_outline_rounded,
+                IconlyLight.info_circle,
                 size: 16,
                 color: AppColors.brand,
               ),
@@ -333,12 +334,12 @@ class _TemplateDetailsCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           _DetailRow(
-            icon: Icons.apps_rounded,
+            icon: IconlyLight.category,
             label: 'Modules',
             value: modules.join(', '),
           ),
           _DetailRow(
-            icon: Icons.people_rounded,
+            icon: IconlyLight.user,
             label: 'Roles',
             value: roles.join(', '),
           ),
@@ -511,7 +512,7 @@ class _SetupStep extends StatelessWidget {
             ),
           ),
           child: done
-              ? const Icon(Icons.check, size: 14, color: Colors.white)
+              ? const Icon(IconlyLight.tick_square, size: 14, color: Colors.white)
               : Center(
                   child: Text(
                     number,

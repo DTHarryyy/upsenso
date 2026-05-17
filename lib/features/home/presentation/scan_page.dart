@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 
@@ -35,7 +36,7 @@ class ScanPage extends StatelessWidget {
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
-                          Icons.qr_code_scanner,
+                          IconlyLight.scan,
                           size: 80,
                           color: AppColors.brand,
                         ),
@@ -74,7 +75,7 @@ class ScanPage extends StatelessWidget {
                         ),
                       );
                     },
-                    icon: const Icon(Icons.qr_code_scanner),
+                    icon: const Icon(IconlyLight.scan),
                     label: const Text('Start Scanning'),
                   ),
                 ),
@@ -83,7 +84,7 @@ class ScanPage extends StatelessWidget {
                   onPressed: () {
                     // TODO: Implement manual entry 
                   },
-                  icon: const Icon(Icons.keyboard),
+                  icon: const Icon(IconlyLight.edit),
                   label: const Text('Enter Code Manually'),
                 ),
               ],

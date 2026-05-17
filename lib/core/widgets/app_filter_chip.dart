@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
 
@@ -45,7 +46,7 @@ class AppFilterChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (isSelected) ...[
-              Icon(Icons.check_rounded, size: 14, color: AppColors.textInverse),
+              Icon(IconlyLight.tick_square, size: 14, color: AppColors.textInverse),
               const SizedBox(width: 4),
             ],
             Text(

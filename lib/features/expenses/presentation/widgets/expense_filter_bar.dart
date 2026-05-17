@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/widgets/app_date_range_picker.dart';
 import 'package:pos/core/widgets/app_dropdown.dart';
@@ -92,14 +93,14 @@ class _ViewToggle extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           _Btn(
-            icon: Icons.table_rows_rounded,
+            icon: IconlyLight.document,
             selected: isTableView,
             tooltip: 'Table view',
             onTap: () { if (!isTableView) onToggle(); },
             isLeft: true,
           ),
           _Btn(
-            icon: Icons.grid_view_rounded,
+            icon: IconlyLight.category,
             selected: !isTableView,
             tooltip: 'Card view',
             onTap: () { if (isTableView) onToggle(); },

@@ -1,5 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/features/dashboard/presentation/widgets/dashboard_empty_state.dart';
 
 class PaymentMethodsChart extends StatelessWidget {
@@ -40,7 +41,7 @@ class PaymentMethodsChart extends StatelessWidget {
             const SizedBox(
               height: 160,
               child: DashboardEmptyState(
-                icon: Icons.donut_large_rounded,
+                icon: IconlyLight.chart,
                 iconColor: Color(0xFF3B5BDB),
                 iconBg: Color(0xFFEEF2FF),
                 title: 'No payments yet',

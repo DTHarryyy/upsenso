@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/features/dashboard/data/dashboard_data.dart';
 import 'package:pos/features/dashboard/presentation/widgets/dashboard_empty_state.dart';
@@ -33,7 +34,7 @@ class TopSellingItems extends StatelessWidget {
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 32),
               child: DashboardEmptyState(
-                icon: Icons.emoji_events_outlined,
+                icon: IconlyLight.ticket_star,
                 iconColor: Color(0xFFD97706),
                 iconBg: Color(0xFFFEF3C7),
                 title: 'No top items yet',

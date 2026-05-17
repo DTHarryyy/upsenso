@@ -1,6 +1,7 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:flutter/services.dart' show DeviceOrientation, SystemChrome;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -194,7 +195,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
   }
 
   void _checkout() {
-    Navigator.of(context).push(
+    Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(
         builder: (_) => ProductCheckoutPage(
           items: List.from(_cartService.items),
@@ -623,8 +624,8 @@ class _PosTerminalPageState extends State<PosTerminalPage>
           children: [
             Icon(
               _cartService.isEmpty
-                  ? Icons.shopping_cart_outlined
-                  : Icons.shopping_cart_rounded,
+                  ? IconlyBold.buy
+                  : IconlyBold.buy,
               size: 20,
               color: AppColors.brand,
             ),
@@ -648,7 +649,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
             ),
             const SizedBox(width: 6),
             const Icon(
-              Icons.keyboard_arrow_up_rounded,
+              IconlyLight.arrow_up_2,
               size: 18,
               color: AppColors.textMuted,
             ),
@@ -692,7 +693,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
           if (_cartService.isNotEmpty)
             IconButton(
               icon: const Icon(
-                Icons.delete_outline_rounded,
+                IconlyLight.delete,
                 size: 20,
                 color: AppColors.textMuted,
               ),
@@ -710,7 +711,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
         mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(
-            Icons.qr_code_scanner,
+            IconlyLight.scan,
             size: 44,
             color: AppColors.textMuted,
           ),
@@ -784,8 +785,8 @@ class _PosTerminalPageState extends State<PosTerminalPage>
                 children: [
                   Icon(
                     hasDiscount
-                        ? Icons.local_offer_rounded
-                        : Icons.local_offer_outlined,
+                        ? IconlyLight.discount
+                        : IconlyLight.discount,
                     size: 15,
                     color: hasDiscount
                         ? AppColors.success
@@ -840,7 +841,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
             GestureDetector(
               onTap: _cartService.clearDiscount,
               child: const Icon(
-                Icons.close_rounded,
+                IconlyLight.close_square,
                 size: 14,
                 color: AppColors.success,
               ),
@@ -922,7 +923,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
         padding: const EdgeInsets.only(right: 18),
         color: AppColors.error,
         child: const Icon(
-          Icons.delete_outline_rounded,
+          IconlyLight.delete,
           color: Colors.white,
           size: 22,
         ),
@@ -978,7 +979,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
                   ),
                 ),
               ),
-              _qtyBtn(Icons.add_rounded, () => _increment(index)),
+              _qtyBtn(IconlyBold.plus, () => _increment(index)),
             ],
           ),
           const SizedBox(width: 12),
@@ -1005,7 +1006,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(
-                  Icons.no_photography_outlined,
+                  IconlyLight.camera,
                   size: 64,
                   color: Colors.white,
                 ),
@@ -1032,7 +1033,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
                 const SizedBox(height: 32),
                 if (!kIsWeb)
                   FilledButton.icon(
-                    icon: const Icon(Icons.settings_rounded),
+                    icon: const Icon(IconlyLight.setting),
                     label: const Text('Open Settings'),
                     onPressed: openAppSettings,
                     style: FilledButton.styleFrom(
@@ -1126,7 +1127,7 @@ class _ScannerOverlay extends StatelessWidget {
                 children: [
                   if (onClose != null)
                     _OverlayIconButton(
-                      icon: Icons.arrow_back_rounded,
+                      icon: IconlyLight.arrow_left,
                       onTap: onClose,
                     )
                   else

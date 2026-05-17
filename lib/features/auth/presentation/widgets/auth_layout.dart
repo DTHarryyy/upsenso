@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_strings.dart';
@@ -37,7 +38,7 @@ class AuthLayout extends StatelessWidget {
                   padding: const EdgeInsets.only(left: 8, top: 4),
                   child: IconButton(
                     icon: const Icon(
-                      Icons.arrow_back,
+                      IconlyLight.arrow_left,
                       color: AppColors.textPrimary,
                     ),
                     onPressed: onBack,
@@ -98,7 +99,7 @@ class _FormPanel extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(40, 20, 40, 0),
                 child: TextButton.icon(
                   onPressed: onBack,
-                  icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                  icon: const Icon(IconlyLight.arrow_left, size: 16),
                   label: const Text('Back'),
                   style: TextButton.styleFrom(
                     foregroundColor: AppColors.textSecondary,
@@ -182,7 +183,7 @@ class _DefaultBrandPanel extends StatelessWidget {
                 runSpacing: 10,
                 children: const [
                   _FeaturePill(
-                    icon: Icons.wifi_off_rounded,
+                    icon: IconlyLight.info_circle,
                     label: 'Works offline',
                   ),
                   _FeaturePill(
@@ -190,11 +191,11 @@ class _DefaultBrandPanel extends StatelessWidget {
                     label: 'Auto sync',
                   ),
                   _FeaturePill(
-                    icon: Icons.storefront_rounded,
+                    icon: IconlyBold.work,
                     label: 'Multi-branch',
                   ),
                   _FeaturePill(
-                    icon: Icons.bar_chart_rounded,
+                    icon: IconlyBold.chart,
                     label: 'Real-time reports',
                   ),
                 ],

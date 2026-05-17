@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/features/dashboard/data/dashboard_data.dart';
 import 'package:pos/features/dashboard/presentation/widgets/dashboard_empty_state.dart';
 
@@ -21,7 +22,7 @@ class LowStockAlertsCard extends StatelessWidget {
           // Header
           Row(
             children: [
-              const Icon(Icons.warning_amber_rounded,
+              const Icon(IconlyBold.danger,
                   size: 20, color: Color(0xFFF59E0B)),
               const SizedBox(width: 8),
               const Expanded(
@@ -55,7 +56,7 @@ class LowStockAlertsCard extends StatelessWidget {
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 24),
               child: DashboardEmptyState(
-                icon: Icons.inventory_2_outlined,
+                icon: IconlyLight.category,
                 iconColor: Color(0xFF16A34A),
                 iconBg: Color(0xFFDCFCE7),
                 title: 'All stocked up!',

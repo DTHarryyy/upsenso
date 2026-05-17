@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/features/alert/data/alert_model.dart';
@@ -178,7 +179,7 @@ class _StatCardsSection extends StatelessWidget {
             AlertStatCard(
               label: 'New Alerts',
               count: newCount,
-              icon: Icons.warning_amber_rounded,
+              icon: IconlyBold.danger,
               iconColor: AppColors.error,
               iconBackground: AppColors.errorSoft,
               borderColor: AppColors.errorSoft,
@@ -186,7 +187,7 @@ class _StatCardsSection extends StatelessWidget {
             AlertStatCard(
               label: 'High Severity',
               count: highCount,
-              icon: Icons.error_outline_rounded,
+              icon: IconlyLight.danger,
               iconColor: AppColors.warning,
               iconBackground: AppColors.warningSoft,
               borderColor: AppColors.warningSoft,
@@ -194,7 +195,7 @@ class _StatCardsSection extends StatelessWidget {
             AlertStatCard(
               label: 'Investigating',
               count: investigatingCount,
-              icon: Icons.manage_search_rounded,
+              icon: IconlyLight.search,
               iconColor: AppColors.info,
               iconBackground: AppColors.infoSoft,
               borderColor: AppColors.infoSoft,
@@ -202,7 +203,7 @@ class _StatCardsSection extends StatelessWidget {
             AlertStatCard(
               label: 'Resolved',
               count: resolvedCount,
-              icon: Icons.check_circle_outline_rounded,
+              icon: IconlyBold.tick_square,
               iconColor: AppColors.success,
               iconBackground: AppColors.successSoft,
               borderColor: AppColors.successSoft,
@@ -244,7 +245,7 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.shield_outlined, size: 48, color: AppColors.textMuted),
+          Icon(IconlyLight.shield_done, size: 48, color: AppColors.textMuted),
           SizedBox(height: 12),
           Text(
             'No alerts found',

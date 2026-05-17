@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -146,8 +147,8 @@ class _SignUpState extends State<SignUp> {
                         : IconButton(
                             icon: Icon(
                               _obscurePassword
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
+                                  ? IconlyLight.hide
+                                  : IconlyLight.show,
                               size: 20,
                             ),
                             onPressed: () => setState(
@@ -175,8 +176,8 @@ class _SignUpState extends State<SignUp> {
                         : IconButton(
                             icon: Icon(
                               _obscureConfirmPassword
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
+                                  ? IconlyLight.hide
+                                  : IconlyLight.show,
                               size: 20,
                             ),
                             onPressed: () => setState(

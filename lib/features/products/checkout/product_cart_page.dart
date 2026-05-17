@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
@@ -49,7 +50,7 @@ class ProductCartPage extends StatelessWidget {
             scrolledUnderElevation: 0,
             leading: IconButton(
               icon: const Icon(
-                Icons.arrow_back_ios_new_rounded,
+                IconlyLight.arrow_left,
                 size: 20,
                 color: AppColors.textPrimary,
               ),
@@ -85,7 +86,7 @@ class ProductCartPage extends StatelessWidget {
               if (cartService.isNotEmpty)
                 IconButton(
                   icon: const Icon(
-                    Icons.delete_sweep_outlined,
+                    IconlyLight.delete,
                     color: AppColors.error,
                     size: 22,
                   ),
@@ -99,7 +100,7 @@ class ProductCartPage extends StatelessWidget {
               : LayoutBuilder(
                   builder: (context, constraints) {
                     final isWide = constraints.maxWidth >= 600;
-                    Future<dynamic> onCheckout() => Navigator.of(context).push(
+                    Future<dynamic> onCheckout() => Navigator.of(context, rootNavigator: true).push(
                       MaterialPageRoute(
                         builder: (_) => ProductCheckoutPage(
                           items: List.from(cartService.items),
@@ -176,7 +177,7 @@ class ProductCartPage extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(
-            Icons.shopping_cart_outlined,
+            IconlyBold.buy,
             size: 64,
             color: AppColors.textMuted,
           ),
@@ -197,7 +198,7 @@ class ProductCartPage extends StatelessWidget {
           const SizedBox(height: 28),
           OutlinedButton.icon(
             onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.storefront_rounded, size: 18),
+            icon: const Icon(IconlyBold.work, size: 18),
             label: const Text('Browse Products'),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.brand,
@@ -254,7 +255,7 @@ class _CartItemRow extends StatelessWidget {
         padding: const EdgeInsets.only(right: 18),
         color: AppColors.error,
         child: const Icon(
-          Icons.delete_outline_rounded,
+          IconlyLight.delete,
           color: Colors.white,
           size: 22,
         ),
@@ -368,7 +369,7 @@ class _QtyControl extends StatelessWidget {
             ),
           ),
           _btn(
-            Icons.add_rounded,
+            IconlyBold.plus,
             () => cartService.setQty(item.variantId, item.qty + 1),
           ),
         ],
@@ -458,7 +459,7 @@ class _CartFooter extends StatelessWidget {
                     GestureDetector(
                       onTap: cartService.clearDiscount,
                       child: const Icon(
-                        Icons.close_rounded,
+                        IconlyLight.close_square,
                         size: 14,
                         color: AppColors.success,
                       ),
@@ -526,8 +527,8 @@ class _CartFooter extends StatelessWidget {
                 children: [
                   Icon(
                     hasDiscount
-                        ? Icons.local_offer_rounded
-                        : Icons.local_offer_outlined,
+                        ? IconlyLight.discount
+                        : IconlyLight.discount,
                     size: 15,
                     color: hasDiscount
                         ? AppColors.success

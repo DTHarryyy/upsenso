@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/branch/branch_state.dart';
@@ -83,7 +84,7 @@ class _SalesHistoryState extends State<SalesHistory> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.receipt_long_outlined,
+              IconlyLight.paper,
               size: 64,
               color: AppColors.textMuted,
             ),
@@ -253,7 +254,7 @@ class _SalesHistoryState extends State<SalesHistory> {
                       turns: isExpanded ? 0.5 : 0,
                       duration: const Duration(milliseconds: 200),
                       child: Icon(
-                        Icons.keyboard_arrow_down,
+                        IconlyLight.arrow_down_2,
                         size: 20,
                         color: AppColors.textMuted,
                       ),
@@ -434,12 +435,12 @@ class _SalesHistoryState extends State<SalesHistory> {
   IconData _paymentIcon(String method) {
     switch (method.toLowerCase()) {
       case 'card':
-        return Icons.credit_card;
+        return IconlyLight.buy;
       case 'gcash':
       case 'ewallet':
-        return Icons.phone_android;
+        return IconlyLight.call;
       default:
-        return Icons.payments_outlined;
+        return IconlyLight.wallet;
     }
   }
 

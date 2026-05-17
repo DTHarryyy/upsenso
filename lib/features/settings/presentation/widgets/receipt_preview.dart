@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/features/settings/domain/receipt_settings.dart';
@@ -176,7 +177,7 @@ class _ReceiptBody extends StatelessWidget {
                 border: Border.all(color: Colors.black26),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: const Icon(Icons.qr_code_2_rounded,
+              child: const Icon(IconlyLight.scan,
                   size: 48, color: Colors.black54),
             ),
           ),
@@ -331,7 +332,7 @@ class _LogoWidget extends StatelessWidget {
       settings.logoUrl,
       height: 60,
       fit: BoxFit.contain,
-      errorBuilder: (c, e, s) => const Icon(Icons.broken_image_outlined,
+      errorBuilder: (c, e, s) => const Icon(IconlyLight.image,
           size: 40, color: Colors.black26),
     );
   }

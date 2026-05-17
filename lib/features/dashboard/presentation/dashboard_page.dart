@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
@@ -294,7 +295,7 @@ class _StatCardsRow extends StatelessWidget {
             ? null
             : _changeLabel(salesChange, 'from yesterday'),
         isPositive: salesChange >= 0,
-        icon: Icons.attach_money,
+        icon: IconlyBold.wallet,
         iconBg: const Color(0xFFDCFCE7),
         iconColor: const Color(0xFF22C55E),
       ),
@@ -305,7 +306,7 @@ class _StatCardsRow extends StatelessWidget {
             ? null
             : _changeLabel(weekChange, 'from last week'),
         isPositive: weekChange >= 0,
-        icon: Icons.trending_up,
+        icon: IconlyBold.activity,
         iconBg: const Color(0xFFDCFCE7),
         iconColor: const Color(0xFF22C55E),
       ),
@@ -316,7 +317,7 @@ class _StatCardsRow extends StatelessWidget {
             ? null
             : '${countDiff >= 0 ? '+' : ''}$countDiff from yesterday',
         isPositive: countDiff >= 0,
-        icon: Icons.shopping_cart_outlined,
+        icon: IconlyLight.buy,
         iconBg: const Color(0xFFDBEAFE),
         iconColor: const Color(0xFF3B82F6),
       ),
@@ -327,7 +328,7 @@ class _StatCardsRow extends StatelessWidget {
             ? null
             : _changeLabel(avgChange, 'from yesterday'),
         isPositive: avgChange >= 0,
-        icon: Icons.bar_chart,
+        icon: IconlyBold.chart,
         iconBg: const Color(0xFFF3E8FF),
         iconColor: const Color(0xFF7C3AED),
       ),

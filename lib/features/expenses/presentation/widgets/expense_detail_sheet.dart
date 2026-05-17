@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
@@ -80,7 +81,7 @@ class _ExpenseDetailSheet extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
-                      Icons.receipt_long_rounded,
+                      IconlyLight.paper,
                       color: Colors.white,
                       size: 22,
                     ),
@@ -160,32 +161,32 @@ class _ExpenseDetailSheet extends StatelessWidget {
                   _DetailCard(
                     children: [
                       _DetailRow(
-                        icon: Icons.calendar_today_rounded,
+                        icon: IconlyLight.calendar,
                         label: 'Date',
                         value: dateStr,
                       ),
                       const _DetailDivider(),
                       _DetailRow(
-                        icon: Icons.category_outlined,
+                        icon: IconlyLight.category,
                         label: 'Category',
                         value: item.category,
                       ),
                       const _DetailDivider(),
                       _DetailRow(
-                        icon: Icons.store_mall_directory_outlined,
+                        icon: IconlyLight.work,
                         label: 'Branch',
                         value: item.branchName ?? 'All Branches',
                       ),
                       const _DetailDivider(),
                       _DetailRow(
-                        icon: Icons.person_outline_rounded,
+                        icon: IconlyLight.profile,
                         label: 'Submitted By',
                         value: item.submittedByName,
                       ),
                       if (item.approvedByName != null) ...[
                         const _DetailDivider(),
                         _DetailRow(
-                          icon: Icons.verified_outlined,
+                          icon: IconlyBold.tick_square,
                           label: 'Approved By',
                           value: item.approvedByName!,
                         ),
@@ -193,7 +194,7 @@ class _ExpenseDetailSheet extends StatelessWidget {
                       if (item.note != null && item.note!.isNotEmpty) ...[
                         const _DetailDivider(),
                         _DetailRow(
-                          icon: Icons.notes_rounded,
+                          icon: IconlyLight.document,
                           label: 'Note',
                           value: item.note!,
                         ),
@@ -230,7 +231,7 @@ class _ExpenseDetailSheet extends StatelessWidget {
                               cubit.rejectExpense(item.id);
                               Navigator.pop(context);
                             },
-                            icon: const Icon(Icons.close_rounded, size: 16),
+                            icon: const Icon(IconlyLight.close_square, size: 16),
                             label: Text(
                               'Reject',
                               style: getOutfitStyle(
@@ -257,7 +258,7 @@ class _ExpenseDetailSheet extends StatelessWidget {
                               cubit.approveExpense(item.id);
                               Navigator.pop(context);
                             },
-                            icon: const Icon(Icons.check_rounded, size: 16),
+                            icon: const Icon(IconlyLight.tick_square, size: 16),
                             label: Text(
                               'Approve',
                               style: getOutfitStyle(

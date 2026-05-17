@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/features/alert/data/alert_model.dart';
 
@@ -64,15 +65,15 @@ class AlertListItem extends StatelessWidget {
                       runSpacing: 4,
                       children: [
                         _MetaItem(
-                          icon: Icons.person_outline_rounded,
+                          icon: IconlyLight.profile,
                           label: alert.author,
                         ),
                         _MetaItem(
-                          icon: Icons.storefront_outlined,
+                          icon: IconlyBold.work,
                           label: alert.store,
                         ),
                         _MetaItem(
-                          icon: Icons.calendar_today_outlined,
+                          icon: IconlyLight.calendar,
                           label: _formatDate(alert.date),
                         ),
                       ],
@@ -81,7 +82,7 @@ class AlertListItem extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(Icons.chevron_right_rounded,
+              const Icon(IconlyLight.arrow_right_2,
                   size: 20, color: AppColors.textMuted),
             ],
           ),
@@ -145,15 +146,15 @@ class _AlertTypeIcon extends StatelessWidget {
   IconData get _icon {
     switch (type) {
       case AlertType.refund:
-        return Icons.replay_rounded;
+        return IconlyLight.arrow_left;
       case AlertType.priceOverride:
-        return Icons.timer_outlined;
+        return IconlyLight.time_circle;
       case AlertType.shiftHours:
-        return Icons.schedule_rounded;
+        return IconlyLight.time_circle;
       case AlertType.inventoryShrinkage:
-        return Icons.warning_amber_rounded;
+        return IconlyBold.danger;
       case AlertType.transferMismatch:
-        return Icons.info_outline_rounded;
+        return IconlyLight.info_circle;
     }
   }
 

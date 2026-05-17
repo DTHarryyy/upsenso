@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
@@ -70,7 +71,7 @@ class _ReceiptSettingsPageState extends State<ReceiptSettingsPage> {
             surfaceTintColor: Colors.transparent,
             leading: IconButton(
               icon: const Icon(
-                Icons.arrow_back_ios_new_rounded,
+                IconlyLight.arrow_left,
                 size: 18,
                 color: AppColors.textSecondary,
               ),
@@ -114,7 +115,7 @@ class _ReceiptSettingsPageState extends State<ReceiptSettingsPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(
-                            Icons.check_circle_rounded,
+                            IconlyBold.tick_square,
                             size: 16,
                             color: AppColors.success,
                           ),

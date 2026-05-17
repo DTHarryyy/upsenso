@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
 
@@ -66,13 +67,13 @@ class _AppSearchBarState extends State<AppSearchBar> {
         ),
         prefixIcon: const Padding(
           padding: EdgeInsets.only(left: 12, right: 8),
-          child: Icon(Icons.search_rounded, color: AppColors.textMuted, size: 20),
+          child: Icon(IconlyLight.search, color: AppColors.textMuted, size: 20),
         ),
         prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
         suffixIcon: _hasText
             ? IconButton(
                 icon: const Icon(
-                  Icons.close_rounded,
+                  IconlyLight.close_square,
                   size: 18,
                   color: AppColors.textMuted,
                 ),

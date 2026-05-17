@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
@@ -17,7 +18,7 @@ class SettingsPage extends StatelessWidget {
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+          icon: const Icon(IconlyLight.arrow_left,
               size: 18, color: AppColors.textSecondary),
           onPressed: () => Navigator.of(context).maybePop(),
         ),
@@ -40,7 +41,7 @@ class SettingsPage extends StatelessWidget {
           // ── Business section ─────────────────────────────────────────
           _SectionHeader(label: 'Business'),
           _SettingsRow(
-            icon: Icons.receipt_long_rounded,
+            icon: IconlyLight.paper,
             iconBg: AppColors.warningSoft,
             iconColor: AppColors.warning,
             title: 'Receipt Settings',
@@ -145,7 +146,7 @@ class _SettingsRow extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded,
+              const Icon(IconlyLight.arrow_right_2,
                   size: 20, color: AppColors.textMuted),
             ],
           ),

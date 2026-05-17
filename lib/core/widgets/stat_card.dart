@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 
 /// Generic white card shell used across reports, dashboard, expenses, inventory.
@@ -92,8 +93,8 @@ class AppStatCard extends StatelessWidget {
               children: [
                 Icon(
                   (isPositive ?? true)
-                      ? Icons.trending_up_rounded
-                      : Icons.trending_down_rounded,
+                      ? IconlyBold.arrow_up_2
+                      : IconlyBold.arrow_down_2,
                   size: 15,
                   color: (isPositive ?? true)
                       ? AppColors.success

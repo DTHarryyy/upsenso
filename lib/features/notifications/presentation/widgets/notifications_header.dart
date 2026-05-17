@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
@@ -26,7 +27,7 @@ class NotificationsHeader extends StatelessWidget {
             OutlinedButton.icon(
               onPressed: () =>
                   context.read<NotificationsCubit>().markAllAsRead(),
-              icon: const Icon(Icons.done_all_rounded, size: 16),
+              icon: const Icon(IconlyBold.tick_square, size: 16),
               label: Text(
                 'Mark All as Read',
                 style: getOutfitStyle(

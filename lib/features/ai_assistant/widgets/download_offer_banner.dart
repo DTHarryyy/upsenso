@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/features/ai_assistant/bloc/ai_chat_bloc.dart';
@@ -26,7 +27,7 @@ class DownloadOfferBanner extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(
-              Icons.download_rounded,
+              IconlyLight.download,
               color: AppColors.brand,
               size: 22,
             ),

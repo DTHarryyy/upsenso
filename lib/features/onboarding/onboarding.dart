@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lottie/lottie.dart';
 import 'package:pos/core/routes/app_routes.dart';
@@ -97,7 +98,7 @@ class _OnboardingState extends State<Onboarding> {
         // Show back icon only after first page
         leading: _index == 0
             ? null
-            : IconButton(onPressed: _back, icon: const Icon(Icons.arrow_back)),
+            : IconButton(onPressed: _back, icon: const Icon(IconlyLight.arrow_left)),
 
         actionsPadding: const EdgeInsets.only(right: 20),
 
@@ -156,7 +157,7 @@ class _OnboardingState extends State<Onboarding> {
                               ),
                             ),
                           )
-                        : const Icon(Icons.arrow_forward),
+                        : const Icon(IconlyLight.arrow_right),
                   ),
                 ],
               ),

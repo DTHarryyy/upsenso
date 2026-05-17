@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
 
@@ -71,7 +72,7 @@ class AppDateRangePicker extends StatelessWidget {
         child: Row(
           children: [
             Icon(
-              Icons.date_range_rounded,
+              IconlyLight.calendar,
               size: 16,
               color: _hasValue ? AppColors.brand : AppColors.textMuted,
             ),
@@ -94,7 +95,7 @@ class AppDateRangePicker extends StatelessWidget {
                 behavior: HitTestBehavior.opaque,
                 child: const Padding(
                   padding: EdgeInsets.only(left: 4),
-                  child: Icon(Icons.close_rounded,
+                  child: Icon(IconlyLight.close_square,
                       size: 14, color: AppColors.brand),
                 ),
               ),

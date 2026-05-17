@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/features/dashboard/data/dashboard_data.dart';
 import 'package:pos/features/dashboard/presentation/widgets/dashboard_empty_state.dart';
@@ -38,7 +39,7 @@ class BranchComparisonCard extends StatelessWidget {
                   color: AppColors.brandSoft,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.store_rounded,
+                child: const Icon(IconlyBold.work,
                     size: 17, color: AppColors.brand),
               ),
               const SizedBox(width: 10),
@@ -270,7 +271,7 @@ class _EmptyState extends StatelessWidget {
     return const Padding(
       padding: EdgeInsets.symmetric(vertical: 28),
       child: DashboardEmptyState(
-        icon: Icons.store_outlined,
+        icon: IconlyLight.work,
         iconColor: Color(0xFF557FF4),
         iconBg: Color(0xFFEAF0FF),
         title: 'No branch data yet',

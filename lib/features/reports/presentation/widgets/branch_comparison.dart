@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/features/reports/data/reports_data.dart';
 import 'package:pos/features/reports/presentation/widgets/report_card.dart';
@@ -285,8 +286,8 @@ class _BranchRow extends StatelessWidget {
               children: [
                 Icon(
                   isPos
-                      ? Icons.trending_up_rounded
-                      : Icons.trending_down_rounded,
+                      ? IconlyBold.arrow_up_2
+                      : IconlyBold.arrow_down_2,
                   size: 14,
                   color: isPos ? AppColors.success : AppColors.error,
                 ),

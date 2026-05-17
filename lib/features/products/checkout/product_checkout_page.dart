@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
@@ -66,10 +67,10 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
   ];
 
   static final _methods = [
-    ('cash', 'Cash', Icons.payments_outlined),
-    ('card', 'Card', Icons.credit_card_rounded),
-    ('gcash', 'GCash', Icons.phone_android_rounded),
-    ('maya', 'Maya', Icons.account_balance_wallet_outlined),
+    ('cash', 'Cash', IconlyLight.wallet),
+    ('card', 'Card', IconlyLight.buy),
+    ('gcash', 'GCash', IconlyLight.call),
+    ('maya', 'Maya', IconlyLight.wallet),
   ];
 
   bool get _isCash => _paymentMethod == 'cash';
@@ -245,7 +246,7 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
         centerTitle: true,
         title: Text('Checkout', style: AppTextStyles.title(context)),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          icon: const Icon(IconlyLight.arrow_left, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -465,7 +466,7 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
-                  Icons.receipt_long_rounded,
+                  IconlyLight.paper,
                   size: 18,
                   color: AppColors.brand,
                 ),
@@ -623,7 +624,7 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(
-                      Icons.receipt_long_rounded,
+                      IconlyLight.paper,
                       size: 18,
                       color: AppColors.brand,
                     ),
@@ -664,7 +665,7 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
                     turns: _summaryExpanded ? 0.5 : 0,
                     duration: const Duration(milliseconds: 200),
                     child: const Icon(
-                      Icons.keyboard_arrow_down_rounded,
+                      IconlyLight.arrow_down_2,
                       size: 20,
                       color: AppColors.textMuted,
                     ),

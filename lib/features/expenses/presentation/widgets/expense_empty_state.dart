@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
 
@@ -23,7 +24,7 @@ class ExpenseEmptyState extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
             ),
             child: const Icon(
-              Icons.receipt_long_rounded,
+              IconlyLight.paper,
               size: 32,
               color: AppColors.textMuted,
             ),

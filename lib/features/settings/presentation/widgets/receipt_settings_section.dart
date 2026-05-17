@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:printing/printing.dart';
@@ -42,7 +43,7 @@ class ReceiptSettingsSection extends StatelessWidget {
 
             // ── Business details ────────────────────────────────────────
             _SettingsCard(
-              icon: Icons.store_rounded,
+              icon: IconlyLight.work,
               title: 'Business Details',
               children: [
                 _FieldRow(
@@ -116,7 +117,7 @@ class ReceiptSettingsSection extends StatelessWidget {
 
             // ── Logo ────────────────────────────────────────────────────
             _SettingsCard(
-              icon: Icons.image_rounded,
+              icon: IconlyLight.image,
               title: 'Business Logo',
               children: [
                 _SwitchRow(
@@ -281,7 +282,7 @@ class ReceiptSettingsSection extends StatelessWidget {
 
             // ── Currency & tax ──────────────────────────────────────────
             _SettingsCard(
-              icon: Icons.monetization_on_rounded,
+              icon: IconlyBold.wallet,
               title: 'Currency & Tax',
               children: [
                 _FieldRow(
@@ -410,7 +411,7 @@ class _PreviewBanner extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(
-                Icons.receipt_long_rounded,
+                IconlyLight.paper,
                 size: 20,
                 color: AppColors.textInverse,
               ),
@@ -439,7 +440,7 @@ class _PreviewBanner extends StatelessWidget {
               ),
             ),
             const Icon(
-              Icons.arrow_forward_ios_rounded,
+              IconlyLight.arrow_right,
               size: 14,
               color: AppColors.brand,
             ),
@@ -498,7 +499,7 @@ class _LogoPicker extends StatelessWidget {
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: () => _pick(ctx),
-                icon: const Icon(Icons.upload_rounded, size: 18),
+                icon: const Icon(IconlyLight.upload, size: 18),
                 label: Text(hasLogo ? 'Change Logo' : 'Upload Logo'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.brand,
@@ -899,7 +900,7 @@ class _PrinterSelectorState extends State<_PrinterSelector> {
                             color: AppColors.brand,
                           ),
                         )
-                      : const Icon(Icons.search_rounded, size: 16),
+                      : const Icon(IconlyLight.search, size: 16),
                   label: Text(
                     _printerName.isEmpty ? 'Select Printer' : 'Change Printer',
                     style: getOutfitStyle(fontSize: 12.5),
@@ -929,7 +930,7 @@ class _PrinterSelectorState extends State<_PrinterSelector> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Icon(Icons.delete_outline_rounded, size: 16),
+                  child: const Icon(IconlyLight.delete, size: 16),
                 ),
               ],
             ],

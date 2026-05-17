@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:pos/bootstrap.dart';
@@ -112,7 +113,7 @@ class _SplashScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: const Icon(
-                  Icons.store_outlined,
+                  IconlyLight.work,
                   size: 56,
                   color: AppColors.brand,
                 ),
@@ -161,7 +162,7 @@ class _ErrorScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Icon(
-                  Icons.error_outline,
+                  IconlyLight.danger,
                   size: 64,
                   color: AppColors.error,
                 ),

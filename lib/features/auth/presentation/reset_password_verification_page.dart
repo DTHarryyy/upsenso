@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -161,7 +162,7 @@ class _ResetPasswordVerificationPageState
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Icon(
-                  Icons.mark_email_read_outlined,
+                  IconlyLight.message,
                   size: 26,
                   color: AppColors.brand,
                 ),

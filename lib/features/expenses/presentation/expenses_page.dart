@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/branch/branch_state.dart';
@@ -99,7 +100,7 @@ class _AddFab extends StatelessWidget {
         canApprove: context.read<ExpensesCubit>().canApprove,
       ),
       backgroundColor: AppColors.brand,
-      icon: const Icon(Icons.add_rounded, color: Colors.white),
+      icon: const Icon(IconlyBold.plus, color: Colors.white),
       label: Text(
         'Add Expense',
         style: getOutfitStyle(
@@ -180,7 +181,7 @@ class _ErrorView extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(
-              Icons.error_outline_rounded,
+              IconlyLight.danger,
               size: 40,
               color: AppColors.error,
             ),

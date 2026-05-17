@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math' show min;
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/font_utils.dart';
@@ -41,7 +42,7 @@ class ProductCard extends StatelessWidget {
       color: AppColors.brandSoft,
       child: Center(
         child: Icon(
-          isFraction ? Icons.scale_outlined : Icons.inventory_2_outlined,
+          isFraction ? Icons.scale_outlined : IconlyLight.category,
           size: 32,
           color: AppColors.brand.withAlpha(180),
         ),

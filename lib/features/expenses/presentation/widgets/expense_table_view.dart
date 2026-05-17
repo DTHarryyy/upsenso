@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
@@ -225,7 +226,7 @@ class _RowActions extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         _ActionBtn(
-          icon: Icons.visibility_outlined,
+          icon: IconlyLight.show,
           color: AppColors.brand,
           bg: AppColors.brandSoft,
           tooltip: 'View',
@@ -233,14 +234,14 @@ class _RowActions extends StatelessWidget {
         ),
         if (canApprove && item.status == ExpenseStatus.pending) ...[
           _ActionBtn(
-            icon: Icons.check_rounded,
+            icon: IconlyLight.tick_square,
             color: AppColors.success,
             bg: AppColors.successSoft,
             tooltip: 'Approve',
             onTap: () => cubit.approveExpense(item.id),
           ),
           _ActionBtn(
-            icon: Icons.close_rounded,
+            icon: IconlyLight.close_square,
             color: AppColors.error,
             bg: AppColors.errorSoft,
             tooltip: 'Reject',

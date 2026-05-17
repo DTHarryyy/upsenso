@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
@@ -74,7 +75,7 @@ class _ExpenseCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
-                  Icons.receipt_outlined,
+                  IconlyLight.paper,
                   color: AppColors.brand,
                   size: 18,
                 ),
@@ -124,15 +125,15 @@ class _ExpenseCard extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              _Meta(icon: Icons.calendar_today_rounded, label: dateStr),
+              _Meta(icon: IconlyLight.calendar, label: dateStr),
               const SizedBox(width: 8),
               _Meta(
-                icon: Icons.store_mall_directory_outlined,
+                icon: IconlyLight.work,
                 label: item.branchName ?? 'All',
               ),
               const SizedBox(width: 8),
               _Meta(
-                icon: Icons.person_outline_rounded,
+                icon: IconlyLight.profile,
                 label: item.submittedByName,
               ),
             ],
@@ -142,7 +143,7 @@ class _ExpenseCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               _CardAction(
-                icon: Icons.visibility_outlined,
+                icon: IconlyLight.show,
                 color: AppColors.brand,
                 bg: AppColors.brandSoft,
                 tooltip: 'View',
@@ -150,14 +151,14 @@ class _ExpenseCard extends StatelessWidget {
               ),
               if (canApprove && item.status == ExpenseStatus.pending) ...[
                 _CardAction(
-                  icon: Icons.check_rounded,
+                  icon: IconlyLight.tick_square,
                   color: AppColors.success,
                   bg: AppColors.successSoft,
                   tooltip: 'Approve',
                   onTap: () => cubit.approveExpense(item.id),
                 ),
                 _CardAction(
-                  icon: Icons.close_rounded,
+                  icon: IconlyLight.close_square,
                   color: AppColors.error,
                   bg: AppColors.errorSoft,
                   tooltip: 'Reject',

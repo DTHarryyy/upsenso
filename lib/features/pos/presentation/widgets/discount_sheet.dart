@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
@@ -158,7 +159,7 @@ class _DiscountSheetState extends State<DiscountSheet> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
-                  Icons.local_offer_rounded,
+                  IconlyLight.discount,
                   color: Colors.white,
                   size: 18,
                 ),
@@ -197,7 +198,7 @@ class _DiscountSheetState extends State<DiscountSheet> {
                 ),
                 DiscountTypeTab(
                   label: '₱ Fixed Amount',
-                  icon: Icons.attach_money_rounded,
+                  icon: IconlyBold.wallet,
                   selected: _type == DiscountType.fixed,
                   onTap: () => setState(() {
                     _type = DiscountType.fixed;

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/branch/branch_state.dart';
@@ -42,10 +43,10 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
   bool _exportingExcel = false;
 
   static const _tabs = [
-    ReportTab(icon: Icons.bar_chart_rounded, label: 'Sales Report'),
-    ReportTab(icon: Icons.inventory_2_outlined, label: 'Inventory Health'),
-    ReportTab(icon: Icons.attach_money_rounded, label: 'Profit Summary'),
-    ReportTab(icon: Icons.store_rounded, label: 'Branch Comparison'),
+    ReportTab(icon: IconlyLight.chart, label: 'Sales Report'),
+    ReportTab(icon: IconlyLight.category, label: 'Inventory Health'),
+    ReportTab(icon: IconlyLight.wallet, label: 'Profit Summary'),
+    ReportTab(icon: IconlyLight.work, label: 'Branch Comparison'),
   ];
 
   @override
@@ -255,7 +256,7 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
                   (p) => AppDropdownItem(
                     value: p,
                     label: p.label,
-                    icon: Icons.calendar_today_outlined,
+                    icon: IconlyLight.calendar,
                   ),
                 )
                 .toList(),
@@ -305,7 +306,7 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
               value: fmtCurrency(data.totalRevenue),
               changeLabel: '${fmtPct(revChange)} vs prev period',
               isPositive: revChange >= 0,
-              icon: Icons.attach_money_rounded,
+              icon: IconlyBold.wallet,
               iconBg: AppColors.brandSoft,
               iconColor: AppColors.brand,
             ),
@@ -315,7 +316,7 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
               changeLabel:
                   '${txnChange >= 0 ? '+' : ''}$txnChange vs prev period',
               isPositive: txnChange >= 0,
-              icon: Icons.bar_chart_rounded,
+              icon: IconlyBold.chart,
               iconBg: const Color(0xFFF3E8FF),
               iconColor: const Color(0xFF7C3AED),
             ),
@@ -324,7 +325,7 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
               value: fmtCurrency(data.avgTicket),
               changeLabel: '${fmtPct(avgChange)} vs prev period',
               isPositive: avgChange >= 0,
-              icon: Icons.trending_up_rounded,
+              icon: IconlyBold.activity,
               iconBg: AppColors.successSoft,
               iconColor: AppColors.success,
             ),
@@ -334,7 +335,7 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
               changeLabel:
                   '${itemsChange >= 0 ? '+' : ''}$itemsChange vs prev period',
               isPositive: itemsChange >= 0,
-              icon: Icons.inventory_2_outlined,
+              icon: IconlyLight.category,
               iconBg: AppColors.warningSoft,
               iconColor: AppColors.warning,
             ),
@@ -347,28 +348,28 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
             ReportStatCard(
               title: 'Low Stock',
               value: '${data.lowStockCount}',
-              icon: Icons.inventory_2_outlined,
+              icon: IconlyLight.category,
               iconBg: AppColors.errorSoft,
               iconColor: AppColors.error,
             ),
             ReportStatCard(
               title: 'Fast Movers',
               value: '${data.fastMoversCount}',
-              icon: Icons.trending_up_rounded,
+              icon: IconlyBold.activity,
               iconBg: AppColors.successSoft,
               iconColor: AppColors.success,
             ),
             ReportStatCard(
               title: 'Dead Stock',
               value: '${data.deadStockCount}',
-              icon: Icons.access_time_rounded,
+              icon: IconlyLight.time_circle,
               iconBg: AppColors.warningSoft,
               iconColor: AppColors.warning,
             ),
             ReportStatCard(
               title: 'Total SKUs',
               value: '${data.totalSKUs}',
-              icon: Icons.qr_code_2_rounded,
+              icon: IconlyLight.scan,
               iconBg: AppColors.brandSoft,
               iconColor: AppColors.brand,
             ),
@@ -382,21 +383,21 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
             ReportStatCard(
               title: 'Gross Revenue',
               value: fmtCurrency(data.grossRevenue),
-              icon: Icons.attach_money_rounded,
+              icon: IconlyBold.wallet,
               iconBg: AppColors.brandSoft,
               iconColor: AppColors.brand,
             ),
             ReportStatCard(
               title: 'Cost of Goods',
               value: fmtCurrency(data.costOfGoods),
-              icon: Icons.inventory_2_outlined,
+              icon: IconlyLight.category,
               iconBg: AppColors.errorSoft,
               iconColor: AppColors.error,
             ),
             ReportStatCard(
               title: 'Operating Expenses',
               value: '₱0',
-              icon: Icons.receipt_long_outlined,
+              icon: IconlyLight.paper,
               iconBg: AppColors.warningSoft,
               iconColor: AppColors.warning,
             ),
@@ -405,7 +406,7 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
               value: fmtCurrency(data.netProfit),
               changeLabel: '${fmtPct(netChange)} vs prev period',
               isPositive: netChange >= 0,
-              icon: Icons.trending_up_rounded,
+              icon: IconlyBold.activity,
               iconBg: AppColors.successSoft,
               iconColor: AppColors.success,
             ),
@@ -424,21 +425,21 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
             ReportStatCard(
               title: 'Active Branches',
               value: '$branchCount',
-              icon: Icons.store_rounded,
+              icon: IconlyBold.work,
               iconBg: AppColors.brandSoft,
               iconColor: AppColors.brand,
             ),
             ReportStatCard(
               title: 'Combined Sales',
               value: fmtCurrency(totalBranchSales),
-              icon: Icons.attach_money_rounded,
+              icon: IconlyBold.wallet,
               iconBg: AppColors.successSoft,
               iconColor: AppColors.success,
             ),
             ReportStatCard(
               title: 'Top Branch',
               value: topBranch?.name ?? '—',
-              icon: Icons.emoji_events_rounded,
+              icon: IconlyBold.ticket_star,
               iconBg: const Color(0xFFFEF3C7),
               iconColor: const Color(0xFFD97706),
             ),
@@ -447,7 +448,7 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
               value: branchCount > 0
                   ? fmtCurrency(totalBranchSales / branchCount)
                   : '—',
-              icon: Icons.balance_rounded,
+              icon: IconlyLight.swap,
               iconBg: const Color(0xFFF3E8FF),
               iconColor: const Color(0xFF7C3AED),
             ),
@@ -496,7 +497,7 @@ class _ReportHeaderCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(
-              Icons.analytics_outlined,
+              IconlyLight.chart,
               color: AppColors.brand,
               size: 20,
             ),
@@ -519,9 +520,9 @@ class _ReportHeaderCard extends StatelessWidget {
                 const SizedBox(height: 3),
                 Row(
                   children: [
-                    _Chip(Icons.calendar_today_outlined, period.label),
+                    _Chip(IconlyLight.calendar, period.label),
                     const SizedBox(width: 10),
-                    _Chip(Icons.store_outlined, branchLabel),
+                    _Chip(IconlyLight.work, branchLabel),
                   ],
                 ),
               ],
@@ -612,7 +613,7 @@ class _ExportDropdown extends StatelessWidget {
           child: Row(
             children: [
               Icon(
-                Icons.picture_as_pdf_rounded,
+                IconlyLight.document,
                 size: 15,
                 color: AppColors.error,
               ),
@@ -629,7 +630,7 @@ class _ExportDropdown extends StatelessWidget {
           child: Row(
             children: [
               Icon(
-                Icons.table_chart_rounded,
+                IconlyLight.chart,
                 size: 15,
                 color: AppColors.success,
               ),
@@ -664,7 +665,7 @@ class _ExportDropdown extends StatelessWidget {
               )
             else
               const Icon(
-                Icons.download_rounded,
+                IconlyLight.download,
                 size: 15,
                 color: AppColors.textSecondary,
               ),
@@ -680,7 +681,7 @@ class _ExportDropdown extends StatelessWidget {
             if (!busy) ...[
               const SizedBox(width: 2),
               const Icon(
-                Icons.arrow_drop_down_rounded,
+                IconlyLight.arrow_down_2,
                 size: 16,
                 color: AppColors.textMuted,
               ),
@@ -708,7 +709,7 @@ class _ErrorView extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(
-              Icons.error_outline,
+              IconlyLight.danger,
               size: 40,
               color: AppColors.textMuted,
             ),

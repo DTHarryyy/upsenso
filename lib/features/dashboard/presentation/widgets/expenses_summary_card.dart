@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/routes/app_routes.dart';
@@ -37,7 +38,7 @@ class ExpensesSummaryCard extends StatelessWidget {
                   color: AppColors.warningSoft,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.receipt_long_rounded,
+                child: const Icon(IconlyBold.paper,
                     size: 17, color: AppColors.warning),
               ),
               const SizedBox(width: 10),
@@ -81,7 +82,7 @@ class ExpensesSummaryCard extends StatelessWidget {
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 20),
               child: DashboardEmptyState(
-                icon: Icons.receipt_long_outlined,
+                icon: IconlyLight.paper,
                 iconColor: Color(0xFFD97706),
                 iconBg: Color(0xFFFEF3C7),
                 title: 'No expenses yet',

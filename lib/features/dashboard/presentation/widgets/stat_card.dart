@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 
 class StatCard extends StatelessWidget {
   final String title;
@@ -66,7 +67,7 @@ class StatCard extends StatelessWidget {
           Row(
             children: [
               Icon(
-                isPositive ? Icons.trending_up : Icons.trending_down,
+                isPositive ? IconlyBold.arrow_up_2 : IconlyBold.arrow_down_2,
                 size: 16,
                 color: isPositive ? Colors.green : Colors.red,
               ),

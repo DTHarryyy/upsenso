@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/features/inventory/data/inventory_data.dart';
@@ -378,7 +379,7 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.inventory_2_outlined,
+            Icon(IconlyLight.category,
                 size: 48, color: AppColors.textMuted),
             const SizedBox(height: 12),
             Text(

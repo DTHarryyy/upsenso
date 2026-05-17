@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/features/alert/data/alert_model.dart';
 import 'package:pos/features/alert/presentation/widgets/alert_detail_content.dart';
@@ -18,7 +19,7 @@ class AlertDetailPage extends StatelessWidget {
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
           onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(Icons.arrow_back_rounded,
+          icon: const Icon(IconlyLight.arrow_left,
               color: AppColors.textPrimary),
         ),
         title: Text(

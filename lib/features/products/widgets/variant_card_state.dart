@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:flutter/services.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
@@ -83,7 +84,7 @@ class VariantCardState extends State<VariantCard> {
               if (widget.canDelete)
                 GestureDetector(
                   onTap: widget.onDelete,
-                  child: const Icon(Icons.delete_outline_rounded,
+                  child: const Icon(IconlyLight.delete,
                       color: AppColors.error, size: 18),
                 ),
             ],

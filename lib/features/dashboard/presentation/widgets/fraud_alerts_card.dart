@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 
 class FraudAlertsCard extends StatelessWidget {
   const FraudAlertsCard({super.key});
@@ -18,7 +19,7 @@ class FraudAlertsCard extends StatelessWidget {
           // Header
           Row(
             children: [
-              const Icon(Icons.warning_amber_rounded,
+              const Icon(IconlyBold.danger,
                   size: 20, color: Color(0xFFEF4444)),
               const SizedBox(width: 8),
               const Expanded(

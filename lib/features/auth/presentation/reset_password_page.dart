@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pos/core/const/app_colors.dart';
@@ -106,7 +107,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: const Icon(
-                    Icons.vpn_key_rounded,
+                    IconlyLight.password,
                     size: 26,
                     color: AppColors.brand,
                   ),
@@ -147,8 +148,8 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                         : IconButton(
                             icon: Icon(
                               _obscurePassword
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
+                                  ? IconlyLight.hide
+                                  : IconlyLight.show,
                               size: 20,
                             ),
                             onPressed: () => setState(
@@ -175,8 +176,8 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                         : IconButton(
                             icon: Icon(
                               _obscureConfirmPassword
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
+                                  ? IconlyLight.hide
+                                  : IconlyLight.show,
                               size: 20,
                             ),
                             onPressed: () => setState(
@@ -283,7 +284,7 @@ class _Req extends StatelessWidget {
       child: Row(
         children: [
           Icon(
-            met ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+            met ? IconlyBold.tick_square : Icons.radio_button_unchecked,
             size: 15,
             color: met ? AppColors.success : AppColors.textMuted,
           ),

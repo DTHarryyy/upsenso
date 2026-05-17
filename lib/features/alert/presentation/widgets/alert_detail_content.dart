@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/features/alert/data/alert_model.dart';
 
@@ -50,7 +51,7 @@ class AlertDetailContent extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.receipt_long_outlined,
+                  const Icon(IconlyLight.paper,
                       size: 14, color: AppColors.textMuted),
                   const SizedBox(width: 6),
                   Text(
@@ -108,15 +109,15 @@ class _DetailHeader extends StatelessWidget {
   IconData get _icon {
     switch (alert.type) {
       case AlertType.refund:
-        return Icons.replay_rounded;
+        return IconlyLight.arrow_left;
       case AlertType.priceOverride:
-        return Icons.timer_outlined;
+        return IconlyLight.time_circle;
       case AlertType.shiftHours:
-        return Icons.schedule_rounded;
+        return IconlyLight.time_circle;
       case AlertType.inventoryShrinkage:
-        return Icons.warning_amber_rounded;
+        return IconlyBold.danger;
       case AlertType.transferMismatch:
-        return Icons.info_outline_rounded;
+        return IconlyLight.info_circle;
     }
   }
 
@@ -372,7 +373,7 @@ class _InvestigateButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return ElevatedButton.icon(
       onPressed: () {},
-      icon: const Icon(Icons.manage_search_rounded, size: 16),
+      icon: const Icon(IconlyLight.search, size: 16),
       label: const Text('Start Investigation'),
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.warning,
@@ -390,7 +391,7 @@ class _ResolvedButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return OutlinedButton.icon(
       onPressed: () {},
-      icon: const Icon(Icons.check_circle_outline_rounded, size: 16),
+      icon: const Icon(IconlyBold.tick_square, size: 16),
       label: const Text('Mark as Resolved'),
       style: OutlinedButton.styleFrom(
         foregroundColor: AppColors.success,
@@ -408,7 +409,7 @@ class _ExportButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return OutlinedButton.icon(
       onPressed: () {},
-      icon: const Icon(Icons.file_copy_outlined, size: 16),
+      icon: const Icon(IconlyLight.document, size: 16),
       label: const Text('Export Report'),
       style: OutlinedButton.styleFrom(
         foregroundColor: AppColors.textSecondary,

@@ -230,7 +230,7 @@ class _CartBar extends StatelessWidget {
           child: SafeArea(
             top: false,
             child: GestureDetector(
-              onTap: () => Navigator.of(context).push(
+              onTap: () => Navigator.of(context, rootNavigator: true).push(
                 MaterialPageRoute(builder: (_) => const ProductCartPage()),
               ),
               child: Container(

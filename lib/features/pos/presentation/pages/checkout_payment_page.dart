@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
@@ -234,7 +235,7 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
         centerTitle: true,
         title: Text('Checkout', style: AppTextStyles.title(context)),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          icon: const Icon(IconlyLight.arrow_left, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -276,22 +277,22 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
                         AppDropdownItem(
                           value: 'cash',
                           label: 'Cash',
-                          icon: Icons.payments_outlined,
+                          icon: IconlyLight.wallet,
                         ),
                         AppDropdownItem(
                           value: 'card',
                           label: 'Card',
-                          icon: Icons.credit_card_rounded,
+                          icon: IconlyLight.buy,
                         ),
                         AppDropdownItem(
                           value: 'gcash',
                           label: 'GCash',
-                          icon: Icons.phone_android_rounded,
+                          icon: IconlyLight.call,
                         ),
                         AppDropdownItem(
                           value: 'maya',
                           label: 'Maya',
-                          icon: Icons.account_balance_wallet_outlined,
+                          icon: IconlyLight.wallet,
                         ),
                       ],
                       onChanged: (v) {

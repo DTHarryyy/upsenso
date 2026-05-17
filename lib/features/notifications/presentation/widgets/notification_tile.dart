@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
@@ -96,7 +97,7 @@ class NotificationTile extends StatelessWidget {
               if (!item.isRead) ...[
                 const SizedBox(width: 4),
                 NotificationIconBtn(
-                  icon: Icons.check_rounded,
+                  icon: IconlyLight.tick_square,
                   tooltip: 'Mark as read',
                   onTap: () =>
                       context.read<NotificationsCubit>().markAsRead(item.id),
@@ -104,7 +105,7 @@ class NotificationTile extends StatelessWidget {
               ],
               const SizedBox(width: 4),
               NotificationIconBtn(
-                icon: Icons.delete_outline_rounded,
+                icon: IconlyLight.delete,
                 tooltip: 'Delete',
                 color: AppColors.error,
                 onTap: () => context.read<NotificationsCubit>().delete(item.id),
@@ -211,7 +212,7 @@ class _NotificationConfig {
     switch (item.type) {
       case NotificationType.fraud:
         return _NotificationConfig(
-          icon: Icons.warning_rounded,
+          icon: IconlyBold.danger,
           color: item.severity == NotificationSeverity.high
               ? AppColors.error
               : AppColors.warning,
@@ -221,7 +222,7 @@ class _NotificationConfig {
         );
       case NotificationType.lowStock:
         return const _NotificationConfig(
-          icon: Icons.inventory_2_outlined,
+          icon: IconlyLight.category,
           color: AppColors.warning,
           softColor: AppColors.warningSoft,
         );
@@ -233,19 +234,19 @@ class _NotificationConfig {
         );
       case NotificationType.expenseApproval:
         return const _NotificationConfig(
-          icon: Icons.receipt_long_outlined,
+          icon: IconlyLight.paper,
           color: Color(0xFF8B5CF6),
           softColor: Color(0xFFF3F0FF),
         );
       case NotificationType.cashDiscrepancy:
         return const _NotificationConfig(
-          icon: Icons.account_balance_wallet_outlined,
+          icon: IconlyLight.wallet,
           color: AppColors.warning,
           softColor: AppColors.warningSoft,
         );
       case NotificationType.system:
         return const _NotificationConfig(
-          icon: Icons.notifications_outlined,
+          icon: IconlyLight.notification,
           color: AppColors.textMuted,
           softColor: AppColors.surfaceAlt,
         );

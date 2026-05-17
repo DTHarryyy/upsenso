@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
 
@@ -65,7 +66,7 @@ class UserAvatar extends StatelessWidget {
                   border: Border.all(color: Colors.white, width: 1.5),
                 ),
                 child: Icon(
-                  Icons.camera_alt_rounded,
+                  IconlyLight.camera,
                   size: radius * 0.4,
                   color: Colors.white,
                 ),

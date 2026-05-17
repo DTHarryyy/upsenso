@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
 
@@ -195,7 +196,7 @@ class _AppDropdownState<T> extends FormFieldState<T> {
                     duration: const Duration(milliseconds: 200),
                     turns: _isOpen ? 0.5 : 0,
                     child: const Icon(
-                      Icons.keyboard_arrow_down_rounded,
+                      IconlyLight.arrow_down_2,
                       color: AppColors.textMuted,
                       size: 20,
                     ),
@@ -387,7 +388,7 @@ class _AddItemRowState extends State<_AddItemRow> {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: const Icon(
-                  Icons.add_rounded,
+                  IconlyBold.plus,
                   color: AppColors.brand,
                   size: 14,
                 ),
@@ -483,7 +484,7 @@ class _DropdownOptionState<T> extends State<_DropdownOption<T>> {
                 opacity: widget.isSelected ? 1 : 0,
                 duration: const Duration(milliseconds: 150),
                 child: const Icon(
-                  Icons.check_rounded,
+                  IconlyLight.tick_square,
                   color: AppColors.brand,
                   size: 16,
                 ),
