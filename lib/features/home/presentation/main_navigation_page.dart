@@ -689,6 +689,22 @@ class _AppSidebarState extends State<_AppSidebar>
                     },
                     onSubItemTap: _tapSettingsSubItem,
                   ),
+
+                  const SizedBox(height: 6),
+                  const Divider(height: 1, color: AppColors.borderSoft),
+                  const SizedBox(height: 6),
+
+                  // ── ADMIN section ──
+                  if (layoutExpanded) const _SectionLabel(label: 'ADMIN'),
+                  _NavItem(
+                    icon: IconlyLight.shield_done,
+                    activeIcon: IconlyBold.shield_done,
+                    label: 'Audit Logs',
+                    index: 9,
+                    currentIndex: widget.currentIndex,
+                    expanded: layoutExpanded,
+                    onTap: widget.onNavTap,
+                  ),
                   const SizedBox(height: 6),
                 ],
               ),

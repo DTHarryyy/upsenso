@@ -1,7 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pos/core/audit/audit_log_service.dart';
+import 'package:pos/core/config/di.dart';
 import 'package:pos/core/errors/app_error_mapper.dart';
+import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/features/inventory/data/inventory_data.dart';
 import 'package:pos/features/inventory/domain/repositories/i_inventory_repository.dart';
 import 'package:pos/features/inventory/presentation/cubit/inventory_state.dart';
@@ -65,6 +68,8 @@ class InventoryCubit extends Cubit<InventoryState> {
   Future<void> adjustStock({
     required String variantId,
     required String productId,
+    required String productName,
+    required String variantName,
     required bool isIncoming,
     required int quantity,
     required String reason,
@@ -92,6 +97,26 @@ class InventoryCubit extends Cubit<InventoryState> {
       reason: reason,
       note: note,
     );
+
+    final entityLabel = variantName.isNotEmpty
+        ? '$productName · $variantName'
+        : productName;
+    sl<AuditLogService>().log(
+      actionType: AuditLogActionType.stockAdjusted,
+      entityType: 'inventory',
+      entityName: entityLabel,
+      description:
+          '${isIncoming ? 'Stock in' : 'Stock out'}: $quantity unit(s) of $entityLabel — $reason',
+      metadata: {
+        'is_incoming': isIncoming,
+        'quantity': quantity,
+        'reason': reason,
+        'note': ?note,
+      },
+      businessId: businessId,
+      branchId: branchId,
+    );
+
     // The watcher will trigger a reload automatically.
     // For optimistic update, trigger immediately.
     await _doLoad(showSpinner: false);

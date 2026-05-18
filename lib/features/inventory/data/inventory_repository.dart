@@ -74,8 +74,15 @@ class InventoryRepository implements IInventoryRepository {
 
     // Deduplicate variants by (productId, name) — repeated syncs can insert
     // multiple rows for the same logical variant with different UUIDs.
+    // Active variants take priority: sort active first so the dedup always
+    // keeps the active row when both an active and inactive copy exist.
+    final sortedVariants = [...variants]
+      ..sort((a, b) {
+        if (a.isActive == b.isActive) return 0;
+        return a.isActive ? -1 : 1; // active first
+      });
     final seenVariantKeys = <String>{};
-    final dedupedVariants = variants.where((v) {
+    final dedupedVariants = sortedVariants.where((v) {
       return seenVariantKeys.add('${v.productId}:${v.name}');
     }).toList();
 

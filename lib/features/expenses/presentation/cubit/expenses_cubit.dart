@@ -2,7 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pos/core/audit/audit_log_service.dart';
+import 'package:pos/core/config/di.dart';
 import 'package:pos/core/errors/app_error_mapper.dart';
+import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/features/expenses/domain/repositories/i_expenses_repository.dart';
 import 'package:pos/features/expenses/domain/expense_item.dart';
 import 'package:pos/features/expenses/presentation/cubit/expenses_state.dart';
@@ -204,6 +207,22 @@ class ExpensesCubit extends Cubit<ExpensesState> {
       autoApprove: autoApprove,
       overrideStatus: overrideStatus,
     );
+
+    sl<AuditLogService>().log(
+      actionType: AuditLogActionType.expenseCreated,
+      entityType: 'expense',
+      entityName: '$vendor — $category',
+      description: 'Expense created: $vendor — $category (\$$amount)',
+      metadata: {
+        'vendor': vendor,
+        'category': category,
+        'amount': amount,
+        'auto_approved': autoApprove,
+      },
+      businessId: businessId,
+      branchId: branchId ?? '',
+      userId: _userId,
+    );
   }
 
   Future<void> approveExpense(String id) async {
@@ -213,10 +232,46 @@ class ExpensesCubit extends Cubit<ExpensesState> {
       approvedById: _userId!,
       approvedByName: _userName ?? 'Unknown',
     );
+    final approvedItem = state is ExpensesLoaded
+        ? (state as ExpensesLoaded).allItems
+              .where((e) => e.id == id)
+              .firstOrNull
+        : null;
+    sl<AuditLogService>().log(
+      actionType: AuditLogActionType.expenseApproved,
+      entityType: 'expense',
+      entityName: approvedItem != null
+          ? '${approvedItem.vendor} — ${approvedItem.category}'
+          : null,
+      description: approvedItem != null
+          ? 'Expense approved: ${approvedItem.vendor} — ${approvedItem.category}'
+          : 'Expense approved',
+      businessId: _businessId ?? '',
+      branchId: _branchId ?? '',
+      userId: _userId,
+    );
   }
 
   Future<void> rejectExpense(String id) async {
     await _repository.rejectExpense(id);
+    final rejectedItem = state is ExpensesLoaded
+        ? (state as ExpensesLoaded).allItems
+              .where((e) => e.id == id)
+              .firstOrNull
+        : null;
+    sl<AuditLogService>().log(
+      actionType: AuditLogActionType.expenseRejected,
+      entityType: 'expense',
+      entityName: rejectedItem != null
+          ? '${rejectedItem.vendor} — ${rejectedItem.category}'
+          : null,
+      description: rejectedItem != null
+          ? 'Expense rejected: ${rejectedItem.vendor} — ${rejectedItem.category}'
+          : 'Expense rejected',
+      businessId: _businessId ?? '',
+      branchId: _branchId ?? '',
+      userId: _userId,
+    );
   }
 
   @override

@@ -78,7 +78,7 @@ class _InventoryState extends State<Inventory> {
       selectedBranchId = selection.id;
       _cubit.setBranchFilter(selectedBranchId);
     }
-
+    if (!mounted) return;
     final result = await showStockAdjustmentDialog(
       context: context,
       item: item,
@@ -89,6 +89,8 @@ class _InventoryState extends State<Inventory> {
     await _cubit.adjustStock(
       variantId: item.variantId,
       productId: item.productId,
+      productName: item.productName,
+      variantName: item.variantName,
       isIncoming: result.isIncoming,
       quantity: result.quantity,
       reason: result.reason,
