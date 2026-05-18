@@ -15,7 +15,9 @@ import 'package:pos/core/database/tables/transaction_items_table.dart';
 import 'package:pos/core/database/tables/inventory_levels_table.dart';
 import 'package:pos/core/database/tables/receipt_settings_table.dart';
 import 'package:pos/core/database/tables/stock_ledger_table.dart';
+import 'package:pos/core/database/tables/audit_logs_table.dart';
 import 'package:pos/core/database/daos/auth_context_dao.dart';
+import 'package:pos/core/database/daos/audit_logs_dao.dart';
 import 'package:pos/core/database/daos/business_templates_dao.dart';
 import 'package:pos/core/database/daos/businesses_dao.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
@@ -45,6 +47,7 @@ part 'app_database.g.dart';
     InventoryLevelsTable,
     StockLedgerTable,
     ReceiptSettingsTable,
+    AuditLogsTable,
   ],
   daos: [
     AuthContextDao,
@@ -59,6 +62,7 @@ part 'app_database.g.dart';
     InventoryLevelsDao,
     StockLedgerDao,
     ReceiptSettingsDao,
+    AuditLogsDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -75,7 +79,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 23;
+  int get schemaVersion => 24;
 
   @override
   MigrationStrategy get migration {
@@ -116,9 +120,7 @@ class AppDatabase extends _$AppDatabase {
         }
         if (from < 9) {
           try {
-            await customStatement(
-              'ALTER TABLE products ADD COLUMN tax REAL',
-            );
+            await customStatement('ALTER TABLE products ADD COLUMN tax REAL');
           } catch (_) {}
           try {
             await customStatement(
@@ -285,13 +287,16 @@ class AppDatabase extends _$AppDatabase {
         }
         if (from < 22) {
           await customStatement(
-              'ALTER TABLE auth_context ADD COLUMN avatar_url TEXT;');
+            'ALTER TABLE auth_context ADD COLUMN avatar_url TEXT;',
+          );
         }
         if (from < 23) {
           await m.createTable(receiptSettingsTable);
+        }
+        if (from < 24) {
+          await m.createTable(auditLogsTable);
         }
       },
     );
   }
 }
-

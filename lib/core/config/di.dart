@@ -61,6 +61,11 @@ import 'package:pos/core/database/daos/expenses_dao.dart';
 import 'package:pos/core/database/daos/inventory_levels_dao.dart';
 import 'package:pos/core/database/daos/receipt_settings_dao.dart';
 import 'package:pos/core/database/daos/stock_ledger_dao.dart';
+import 'package:pos/core/database/daos/audit_logs_dao.dart';
+import 'package:pos/core/audit/audit_log_service.dart';
+import 'package:pos/features/audit_logs/data/datasources/audit_log_remote_ds.dart';
+import 'package:pos/features/audit_logs/data/repositories/audit_log_repository_impl.dart';
+import 'package:pos/features/audit_logs/domain/repositories/i_audit_log_repository.dart';
 import 'package:pos/features/expenses/data/datasources/expenses_remote_ds.dart';
 import 'package:pos/features/dashboard/domain/repositories/i_dashboard_repository.dart';
 import 'package:pos/features/expenses/domain/repositories/i_expenses_repository.dart';
@@ -247,6 +252,8 @@ Future<void> initDI() async {
       transactionsRemoteDs: sl<TransactionsRemoteDs>(),
       connectivityService: sl<ConnectivityService>(),
       receiptSettingsRepository: sl<ReceiptSettingsRepository>(),
+      auditLogsDao: sl<AuditLogsDao>(),
+      auditLogRemoteDs: sl<AuditLogRemoteDs>(),
     ),
   );
 
@@ -276,6 +283,20 @@ Future<void> initDI() async {
 
   sl.registerLazySingleton<ReceiptPrinterService>(
     () => const ReceiptPrinterService(),
+  );
+
+  sl.registerLazySingleton<AuditLogsDao>(() => AuditLogsDao(sl<AppDatabase>()));
+  sl.registerLazySingleton<AuditLogRemoteDs>(
+    () => AuditLogRemoteDs(sl<SupabaseClient>()),
+  );
+  sl.registerLazySingleton<IAuditLogRepository>(
+    () => AuditLogRepositoryImpl(dao: sl<AuditLogsDao>()),
+  );
+  sl.registerLazySingleton<AuditLogService>(
+    () => AuditLogService(
+      dao: sl<AuditLogsDao>(),
+      authContextDao: sl<AuthContextDao>(),
+    ),
   );
 
   // settings_page.dart resolves this via sl()
