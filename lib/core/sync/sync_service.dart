@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/auth_context_dao.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
@@ -11,6 +12,7 @@ import 'package:pos/core/database/daos/products_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
 import 'package:pos/core/database/daos/stock_ledger_dao.dart';
 import 'package:pos/core/database/daos/transactions_dao.dart';
+import 'package:pos/core/database/daos/audit_logs_dao.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_status.dart';
 import 'package:pos/features/business/data/datasources/business_remote_ds.dart';
@@ -20,6 +22,7 @@ import 'package:pos/features/expenses/data/datasources/expenses_remote_ds.dart';
 import 'package:pos/features/products/data/datasources/products_remote_ds.dart';
 import 'package:pos/features/pos/data/datasources/transactions_remote_ds.dart';
 import 'package:pos/features/settings/data/receipt_settings_repository.dart';
+import 'package:pos/features/audit_logs/data/datasources/audit_log_remote_ds.dart';
 
 /// Service to handle synchronization between local Drift DB and Supabase
 class SyncService {
@@ -39,6 +42,8 @@ class SyncService {
   final TransactionsRemoteDs _transactionsRemoteDs;
   final ConnectivityService _connectivityService;
   final ReceiptSettingsRepository _receiptSettingsRepo;
+  final AuditLogsDao _auditLogsDao;
+  final AuditLogRemoteDs _auditLogRemoteDs;
 
   StreamSubscription<bool>? _connectivitySubscription;
   Timer? _retryTimer;
@@ -66,6 +71,8 @@ class SyncService {
     required TransactionsRemoteDs transactionsRemoteDs,
     required ConnectivityService connectivityService,
     required ReceiptSettingsRepository receiptSettingsRepository,
+    required AuditLogsDao auditLogsDao,
+    required AuditLogRemoteDs auditLogRemoteDs,
   }) : _authContextDao = authContextDao,
        _branchesDao = branchesDao,
        _businessesDao = businessesDao,
@@ -81,7 +88,9 @@ class SyncService {
        _productsRemoteDs = productsRemoteDs,
        _transactionsRemoteDs = transactionsRemoteDs,
        _connectivityService = connectivityService,
-       _receiptSettingsRepo = receiptSettingsRepository;
+       _receiptSettingsRepo = receiptSettingsRepository,
+       _auditLogsDao = auditLogsDao,
+       _auditLogRemoteDs = auditLogRemoteDs;
 
   /// Returns [provided] if non-null, otherwise reads businessId from the
   /// locally cached auth context. This allows connectivity-triggered syncs
@@ -136,6 +145,7 @@ class SyncService {
     await _branchesDao.clearAll();
     await _businessesDao.clearAll();
     await _receiptSettingsRepo.clearAll();
+    await _auditLogsDao.clearAll();
     await _authContextDao.clearAll();
   }
 
@@ -151,12 +161,15 @@ class SyncService {
         exp = 0,
         inv = 0,
         led = 0,
-        rcpt = 0;
+        rcpt = 0,
+        audit = 0;
     final controller = StreamController<int>.broadcast();
 
     void emit() {
       if (!controller.isClosed) {
-        controller.add(cat + prod + vars + orders + exp + inv + led + rcpt);
+        controller.add(
+          cat + prod + vars + orders + exp + inv + led + rcpt + audit,
+        );
       }
     }
 
@@ -193,6 +206,10 @@ class SyncService {
       rcpt = n;
       emit();
     });
+    final s9 = _auditLogsDao.watchPendingSyncCount().listen((n) {
+      audit = n;
+      emit();
+    });
 
     controller.onCancel = () {
       s1.cancel();
@@ -203,6 +220,7 @@ class SyncService {
       s6.cancel();
       s7.cancel();
       s8.cancel();
+      s9.cancel();
       controller.close();
     };
 
@@ -245,6 +263,7 @@ class SyncService {
       final inventoryResult = await _syncInventoryLevels();
       final ledgerResult = await _syncStockLedger();
       await _syncReceiptSettings(); // fire-and-forget style; errors logged internally
+      await _syncAuditLogs(); // fire-and-forget style; errors logged internally
 
       final int totalSynced =
           businessResult.syncedCount +
@@ -518,7 +537,17 @@ class SyncService {
             synced++;
 
           case SyncStatus.pendingDelete:
-            await _productsRemoteDs.deleteProductVariant(record.id);
+            try {
+              await _productsRemoteDs.deleteProductVariant(record.id);
+            } on PostgrestException catch (e) {
+              if (e.code == '23503') {
+                // Still referenced by transaction_items / stock_ledger /
+                // inventory_levels — soft-delete instead so history is intact.
+                await _productsRemoteDs.softDeleteProductVariant(record.id);
+              } else {
+                rethrow;
+              }
+            }
             await _productVariantsDao.hardDelete(record.id);
             synced++;
 
@@ -594,6 +623,22 @@ class SyncService {
         );
         synced++;
       } catch (e) {
+        // FK violation: a referenced variant is missing from Supabase.
+        // Reset all variants in this transaction's items to pendingUpload
+        // so the next cycle re-uploads them before retrying the transaction.
+        if (e is PostgrestException && e.code == '23503') {
+          final items = await _transactionsDao.getItemsByTransactionId(tx.id);
+          for (final item in items) {
+            await _productVariantsDao.updateSyncStatus(
+              id: item.variantId,
+              status: SyncStatus.pendingUpload,
+            );
+          }
+          debugPrint(
+            '[SYNC] Transaction ${tx.id}: variant missing on server, re-queuing variants for upload',
+          );
+          continue;
+        }
         failed++;
         debugPrint('[SYNC] Transaction ${tx.id} FAILED: $e');
         errors.add('Transaction ${tx.id}: ${e.toString()}');
@@ -716,6 +761,19 @@ class SyncService {
         );
         synced++;
       } catch (e) {
+        // FK violation: variant is locally marked synced but missing from Supabase
+        // (e.g. remote DB was reset). Reset it to pendingUpload so the next cycle
+        // re-uploads it before retrying this inventory level.
+        if (e is PostgrestException && e.code == '23503') {
+          await _productVariantsDao.updateSyncStatus(
+            id: record.variantId,
+            status: SyncStatus.pendingUpload,
+          );
+          debugPrint(
+            '[SYNC] InventoryLevel ${record.id}: variant missing on server, re-queuing variant for upload',
+          );
+          continue;
+        }
         failed++;
         debugPrint('[SYNC] InventoryLevel ${record.id} FAILED: $e');
         errors.add('InventoryLevel ${record.id}: ${e.toString()}');
@@ -763,6 +821,22 @@ class SyncService {
         );
         synced++;
       } catch (e) {
+        // FK violation: variant or product is locally synced but missing from
+        // Supabase. Reset the parent(s) to pendingUpload for self-healing.
+        if (e is PostgrestException && e.code == '23503') {
+          await _productVariantsDao.updateSyncStatus(
+            id: record.variantId,
+            status: SyncStatus.pendingUpload,
+          );
+          await _productsDao.updateSyncStatus(
+            id: record.productId,
+            status: SyncStatus.pendingUpload,
+          );
+          debugPrint(
+            '[SYNC] StockLedger ${record.id}: parent missing on server, re-queuing variant/product for upload',
+          );
+          continue;
+        }
         failed++;
         debugPrint('[SYNC] StockLedger ${record.id} FAILED: $e');
         errors.add('StockLedger ${record.id}: ${e.toString()}');
@@ -1020,6 +1094,43 @@ class SyncService {
       await _receiptSettingsRepo.syncPending();
     } catch (e) {
       debugPrint('[SYNC] Receipt settings push failed: $e');
+    }
+  }
+
+  Future<void> _syncAuditLogs() async {
+    try {
+      final pending = await _auditLogsDao.getPendingSync();
+      if (pending.isEmpty) return;
+
+      final rows = pending
+          .map(
+            (r) => {
+              'id': r.id,
+              'business_id': r.businessId,
+              'branch_id': r.branchId,
+              'user_id': r.userId,
+              'action_type': r.actionType,
+              'entity_type': r.entityType,
+              'entity_id': r.entityId,
+              'description': r.description,
+              'metadata': r.metadata,
+              'device_id': r.deviceId,
+              'created_at': r.createdAt.toUtc().toIso8601String(),
+            },
+          )
+          .toList();
+
+      await _auditLogRemoteDs.upsertLogs(rows);
+
+      for (final r in pending) {
+        await _auditLogsDao.updateSyncStatus(
+          id: r.id,
+          status: SyncStatus.synced,
+        );
+      }
+      debugPrint('[SYNC] Audit logs: pushed ${pending.length}');
+    } catch (e) {
+      debugPrint('[SYNC] Audit logs push failed: $e');
     }
   }
 

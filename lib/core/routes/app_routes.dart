@@ -38,4 +38,7 @@ class AppRoutes {
 
   // Notifications
   static const String notifications = '/notifications';
+
+  // Audit Logs
+  static const String auditLogs = '/more/audit-logs';
 }

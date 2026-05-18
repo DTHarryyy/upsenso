@@ -1,9 +1,11 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
+import 'package:pos/core/audit/audit_log_service.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:pos/core/database/app_database.dart';
+import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/features/products/domain/entities/product.dart';
 import 'package:pos/core/database/daos/categories_dao.dart';
 import 'package:pos/core/database/daos/inventory_levels_dao.dart';
@@ -376,6 +378,15 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         }
       }
 
+      sl<AuditLogService>().log(
+        actionType: AuditLogActionType.stockUpdated,
+        entityType: 'product',
+        entityName: data.name.trim(),
+        description: 'Product updated: ${data.name.trim()}',
+        metadata: const {},
+        businessId: businessId,
+      );
+
       emit(state.copyWith(isSaving: false, isSuccess: true));
     } catch (e) {
       emit(state.copyWith(isSaving: false, error: AppErrorMapper.message(e)));
@@ -560,6 +571,15 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
         await _seedInventoryLevels(seeds, isFraction);
       }
+
+      sl<AuditLogService>().log(
+        actionType: AuditLogActionType.stockAdded,
+        entityType: 'product',
+        entityName: data.name.trim(),
+        description: 'Product created: ${data.name.trim()}',
+        metadata: const {},
+        businessId: businessId,
+      );
 
       emit(state.copyWith(isSaving: false, isSuccess: true));
     } catch (e) {

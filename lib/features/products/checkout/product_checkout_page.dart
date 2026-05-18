@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:iconly/iconly.dart';
@@ -7,6 +9,7 @@ import 'package:uuid/uuid.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
@@ -19,6 +22,8 @@ import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/pos/data/models/cart_model.dart';
+import 'package:pos/core/audit/audit_log_service.dart';
+import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/features/pos/presentation/pages/checkout_success_page.dart';
 import 'package:pos/features/pos/presentation/widgets/denom_chip.dart';
 import 'package:pos/features/products/checkout/product_cart_page.dart';
@@ -167,6 +172,27 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
           .toList();
 
       await sl<TransactionsDao>().insertTransaction(tx, txItems);
+
+      unawaited(
+        sl<AuditLogService>().log(
+          actionType: AuditLogActionType.saleCreated,
+          entityType: 'transaction',
+          entityId: txId,
+          description:
+              'Sale of ${AppFormatters.currency(widget.total)} — ${widget.items.length} item(s)',
+          metadata: {
+            'total': widget.total,
+            'subtotal': widget.subtotal,
+            'tax': widget.tax,
+            'discount': widget.discountAmount,
+            'payment_method': _paymentMethod,
+            'item_count': widget.items.length,
+          },
+          businessId: authState.user.businessId,
+          branchId: branchId,
+          userId: cashierId,
+        ),
+      );
 
       await sl<IInventoryRepository>().recordSaleDeductions(
         items: widget.items

@@ -48,17 +48,20 @@ class ProductsRemoteDs {
     required bool isActive,
     String? imagePath,
   }) async {
-    await client.from('products').update({
-      'category_id': categoryId,
-      'name': name,
-      'sku': sku,
-      'barcode': barcode,
-      'tax': tax ?? 0.0,
-      'sell_by': sellBy,
-      'has_variants': hasVariants,
-      'is_active': isActive,
-      'image_path': imagePath,
-    }).eq('id', id);
+    await client
+        .from('products')
+        .update({
+          'category_id': categoryId,
+          'name': name,
+          'sku': sku,
+          'barcode': barcode,
+          'tax': tax ?? 0.0,
+          'sell_by': sellBy,
+          'has_variants': hasVariants,
+          'is_active': isActive,
+          'image_path': imagePath,
+        })
+        .eq('id', id);
   }
 
   /// Delete a product from Supabase.
@@ -128,23 +131,36 @@ class ProductsRemoteDs {
     String? expiryDate,
     required bool isActive,
   }) async {
-    await client.from('product_variants').update({
-      'name': name,
-      'price': price,
-      'cost_price': costPrice ?? 0.0,
-      'retail_price': retailPrice ?? 0.0,
-      'stock': stock,
-      'sku': sku,
-      'barcode': barcode,
-      'track_expiry': trackExpiry,
-      'expiry_date': expiryDate,
-      'is_active': isActive,
-    }).eq('id', id);
+    await client
+        .from('product_variants')
+        .update({
+          'name': name,
+          'price': price,
+          'cost_price': costPrice ?? 0.0,
+          'retail_price': retailPrice ?? 0.0,
+          'stock': stock,
+          'sku': sku,
+          'barcode': barcode,
+          'track_expiry': trackExpiry,
+          'expiry_date': expiryDate,
+          'is_active': isActive,
+        })
+        .eq('id', id);
   }
 
   /// Delete a variant from Supabase.
   Future<void> deleteProductVariant(String id) async {
     await client.from('product_variants').delete().eq('id', id);
+  }
+
+  /// Soft-delete a variant that is still referenced by transaction history.
+  /// Sets is_active = false so it no longer appears in the product catalogue
+  /// but the FK constraints from transaction_items / stock_ledger are satisfied.
+  Future<void> softDeleteProductVariant(String id) async {
+    await client
+        .from('product_variants')
+        .update({'is_active': false})
+        .eq('id', id);
   }
 
   /// Fetch all variants for a business (for pull sync).
@@ -154,7 +170,8 @@ class ProductsRemoteDs {
     final response = await client
         .from('product_variants')
         .select()
-        .eq('business_id', businessId);
+        .eq('business_id', businessId)
+        .eq('is_active', true);
     return List<Map<String, dynamic>>.from(response);
   }
 
@@ -175,7 +192,7 @@ class ProductsRemoteDs {
       'branch_id': branchId,
       'business_id': businessId,
       'quantity': quantity,
-      'quantity_decimal': quantityDecimal,
+      'quantity_decimal': quantityDecimal ?? 0.0,
       'low_stock_alert_override': lowStockAlertOverride,
     });
   }

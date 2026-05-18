@@ -12,6 +12,7 @@ import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/expenses/presentation/expenses_page.dart';
 import 'package:pos/features/inventory/inventory.dart';
 import 'package:pos/features/sales/presentation/sales_history.dart';
+import 'package:pos/features/audit_logs/presentation/pages/audit_log_page.dart';
 
 class MorePage extends StatefulWidget {
   const MorePage({super.key});
@@ -161,6 +162,18 @@ class _MorePageState extends State<MorePage>
                         icon: IconlyLight.wallet,
                         label: 'Expenses',
                         onTap: () => _pushFullPage(const ExpensesPage()),
+                      ),
+
+                      const SizedBox(height: 4),
+                      _Divider(),
+                      const SizedBox(height: 4),
+
+                      // ADMIN
+                      _SectionLabel('ADMIN'),
+                      _DrawerTile(
+                        icon: IconlyLight.shield_done,
+                        label: 'Audit Logs',
+                        onTap: () => _pushFullPage(const AuditLogPage()),
                       ),
 
                       const SizedBox(height: 4),
