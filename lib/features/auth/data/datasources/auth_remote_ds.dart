@@ -19,6 +19,11 @@ class AuthRemoteDs {
     await client.auth.signInWithOAuth(
       OAuthProvider.google,
       redirectTo: kIsWeb ? AppEnv.webOauthRedirectUrl : mobileRedirectTo,
+      // On web, force a same-tab redirect so the Flutter canvas doesn't
+      // retain keyboard focus and block typing in the OAuth popup/new tab.
+      authScreenLaunchMode: kIsWeb
+          ? LaunchMode.inAppWebView
+          : LaunchMode.externalApplication,
     );
   }
 
@@ -26,6 +31,9 @@ class AuthRemoteDs {
     await client.auth.signInWithOAuth(
       OAuthProvider.facebook,
       redirectTo: kIsWeb ? AppEnv.webOauthRedirectUrl : mobileRedirectTo,
+      authScreenLaunchMode: kIsWeb
+          ? LaunchMode.inAppWebView
+          : LaunchMode.externalApplication,
     );
   }
 
@@ -112,11 +120,16 @@ class AuthRemoteDs {
   /// Upload avatar image to Supabase Storage and return the public URL.
   Future<String> uploadAvatar(List<int> bytes, String userId) async {
     final path = '$userId/avatar.jpg';
-    await client.storage.from('avatars').uploadBinary(
-      path,
-      Uint8List.fromList(bytes),
-      fileOptions: const FileOptions(upsert: true, contentType: 'image/jpeg'),
-    );
+    await client.storage
+        .from('avatars')
+        .uploadBinary(
+          path,
+          Uint8List.fromList(bytes),
+          fileOptions: const FileOptions(
+            upsert: true,
+            contentType: 'image/jpeg',
+          ),
+        );
     final url = client.storage.from('avatars').getPublicUrl(path);
     // Bust the cache by appending a timestamp query param
     return '$url?t=${DateTime.now().millisecondsSinceEpoch}';

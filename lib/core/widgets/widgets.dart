@@ -12,4 +12,5 @@ export 'branch_action_dialog.dart';
 export 'branch_sale_dialog.dart';
 export 'dashboard_card.dart';
 export 'stat_card.dart';
+export 'table_action_button.dart';
 export 'user_avatar.dart';

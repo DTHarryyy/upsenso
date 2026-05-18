@@ -39,6 +39,7 @@ import 'package:pos/features/settings/presentation/settings_shell_page.dart';
 import 'package:pos/features/dashboard/presentation/dashboard_page.dart';
 import 'package:pos/features/reports/presentation/pages/reports_and_analytics.dart';
 import 'package:pos/features/notifications/presentation/pages/notifications_page.dart';
+import 'package:pos/features/audit_logs/presentation/pages/audit_log_page.dart';
 import 'package:pos/features/onboarding/onboarding.dart';
 
 class _AuthRefreshNotifier extends ChangeNotifier {
@@ -293,6 +294,15 @@ class AppRouter {
               GoRoute(
                 path: AppRoutes.notifications,
                 builder: (context, _) => const NotificationsPage(),
+              ),
+            ],
+          ),
+          // ── Branch 9: Audit Logs ───────────────────────────────────────────
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.auditLogs,
+                builder: (context, _) => const AuditLogPage(),
               ),
             ],
           ),

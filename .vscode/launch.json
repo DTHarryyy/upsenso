@@ -11,6 +11,7 @@
       "request": "launch",
       "type": "dart",
       "deviceId": "chrome",
+      "cwd": "${workspaceFolder}",
       "args": [
         "--dart-define-from-file=${workspaceFolder}/flavors/dev.json",
         "--web-port=3000"
