@@ -82,6 +82,13 @@ List<Widget> auditLogTableCells(
       ],
     ),
 
+    // ── User ─────────────────────────────────────────────────────────────
+    Text(
+      log.userName ?? log.userId,
+      style: getOutfitStyle(fontSize: 13, color: AppColors.textSecondary),
+      overflow: TextOverflow.ellipsis,
+    ),
+
     // ── Branch ───────────────────────────────────────────────────────────
     Row(
       mainAxisSize: MainAxisSize.min,
@@ -99,27 +106,21 @@ List<Widget> auditLogTableCells(
     ),
 
     // ── Device / IP ──────────────────────────────────────────────────────
-    Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.devices_outlined,
-              size: 13,
-              color: AppColors.textMuted,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              log.deviceId,
-              style: getOutfitStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
+        const Icon(
+          Icons.devices_outlined,
+          size: 13,
+          color: AppColors.textMuted,
+        ),
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            log.deviceId,
+            style: getOutfitStyle(fontSize: 12, color: AppColors.textSecondary),
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       ],
     ),
@@ -318,139 +319,194 @@ Widget auditLogMobileCard(
   final color = _colorFor(log.actionType);
   final badgeLabel = _badgeLabelFor(log.actionType);
 
-  return InkWell(
-    onTap: onTap ?? () => showAuditLogDetails(context, log),
-    borderRadius: BorderRadius.circular(10),
-    child: Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderSoft),
-      ),
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Badge + timestamp
-          Row(
+  return Material(
+    color: Colors.transparent,
+    child: InkWell(
+      onTap: onTap ?? () => showAuditLogDetails(context, log),
+      borderRadius: BorderRadius.circular(12),
+      child: Ink(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.borderSoft),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // ── Left color accent ───────────────────────────────────────
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                width: 4,
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  badgeLabel,
-                  style: getOutfitStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: color,
-                    letterSpacing: 0.3,
+                  color: color,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    bottomLeft: Radius.circular(12),
                   ),
                 ),
               ),
-              const Spacer(),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    AppFormatters.shortDate(log.createdAt.toLocal()),
-                    style: getOutfitStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textPrimary,
-                    ),
+
+              // ── Card body ───────────────────────────────────────────────
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ── Header: badge + timestamp ───────────────────────
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 9,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.10),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              badgeLabel,
+                              style: getOutfitStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: color,
+                                letterSpacing: 0.4,
+                              ),
+                            ),
+                          ),
+                          const Spacer(),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                AppFormatters.shortDate(
+                                  log.createdAt.toLocal(),
+                                ),
+                                style: getOutfitStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 1),
+                              Text(
+                                AppFormatters.time12h(log.createdAt.toLocal()),
+                                style: getOutfitStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // ── Entity + description ────────────────────────────
+                      RichText(
+                        text: TextSpan(
+                          style: getOutfitStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                          children: [
+                            TextSpan(text: _capitalize(log.entityType)),
+                            if (log.entityName != null &&
+                                log.entityName!.isNotEmpty)
+                              TextSpan(
+                                text: '  ·  ${log.entityName}',
+                                style: getOutfitStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w400,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        log.description,
+                        style: getOutfitStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+
+                      const SizedBox(height: 10),
+                      const Divider(height: 1, color: AppColors.borderSoft),
+                      const SizedBox(height: 10),
+
+                      // ── Footer: user + branch chips ─────────────────────
+                      Row(
+                        children: [
+                          Flexible(
+                            child: _InfoChip(
+                              icon: Icons.person_outline_rounded,
+                              label: log.userName ?? log.userId,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: _InfoChip(
+                              icon: Icons.store_outlined,
+                              label: log.branchName ?? 'All Branches',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  Text(
-                    AppFormatters.time12h(log.createdAt.toLocal()),
-                    style: getOutfitStyle(
-                      fontSize: 11,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          // Entity
-          Row(
-            children: [
-              Text(
-                _capitalize(log.entityType),
-                style: getOutfitStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              if (log.entityName != null && log.entityName!.isNotEmpty) ...[
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    log.entityName!,
-                    style: getOutfitStyle(
-                      fontSize: 11,
-                      color: AppColors.textMuted,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 4),
-          // Description
-          Text(
-            log.description,
-            style: getOutfitStyle(fontSize: 12, color: AppColors.textSecondary),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 10),
-          // Footer: user + branch
-          Row(
-            children: [
-              const Icon(
-                Icons.person_outline,
-                size: 13,
-                color: AppColors.textMuted,
-              ),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  log.userName ?? log.userId,
-                  style: getOutfitStyle(
-                    fontSize: 11,
-                    color: AppColors.textMuted,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: 14),
-              const Icon(
-                Icons.store_outlined,
-                size: 13,
-                color: AppColors.textMuted,
-              ),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  log.branchName ?? 'All Branches',
-                  style: getOutfitStyle(
-                    fontSize: 11,
-                    color: AppColors.textMuted,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     ),
   );
+}
+
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _InfoChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: AppColors.textMuted),
+        const SizedBox(width: 5),
+        Flexible(
+          child: Text(
+            label,
+            style: getOutfitStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textSecondary,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 String _badgeLabelFor(AuditLogActionType type) {

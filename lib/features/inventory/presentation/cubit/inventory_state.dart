@@ -1,7 +1,6 @@
 import 'package:equatable/equatable.dart';
+import 'package:pos/core/widgets/app_view_toggle.dart';
 import 'package:pos/features/inventory/data/inventory_data.dart';
-
-enum InventoryViewMode { cards, table }
 
 abstract class InventoryState extends Equatable {
   const InventoryState();
@@ -25,7 +24,7 @@ class InventoryLoaded extends InventoryState {
   final String searchQuery;
   final String? selectedBranchId;
   final StockStatus? statusFilter; // null = All
-  final InventoryViewMode viewMode;
+  final AppViewMode viewMode;
 
   const InventoryLoaded({
     required this.data,
@@ -33,7 +32,7 @@ class InventoryLoaded extends InventoryState {
     required this.searchQuery,
     this.selectedBranchId,
     this.statusFilter,
-    this.viewMode = InventoryViewMode.table,
+    this.viewMode = AppViewMode.table,
   });
 
   InventoryLoaded copyWith({
@@ -42,7 +41,7 @@ class InventoryLoaded extends InventoryState {
     String? searchQuery,
     Object? selectedBranchId = _sentinel,
     Object? statusFilter = _sentinel,
-    InventoryViewMode? viewMode,
+    AppViewMode? viewMode,
   }) {
     return InventoryLoaded(
       data: data ?? this.data,
@@ -59,8 +58,14 @@ class InventoryLoaded extends InventoryState {
   }
 
   @override
-  List<Object?> get props =>
-      [data, displayItems, searchQuery, selectedBranchId, statusFilter, viewMode];
+  List<Object?> get props => [
+    data,
+    displayItems,
+    searchQuery,
+    selectedBranchId,
+    statusFilter,
+    viewMode,
+  ];
 }
 
 class InventoryError extends InventoryState {

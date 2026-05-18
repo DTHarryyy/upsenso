@@ -13,13 +13,13 @@ import 'package:pos/features/expenses/presentation/widgets/expense_empty_state.d
 import 'package:pos/features/expenses/presentation/widgets/expense_status_badge.dart';
 
 const _kColumns = [
-  AppTableColumn(label: 'Date', flex: 3),
-  AppTableColumn(label: 'Category', flex: 3),
-  AppTableColumn(label: 'Vendor', flex: 3),
-  AppTableColumn(label: 'Branch', flex: 2),
-  AppTableColumn(label: 'Amount / Status', flex: 5),
-  AppTableColumn(label: 'Submitted By', flex: 3),
-  AppTableColumn(label: 'Actions', flex: 2),
+  AppTableColumn(label: 'Date', width: 100),
+  AppTableColumn(label: 'Category', width: 120),
+  AppTableColumn(label: 'Vendor', width: 130),
+  AppTableColumn(label: 'Branch', width: 100),
+  AppTableColumn(label: 'Amount / Status', width: 160),
+  AppTableColumn(label: 'Submitted By', width: 120),
+  AppTableColumn(label: 'Actions', width: 120),
 ];
 
 class ExpenseTableView extends StatelessWidget {

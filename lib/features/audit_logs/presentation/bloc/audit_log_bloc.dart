@@ -166,7 +166,19 @@ class AuditLogBloc extends Bloc<AuditLogEvent, AuditLogState> {
     if (_dateFrom == null && _dateTo == null) return logs;
     return logs.where((l) {
       if (_dateFrom != null && l.createdAt.isBefore(_dateFrom!)) return false;
-      if (_dateTo != null && l.createdAt.isAfter(_dateTo!)) return false;
+      if (_dateTo != null) {
+        // Include the full end date — compare against 23:59:59.999
+        final endOfDay = DateTime(
+          _dateTo!.year,
+          _dateTo!.month,
+          _dateTo!.day,
+          23,
+          59,
+          59,
+          999,
+        );
+        if (l.createdAt.isAfter(endOfDay)) return false;
+      }
       return true;
     }).toList();
   }

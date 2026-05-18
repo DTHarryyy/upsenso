@@ -13,11 +13,7 @@ class AppSearchBar extends StatefulWidget {
   final ValueChanged<String>? onChanged;
   final String hint;
 
-  const AppSearchBar({
-    super.key,
-    this.onChanged,
-    this.hint = 'Search...',
-  });
+  const AppSearchBar({super.key, this.onChanged, this.hint = 'Search...'});
 
   @override
   State<AppSearchBar> createState() => _AppSearchBarState();
@@ -59,7 +55,7 @@ class _AppSearchBarState extends State<AppSearchBar> {
         hintText: widget.hint,
         hintStyle: getOutfitStyle(color: AppColors.textMuted, fontSize: 14),
         filled: true,
-        fillColor: AppColors.inputFill,
+        fillColor: AppColors.surface,
         isDense: false,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,

@@ -9,11 +9,7 @@ class AppDropdownItem<T> {
   final String label;
   final IconData? icon;
 
-  const AppDropdownItem({
-    required this.value,
-    required this.label,
-    this.icon,
-  });
+  const AppDropdownItem({required this.value, required this.label, this.icon});
 }
 
 /// A dropdown that opens a floating overlay panel and integrates with [Form]
@@ -56,9 +52,9 @@ class AppDropdown<T> extends FormField<T> {
     super.validator,
     super.autovalidateMode = AutovalidateMode.disabled,
   }) : super(
-          initialValue: value,
-          builder: (field) => (field as _AppDropdownState<T>)._buildWidget(),
-        );
+         initialValue: value,
+         builder: (field) => (field as _AppDropdownState<T>)._buildWidget(),
+       );
 
   @override
   FormFieldState<T> createState() => _AppDropdownState<T>();
@@ -129,7 +125,7 @@ class _AppDropdownState<T> extends FormFieldState<T> {
             : null,
         onSelected: (v) {
           _closeOverlay();
-          didChange(v);         // updates FormField value + triggers validation
+          didChange(v); // updates FormField value + triggers validation
           _w.onChanged?.call(v);
         },
         onDismiss: _closeOverlay,
@@ -152,8 +148,8 @@ class _AppDropdownState<T> extends FormFieldState<T> {
     final borderColor = hasError
         ? AppColors.error
         : _isOpen
-            ? AppColors.brand
-            : AppColors.borderSoft;
+        ? AppColors.brand
+        : AppColors.borderSoft;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,10 +162,12 @@ class _AppDropdownState<T> extends FormFieldState<T> {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               padding: EdgeInsets.symmetric(
-                    horizontal: 10, vertical: _w.dense ? 6 : 14),
+                horizontal: 12,
+                vertical: _w.dense ? 12 : 14,
+              ),
               decoration: BoxDecoration(
                 color: AppColors.surface,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: borderColor, width: 1),
               ),
               child: Row(
@@ -222,7 +220,6 @@ class _AppDropdownState<T> extends FormFieldState<T> {
   }
 }
 
-
 class _OverlayDropdown<T> extends StatelessWidget {
   final LayerLink link;
   final double triggerWidth;
@@ -265,10 +262,8 @@ class _OverlayDropdown<T> extends StatelessWidget {
         CompositedTransformFollower(
           link: link,
           showWhenUnlinked: false,
-          targetAnchor:
-              openUpward ? Alignment.topLeft : Alignment.bottomLeft,
-          followerAnchor:
-              openUpward ? Alignment.bottomLeft : Alignment.topLeft,
+          targetAnchor: openUpward ? Alignment.topLeft : Alignment.bottomLeft,
+          followerAnchor: openUpward ? Alignment.bottomLeft : Alignment.topLeft,
           offset: Offset(0, openUpward ? -4 : 4),
           child: SizedBox(
             width: triggerWidth,
@@ -369,8 +364,12 @@ class _AddItemRowState extends State<_AddItemRow> {
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
-      onEnter: (_) { if (mounted) setState(() => _hovered = true); },
-      onExit:  (_) { if (mounted) setState(() => _hovered = false); },
+      onEnter: (_) {
+        if (mounted) setState(() => _hovered = true);
+      },
+      onExit: (_) {
+        if (mounted) setState(() => _hovered = false);
+      },
       child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
@@ -410,7 +409,6 @@ class _AddItemRowState extends State<_AddItemRow> {
   }
 }
 
-
 class _DropdownOption<T> extends StatefulWidget {
   final AppDropdownItem<T> item;
   final bool isSelected;
@@ -436,12 +434,16 @@ class _DropdownOptionState<T> extends State<_DropdownOption<T>> {
     final bg = widget.isSelected
         ? AppColors.brandSoft
         : _hovered
-            ? AppColors.inputFill
-            : Colors.transparent;
+        ? AppColors.inputFill
+        : Colors.transparent;
 
     return MouseRegion(
-      onEnter: (_) { if (mounted) setState(() => _hovered = true); },
-      onExit:  (_) { if (mounted) setState(() => _hovered = false); },
+      onEnter: (_) {
+        if (mounted) setState(() => _hovered = true);
+      },
+      onExit: (_) {
+        if (mounted) setState(() => _hovered = false);
+      },
       child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
@@ -451,9 +453,7 @@ class _DropdownOptionState<T> extends State<_DropdownOption<T>> {
             color: bg,
             border: widget.isLast
                 ? null
-                : const Border(
-                    bottom: BorderSide(color: AppColors.borderSoft),
-                  ),
+                : const Border(bottom: BorderSide(color: AppColors.borderSoft)),
           ),
           child: Row(
             children: [

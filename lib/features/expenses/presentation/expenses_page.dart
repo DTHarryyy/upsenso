@@ -5,8 +5,8 @@ import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
-import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/widgets/app_sub_page_bar.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/expenses/domain/repositories/i_expenses_repository.dart';
@@ -67,22 +67,7 @@ class _ExpensesViewState extends State<_ExpensesView> {
       listener: (ctx, s) => _startWatching(),
       child: Scaffold(
         backgroundColor: AppColors.background,
-        appBar: (ModalRoute.of(context)?.canPop ?? false)
-            ? AppBar(
-                backgroundColor: AppColors.surface,
-                elevation: 0,
-                scrolledUnderElevation: 0,
-                centerTitle: true,
-                title: Text(
-                  'Expenses',
-                  style: AppTextStyles.title(context),
-                ),
-                leading: IconButton(
-                  icon: const Icon(IconlyLight.arrow_left, size: 20),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              )
-            : null,
+        appBar: AppSubPageBar(title: 'Expenses'),
         floatingActionButton: const _AddFab(),
         body: BlocBuilder<ExpensesCubit, ExpensesState>(
           builder: (context, state) {
@@ -196,11 +181,7 @@ class _ErrorView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              IconlyLight.danger,
-              size: 40,
-              color: AppColors.error,
-            ),
+            const Icon(IconlyLight.danger, size: 40, color: AppColors.error),
             const SizedBox(height: 12),
             Text(
               message,

@@ -7,6 +7,7 @@ import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/features/inventory/data/inventory_data.dart';
 import 'package:pos/features/inventory/domain/repositories/i_inventory_repository.dart';
+import 'package:pos/core/widgets/app_view_toggle.dart';
 import 'package:pos/features/inventory/presentation/cubit/inventory_state.dart';
 
 class InventoryCubit extends Cubit<InventoryState> {
@@ -21,7 +22,7 @@ class InventoryCubit extends Cubit<InventoryState> {
   // Local filter / view state preserved across reloads
   String _searchQuery = '';
   StockStatus? _statusFilter;
-  InventoryViewMode _viewMode = InventoryViewMode.table;
+  AppViewMode _viewMode = AppViewMode.table;
 
   InventoryCubit(IInventoryRepository repository)
     : _repository = repository,
@@ -57,7 +58,7 @@ class InventoryCubit extends Cubit<InventoryState> {
     _doLoad(showSpinner: false);
   }
 
-  void setViewMode(InventoryViewMode mode) {
+  void setViewMode(AppViewMode mode) {
     _viewMode = mode;
     final current = state;
     if (current is InventoryLoaded) {

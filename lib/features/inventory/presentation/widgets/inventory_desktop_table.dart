@@ -80,18 +80,19 @@ class InventoryDesktopTable extends StatelessWidget {
                 children: [
                   _TableHeader(branches: branches, tableWidth: tableWidth),
                   const Divider(height: 1, color: AppColors.borderSoft),
-                  ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: items.length,
-                    separatorBuilder: (context, i) =>
-                        const Divider(height: 1, color: AppColors.borderSoft),
-                    itemBuilder: (_, i) => _TableRow(
-                      item: items[i],
-                      branches: branches,
-                      onAdjust: onAdjust,
-                      isEven: i.isEven,
-                      tableWidth: tableWidth,
+                  Expanded(
+                    child: ListView.separated(
+                      physics: const ClampingScrollPhysics(),
+                      itemCount: items.length,
+                      separatorBuilder: (context, i) =>
+                          const Divider(height: 1, color: AppColors.borderSoft),
+                      itemBuilder: (_, i) => _TableRow(
+                        item: items[i],
+                        branches: branches,
+                        onAdjust: onAdjust,
+                        isEven: i.isEven,
+                        tableWidth: tableWidth,
+                      ),
                     ),
                   ),
                 ],
@@ -118,13 +119,13 @@ List<double> _columnWidths(int branchCount, double tableWidth) {
   final branchExtra = branchCount > 0 ? (extra * 0.6) / branchCount : 0.0;
 
   return [
-    _colProduct + productExtra,    // Product
-    _colSku,                       // SKU
+    _colProduct + productExtra, // Product
+    _colSku, // SKU
     for (var i = 0; i < branchCount; i++) _colBranch + branchExtra, // branches
-    _colTotal,                     // Total
-    _colReorder,                   // Reorder
-    _colStatus,                    // Status
-    _colActions,                   // Actions
+    _colTotal, // Total
+    _colReorder, // Reorder
+    _colStatus, // Status
+    _colActions, // Actions
   ];
 }
 
@@ -163,8 +164,9 @@ class _TableHeader extends StatelessWidget {
               width: widths[i],
               child: Text(
                 labels[i],
-                textAlign:
-                    i == labels.length - 1 ? TextAlign.right : TextAlign.left,
+                textAlign: i == labels.length - 1
+                    ? TextAlign.right
+                    : TextAlign.left,
                 overflow: TextOverflow.ellipsis,
                 style: getOutfitStyle(
                   fontSize: 11,
@@ -204,7 +206,6 @@ class _TableRow extends StatelessWidget {
     return AppColors.textPrimary;
   }
 
-
   static const double _rowPadH = 16;
 
   @override
@@ -212,7 +213,8 @@ class _TableRow extends StatelessWidget {
     final widths = _columnWidths(branches.length, tableWidth - _rowPadH * 2);
     var colIdx = 0;
 
-    Widget cell(Widget child) => SizedBox(width: widths[colIdx++], child: child);
+    Widget cell(Widget child) =>
+        SizedBox(width: widths[colIdx++], child: child);
 
     return Container(
       color: isEven
@@ -223,42 +225,54 @@ class _TableRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Product
-          cell(Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                item.productName,
-                overflow: TextOverflow.ellipsis,
-                style: getOutfitStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              if (item.variantName.isNotEmpty)
+          cell(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 Text(
-                  item.variantName,
+                  item.productName,
                   overflow: TextOverflow.ellipsis,
                   style: getOutfitStyle(
-                      fontSize: 11, color: AppColors.textSecondary),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
-            ],
-          )),
+                if (item.variantName.isNotEmpty)
+                  Text(
+                    item.variantName,
+                    overflow: TextOverflow.ellipsis,
+                    style: getOutfitStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+              ],
+            ),
+          ),
           // SKU
-          cell(Text(
-            item.sku ?? '—',
-            overflow: TextOverflow.ellipsis,
-            style:
-                getOutfitStyle(fontSize: 12, color: AppColors.textSecondary),
-          )),
+          cell(
+            Text(
+              item.sku ?? '—',
+              overflow: TextOverflow.ellipsis,
+              style: getOutfitStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
           // Per-branch
           for (final b in branches)
             cell(() {
               if (!item.trackStock) {
-                return Text('—',
-                    style: getOutfitStyle(
-                        fontSize: 13, color: AppColors.textMuted));
+                return Text(
+                  '—',
+                  style: getOutfitStyle(
+                    fontSize: 13,
+                    color: AppColors.textMuted,
+                  ),
+                );
               }
               final qty = item.stockByBranch[b.id] ?? 0;
               return Text(
@@ -271,50 +285,62 @@ class _TableRow extends StatelessWidget {
               );
             }()),
           // Total
-          cell(Text(
-            item.trackStock ? '${item.totalStock}' : '—',
-            style: getOutfitStyle(
-              fontSize: 13,
-              fontWeight: item.trackStock ? FontWeight.w600 : FontWeight.w400,
-              color: item.trackStock ? AppColors.textPrimary : AppColors.textMuted,
+          cell(
+            Text(
+              item.trackStock ? '${item.totalStock}' : '—',
+              style: getOutfitStyle(
+                fontSize: 13,
+                fontWeight: item.trackStock ? FontWeight.w600 : FontWeight.w400,
+                color: item.trackStock
+                    ? AppColors.textPrimary
+                    : AppColors.textMuted,
+              ),
             ),
-          )),
+          ),
           // Reorder
-          cell(Text(
-            (!item.trackStock || item.reorderLevel <= 0) ? '—' : '${item.reorderLevel}',
-            style: getOutfitStyle(
-              fontSize: 13,
-              color: (item.trackStock && item.reorderLevel > 0)
-                  ? AppColors.textSecondary
-                  : AppColors.textMuted,
+          cell(
+            Text(
+              (!item.trackStock || item.reorderLevel <= 0)
+                  ? '—'
+                  : '${item.reorderLevel}',
+              style: getOutfitStyle(
+                fontSize: 13,
+                color: (item.trackStock && item.reorderLevel > 0)
+                    ? AppColors.textSecondary
+                    : AppColors.textMuted,
+              ),
             ),
-          )),
+          ),
           // Status
-          cell(Align(
-            alignment: Alignment.centerLeft,
-            child: StockStatusBadge(status: item.status),
-          )),
+          cell(
+            Align(
+              alignment: Alignment.centerLeft,
+              child: StockStatusBadge(status: item.status),
+            ),
+          ),
           // Actions — hidden for untracked items
-          cell(item.trackStock
-              ? Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    _ActionButton(
-                      label: '+ In',
-                      color: AppColors.success,
-                      bgColor: AppColors.successSoft,
-                      onTap: () => onAdjust(item, true),
-                    ),
-                    const SizedBox(width: 6),
-                    _ActionButton(
-                      label: '− Out',
-                      color: AppColors.error,
-                      bgColor: AppColors.errorSoft,
-                      onTap: () => onAdjust(item, false),
-                    ),
-                  ],
-                )
-              : const SizedBox.shrink()),
+          cell(
+            item.trackStock
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      _ActionButton(
+                        label: '+ In',
+                        color: AppColors.success,
+                        bgColor: AppColors.successSoft,
+                        onTap: () => onAdjust(item, true),
+                      ),
+                      const SizedBox(width: 6),
+                      _ActionButton(
+                        label: '− Out',
+                        color: AppColors.error,
+                        bgColor: AppColors.errorSoft,
+                        onTap: () => onAdjust(item, false),
+                      ),
+                    ],
+                  )
+                : const SizedBox.shrink(),
+          ),
         ],
       ),
     );
@@ -379,21 +405,20 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(IconlyLight.category,
-                size: 48, color: AppColors.textMuted),
+            Icon(IconlyLight.category, size: 48, color: AppColors.textMuted),
             const SizedBox(height: 12),
             Text(
               'No products found',
               style: getOutfitStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary),
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               'Add products to start tracking inventory',
-              style:
-                  getOutfitStyle(fontSize: 13, color: AppColors.textMuted),
+              style: getOutfitStyle(fontSize: 13, color: AppColors.textMuted),
             ),
           ],
         ),

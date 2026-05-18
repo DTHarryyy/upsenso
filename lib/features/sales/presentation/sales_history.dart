@@ -7,6 +7,7 @@ import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/utils/formatters.dart';
+import 'package:pos/core/widgets/app_sub_page_bar.dart';
 import 'package:pos/features/sales/domain/entities/sale_transaction.dart';
 import 'package:pos/features/sales/domain/repositories/i_sales_repository.dart';
 import 'package:pos/features/sales/presentation/cubit/sales_cubit.dart';
@@ -57,22 +58,7 @@ class _SalesHistoryState extends State<SalesHistory> {
             _cubit.startWatching(branchId: branchState.selectedBranchId),
         child: Scaffold(
           backgroundColor: AppColors.background,
-          appBar: (ModalRoute.of(context)?.canPop ?? false)
-              ? AppBar(
-                  backgroundColor: AppColors.surface,
-                  elevation: 0,
-                  scrolledUnderElevation: 0,
-                  centerTitle: true,
-                  title: Text(
-                    'Sales History',
-                    style: AppTextStyles.title(context),
-                  ),
-                  leading: IconButton(
-                    icon: const Icon(IconlyLight.arrow_left, size: 20),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                )
-              : null,
+          appBar: AppSubPageBar(title: 'Sales History'),
           body: BlocBuilder<SalesCubit, SalesState>(
             builder: (context, state) => _buildBody(context, state),
           ),
@@ -99,11 +85,7 @@ class _SalesHistoryState extends State<SalesHistory> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              IconlyLight.paper,
-              size: 64,
-              color: AppColors.textMuted,
-            ),
+            Icon(IconlyLight.paper, size: 64, color: AppColors.textMuted),
             const SizedBox(height: 16),
             Text(
               'No transactions yet',

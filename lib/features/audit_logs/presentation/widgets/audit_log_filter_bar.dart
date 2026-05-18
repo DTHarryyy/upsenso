@@ -6,13 +6,21 @@ import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/widgets/app_date_range_picker.dart';
 import 'package:pos/core/widgets/app_dropdown.dart';
 import 'package:pos/core/widgets/app_search_bar.dart';
+import 'package:pos/core/widgets/app_view_toggle.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/features/audit_logs/presentation/bloc/audit_log_bloc.dart';
 import 'package:pos/features/audit_logs/presentation/bloc/audit_log_event.dart';
 import 'package:pos/features/audit_logs/presentation/bloc/audit_log_state.dart';
 
 class AuditLogFilterBar extends StatelessWidget {
-  const AuditLogFilterBar({super.key});
+  final AppViewMode viewMode;
+  final ValueChanged<AppViewMode> onViewModeChanged;
+
+  const AuditLogFilterBar({
+    super.key,
+    required this.viewMode,
+    required this.onViewModeChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -52,6 +60,8 @@ class AuditLogFilterBar extends StatelessWidget {
                   dateRange: dateRange,
                   entityTypes: entityTypes,
                   hasFilters: hasFilters,
+                  viewMode: viewMode,
+                  onViewModeChanged: onViewModeChanged,
                 )
               : Row(
                   children: [
@@ -161,6 +171,13 @@ class AuditLogFilterBar extends StatelessWidget {
                             )
                           : const SizedBox.shrink(),
                     ),
+                    const SizedBox(width: 10),
+
+                    // ── View toggle ───────────────────────────────────────
+                    AppViewToggle(
+                      current: viewMode,
+                      onChanged: onViewModeChanged,
+                    ),
                   ],
                 ),
         );
@@ -176,12 +193,16 @@ class _MobileFilters extends StatelessWidget {
   final DateTimeRange? dateRange;
   final List<String> entityTypes;
   final bool hasFilters;
+  final AppViewMode viewMode;
+  final ValueChanged<AppViewMode> onViewModeChanged;
 
   const _MobileFilters({
     required this.loaded,
     required this.dateRange,
     required this.entityTypes,
     required this.hasFilters,
+    required this.viewMode,
+    required this.onViewModeChanged,
   });
 
   @override
@@ -189,11 +210,19 @@ class _MobileFilters extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Row 1: Search (full width)
-        AppSearchBar(
-          hint: 'Search…',
-          onChanged: (q) =>
-              context.read<AuditLogBloc>().add(SearchAuditLogs(query: q)),
+        // Row 1: Search + view toggle
+        Row(
+          children: [
+            Expanded(
+              child: AppSearchBar(
+                hint: 'Search…',
+                onChanged: (q) =>
+                    context.read<AuditLogBloc>().add(SearchAuditLogs(query: q)),
+              ),
+            ),
+            const SizedBox(width: 8),
+            AppViewToggle(current: viewMode, onChanged: onViewModeChanged),
+          ],
         ),
         const SizedBox(height: 8),
 

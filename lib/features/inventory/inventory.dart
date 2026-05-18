@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:iconly/iconly.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
-import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/widgets/app_sub_page_bar.dart';
+import 'package:pos/core/widgets/app_view_toggle.dart';
 import 'package:pos/core/widgets/branch_action_dialog.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
@@ -146,36 +146,76 @@ class _InventoryState extends State<Inventory> {
                 : null;
             final viewMode = state is InventoryLoaded
                 ? state.viewMode
-                : InventoryViewMode.table;
+                : AppViewMode.table;
 
             return Scaffold(
               backgroundColor: AppColors.background,
-              appBar: (ModalRoute.of(context)?.canPop ?? false)
-                  ? AppBar(
-                      backgroundColor: AppColors.surface,
-                      elevation: 0,
-                      scrolledUnderElevation: 0,
-                      centerTitle: true,
-                      title: Text(
-                        'Stock Level',
-                        style: AppTextStyles.title(context),
-                      ),
-                      leading: IconButton(
-                        icon: const Icon(IconlyLight.arrow_left, size: 20),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                    )
-                  : null,
-              body: RefreshIndicator(
-                onRefresh: () async => _triggerLoad(),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final w = constraints.maxWidth;
-                    final hPad = _adaptivePad(w);
-                    // User toggle takes precedence; default to table on wide screens.
-                    final useTable = viewMode == InventoryViewMode.table;
+              appBar: AppSubPageBar(title: 'Stock Level'),
+              body: LayoutBuilder(
+                builder: (context, constraints) {
+                  final w = constraints.maxWidth;
+                  final hPad = _adaptivePad(w);
+                  final useTable = viewMode == AppViewMode.table;
+                  final branches =
+                      context.read<BranchCubit>().state.selectedBranchId == null
+                      ? data.branches
+                      : <BranchInfo>[];
 
-                    return SingleChildScrollView(
+                  final headerSection = Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      InventoryStatsRow(data: data, isLoading: isLoading),
+                      const SizedBox(height: 16),
+                      _SearchAndFilter(
+                        searchController: _searchController,
+                        viewMode: viewMode,
+                        onSearchChanged: (q) => _cubit.setSearchQuery(q),
+                        onViewModeChanged: (m) => _cubit.setViewMode(m),
+                      ),
+                      const SizedBox(height: 12),
+                      _StatusChips(
+                        selected: statusFilter,
+                        onSelected: (s) => _cubit.setStatusFilter(s),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  );
+
+                  // Table mode: fixed header + Expanded table with its own
+                  // vertical scroll. This avoids nesting the wide table inside
+                  // an unbounded vertical SingleChildScrollView, which is what
+                  // caused the overflow / layout crash on mobile.
+                  if (useTable) {
+                    return Column(
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.fromLTRB(hPad, 20, hPad, 0),
+                          child: headerSection,
+                        ),
+                        Expanded(
+                          child: Padding(
+                            padding: EdgeInsets.fromLTRB(hPad, 0, hPad, 20),
+                            child: RefreshIndicator(
+                              onRefresh: () async => _triggerLoad(),
+                              child: isLoading
+                                  ? const _InventorySkeleton()
+                                  : InventoryDesktopTable(
+                                      items: items,
+                                      branches: branches,
+                                      onAdjust: _onAdjust,
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+
+                  // Card mode: normal full-page vertical scroll.
+                  return RefreshIndicator(
+                    onRefresh: () async => _triggerLoad(),
+                    child: SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: EdgeInsets.symmetric(
                         horizontal: hPad,
@@ -184,63 +224,21 @@ class _InventoryState extends State<Inventory> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // _PageHeader(onRefresh: _triggerLoad),
-                          // const SizedBox(height: 18),
-                          InventoryStatsRow(data: data, isLoading: isLoading),
-                          const SizedBox(height: 16),
-
-                          _SearchAndFilter(
-                            searchController: _searchController,
-                            viewMode: viewMode,
-                            onSearchChanged: (q) => _cubit.setSearchQuery(q),
-                            onViewModeChanged: (m) => _cubit.setViewMode(m),
-                          ),
-                          const SizedBox(height: 12),
-
-                          _StatusChips(
-                            selected: statusFilter,
-                            onSelected: (s) => _cubit.setStatusFilter(s),
-                          ),
-                          const SizedBox(height: 16),
-
+                          headerSection,
                           if (isLoading)
                             const _InventorySkeleton()
-                          else if (useTable)
-                            InventoryDesktopTable(
-                              items: items,
-                              // Hide per-branch columns when a specific branch
-                              // is selected — the filtered total already shows
-                              // the correct stock; individual columns are noise.
-                              branches:
-                                  context
-                                          .read<BranchCubit>()
-                                          .state
-                                          .selectedBranchId ==
-                                      null
-                                  ? data.branches
-                                  : [],
-                              onAdjust: _onAdjust,
-                            )
                           else
                             _CardList(
                               items: items,
-                              branches:
-                                  context
-                                          .read<BranchCubit>()
-                                          .state
-                                          .selectedBranchId ==
-                                      null
-                                  ? data.branches
-                                  : [],
+                              branches: branches,
                               onAdjust: _onAdjust,
                             ),
-
                           const SizedBox(height: 24),
                         ],
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  );
+                },
               ),
             );
           },
@@ -257,9 +255,9 @@ double _adaptivePad(double width) =>
 
 class _SearchAndFilter extends StatelessWidget {
   final TextEditingController searchController;
-  final InventoryViewMode viewMode;
+  final AppViewMode viewMode;
   final ValueChanged<String> onSearchChanged;
-  final ValueChanged<InventoryViewMode> onViewModeChanged;
+  final ValueChanged<AppViewMode> onViewModeChanged;
 
   const _SearchAndFilter({
     required this.searchController,
@@ -304,94 +302,8 @@ class _SearchAndFilter extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        _ViewToggle(current: viewMode, onChanged: onViewModeChanged),
+        AppViewToggle(current: viewMode, onChanged: onViewModeChanged),
       ],
-    );
-  }
-}
-
-// ── View mode toggle (Cards ↔ Table) ────────────────────────────────────────
-
-class _ViewToggle extends StatelessWidget {
-  final InventoryViewMode current;
-  final ValueChanged<InventoryViewMode> onChanged;
-
-  const _ViewToggle({required this.current, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderSoft),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _ToggleBtn(
-            icon: Icons.grid_view_rounded,
-            tooltip: 'Card view',
-            active: current == InventoryViewMode.cards,
-            isFirst: true,
-            onTap: () => onChanged(InventoryViewMode.cards),
-          ),
-          Container(width: 1, height: 22, color: AppColors.borderSoft),
-          _ToggleBtn(
-            icon: Icons.table_rows_rounded,
-            tooltip: 'Table view',
-            active: current == InventoryViewMode.table,
-            isFirst: false,
-            onTap: () => onChanged(InventoryViewMode.table),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ToggleBtn extends StatelessWidget {
-  final IconData icon;
-  final String tooltip;
-  final bool active;
-  final bool isFirst;
-  final VoidCallback onTap;
-
-  const _ToggleBtn({
-    required this.icon,
-    required this.tooltip,
-    required this.active,
-    required this.isFirst,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.horizontal(
-          left: isFirst ? const Radius.circular(9) : Radius.zero,
-          right: isFirst ? Radius.zero : const Radius.circular(9),
-        ),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-          decoration: BoxDecoration(
-            color: active ? AppColors.brandSoft : Colors.transparent,
-            borderRadius: BorderRadius.horizontal(
-              left: isFirst ? const Radius.circular(9) : Radius.zero,
-              right: isFirst ? Radius.zero : const Radius.circular(9),
-            ),
-          ),
-          child: Icon(
-            icon,
-            size: 18,
-            color: active ? AppColors.brand : AppColors.textSecondary,
-          ),
-        ),
-      ),
     );
   }
 }
