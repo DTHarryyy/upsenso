@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pos/core/audit/audit_log_service.dart';
+import 'package:pos/core/config/di.dart';
 import 'package:pos/core/errors/supabase_error_mapper.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_service.dart';
+import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/features/auth/domain/entities/app_user.dart';
 
 import '../../domain/usecases/check_email_exists.dart';
@@ -200,7 +203,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final resolved = await _getUserContextWithRetry(user.id).timeout(
         const Duration(seconds: 5),
         onTimeout: () {
-          debugPrint('AuthBloc: Context fetch timed out — emitting partial user');
+          debugPrint(
+            'AuthBloc: Context fetch timed out — emitting partial user',
+          );
           return null;
         },
       );
@@ -237,6 +242,25 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final authed = (await _getUserContextWithRetry(user.id)) ?? user;
       await _initialSync(authed);
       emit(AuthAuthenticated(authed));
+      sl<AuditLogService>().log(
+        actionType: AuditLogActionType.userLogin,
+        entityType: 'user',
+        entityId: authed.id,
+        entityName: authed.fullName,
+        userName: authed.fullName,
+        description:
+            'User signed in: ${authed.fullName ?? authed.email ?? 'user'}',
+        metadata: {
+          'method': 'email',
+          'role': authed.roleName ?? 'Unknown',
+          'branch': authed.branchName?.isNotEmpty == true
+              ? authed.branchName!
+              : 'All Branches',
+        },
+        businessId: authed.businessId ?? '',
+        branchId: authed.branchId ?? '',
+        userId: authed.id,
+      );
     } catch (err) {
       emit(AuthError(_errorMessage(err)));
       emit(AuthUnauthenticated());
@@ -344,15 +368,40 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     _pendingSignUpEmail = null;
     _pendingSignUpPassword = null;
 
+    // Log before clearing local data so the context is still available.
+    final currentState = state;
+    if (currentState is AuthAuthenticated) {
+      await sl<AuditLogService>().log(
+        actionType: AuditLogActionType.userLogout,
+        entityType: 'user',
+        entityId: currentState.user.id,
+        entityName: currentState.user.fullName,
+        userName: currentState.user.fullName,
+        description:
+            'User signed out: ${currentState.user.fullName ?? currentState.user.email ?? 'user'}',
+        metadata: {
+          'role': currentState.user.roleName ?? 'Unknown',
+          'branch': currentState.user.branchName?.isNotEmpty == true
+              ? currentState.user.branchName!
+              : 'All Branches',
+        },
+        businessId: currentState.user.businessId ?? '',
+        branchId: currentState.user.branchId ?? '',
+        userId: currentState.user.id,
+      );
+    }
+
     // Clear all local data before redirecting so the next account cannot
     // see the previous account's records.
     await syncService?.clearLocalData();
 
     emit(AuthUnauthenticated());
 
-    unawaited(signOut().catchError((err) {
-      debugPrint('AuthBloc: sign-out server call failed: $err');
-    }));
+    unawaited(
+      signOut().catchError((err) {
+        debugPrint('AuthBloc: sign-out server call failed: $err');
+      }),
+    );
   }
 
   Future<void> _onUserChanged(
@@ -395,10 +444,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     // /business-profile-setup during the brief window between an OAuth
     // redirect (where the Supabase session is fresh but businessId hasn't
     // been fetched yet) and the getUserBusinessContext call completing.
-    final cachedContext = await getUserBusinessContext(user.id).timeout(
-      const Duration(seconds: 3),
-      onTimeout: () => null,
-    );
+    final cachedContext = await getUserBusinessContext(
+      user.id,
+    ).timeout(const Duration(seconds: 3), onTimeout: () => null);
     if (cachedContext != null && _hasCompleteContext(cachedContext)) {
       emit(AuthAuthenticated(cachedContext));
       return;
@@ -411,10 +459,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(AuthAuthenticated(interim));
     }
 
-    final userWithContext = await _getUserContextWithRetry(user.id).timeout(
-      const Duration(seconds: 5),
-      onTimeout: () => interim,
-    );
+    final userWithContext = await _getUserContextWithRetry(
+      user.id,
+    ).timeout(const Duration(seconds: 5), onTimeout: () => interim);
     final resolved = userWithContext ?? interim;
 
     // Never downgrade: if we already have a complete context (businessId +

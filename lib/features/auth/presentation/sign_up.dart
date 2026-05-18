@@ -86,6 +86,35 @@ class _SignUpState extends State<SignUp> {
         }
       },
       builder: (context, state) {
+        if (state is AuthOAuthInProgress) {
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Completing ${state.provider == 'google' ? 'Google' : 'Facebook'} sign-up…',
+                    style: AppTextStyles.body(context).copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Please wait while we finish setting up your account',
+                    style: AppTextStyles.caption(
+                      context,
+                    ).copyWith(color: AppColors.textSecondary),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
         final isLoading =
             state is AuthLoading && state.type == AuthLoadingType.signUp;
         final isGoogleLoading =
@@ -108,10 +137,9 @@ class _SignUpState extends State<SignUp> {
                 // Heading
                 Text(
                   AppStrings.signUpHeadline,
-                  style: AppTextStyles.headline(context).copyWith(
-                    color: AppColors.textPrimary,
-                    height: 1.3,
-                  ),
+                  style: AppTextStyles.headline(
+                    context,
+                  ).copyWith(color: AppColors.textPrimary, height: 1.3),
                 ),
                 const SizedBox(height: 6),
                 Text(

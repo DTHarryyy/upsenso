@@ -81,10 +81,19 @@ class AuthRepositoryImpl implements AuthRepository {
     final user = res.user;
     if (user == null) throw Exception('Sign-in failed (no user).');
 
-    // Ensure user has full_name set from email if missing
+    // Load existing Drift cache first so we can use the profile-set name below.
+    final existing = await _getCachedUserContextFor(user.id);
+    final existingBusinessId = existing?.businessId;
+
+    // Ensure user has full_name set. Prefer the Drift-cached profile name so
+    // that Supabase metadata stays in sync with what the user set in-app.
+    // Falls back to email-derived name only when there is no cached name.
     if (user.userMetadata?['full_name'] == null ||
         user.userMetadata?['full_name'] == '') {
-      await remote.updateUserMetadata(email: email);
+      await remote.updateUserMetadata(
+        email: email,
+        fullName: existing?.fullName,
+      );
     }
 
     final appUser = AppUserModel.fromSupabaseUser(user);
@@ -92,13 +101,13 @@ class AuthRepositoryImpl implements AuthRepository {
     // Preserve any businessId/role context from a previous session so that a
     // slow or failing getUserBusinessContext fetch doesn't strip the context
     // and send an existing user to businessProfileSetup.
-    final existing = await _getCachedUserContextFor(user.id);
-    final existingBusinessId = existing?.businessId;
     if (existing != null && existingBusinessId != null) {
       _cachedUserInMemory = AppUserModel(
         id: appUser.id,
         email: appUser.email ?? existing.email,
-        fullName: appUser.fullName ?? existing.fullName,
+        // Prefer Drift-cached fullName (set by profile edits) over the
+        // session metadata value which may be an email-derived fallback.
+        fullName: existing.fullName ?? appUser.fullName,
         avatarUrl: existing.avatarUrl ?? appUser.avatarUrl,
         businessId: existing.businessId,
         roleId: existing.roleId,
@@ -282,9 +291,11 @@ class AuthRepositoryImpl implements AuthRepository {
       final user = AppUserModel(
         id: userId,
         email: baseUser?.email,
+        // Prefer the cached/session fullName (updated by profile edits via
+        // updateUserMetadata) over the DB function's potentially stale value.
         fullName:
-            _normalizeNullableString(userData['full_name']) ??
-            baseUser?.fullName,
+            baseUser?.fullName ??
+            _normalizeNullableString(userData['full_name']),
         avatarUrl: _cachedUserInMemory?.avatarUrl ?? baseUser?.avatarUrl,
         businessId:
             _normalizeNullableString(userData['business_id']) ??
