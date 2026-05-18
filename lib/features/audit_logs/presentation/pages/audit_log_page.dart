@@ -15,9 +15,11 @@ import 'package:pos/features/audit_logs/presentation/bloc/audit_log_bloc.dart';
 import 'package:pos/features/audit_logs/presentation/bloc/audit_log_event.dart';
 import 'package:pos/features/audit_logs/presentation/bloc/audit_log_state.dart'; // ignore: unused_import
 import 'package:pos/features/audit_logs/presentation/widgets/audit_log_filter_bar.dart';
+import 'package:pos/features/audit_logs/presentation/widgets/audit_log_skeleton.dart';
 import 'package:pos/features/audit_logs/presentation/widgets/audit_log_tile.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuditLogPage extends StatelessWidget {
   const AuditLogPage({super.key});
@@ -39,15 +41,36 @@ class _AuditLogView extends StatefulWidget {
 }
 
 class _AuditLogViewState extends State<_AuditLogView> {
-  AppViewMode? _viewMode; // null = not yet set by user
+  static const _kViewModeKey = 'audit_log_view_mode';
 
+  AppViewMode? _viewMode; // null = not yet restored from storage
+
+  /// Persist the chosen layout and rebuild.
   void _setViewMode(AppViewMode mode) {
     setState(() => _viewMode = mode);
+    SharedPreferences.getInstance().then(
+      (p) => p.setString(_kViewModeKey, mode.name),
+    );
+  }
+
+  /// Restore the last-used layout from local storage.
+  Future<void> _loadViewMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_kViewModeKey);
+    if (saved != null && mounted) {
+      setState(() {
+        _viewMode = AppViewMode.values.firstWhere(
+          (m) => m.name == saved,
+          orElse: () => AppViewMode.cards,
+        );
+      });
+    }
   }
 
   @override
   void initState() {
     super.initState();
+    _loadViewMode();
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
@@ -110,9 +133,7 @@ class _Body extends StatelessWidget {
     return BlocBuilder<AuditLogBloc, AuditLogState>(
       builder: (context, state) {
         if (state is AuditLogLoading) {
-          return const Center(
-            child: CircularProgressIndicator(color: AppColors.brand),
-          );
+          return AuditLogSkeleton(viewMode: viewMode);
         }
 
         if (state is AuditLogError) {

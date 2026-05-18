@@ -150,7 +150,6 @@ class _InventoryState extends State<Inventory> {
 
             return Scaffold(
               backgroundColor: AppColors.background,
-              appBar: AppSubPageBar(title: 'Stock Level'),
               body: LayoutBuilder(
                 builder: (context, constraints) {
                   final w = constraints.maxWidth;
