@@ -172,7 +172,8 @@ class RolePermissionMatrix {
       AppFeature.branchConfiguration,
       AppFeature.productsCatalogue,
       AppFeature.supplierDirectory,
-      AppFeature.auditLogs,
+      // auditLogs intentionally excluded: raw audit log access is
+      // restricted to owner / super_admin only.
       AppFeature.profileSettings,
       AppFeature.dashboardManager,
     },

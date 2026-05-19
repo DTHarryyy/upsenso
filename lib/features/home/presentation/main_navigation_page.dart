@@ -14,6 +14,8 @@ import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/navigation/sidebar_nav_cubit.dart';
+import 'package:pos/core/permissions/app_feature.dart';
+import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_service.dart';
 import 'package:pos/core/ui/widgets/app_bottom_nav.dart';
@@ -279,7 +281,6 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                       : AppBottomNav(
                           currentIndex: _currentIndex,
                           onTap: _onNavTap,
-                          userRole: roleName,
                         ),
                 ),
               );
@@ -486,27 +487,23 @@ class _AppSidebarState extends State<_AppSidebar>
     widget.onNavTap(7);
   }
 
-  // ── Role-based visibility helpers ──────────────────────────────────────
-  String get _roleLower =>
-      widget.userRole.trim().toLowerCase().replaceAll(' ', '_');
-  bool get _isCashier => _roleLower == 'cashier';
-  bool get _isInventoryStaff => _roleLower == 'inventory_staff';
-  bool get _isRestrictedEmployee => _isCashier || _isInventoryStaff;
-
-  // Cashier: dashboard + products + POS
-  // Inventory staff: dashboard + products + inventory
-  // All others: everything
+  // ── Feature-based visibility helpers — no hardcoded role strings ──────────
+  PermissionService get _permService => sl<PermissionService>();
   bool get _sidebarShowDashboard => true; // all roles see the dashboard
-  bool get _sidebarShowPos => !_isInventoryStaff;
-  bool get _sidebarShowInventory => !_isCashier;
+  bool get _sidebarShowPos =>
+      _permService.canAccessFeature(AppFeature.posTerminal);
+  bool get _sidebarShowInventory =>
+      _permService.canAccessFeature(AppFeature.inventoryManagement);
   bool get _sidebarShowProducts =>
       true; // all roles see products (read-only for cashier)
-  bool get _sidebarShowReports => !_isRestrictedEmployee;
+  bool get _sidebarShowReports =>
+      _permService.canAccessFeature(AppFeature.reportsAnalytics);
   bool get _sidebarShowOperations =>
-      !_isRestrictedEmployee; // sales history, expenses
-  bool get _sidebarShowSettings => !_isRestrictedEmployee;
+      _permService.canAccessFeature(AppFeature.expensesModule);
+  bool get _sidebarShowSettings =>
+      _permService.canAccessFeature(AppFeature.branchConfiguration);
   bool get _sidebarShowAuditLogs =>
-      _roleLower == 'owner' || _roleLower == 'super_admin';
+      _permService.canAccessFeature(AppFeature.auditLogs);
   @override
   Widget build(BuildContext context) {
     final w = widget.expanded ? _kSidebarExpanded : _kSidebarCollapsed;
@@ -691,7 +688,7 @@ class _AppSidebarState extends State<_AppSidebar>
                     ),
 
                   // ── My Profile — restricted employees only ──────────────────
-                  if (_isRestrictedEmployee) ...[
+                  if (!_sidebarShowOperations) ...[
                     const SizedBox(height: 6),
                     const Divider(height: 1, color: AppColors.borderSoft),
                     const SizedBox(height: 6),

@@ -9,6 +9,9 @@ import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
+import 'package:pos/core/permissions/app_permission.dart';
+import 'package:pos/core/permissions/permission_service.dart';
+import 'package:pos/core/ui/widgets/permission_gate.dart';
 import 'package:pos/core/widgets/app_filled_button.dart';
 import 'package:pos/core/widgets/app_sub_page_bar.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
@@ -22,6 +25,7 @@ import 'package:pos/features/employees/presentation/bloc/employee_state.dart';
 import 'package:pos/features/employees/presentation/dialogs/employee_form_dialog.dart';
 import 'package:pos/features/employees/presentation/pages/employee_details_page.dart';
 import 'package:pos/features/employees/presentation/widgets/employee_card.dart';
+import 'package:pos/features/employees/presentation/widgets/employee_card_skeleton.dart';
 import 'package:pos/features/employees/presentation/widgets/employee_filter_bar.dart';
 
 class EmployeesPage extends StatelessWidget {
@@ -182,10 +186,13 @@ class _EmployeesViewState extends State<_EmployeesView> {
         appBar: AppSubPageBar(
           title: 'Employees',
           actions: [
-            IconButton(
-              icon: const Icon(IconlyLight.plus, color: AppColors.brand),
-              onPressed: _showAddDialog,
-              tooltip: 'Add Employee',
+            PermissionGate(
+              permission: AppPermission.createEmployee,
+              child: IconButton(
+                icon: const Icon(IconlyLight.plus, color: AppColors.brand),
+                onPressed: _showAddDialog,
+                tooltip: 'Add Employee',
+              ),
             ),
           ],
         ),
@@ -197,9 +204,7 @@ class _EmployeesViewState extends State<_EmployeesView> {
               child: BlocBuilder<EmployeeBloc, EmployeeState>(
                 builder: (context, state) {
                   if (state is EmployeeLoading || state is EmployeeInitial) {
-                    return const Center(
-                      child: CircularProgressIndicator(color: AppColors.brand),
-                    );
+                    return const _EmployeeSkeletonGrid();
                   }
                   if (state is EmployeeError) {
                     return _ErrorView(message: state.message);
@@ -222,20 +227,45 @@ class _EmployeesViewState extends State<_EmployeesView> {
                         child: loaded.displayEmployees.isEmpty
                             ? _EmptyState(
                                 hasFilters: loaded.hasActiveFilters,
-                                onAdd: _showAddDialog,
+                                onAdd:
+                                    sl<PermissionService>().hasPermission(
+                                      AppPermission.createEmployee,
+                                    )
+                                    ? _showAddDialog
+                                    : null,
                               )
                             : _EmployeeList(
                                 employees: loaded.displayEmployees,
                                 branches: _branches,
                                 onTap: _showDetails,
-                                onEdit: _showEditDialog,
-                                onArchive: _confirmArchive,
-                                onSuspend: (e) => context
-                                    .read<EmployeeBloc>()
-                                    .add(SuspendEmployee(e.id)),
-                                onReactivate: (e) => context
-                                    .read<EmployeeBloc>()
-                                    .add(ReactivateEmployee(e.id)),
+                                onEdit:
+                                    sl<PermissionService>().hasPermission(
+                                      AppPermission.editEmployee,
+                                    )
+                                    ? _showEditDialog
+                                    : null,
+                                onArchive:
+                                    sl<PermissionService>().hasPermission(
+                                      AppPermission.editEmployee,
+                                    )
+                                    ? _confirmArchive
+                                    : null,
+                                onSuspend:
+                                    sl<PermissionService>().hasPermission(
+                                      AppPermission.suspendEmployee,
+                                    )
+                                    ? (e) => context.read<EmployeeBloc>().add(
+                                        SuspendEmployee(e.id),
+                                      )
+                                    : null,
+                                onReactivate:
+                                    sl<PermissionService>().hasPermission(
+                                      AppPermission.suspendEmployee,
+                                    )
+                                    ? (e) => context.read<EmployeeBloc>().add(
+                                        ReactivateEmployee(e.id),
+                                      )
+                                    : null,
                               ),
                       ),
                     ],
@@ -245,16 +275,19 @@ class _EmployeesViewState extends State<_EmployeesView> {
             ),
           ],
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: _showAddDialog,
-          backgroundColor: AppColors.brand,
-          icon: const Icon(Icons.person_add, color: Colors.white),
-          label: Text(
-            'Add Employee',
-            style: getOutfitStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
+        floatingActionButton: PermissionGate(
+          permission: AppPermission.createEmployee,
+          child: FloatingActionButton.extended(
+            onPressed: _showAddDialog,
+            backgroundColor: AppColors.brand,
+            icon: const Icon(Icons.person_add, color: Colors.white),
+            label: Text(
+              'Add Employee',
+              style: getOutfitStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
             ),
           ),
         ),
@@ -350,49 +383,79 @@ class _EmployeeList extends StatelessWidget {
   final List<Employee> employees;
   final List<Branch> branches;
   final ValueChanged<Employee> onTap;
-  final ValueChanged<Employee> onEdit;
-  final ValueChanged<Employee> onArchive;
-  final ValueChanged<Employee> onSuspend;
-  final ValueChanged<Employee> onReactivate;
+  final ValueChanged<Employee>? onEdit;
+  final ValueChanged<Employee>? onArchive;
+  final ValueChanged<Employee>? onSuspend;
+  final ValueChanged<Employee>? onReactivate;
 
   const _EmployeeList({
     required this.employees,
     required this.branches,
     required this.onTap,
-    required this.onEdit,
-    required this.onArchive,
-    required this.onSuspend,
-    required this.onReactivate,
+    this.onEdit,
+    this.onArchive,
+    this.onSuspend,
+    this.onReactivate,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isTablet = Breakpoints.isTablet(context);
+    Breakpoints.isTablet(context);
     final padding = EdgeInsets.symmetric(
       horizontal: Breakpoints.horizontalPadding(context),
       vertical: 8,
     );
 
-    if (isTablet) {
-      return GridView.builder(
-        padding: padding,
-        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 340,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 1.15,
-        ),
-        itemCount: employees.length,
-        itemBuilder: (_, i) => _buildCard(employees[i]),
-      );
-    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final int columns;
+        if (width >= 1440) {
+          columns = 5;
+        } else if (width >= 1024) {
+          columns = 4;
+        } else if (width >= 800) {
+          columns = 3;
+        } else if (width >= 600) {
+          columns = 2;
+        } else {
+          columns = 1;
+        }
+        const spacing = 12.0;
+        final rowCount = (employees.length / columns).ceil();
 
-    return ListView.separated(
-      padding: padding,
-      itemCount: employees.length,
-      // ignore: unnecessary_underscores
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (_, i) => _buildCard(employees[i]),
+        return SingleChildScrollView(
+          padding: padding,
+          child: Column(
+            children: List.generate(rowCount, (rowIndex) {
+              final start = rowIndex * columns;
+              final end = (start + columns).clamp(0, employees.length);
+              final rowItems = employees.sublist(start, end);
+
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: rowIndex < rowCount - 1 ? spacing : 0,
+                ),
+                child: IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (int i = 0; i < columns; i++) ...[
+                        if (i > 0) const SizedBox(width: spacing),
+                        Expanded(
+                          child: i < rowItems.length
+                              ? _buildCard(rowItems[i])
+                              : const SizedBox(),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ),
+        );
+      },
     );
   }
 
@@ -406,13 +469,14 @@ class _EmployeeList extends StatelessWidget {
       employee: employee,
       branchName: branchName,
       onTap: () => onTap(employee),
-      onEdit: () => onEdit(employee),
-      onArchive: () => onArchive(employee),
-      onSuspend: employee.status == EmployeeStatus.active
-          ? () => onSuspend(employee)
+      onEdit: onEdit != null ? () => onEdit!(employee) : null,
+      onArchive: onArchive != null ? () => onArchive!(employee) : null,
+      onSuspend: onSuspend != null && employee.status == EmployeeStatus.active
+          ? () => onSuspend!(employee)
           : null,
-      onReactivate: employee.status != EmployeeStatus.active
-          ? () => onReactivate(employee)
+      onReactivate:
+          onReactivate != null && employee.status != EmployeeStatus.active
+          ? () => onReactivate!(employee)
           : null,
     );
   }
@@ -422,9 +486,9 @@ class _EmployeeList extends StatelessWidget {
 
 class _EmptyState extends StatelessWidget {
   final bool hasFilters;
-  final VoidCallback onAdd;
+  final VoidCallback? onAdd;
 
-  const _EmptyState({required this.hasFilters, required this.onAdd});
+  const _EmptyState({required this.hasFilters, this.onAdd});
 
   @override
   Widget build(BuildContext context) {
@@ -469,7 +533,7 @@ class _EmptyState extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-            if (!hasFilters) ...[
+            if (!hasFilters && onAdd != null) ...[
               const SizedBox(height: 24),
               SizedBox(
                 width: 180,
@@ -504,6 +568,72 @@ class _ErrorView extends StatelessWidget {
           textAlign: TextAlign.center,
         ),
       ),
+    );
+  }
+}
+
+// ── Skeleton Grid ──────────────────────────────────────────────────────────
+
+class _EmployeeSkeletonGrid extends StatelessWidget {
+  const _EmployeeSkeletonGrid();
+
+  @override
+  Widget build(BuildContext context) {
+    final padding = EdgeInsets.symmetric(
+      horizontal: Breakpoints.horizontalPadding(context),
+      vertical: 8,
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final int columns;
+        if (width >= 1440) {
+          columns = 5;
+        } else if (width >= 1024) {
+          columns = 4;
+        } else if (width >= 800) {
+          columns = 3;
+        } else if (width >= 600) {
+          columns = 2;
+        } else {
+          columns = 1;
+        }
+        const spacing = 12.0;
+        const itemCount = 8;
+        final rowCount = (itemCount / columns).ceil();
+
+        return SingleChildScrollView(
+          padding: padding,
+          physics: const NeverScrollableScrollPhysics(),
+          child: Column(
+            children: List.generate(rowCount, (rowIndex) {
+              final start = rowIndex * columns;
+              final end = (start + columns).clamp(0, itemCount);
+              final cellCount = end - start;
+
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: rowIndex < rowCount - 1 ? spacing : 0,
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (int i = 0; i < columns; i++) ...[
+                      if (i > 0) const SizedBox(width: spacing),
+                      Expanded(
+                        child: i < cellCount
+                            ? const EmployeeCardSkeleton()
+                            : const SizedBox(),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }),
+          ),
+        );
+      },
     );
   }
 }

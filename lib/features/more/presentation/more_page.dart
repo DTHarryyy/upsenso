@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:iconly/iconly.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/permissions/app_feature.dart';
+import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/core/widgets/user_avatar.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
@@ -127,18 +130,20 @@ class _MorePageState extends State<MorePage>
         final role = displayRoleName(user?.roleName) ?? '';
         final business = user?.businessName ?? '';
 
-        final roleLower = (user?.roleName ?? '')
-            .trim()
-            .toLowerCase()
-            .replaceAll(' ', '_');
-        final isRestrictedEmployee =
-            roleLower == 'cashier' || roleLower == 'inventory_staff';
-        // Audit logs are owner / super_admin only — branch managers can see
-        // employees but NOT raw audit logs.
-        final canSeeAuditLogs =
-            roleLower == 'owner' || roleLower == 'super_admin';
-        // Employee management: owner, super_admin, branch_manager only.
-        final canSeeEmployees = !isRestrictedEmployee;
+        final permService = sl<PermissionService>();
+        // Feature-based visibility — no raw role-string comparisons.
+        // isRestrictedEmployee: roles without expense-module access (cashier, inventory_staff).
+        final isRestrictedEmployee = !permService.canAccessFeature(
+          AppFeature.expensesModule,
+        );
+        // Audit logs: owner / super_admin only (branchManager excluded by feature matrix).
+        final canSeeAuditLogs = permService.canAccessFeature(
+          AppFeature.auditLogs,
+        );
+        // Employee management: branchManager / owner / super_admin.
+        final canSeeEmployees = permService.canAccessFeature(
+          AppFeature.employeeManagement,
+        );
 
         return SafeArea(
           child: Column(

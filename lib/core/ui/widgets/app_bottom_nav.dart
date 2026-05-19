@@ -1,27 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:iconly/iconly.dart';
+import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/permissions/app_feature.dart';
+import 'package:pos/core/permissions/permission_service.dart';
 
 class AppBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
 
-  /// Raw role name from the authenticated user (e.g. 'cashier',
-  /// 'inventory_staff', 'branch_manager', 'Super Admin').
-  final String? userRole;
-
   const AppBottomNav({
     super.key,
     required this.currentIndex,
     required this.onTap,
-    this.userRole,
   });
 
   @override
   Widget build(BuildContext context) {
-    final role = (userRole ?? '').trim().toLowerCase().replaceAll(' ', '_');
-    final isCashier = role == 'cashier';
-    final isInventoryStaff = role == 'inventory_staff';
+    final service = sl<PermissionService>();
+    final canUsePOS = service.canAccessFeature(AppFeature.posTerminal);
+    final canUseReports = service.canAccessFeature(AppFeature.reportsAnalytics);
+    final canUseInventory = service.canAccessFeature(
+      AppFeature.inventoryManagement,
+    );
+    // Derive nav variant from feature access — no hardcoded role strings.
+    final isCashierLike = canUsePOS && !canUseReports && !canUseInventory;
+    final isInventoryLike = canUseInventory && !canUsePOS;
 
     return Container(
       decoration: BoxDecoration(
@@ -41,14 +45,14 @@ class AppBottomNav extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              // ── Cashier: Dashboard | Products | POS ──────────────────────
-              if (isCashier) ..._cashierItems(),
+              // ── Cashier-like (POS but no reports/inventory) ─────────────
+              if (isCashierLike) ..._cashierItems(),
 
-              // ── Inventory Staff: Dashboard | Products | Inventory ─────────
-              if (isInventoryStaff) ..._inventoryStaffItems(),
+              // ── Inventory-like (inventory but no POS) ────────────────────
+              if (isInventoryLike) ..._inventoryStaffItems(),
 
               // ── All other roles: full nav bar ─────────────────────────────
-              if (!isCashier && !isInventoryStaff) ..._fullNavItems(),
+              if (!isCashierLike && !isInventoryLike) ..._fullNavItems(),
             ],
           ),
         ),

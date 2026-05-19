@@ -7,6 +7,9 @@ import 'package:pos/core/const/app_key.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
+import 'package:pos/core/permissions/app_feature.dart';
+import 'package:pos/core/permissions/permission_service.dart';
+import 'package:pos/core/permissions/role_permission_matrix.dart';
 import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/features/ai_assistant/pages/ai_chat_page.dart';
 import 'package:pos/features/ai_assistant/bloc/ai_chat_bloc.dart';
@@ -108,19 +111,15 @@ class AppRouter {
       final user = authState.user;
       final hasBusiness = (user.businessId?.trim() ?? '').isNotEmpty;
 
-      // Normalize role name: handles both old snake_case text ('cashier',
-      // 'inventory_staff') and new Title Case names from public.roles
-      // ('Cashier', 'Inventory Staff', 'Branch Manager') introduced in
-      // migration 004.  Lowercasing + space→underscore makes both identical.
-      final roleLower = (user.roleName ?? '').trim().toLowerCase().replaceAll(
-        ' ',
-        '_',
-      );
-      final isEmployee =
-          roleLower == 'cashier' ||
-          roleLower == 'inventory_staff' ||
-          roleLower == 'owner' ||
-          roleLower == 'branch_manager';
+      // Normalise role using the same algorithm as RolePermissionMatrix so
+      // comparisons are always against typed constants (never raw strings).
+      final roleKey = RolePermissionMatrix.normalise(user.roleName);
+      final isEmployee = {
+        RolePermissionMatrix.cashier,
+        RolePermissionMatrix.inventoryStaff,
+        RolePermissionMatrix.owner,
+        RolePermissionMatrix.branchManager,
+      }.contains(roleKey);
 
       if (!hasBusiness &&
           !isEmployee &&
@@ -142,37 +141,28 @@ class AppRouter {
         return roleHome();
       }
 
-      // Role-based route guard: employees may only visit routes relevant to
-      // their role.
-      // Routes permitted for a cashier (sales + scoped visibility):
-      // dashboard (scoped), POS terminal, products (read-only), profile.
-      const cashierAllowed = {
-        AppRoutes.dashboard,
-        AppRoutes.posTerminal,
-        AppRoutes.products,
-        AppRoutes.profile,
-      };
-      if (roleLower == 'cashier' &&
-          !cashierAllowed.contains(location) &&
-          !isPasswordResetRoute) {
-        return AppRoutes.dashboard;
-      }
-
-      // Routes permitted for inventory staff:
-      // dashboard (scoped), inventory, products (stock management), profile.
-      // add/edit product are included — inventory staff manages the catalogue.
-      const inventoryAllowed = {
-        AppRoutes.dashboard,
-        AppRoutes.inventory,
-        AppRoutes.products,
-        AppRoutes.addProduct,
-        AppRoutes.editProduct,
-        AppRoutes.profile,
-      };
-      if (roleLower == 'inventory_staff' &&
-          !inventoryAllowed.contains(location) &&
-          !isPasswordResetRoute) {
-        return AppRoutes.dashboard;
+      // Feature-based route guard — replaces per-role allow-lists.
+      // Each route that requires a specific feature will redirect unauthorised
+      // users to the dashboard rather than throwing a 403 or blank screen.
+      // Add new entries here when adding new feature-gated routes.
+      if (!isPasswordResetRoute) {
+        const routeFeatureGuards = <String, AppFeature>{
+          AppRoutes.posTerminal: AppFeature.posTerminal,
+          AppRoutes.reports: AppFeature.reportsAnalytics,
+          AppRoutes.inventory: AppFeature.inventoryManagement,
+          AppRoutes.stockLevel: AppFeature.inventoryManagement,
+          AppRoutes.expenses: AppFeature.expensesModule,
+          AppRoutes.saleshistory: AppFeature.reportsAnalytics,
+          AppRoutes.employees: AppFeature.employeeManagement,
+          AppRoutes.auditLogs: AppFeature.auditLogs,
+          AppRoutes.settings: AppFeature.branchConfiguration,
+          AppRoutes.receiptSettings: AppFeature.branchConfiguration,
+        };
+        final requiredFeature = routeFeatureGuards[location];
+        if (requiredFeature != null &&
+            !sl<PermissionService>().canAccessFeature(requiredFeature)) {
+          return AppRoutes.dashboard;
+        }
       }
 
       return null;

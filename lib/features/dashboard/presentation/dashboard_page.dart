@@ -5,6 +5,8 @@ import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
 // import 'package:pos/features/ai_assistant/widgets/floating_ai_assistant_bar.dart';
+import 'package:pos/core/permissions/app_feature.dart';
+import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/dashboard/data/dashboard_data.dart';
@@ -124,16 +126,10 @@ class _DashboardPageState extends State<DashboardPage> {
                             // see a trimmed-down dashboard.
                             Builder(
                               builder: (ctx) {
-                                final authState = ctx.read<AuthBloc>().state;
-                                final roleLower = authState is AuthAuthenticated
-                                    ? (authState.user.roleName ?? '')
-                                          .trim()
-                                          .toLowerCase()
-                                          .replaceAll(' ', '_')
-                                    : '';
-                                final isRestricted =
-                                    roleLower == 'cashier' ||
-                                    roleLower == 'inventory_staff';
+                                final isRestricted = !sl<PermissionService>()
+                                    .canAccessFeature(
+                                      AppFeature.expensesModule,
+                                    );
                                 if (isRestricted) {
                                   return const SizedBox.shrink();
                                 }
@@ -191,16 +187,10 @@ class _DashboardPageState extends State<DashboardPage> {
                             // inventory staff; Category Performance is always shown.
                             Builder(
                               builder: (ctx) {
-                                final authState = ctx.read<AuthBloc>().state;
-                                final roleLower = authState is AuthAuthenticated
-                                    ? (authState.user.roleName ?? '')
-                                          .trim()
-                                          .toLowerCase()
-                                          .replaceAll(' ', '_')
-                                    : '';
-                                final isRestricted =
-                                    roleLower == 'cashier' ||
-                                    roleLower == 'inventory_staff';
+                                final isRestricted = !sl<PermissionService>()
+                                    .canAccessFeature(
+                                      AppFeature.expensesModule,
+                                    );
 
                                 if (isRestricted) {
                                   // Restricted roles: Category Performance full-width.
@@ -264,16 +254,10 @@ class _DashboardPageState extends State<DashboardPage> {
                             // Branch Comparison is hidden for cashier / inventory staff.
                             Builder(
                               builder: (ctx) {
-                                final authState = ctx.read<AuthBloc>().state;
-                                final roleLower = authState is AuthAuthenticated
-                                    ? (authState.user.roleName ?? '')
-                                          .trim()
-                                          .toLowerCase()
-                                          .replaceAll(' ', '_')
-                                    : '';
-                                final isRestricted =
-                                    roleLower == 'cashier' ||
-                                    roleLower == 'inventory_staff';
+                                final isRestricted = !sl<PermissionService>()
+                                    .canAccessFeature(
+                                      AppFeature.expensesModule,
+                                    );
 
                                 if (isRestricted) {
                                   // Restricted roles: Payment Methods full-width.

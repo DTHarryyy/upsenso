@@ -47,9 +47,11 @@ class EmployeeCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.max,
           children: [
             // ── Header row ─────────────────────────────────────────────
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 UserAvatar(
                   avatarUrl: employee.profileImageUrl,
@@ -80,6 +82,16 @@ class EmployeeCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      const SizedBox(height: 6),
+                      // ── Role + Status inline under name ────────────
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          EmployeeRoleBadge(role: employee.role),
+                          EmployeeStatusBadge(status: employee.status),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -93,44 +105,34 @@ class EmployeeCard extends StatelessWidget {
               ],
             ),
 
-            const SizedBox(height: 12),
+            const Spacer(),
+            SizedBox(height: 8),
             const Divider(color: AppColors.borderSoft, height: 1),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
 
-            // ── Meta row ───────────────────────────────────────────────
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
+            // ── Branch + Employee code in one row ───────────────────
+            Row(
               children: [
-                EmployeeRoleBadge(role: employee.role),
-                EmployeeStatusBadge(status: employee.status),
-              ],
-            ),
-
-            if (branchName != null) ...[
-              const SizedBox(height: 8),
-              Row(
-                children: [
+                if (branchName != null) ...[
                   const Icon(
                     Icons.store_outlined,
                     size: 13,
                     color: AppColors.textMuted,
                   ),
                   const SizedBox(width: 4),
-                  Text(
-                    branchName!,
-                    style: getOutfitStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
+                  Expanded(
+                    child: Text(
+                      branchName!,
+                      style: getOutfitStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  const SizedBox(width: 12),
                 ],
-              ),
-            ],
-
-            const SizedBox(height: 6),
-            Row(
-              children: [
                 const Icon(
                   Icons.badge_outlined,
                   size: 13,
@@ -171,11 +173,7 @@ class _ActionMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
-      icon: const Icon(
-        Icons.more_vert,
-        color: AppColors.textMuted,
-        size: 20,
-      ),
+      icon: const Icon(Icons.more_vert, color: AppColors.textMuted, size: 20),
       color: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       onSelected: (value) {
@@ -245,10 +243,7 @@ class _MenuItem extends StatelessWidget {
       children: [
         Icon(icon, size: 16, color: color),
         const SizedBox(width: 10),
-        Text(
-          label,
-          style: getOutfitStyle(fontSize: 13, color: color),
-        ),
+        Text(label, style: getOutfitStyle(fontSize: 13, color: color)),
       ],
     );
   }
