@@ -75,15 +75,39 @@ class EmployeesRemoteDs {
   /// log into the app.  Returns the new (or existing) `auth_user_id`, or
   /// `null` if the call fails (e.g. offline — the employee record still
   /// exists locally and can be linked to an auth account later).
+  ///
+  /// When the optional employee fields are supplied the RPC also upserts
+  /// the `public.employees` row atomically, so `get_my_business_context()`
+  /// works the moment the employee first logs in — without waiting for the
+  /// Flutter sync cycle to run.
   Future<String?> createAuthAccount({
     required String email,
     required String password,
+    String? employeeId,
+    String? businessId,
+    String? branchId,
+    String? fullName,
+    String? role,
+    String? employeeCode,
+    String? phone,
+    DateTime? hiredAt,
   }) async {
     try {
-      final result = await client.rpc(
-        'create_employee_auth_account',
-        params: {'p_email': email, 'p_password': password},
-      ) as String?;
+      final params = <String, dynamic>{
+        'p_email': email,
+        'p_password': password,
+      };
+      if (employeeId != null) params['p_employee_id'] = employeeId;
+      if (businessId != null) params['p_business_id'] = businessId;
+      if (branchId != null) params['p_branch_id'] = branchId;
+      if (fullName != null) params['p_full_name'] = fullName;
+      if (role != null) params['p_role'] = role;
+      if (employeeCode != null) params['p_employee_code'] = employeeCode;
+      if (phone != null) params['p_phone'] = phone;
+      if (hiredAt != null) params['p_hired_at'] = hiredAt.toIso8601String();
+      final result =
+          await client.rpc('create_employee_auth_account', params: params)
+              as String?;
       return result;
     } catch (_) {
       return null;

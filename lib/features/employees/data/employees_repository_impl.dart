@@ -21,9 +21,9 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
     required EmployeesDao dao,
     required EmployeesRemoteDs remoteDs,
     required EmployeeValidationService validator,
-  })  : _dao = dao,
-        _remoteDs = remoteDs,
-        _validator = validator;
+  }) : _dao = dao,
+       _remoteDs = remoteDs,
+       _validator = validator;
 
   // ── Read ──────────────────────────────────────────────────────────────────
 
@@ -98,13 +98,24 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
       metadata: {'role': role.dbValue, 'branch_id': branchId},
     );
 
-    // Attempt to create the Supabase Auth account immediately so the
-    // employee can log in as soon as possible.  This is best-effort:
-    // if the device is offline the employee record still exists locally
-    // and the auth account can be created after the next online sync.
+    // Create the Supabase Auth account and atomically write the
+    // public.employees row in the same RPC call.  This eliminates the
+    // race condition where an employee could log in before the Flutter
+    // sync cycle had a chance to push the employee record to Supabase.
+    // If the device is offline the local record still exists and both
+    // the auth account + server employee row are created on the next
+    // online sync via _syncEmployees().
     final createdAuthId = await _remoteDs.createAuthAccount(
       email: email,
       password: password,
+      employeeId: id,
+      businessId: businessId,
+      branchId: branchId,
+      fullName: fullName,
+      role: role.dbValue,
+      employeeCode: code,
+      phone: phone,
+      hiredAt: hiredAt,
     );
     if (createdAuthId != null) {
       await _dao.updateEmployee(

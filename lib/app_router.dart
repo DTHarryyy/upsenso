@@ -107,17 +107,55 @@ class AppRouter {
       final user = authState.user;
       final hasBusiness = (user.businessId?.trim() ?? '').isNotEmpty;
 
+      // Normalize role name: handles both old snake_case text ('cashier',
+      // 'inventory_staff') and new Title Case names from public.roles
+      // ('Cashier', 'Inventory Staff', 'Branch Manager') introduced in
+      // migration 004.  Lowercasing + space→underscore makes both identical.
+      final roleLower = (user.roleName ?? '').trim().toLowerCase().replaceAll(
+        ' ',
+        '_',
+      );
+      final isEmployee =
+          roleLower == 'cashier' ||
+          roleLower == 'inventory_staff' ||
+          roleLower == 'owner' ||
+          roleLower == 'branch_manager';
+
       if (!hasBusiness &&
+          !isEmployee &&
           !goingToBusinessProfileSetup &&
           !isPasswordResetRoute) {
         return AppRoutes.businessProfileSetup;
+      }
+
+      // Determine the role-appropriate home route.
+      String _roleHome() {
+        if (roleLower == 'cashier') return AppRoutes.posTerminal;
+        if (roleLower == 'inventory_staff') return AppRoutes.inventory;
+        return AppRoutes.dashboard;
       }
 
       if (hasBusiness &&
           (goingToOnboarding ||
               isPublicAuthRoute ||
               goingToBusinessProfileSetup)) {
-        return AppRoutes.dashboard;
+        return _roleHome();
+      }
+
+      // Role-based route guard: restrict cashiers and inventory staff to their
+      // respective modules. Profile and password-reset routes are always allowed.
+      final goingToProfile = location == AppRoutes.profile;
+      if (roleLower == 'cashier' &&
+          location != AppRoutes.posTerminal &&
+          !goingToProfile &&
+          !isPasswordResetRoute) {
+        return AppRoutes.posTerminal;
+      }
+      if (roleLower == 'inventory_staff' &&
+          location != AppRoutes.inventory &&
+          !goingToProfile &&
+          !isPasswordResetRoute) {
+        return AppRoutes.inventory;
       }
 
       return null;

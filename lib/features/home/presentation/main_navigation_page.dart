@@ -278,6 +278,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                       : AppBottomNav(
                           currentIndex: _currentIndex,
                           onTap: _onNavTap,
+                          userRole: roleName,
                         ),
                 ),
               );
@@ -484,6 +485,17 @@ class _AppSidebarState extends State<_AppSidebar>
     widget.onNavTap(7);
   }
 
+  // ── Role-based visibility helpers ──────────────────────────────────────
+  String get _roleLower =>
+      widget.userRole.trim().toLowerCase().replaceAll(' ', '_');
+  bool get _isCashier => _roleLower == 'cashier';
+  bool get _isInventoryStaff => _roleLower == 'inventory_staff';
+
+  /// True for all full-access roles (owner, branch_manager, super admin, etc.)
+  bool get _sidebarShowDashboard => !_isCashier && !_isInventoryStaff;
+  bool get _sidebarShowPos => !_isInventoryStaff;
+  bool get _sidebarShowInventory => !_isCashier;
+
   @override
   Widget build(BuildContext context) {
     final w = widget.expanded ? _kSidebarExpanded : _kSidebarCollapsed;
@@ -585,127 +597,139 @@ class _AppSidebarState extends State<_AppSidebar>
                 children: [
                   // ── MAIN section ──
                   if (layoutExpanded) const _SectionLabel(label: 'MAIN'),
-                  _NavItem(
-                    icon: IconlyLight.home,
-                    activeIcon: IconlyBold.home,
-                    label: 'Dashboard',
-                    index: 0,
-                    currentIndex: widget.currentIndex,
-                    expanded: layoutExpanded,
-                    onTap: widget.onNavTap,
-                  ),
-                  _NavItem(
-                    icon: IconlyLight.bag,
-                    activeIcon: IconlyBold.bag,
-                    label: 'Products',
-                    index: 1,
-                    currentIndex: widget.currentIndex,
-                    expanded: layoutExpanded,
-                    onTap: widget.onNavTap,
-                  ),
-                  _NavItem(
-                    icon: IconlyLight.scan,
-                    activeIcon: IconlyBold.scan,
-                    label: 'POS Terminal',
-                    index: 2,
-                    currentIndex: widget.currentIndex,
-                    expanded: layoutExpanded,
-                    onTap: widget.onNavTap,
-                    accent: true,
-                  ),
-                  _NavItem(
-                    icon: IconlyLight.chart,
-                    activeIcon: IconlyBold.chart,
-                    label: 'Reports',
-                    index: 3,
-                    currentIndex: widget.currentIndex,
-                    expanded: layoutExpanded,
-                    onTap: widget.onNavTap,
-                  ),
-                  _NavItem(
-                    icon: IconlyLight.category,
-                    activeIcon: IconlyBold.category,
-                    label: 'Inventory',
-                    index: 4,
-                    currentIndex: widget.currentIndex,
-                    expanded: layoutExpanded,
-                    onTap: widget.onNavTap,
-                  ),
+                  if (_sidebarShowDashboard)
+                    _NavItem(
+                      icon: IconlyLight.home,
+                      activeIcon: IconlyBold.home,
+                      label: 'Dashboard',
+                      index: 0,
+                      currentIndex: widget.currentIndex,
+                      expanded: layoutExpanded,
+                      onTap: widget.onNavTap,
+                    ),
+                  if (_sidebarShowDashboard)
+                    _NavItem(
+                      icon: IconlyLight.bag,
+                      activeIcon: IconlyBold.bag,
+                      label: 'Products',
+                      index: 1,
+                      currentIndex: widget.currentIndex,
+                      expanded: layoutExpanded,
+                      onTap: widget.onNavTap,
+                    ),
+                  if (_sidebarShowPos)
+                    _NavItem(
+                      icon: IconlyLight.scan,
+                      activeIcon: IconlyBold.scan,
+                      label: 'POS Terminal',
+                      index: 2,
+                      currentIndex: widget.currentIndex,
+                      expanded: layoutExpanded,
+                      onTap: widget.onNavTap,
+                      accent: true,
+                    ),
+                  if (_sidebarShowDashboard)
+                    _NavItem(
+                      icon: IconlyLight.chart,
+                      activeIcon: IconlyBold.chart,
+                      label: 'Reports',
+                      index: 3,
+                      currentIndex: widget.currentIndex,
+                      expanded: layoutExpanded,
+                      onTap: widget.onNavTap,
+                    ),
+                  if (_sidebarShowInventory)
+                    _NavItem(
+                      icon: IconlyLight.category,
+                      activeIcon: IconlyBold.category,
+                      label: 'Inventory',
+                      index: 4,
+                      currentIndex: widget.currentIndex,
+                      expanded: layoutExpanded,
+                      onTap: widget.onNavTap,
+                    ),
 
                   const SizedBox(height: 6),
-                  const Divider(height: 1, color: AppColors.borderSoft),
-                  const SizedBox(height: 6),
+                  if (_sidebarShowDashboard) ...[
+                    const Divider(height: 1, color: AppColors.borderSoft),
+                    const SizedBox(height: 6),
+                  ],
 
                   // ── OPERATIONS section ──
-                  if (layoutExpanded) const _SectionLabel(label: 'OPERATIONS'),
-                  _NavItem(
-                    icon: IconlyLight.time_circle,
-                    activeIcon: IconlyBold.time_circle,
-                    label: 'Sales History',
-                    index: 5,
-                    currentIndex: widget.currentIndex,
-                    expanded: layoutExpanded,
-                    onTap: widget.onNavTap,
-                  ),
-                  _NavItem(
-                    icon: IconlyLight.wallet,
-                    activeIcon: IconlyBold.wallet,
-                    label: 'Expenses',
-                    index: 6,
-                    currentIndex: widget.currentIndex,
-                    expanded: layoutExpanded,
-                    onTap: widget.onNavTap,
-                  ),
+                  if (layoutExpanded && _sidebarShowDashboard)
+                    const _SectionLabel(label: 'OPERATIONS'),
+                  if (_sidebarShowDashboard)
+                    _NavItem(
+                      icon: IconlyLight.time_circle,
+                      activeIcon: IconlyBold.time_circle,
+                      label: 'Sales History',
+                      index: 5,
+                      currentIndex: widget.currentIndex,
+                      expanded: layoutExpanded,
+                      onTap: widget.onNavTap,
+                    ),
+                  if (_sidebarShowDashboard)
+                    _NavItem(
+                      icon: IconlyLight.wallet,
+                      activeIcon: IconlyBold.wallet,
+                      label: 'Expenses',
+                      index: 6,
+                      currentIndex: widget.currentIndex,
+                      expanded: layoutExpanded,
+                      onTap: widget.onNavTap,
+                    ),
 
-                  const SizedBox(height: 6),
-                  const Divider(height: 1, color: AppColors.borderSoft),
-                  const SizedBox(height: 6),
+                  if (_sidebarShowDashboard) ...[
+                    const SizedBox(height: 6),
+                    const Divider(height: 1, color: AppColors.borderSoft),
+                    const SizedBox(height: 6),
 
-                  // ── SETTINGS section ──
-                  if (layoutExpanded) const _SectionLabel(label: 'SETTINGS'),
-                  _SettingsAccordion(
-                    expanded: layoutExpanded,
-                    isActive: widget.currentIndex == 7,
-                    isAccordionOpen: _settingsExpanded,
-                    expandAnim: _settingsExpandAnim,
-                    activeSubPage: settingsSubPage,
-                    onHeaderTap: () {
-                      if (!layoutExpanded) {
-                        // Collapsed sidebar: just navigate to settings
-                        context.read<SidebarNavCubit>().setSubPage(
-                          SettingsSubPage.receipt,
-                        );
-                        widget.onNavTap(7);
-                      } else {
-                        _toggleSettings();
-                        if (!_settingsExpanded) {
-                          // Opening accordion also navigates to settings
+                    // ── SETTINGS section ──
+                    if (layoutExpanded) const _SectionLabel(label: 'SETTINGS'),
+                    _SettingsAccordion(
+                      expanded: layoutExpanded,
+                      isActive: widget.currentIndex == 7,
+                      isAccordionOpen: _settingsExpanded,
+                      expandAnim: _settingsExpandAnim,
+                      activeSubPage: settingsSubPage,
+                      onHeaderTap: () {
+                        if (!layoutExpanded) {
+                          // Collapsed sidebar: just navigate to settings
                           context.read<SidebarNavCubit>().setSubPage(
                             SettingsSubPage.receipt,
                           );
                           widget.onNavTap(7);
+                        } else {
+                          _toggleSettings();
+                          if (!_settingsExpanded) {
+                            // Opening accordion also navigates to settings
+                            context.read<SidebarNavCubit>().setSubPage(
+                              SettingsSubPage.receipt,
+                            );
+                            widget.onNavTap(7);
+                          }
                         }
-                      }
-                    },
-                    onSubItemTap: _tapSettingsSubItem,
-                  ),
+                      },
+                      onSubItemTap: _tapSettingsSubItem,
+                    ),
 
-                  const SizedBox(height: 6),
-                  const Divider(height: 1, color: AppColors.borderSoft),
-                  const SizedBox(height: 6),
+                    const SizedBox(height: 6),
+                    const Divider(height: 1, color: AppColors.borderSoft),
+                    const SizedBox(height: 6),
 
-                  // ── ADMIN section ──
-                  if (layoutExpanded) const _SectionLabel(label: 'ADMIN'),
-                  _NavItem(
-                    icon: IconlyLight.shield_done,
-                    activeIcon: IconlyBold.shield_done,
-                    label: 'Audit Logs',
-                    index: 9,
-                    currentIndex: widget.currentIndex,
-                    expanded: layoutExpanded,
-                    onTap: widget.onNavTap,
-                  ),
-                  const SizedBox(height: 6),
+                    // ── ADMIN section ──
+                    if (layoutExpanded) const _SectionLabel(label: 'ADMIN'),
+                    _NavItem(
+                      icon: IconlyLight.shield_done,
+                      activeIcon: IconlyBold.shield_done,
+                      label: 'Audit Logs',
+                      index: 9,
+                      currentIndex: widget.currentIndex,
+                      expanded: layoutExpanded,
+                      onTap: widget.onNavTap,
+                    ),
+                    const SizedBox(height: 6),
+                  ],
                 ],
               ),
             ),

@@ -6,14 +6,23 @@ class AppBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
 
+  /// Raw role name from the authenticated user (e.g. 'cashier',
+  /// 'inventory_staff', 'branch_manager', 'Super Admin').
+  final String? userRole;
+
   const AppBottomNav({
     super.key,
     required this.currentIndex,
     required this.onTap,
+    this.userRole,
   });
 
   @override
   Widget build(BuildContext context) {
+    final role = (userRole ?? '').trim().toLowerCase().replaceAll(' ', '_');
+    final isCashier = role == 'cashier';
+    final isInventoryStaff = role == 'inventory_staff';
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -32,32 +41,36 @@ class AppBottomNav extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(
-                icon: IconlyLight.home,
-                activeIcon: IconlyBold.home,
-                label: 'Dashboard',
-                index: 0,
-              ),
-              _buildNavItem(
-                icon: IconlyLight.bag,
-                activeIcon: IconlyBold.bag,
-                label: 'Products',
-                index: 1,
-              ),
-              // Center POS button
-              _buildCenterPOSButton(),
-              _buildNavItem(
-                icon: IconlyLight.chart,
-                activeIcon: IconlyBold.chart,
-                label: 'Reports',
-                index: 3,
-              ),
-              _buildNavItem(
-                icon: IconlyLight.category,
-                activeIcon: IconlyBold.category,
-                label: 'Inventory',
-                index: 4,
-              ),
+              if (!isCashier && !isInventoryStaff)
+                _buildNavItem(
+                  icon: IconlyLight.home,
+                  activeIcon: IconlyBold.home,
+                  label: 'Dashboard',
+                  index: 0,
+                ),
+              if (!isCashier && !isInventoryStaff)
+                _buildNavItem(
+                  icon: IconlyLight.bag,
+                  activeIcon: IconlyBold.bag,
+                  label: 'Products',
+                  index: 1,
+                ),
+              // Center POS button — visible to all except inventory staff
+              if (!isInventoryStaff) _buildCenterPOSButton(),
+              if (!isCashier && !isInventoryStaff)
+                _buildNavItem(
+                  icon: IconlyLight.chart,
+                  activeIcon: IconlyBold.chart,
+                  label: 'Reports',
+                  index: 3,
+                ),
+              if (!isCashier)
+                _buildNavItem(
+                  icon: IconlyLight.category,
+                  activeIcon: IconlyBold.category,
+                  label: 'Inventory',
+                  index: 4,
+                ),
             ],
           ),
         ),
