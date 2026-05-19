@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 import 'package:pos/core/branch/branch_cubit.dart';
+import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
@@ -490,12 +491,22 @@ class _AppSidebarState extends State<_AppSidebar>
       widget.userRole.trim().toLowerCase().replaceAll(' ', '_');
   bool get _isCashier => _roleLower == 'cashier';
   bool get _isInventoryStaff => _roleLower == 'inventory_staff';
+  bool get _isRestrictedEmployee => _isCashier || _isInventoryStaff;
 
-  /// True for all full-access roles (owner, branch_manager, super admin, etc.)
-  bool get _sidebarShowDashboard => !_isCashier && !_isInventoryStaff;
+  // Cashier: dashboard + products + POS
+  // Inventory staff: dashboard + products + inventory
+  // All others: everything
+  bool get _sidebarShowDashboard => true; // all roles see the dashboard
   bool get _sidebarShowPos => !_isInventoryStaff;
   bool get _sidebarShowInventory => !_isCashier;
-
+  bool get _sidebarShowProducts =>
+      true; // all roles see products (read-only for cashier)
+  bool get _sidebarShowReports => !_isRestrictedEmployee;
+  bool get _sidebarShowOperations =>
+      !_isRestrictedEmployee; // sales history, expenses
+  bool get _sidebarShowSettings => !_isRestrictedEmployee;
+  bool get _sidebarShowAuditLogs =>
+      _roleLower == 'owner' || _roleLower == 'super_admin';
   @override
   Widget build(BuildContext context) {
     final w = widget.expanded ? _kSidebarExpanded : _kSidebarCollapsed;
@@ -607,7 +618,7 @@ class _AppSidebarState extends State<_AppSidebar>
                       expanded: layoutExpanded,
                       onTap: widget.onNavTap,
                     ),
-                  if (_sidebarShowDashboard)
+                  if (_sidebarShowProducts)
                     _NavItem(
                       icon: IconlyLight.bag,
                       activeIcon: IconlyBold.bag,
@@ -628,7 +639,7 @@ class _AppSidebarState extends State<_AppSidebar>
                       onTap: widget.onNavTap,
                       accent: true,
                     ),
-                  if (_sidebarShowDashboard)
+                  if (_sidebarShowReports)
                     _NavItem(
                       icon: IconlyLight.chart,
                       activeIcon: IconlyBold.chart,
@@ -650,15 +661,15 @@ class _AppSidebarState extends State<_AppSidebar>
                     ),
 
                   const SizedBox(height: 6),
-                  if (_sidebarShowDashboard) ...[
+                  if (_sidebarShowOperations) ...[
                     const Divider(height: 1, color: AppColors.borderSoft),
                     const SizedBox(height: 6),
                   ],
 
                   // ── OPERATIONS section ──
-                  if (layoutExpanded && _sidebarShowDashboard)
+                  if (layoutExpanded && _sidebarShowOperations)
                     const _SectionLabel(label: 'OPERATIONS'),
-                  if (_sidebarShowDashboard)
+                  if (_sidebarShowOperations)
                     _NavItem(
                       icon: IconlyLight.time_circle,
                       activeIcon: IconlyBold.time_circle,
@@ -668,7 +679,7 @@ class _AppSidebarState extends State<_AppSidebar>
                       expanded: layoutExpanded,
                       onTap: widget.onNavTap,
                     ),
-                  if (_sidebarShowDashboard)
+                  if (_sidebarShowOperations)
                     _NavItem(
                       icon: IconlyLight.wallet,
                       activeIcon: IconlyBold.wallet,
@@ -679,7 +690,22 @@ class _AppSidebarState extends State<_AppSidebar>
                       onTap: widget.onNavTap,
                     ),
 
-                  if (_sidebarShowDashboard) ...[
+                  // ── My Profile — restricted employees only ──────────────────
+                  if (_isRestrictedEmployee) ...[
+                    const SizedBox(height: 6),
+                    const Divider(height: 1, color: AppColors.borderSoft),
+                    const SizedBox(height: 6),
+                    if (layoutExpanded) const _SectionLabel(label: 'ACCOUNT'),
+                    _ProfileNavTile(
+                      expanded: layoutExpanded,
+                      currentLocation: GoRouterState.of(
+                        context,
+                      ).matchedLocation,
+                    ),
+                    const SizedBox(height: 6),
+                  ],
+
+                  if (_sidebarShowSettings) ...[
                     const SizedBox(height: 6),
                     const Divider(height: 1, color: AppColors.borderSoft),
                     const SizedBox(height: 6),
@@ -718,16 +744,18 @@ class _AppSidebarState extends State<_AppSidebar>
                     const SizedBox(height: 6),
 
                     // ── ADMIN section ──
-                    if (layoutExpanded) const _SectionLabel(label: 'ADMIN'),
-                    _NavItem(
-                      icon: IconlyLight.shield_done,
-                      activeIcon: IconlyBold.shield_done,
-                      label: 'Audit Logs',
-                      index: 9,
-                      currentIndex: widget.currentIndex,
-                      expanded: layoutExpanded,
-                      onTap: widget.onNavTap,
-                    ),
+                    if (_sidebarShowAuditLogs) ...[
+                      if (layoutExpanded) const _SectionLabel(label: 'ADMIN'),
+                      _NavItem(
+                        icon: IconlyLight.shield_done,
+                        activeIcon: IconlyBold.shield_done,
+                        label: 'Audit Logs',
+                        index: 9,
+                        currentIndex: widget.currentIndex,
+                        expanded: layoutExpanded,
+                        onTap: widget.onNavTap,
+                      ),
+                    ],
                     const SizedBox(height: 6),
                   ],
                 ],
@@ -1109,6 +1137,76 @@ class _SectionLabel extends StatelessWidget {
           letterSpacing: 0.8,
         ),
       ),
+    );
+  }
+}
+
+/// A sidebar nav tile that navigates to the user's profile page.
+/// Used only for restricted employees (cashier / inventory staff) who do not
+/// have a full SETTINGS section in the sidebar.
+class _ProfileNavTile extends StatelessWidget {
+  final bool expanded;
+  final String currentLocation;
+
+  const _ProfileNavTile({
+    required this.expanded,
+    required this.currentLocation,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = currentLocation == AppRoutes.profile;
+    final color = isActive ? AppColors.brand : AppColors.textSecondary;
+    final bg = isActive ? AppColors.brandSoft : Colors.transparent;
+
+    final item = Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => context.push(AppRoutes.profile),
+        borderRadius: BorderRadius.circular(10),
+        mouseCursor: SystemMouseCursors.click,
+        splashColor: AppColors.brand.withAlpha(20),
+        child: Container(
+          height: 36,
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          padding: EdgeInsets.symmetric(horizontal: expanded ? 10 : 0),
+          alignment: expanded ? Alignment.centerLeft : Alignment.center,
+          child: Row(
+            mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,
+            children: [
+              Icon(
+                isActive ? IconlyBold.profile : IconlyLight.profile,
+                size: 20,
+                color: color,
+              ),
+              if (expanded) ...[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'My Profile',
+                    overflow: TextOverflow.ellipsis,
+                    style: getOutfitStyle(
+                      fontSize: 13.5,
+                      fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                      color: color,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: expanded
+          ? item
+          : Tooltip(message: 'My Profile', preferBelow: false, child: item),
     );
   }
 }

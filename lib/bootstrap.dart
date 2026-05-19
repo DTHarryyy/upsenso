@@ -9,6 +9,7 @@ import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/env/app_env.dart';
 import 'package:pos/app_bootstrap.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
+import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
@@ -64,6 +65,42 @@ Future<Widget> bootstrap() async {
         orElse: () => authBloc.state,
       )
       .timeout(const Duration(seconds: 4), onTimeout: () => authBloc.state);
+
+  // ── Permission service context sync ──────────────────────────────────────
+  // Seed from the resolved auth state so permission checks, data scoping,
+  // and dashboard scoping work immediately after startup (including offline
+  // cold-start from Drift cache).
+  final initialAuthState = authBloc.state;
+  if (initialAuthState is AuthAuthenticated) {
+    final u = initialAuthState.user;
+    sl<PermissionService>().setContext(
+      roleName: u.roleName,
+      branchId: u.branchId,
+      userId: u.id,
+    );
+  } else {
+    // Fallback: try to load role from local Drift cache (offline start where
+    // Supabase did not respond in time).
+    await sl<PermissionService>().loadFromCache();
+  }
+
+  // Keep full context in sync for the entire app lifetime.
+  authBloc.stream.listen((state) {
+    if (state is AuthAuthenticated) {
+      final u = state.user;
+      sl<PermissionService>().setContext(
+        roleName: u.roleName,
+        branchId: u.branchId,
+        userId: u.id,
+      );
+    } else if (state is AuthUnauthenticated) {
+      sl<PermissionService>().setContext(
+        roleName: null,
+        branchId: null,
+        userId: null,
+      );
+    }
+  });
 
   return MultiBlocProvider(
     providers: [

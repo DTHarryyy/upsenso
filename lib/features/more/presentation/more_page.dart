@@ -127,6 +127,19 @@ class _MorePageState extends State<MorePage>
         final role = displayRoleName(user?.roleName) ?? '';
         final business = user?.businessName ?? '';
 
+        final roleLower = (user?.roleName ?? '')
+            .trim()
+            .toLowerCase()
+            .replaceAll(' ', '_');
+        final isRestrictedEmployee =
+            roleLower == 'cashier' || roleLower == 'inventory_staff';
+        // Audit logs are owner / super_admin only — branch managers can see
+        // employees but NOT raw audit logs.
+        final canSeeAuditLogs =
+            roleLower == 'owner' || roleLower == 'super_admin';
+        // Employee management: owner, super_admin, branch_manager only.
+        final canSeeEmployees = !isRestrictedEmployee;
+
         return SafeArea(
           child: Column(
             children: [
@@ -147,56 +160,76 @@ class _MorePageState extends State<MorePage>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // OPERATIONS
-                      _SectionLabel('OPERATIONS'),
-                      _DrawerTile(
-                        icon: IconlyLight.time_circle,
-                        label: 'Sales History',
-                        onTap: () => _pushFullPage(const SalesHistory()),
-                      ),
-                      _DrawerTile(
-                        icon: IconlyLight.chart,
-                        label: 'Stock Level',
-                        onTap: () => _pushFullPage(const Inventory()),
-                      ),
-                      _DrawerTile(
-                        icon: IconlyLight.wallet,
-                        label: 'Expenses',
-                        onTap: () => _pushFullPage(const ExpensesPage()),
-                      ),
+                      // PROFILE — cashier & inventory staff only
+                      // (header avatar already navigates to profile, but an
+                      // explicit tile makes it obvious and discoverable).
+                      if (isRestrictedEmployee) ...[
+                        _SectionLabel('ACCOUNT'),
+                        _DrawerTile(
+                          icon: IconlyLight.profile,
+                          label: 'My Profile',
+                          onTap: () => _navigate(AppRoutes.profile),
+                        ),
+                        const SizedBox(height: 4),
+                        _Divider(),
+                        const SizedBox(height: 4),
+                      ],
 
-                      const SizedBox(height: 4),
-                      _Divider(),
-                      const SizedBox(height: 4),
-
+                      // OPERATIONS — hidden for cashier & inventory staff
+                      if (!isRestrictedEmployee) ...[
+                        _SectionLabel('OPERATIONS'),
+                        _DrawerTile(
+                          icon: IconlyLight.time_circle,
+                          label: 'Sales History',
+                          onTap: () => _pushFullPage(const SalesHistory()),
+                        ),
+                        _DrawerTile(
+                          icon: IconlyLight.chart,
+                          label: 'Stock Level',
+                          onTap: () => _pushFullPage(const Inventory()),
+                        ),
+                        _DrawerTile(
+                          icon: IconlyLight.wallet,
+                          label: 'Expenses',
+                          onTap: () => _pushFullPage(const ExpensesPage()),
+                        ),
+                        const SizedBox(height: 4),
+                        _Divider(),
+                        const SizedBox(height: 4),
+                      ], // end OPERATIONS
                       // ADMIN
-                      _SectionLabel('ADMIN'),
-                      _DrawerTile(
-                        icon: IconlyLight.profile,
-                        label: 'Employees',
-                        onTap: () => _pushFullPage(const EmployeesPage()),
-                      ),
-                      _DrawerTile(
-                        icon: IconlyLight.shield_done,
-                        label: 'Audit Logs',
-                        onTap: () => _pushFullPage(const AuditLogPage()),
-                      ),
+                      if (canSeeEmployees || canSeeAuditLogs) ...[
+                        _SectionLabel('ADMIN'),
+                        if (canSeeEmployees)
+                          _DrawerTile(
+                            icon: IconlyLight.profile,
+                            label: 'Employees',
+                            onTap: () => _pushFullPage(const EmployeesPage()),
+                          ),
+                        if (canSeeAuditLogs)
+                          _DrawerTile(
+                            icon: IconlyLight.shield_done,
+                            label: 'Audit Logs',
+                            onTap: () => _pushFullPage(const AuditLogPage()),
+                          ),
+                        const SizedBox(height: 4),
+                        _Divider(),
+                        const SizedBox(height: 4),
+                      ],
 
-                      const SizedBox(height: 4),
-                      _Divider(),
-                      const SizedBox(height: 4),
-
-                      // SETTINGS (expandable)
-                      _SectionLabel('SETTINGS'),
-                      _SettingsTile(
-                        isExpanded: _settingsExpanded,
-                        onTap: _toggleSettings,
-                      ),
-                      SizeTransition(
-                        sizeFactor: _expandAnim,
-                        axisAlignment: -1,
-                        child: _SettingsSubItems(onNavigate: _navigate),
-                      ),
+                      // SETTINGS (expandable) — hidden for restricted employees
+                      if (!isRestrictedEmployee) ...[
+                        _SectionLabel('SETTINGS'),
+                        _SettingsTile(
+                          isExpanded: _settingsExpanded,
+                          onTap: _toggleSettings,
+                        ),
+                        SizeTransition(
+                          sizeFactor: _expandAnim,
+                          axisAlignment: -1,
+                          child: _SettingsSubItems(onNavigate: _navigate),
+                        ),
+                      ],
                     ],
                   ),
                 ),

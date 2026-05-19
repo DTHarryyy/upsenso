@@ -546,6 +546,13 @@ String _badgeLabelFor(AuditLogActionType type) {
       return 'ARCHIVE';
     case AuditLogActionType.employeeRestored:
       return 'RESTORE';
+    case AuditLogActionType.permissionDenied:
+      return 'DENIED';
+    case AuditLogActionType.refundApprovedByManager:
+    case AuditLogActionType.voidApprovedByManager:
+    case AuditLogActionType.stockAdjustmentApproved:
+    case AuditLogActionType.stockTransferApproved:
+      return 'APPROVE';
   }
 }
 
@@ -582,5 +589,12 @@ Color _colorFor(AuditLogActionType type) {
     case AuditLogActionType.employeeArchived:
     case AuditLogActionType.employeeDuplicateDetected:
       return AppColors.warning;
+    case AuditLogActionType.permissionDenied:
+      return AppColors.error;
+    case AuditLogActionType.refundApprovedByManager:
+    case AuditLogActionType.voidApprovedByManager:
+    case AuditLogActionType.stockAdjustmentApproved:
+    case AuditLogActionType.stockTransferApproved:
+      return AppColors.success;
   }
 }

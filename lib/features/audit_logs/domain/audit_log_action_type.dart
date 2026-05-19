@@ -22,8 +22,27 @@ enum AuditLogActionType {
   employeeUpdated,
   employeeArchived,
   employeeRoleChanged,
-  employeeStatusChanged,  employeeRestored,
+  employeeStatusChanged,
+  employeeRestored,
   employeeDuplicateDetected,
+
+  // ── Permissions ──────────────────────────────────────────────────────────
+  /// A user attempted an action they are not authorised to perform.
+  permissionDenied,
+
+  // ── Approval flows ───────────────────────────────────────────────────────
+  /// A Branch Manager approved a cashier's refund request.
+  refundApprovedByManager,
+
+  /// A Branch Manager approved a void-transaction request.
+  voidApprovedByManager,
+
+  /// A Branch Manager approved a stock adjustment.
+  stockAdjustmentApproved,
+
+  /// A Branch Manager approved a stock transfer.
+  stockTransferApproved,
+
   // ── System ───────────────────────────────────────────────────────────────
   userLogin,
   userLogout,
@@ -71,6 +90,16 @@ extension AuditLogActionTypeX on AuditLogActionType {
         return 'EMPLOYEE_RESTORED';
       case AuditLogActionType.employeeDuplicateDetected:
         return 'EMPLOYEE_DUPLICATE_DETECTED';
+      case AuditLogActionType.permissionDenied:
+        return 'PERMISSION_DENIED';
+      case AuditLogActionType.refundApprovedByManager:
+        return 'REFUND_APPROVED_BY_MANAGER';
+      case AuditLogActionType.voidApprovedByManager:
+        return 'VOID_APPROVED_BY_MANAGER';
+      case AuditLogActionType.stockAdjustmentApproved:
+        return 'STOCK_ADJUSTMENT_APPROVED';
+      case AuditLogActionType.stockTransferApproved:
+        return 'STOCK_TRANSFER_APPROVED';
       case AuditLogActionType.userLogin:
         return 'USER_LOGIN';
       case AuditLogActionType.userLogout:
@@ -129,6 +158,16 @@ extension AuditLogActionTypeX on AuditLogActionType {
         return 'Employee Restored';
       case AuditLogActionType.employeeDuplicateDetected:
         return 'Employee Duplicate Detected';
+      case AuditLogActionType.permissionDenied:
+        return 'Permission Denied';
+      case AuditLogActionType.refundApprovedByManager:
+        return 'Refund Approved by Manager';
+      case AuditLogActionType.voidApprovedByManager:
+        return 'Void Approved by Manager';
+      case AuditLogActionType.stockAdjustmentApproved:
+        return 'Stock Adjustment Approved';
+      case AuditLogActionType.stockTransferApproved:
+        return 'Stock Transfer Approved';
       case AuditLogActionType.userLogin:
         return 'User Login';
       case AuditLogActionType.userLogout:

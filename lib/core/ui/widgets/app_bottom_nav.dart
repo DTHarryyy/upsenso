@@ -41,36 +41,14 @@ class AppBottomNav extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              if (!isCashier && !isInventoryStaff)
-                _buildNavItem(
-                  icon: IconlyLight.home,
-                  activeIcon: IconlyBold.home,
-                  label: 'Dashboard',
-                  index: 0,
-                ),
-              if (!isCashier && !isInventoryStaff)
-                _buildNavItem(
-                  icon: IconlyLight.bag,
-                  activeIcon: IconlyBold.bag,
-                  label: 'Products',
-                  index: 1,
-                ),
-              // Center POS button — visible to all except inventory staff
-              if (!isInventoryStaff) _buildCenterPOSButton(),
-              if (!isCashier && !isInventoryStaff)
-                _buildNavItem(
-                  icon: IconlyLight.chart,
-                  activeIcon: IconlyBold.chart,
-                  label: 'Reports',
-                  index: 3,
-                ),
-              if (!isCashier)
-                _buildNavItem(
-                  icon: IconlyLight.category,
-                  activeIcon: IconlyBold.category,
-                  label: 'Inventory',
-                  index: 4,
-                ),
+              // ── Cashier: Dashboard | Products | POS ──────────────────────
+              if (isCashier) ..._cashierItems(),
+
+              // ── Inventory Staff: Dashboard | Products | Inventory ─────────
+              if (isInventoryStaff) ..._inventoryStaffItems(),
+
+              // ── All other roles: full nav bar ─────────────────────────────
+              if (!isCashier && !isInventoryStaff) ..._fullNavItems(),
             ],
           ),
         ),
@@ -105,6 +83,73 @@ class AppBottomNav extends StatelessWidget {
       ),
     );
   }
+
+  // ── Role-specific nav item sets ────────────────────────────────────────
+
+  List<Widget> _cashierItems() => [
+    _buildNavItem(
+      icon: IconlyLight.home,
+      activeIcon: IconlyBold.home,
+      label: 'Dashboard',
+      index: 0,
+    ),
+    _buildCenterPOSButton(),
+    _buildNavItem(
+      icon: IconlyLight.bag,
+      activeIcon: IconlyBold.bag,
+      label: 'Products',
+      index: 1,
+    ),
+  ];
+
+  List<Widget> _inventoryStaffItems() => [
+    _buildNavItem(
+      icon: IconlyLight.home,
+      activeIcon: IconlyBold.home,
+      label: 'Dashboard',
+      index: 0,
+    ),
+    _buildNavItem(
+      icon: IconlyLight.bag,
+      activeIcon: IconlyBold.bag,
+      label: 'Products',
+      index: 1,
+    ),
+    _buildNavItem(
+      icon: IconlyLight.category,
+      activeIcon: IconlyBold.category,
+      label: 'Inventory',
+      index: 4,
+    ),
+  ];
+
+  List<Widget> _fullNavItems() => [
+    _buildNavItem(
+      icon: IconlyLight.home,
+      activeIcon: IconlyBold.home,
+      label: 'Dashboard',
+      index: 0,
+    ),
+    _buildNavItem(
+      icon: IconlyLight.bag,
+      activeIcon: IconlyBold.bag,
+      label: 'Products',
+      index: 1,
+    ),
+    _buildCenterPOSButton(),
+    _buildNavItem(
+      icon: IconlyLight.chart,
+      activeIcon: IconlyBold.chart,
+      label: 'Reports',
+      index: 3,
+    ),
+    _buildNavItem(
+      icon: IconlyLight.category,
+      activeIcon: IconlyBold.category,
+      label: 'Inventory',
+      index: 4,
+    ),
+  ];
 
   Widget _buildNavItem({
     required IconData icon,

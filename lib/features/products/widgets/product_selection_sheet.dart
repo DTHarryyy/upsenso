@@ -168,33 +168,46 @@ class _ProductSelectionSheetState extends State<_ProductSelectionSheet> {
                     const SizedBox(height: 20),
                   ],
 
-                  _buildQuantitySection(),
-                  const SizedBox(height: 20),
+                  // Quantity picker is only shown when the user can add to
+                  // cart (i.e. onConfirm is provided). Inventory staff who
+                  // cannot make sales will not see it.
+                  if (widget.onConfirm != null) ...[
+                    _buildQuantitySection(),
+                    const SizedBox(height: 20),
+                  ],
                 ],
               ),
             ),
           ),
 
-          // Action button
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              20,
-              8,
-              20,
-              widget.isDialog
+          // Add to Order button — hidden when sales are not permitted for
+          // this role (onConfirm == null, e.g. inventory staff).
+          if (widget.onConfirm != null)
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                8,
+                20,
+                widget.isDialog
+                    ? 16
+                    : MediaQuery.viewInsetsOf(context).bottom + 16,
+              ),
+              child: AppFilledButton(
+                label: _selected != null
+                    ? 'Add to Order · ₱${totalPrice.toStringAsFixed(2)}'
+                    : hasVariants
+                    ? 'Select a variant'
+                    : 'Add to Order',
+                onPressed: _canConfirm ? _confirm : null,
+                verticalPadding: 14,
+              ),
+            )
+          else
+            SizedBox(
+              height: widget.isDialog
                   ? 16
                   : MediaQuery.viewInsetsOf(context).bottom + 16,
             ),
-            child: AppFilledButton(
-              label: _selected != null
-                  ? 'Add to Order · ₱${totalPrice.toStringAsFixed(2)}'
-                  : hasVariants
-                  ? 'Select a variant'
-                  : 'Add to Order',
-              onPressed: _canConfirm ? _confirm : null,
-              verticalPadding: 14,
-            ),
-          ),
         ],
       ),
     );

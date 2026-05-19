@@ -129,33 +129,49 @@ class AppRouter {
       }
 
       // Determine the role-appropriate home route.
-      String _roleHome() {
-        if (roleLower == 'cashier') return AppRoutes.posTerminal;
-        if (roleLower == 'inventory_staff') return AppRoutes.inventory;
-        return AppRoutes.dashboard;
-      }
+      // All roles land on the dashboard — the dashboard itself is scoped per
+      // role via DashboardScope so cashiers see personal KPIs and inventory
+      // staff see stock health KPIs, not financial analytics.
+      String roleHome() => AppRoutes.dashboard;
 
       if (hasBusiness &&
           (goingToOnboarding ||
               isPublicAuthRoute ||
               goingToBusinessProfileSetup)) {
-        return _roleHome();
+        return roleHome();
       }
 
-      // Role-based route guard: restrict cashiers and inventory staff to their
-      // respective modules. Profile and password-reset routes are always allowed.
-      final goingToProfile = location == AppRoutes.profile;
+      // Role-based route guard: employees may only visit routes relevant to
+      // their role.
+      // Routes permitted for a cashier (sales + scoped visibility):
+      // dashboard (scoped), POS terminal, products (read-only), profile.
+      const cashierAllowed = {
+        AppRoutes.dashboard,
+        AppRoutes.posTerminal,
+        AppRoutes.products,
+        AppRoutes.profile,
+      };
       if (roleLower == 'cashier' &&
-          location != AppRoutes.posTerminal &&
-          !goingToProfile &&
+          !cashierAllowed.contains(location) &&
           !isPasswordResetRoute) {
-        return AppRoutes.posTerminal;
+        return AppRoutes.dashboard;
       }
+
+      // Routes permitted for inventory staff:
+      // dashboard (scoped), inventory, products (stock management), profile.
+      // add/edit product are included — inventory staff manages the catalogue.
+      const inventoryAllowed = {
+        AppRoutes.dashboard,
+        AppRoutes.inventory,
+        AppRoutes.products,
+        AppRoutes.addProduct,
+        AppRoutes.editProduct,
+        AppRoutes.profile,
+      };
       if (roleLower == 'inventory_staff' &&
-          location != AppRoutes.inventory &&
-          !goingToProfile &&
+          !inventoryAllowed.contains(location) &&
           !isPasswordResetRoute) {
-        return AppRoutes.inventory;
+        return AppRoutes.dashboard;
       }
 
       return null;

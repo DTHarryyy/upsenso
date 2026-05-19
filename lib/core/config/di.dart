@@ -85,6 +85,8 @@ import 'package:pos/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:pos/features/settings/services/receipt_printer_service.dart';
 import 'package:pos/features/notifications/data/notifications_repository.dart';
 import 'package:pos/features/notifications/domain/repositories/i_notifications_repository.dart';
+import 'package:pos/core/permissions/permission_service.dart';
+import 'package:pos/core/permissions/data_scoping_layer.dart';
 
 final sl = GetIt.instance;
 
@@ -318,6 +320,17 @@ Future<void> initDI() async {
       dao: sl<AuditLogsDao>(),
       authContextDao: sl<AuthContextDao>(),
     ),
+  );
+
+  sl.registerLazySingleton<PermissionService>(
+    () => PermissionService(
+      authContextDao: sl<AuthContextDao>(),
+      auditLogService: sl<AuditLogService>(),
+    ),
+  );
+
+  sl.registerLazySingleton<DataScopingLayer>(
+    () => DataScopingLayer(permissionService: sl<PermissionService>()),
   );
 
   // settings_page.dart resolves this via sl()

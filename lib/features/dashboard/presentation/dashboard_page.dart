@@ -11,14 +11,11 @@ import 'package:pos/features/dashboard/data/dashboard_data.dart';
 import 'package:pos/features/dashboard/presentation/cubit/dashboard_cubit.dart';
 import 'package:pos/features/dashboard/presentation/cubit/dashboard_state.dart';
 // import 'package:pos/features/dashboard/presentation/widgets/ai_insights_card.dart';
-import 'package:pos/features/dashboard/presentation/widgets/branch_comparison_card.dart';
 import 'package:pos/features/dashboard/presentation/widgets/category_performance_chart.dart';
-import 'package:pos/features/dashboard/presentation/widgets/low_stock_alerts_card.dart';
 import 'package:pos/features/dashboard/presentation/widgets/payment_methods_chart.dart';
 import 'package:pos/features/dashboard/presentation/widgets/quick_actions_bar.dart';
 import 'package:pos/features/dashboard/presentation/widgets/sales_trend_chart.dart';
 import 'package:pos/core/widgets/stat_card.dart';
-import 'package:pos/features/dashboard/presentation/widgets/expenses_summary_card.dart';
 import 'package:pos/features/dashboard/presentation/widgets/top_selling_items.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -118,51 +115,41 @@ class _DashboardPageState extends State<DashboardPage> {
                             _StatCardsRow(data: data, isLoading: isLoading),
 
                             const SizedBox(height: 16),
-                            QuickActionsBar(onNewSale: widget.onNewSale),
-                            const SizedBox(height: 16),
-
-                            // ── ROW 1: Sales Trend (hero) + Low Stock Alerts (urgent) ──
-                            // Low stock is time-sensitive — a manager needs to see it
-                            // immediately, not buried at the bottom of the page.
-                            LayoutBuilder(
-                              builder: (context, constraints) {
-                                if (constraints.maxWidth > 800) {
-                                  return IntrinsicHeight(
-                                    child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        Expanded(
-                                          flex: 3,
-                                          child: SalesTrendChart(data: data),
-                                        ),
-                                        const SizedBox(width: 16),
-                                        Expanded(
-                                          flex: 2,
-                                          child: LowStockAlertsCard(
-                                            items: data.lowStockItems,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
+                            // Quick actions are only shown to roles that can
+                            // actually perform those actions (cashier and
+                            // inventory staff should not see them).
+                            Builder(
+                              builder: (ctx) {
+                                final authState = ctx.read<AuthBloc>().state;
+                                final roleLower = authState is AuthAuthenticated
+                                    ? (authState.user.roleName ?? '')
+                                          .trim()
+                                          .toLowerCase()
+                                          .replaceAll(' ', '_')
+                                    : '';
+                                final isRestricted =
+                                    roleLower == 'cashier' ||
+                                    roleLower == 'inventory_staff';
+                                if (isRestricted) {
+                                  return const SizedBox.shrink();
                                 }
                                 return Column(
                                   children: [
-                                    SalesTrendChart(data: data),
-                                    const SizedBox(height: 16),
-                                    LowStockAlertsCard(
-                                      items: data.lowStockItems,
+                                    QuickActionsBar(
+                                      onNewSale: widget.onNewSale,
                                     ),
+                                    const SizedBox(height: 16),
                                   ],
                                 );
                               },
                             ),
 
+                            // ── Sales Trend ──
+                            SalesTrendChart(data: data),
+
                             const SizedBox(height: 16),
 
-                            // ── ROW 2: Top Selling Items + Payment Methods + Recent Expenses ──
-                            // Operational insights: what sells, how customers pay, what costs.
+                            // ── Top Selling Items + Payment Methods ──
                             LayoutBuilder(
                               builder: (context, constraints) {
                                 if (constraints.maxWidth > 800) {
@@ -182,12 +169,6 @@ class _DashboardPageState extends State<DashboardPage> {
                                             breakdown: data.paymentBreakdown,
                                           ),
                                         ),
-                                        const SizedBox(width: 16),
-                                        Expanded(
-                                          child: ExpensesSummaryCard(
-                                            summary: data.expenseSummary,
-                                          ),
-                                        ),
                                       ],
                                     ),
                                   );
@@ -199,10 +180,6 @@ class _DashboardPageState extends State<DashboardPage> {
                                     PaymentMethodsChart(
                                       breakdown: data.paymentBreakdown,
                                     ),
-                                    const SizedBox(height: 16),
-                                    ExpensesSummaryCard(
-                                      summary: data.expenseSummary,
-                                    ),
                                   ],
                                 );
                               },
@@ -210,52 +187,9 @@ class _DashboardPageState extends State<DashboardPage> {
 
                             const SizedBox(height: 16),
 
-                            // ── ROW 3: Category Performance + Branch Comparison ──
-                            // Deeper analytics — reviewed less frequently.
-                            LayoutBuilder(
-                              builder: (context, constraints) {
-                                if (constraints.maxWidth > 800) {
-                                  return IntrinsicHeight(
-                                    child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        Expanded(
-                                          flex: 3,
-                                          child: CategoryPerformanceChart(
-                                            stats: data.categoryStats,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 16),
-                                        Expanded(
-                                          flex: 2,
-                                          child: BranchComparisonCard(
-                                            stats: data.branchStats,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }
-                                return Column(
-                                  children: [
-                                    CategoryPerformanceChart(
-                                      stats: data.categoryStats,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    BranchComparisonCard(
-                                      stats: data.branchStats,
-                                    ),
-                                  ],
-                                );
-                              },
-                            ),
+                            // ── Category Performance ──
+                            CategoryPerformanceChart(stats: data.categoryStats),
 
-                            const SizedBox(height: 16),
-
-                            // ── ROW 4: AI Insights (full width) ──
-                            // Commented out — AI assistant not yet integrated.
-                            // const AiInsightsCard(),
                             const SizedBox(height: 24),
                           ],
                         ),

@@ -39,10 +39,14 @@ class ProductGrid extends StatelessWidget {
         crossAxisSpacing: 2,
         childAspectRatio: 0.72,
       ),
-      itemCount: items.length + 1,
+      // Only prepend the "+ Add" tile when the caller allows product creation.
+      itemCount: onAddProduct != null ? items.length + 1 : items.length,
       itemBuilder: (context, index) {
-        if (index == 0) return ProductAdd(onTap: onAddProduct);
-        final (product, variants) = items[index - 1];
+        if (onAddProduct != null && index == 0) {
+          return ProductAdd(onTap: onAddProduct);
+        }
+        final itemIndex = onAddProduct != null ? index - 1 : index;
+        final (product, variants) = items[itemIndex];
         return ProductCard(
           product: product,
           variants: variants,

@@ -107,6 +107,20 @@ class _ProductsPageState extends State<ProductsPage> {
                         _cartService.items.fold(0.0, (s, i) => s + i.taxAmount))
                     .clamp(0.0, double.infinity);
 
+            // Derive role once at this level so both the grid and the cart
+            // bar can gate on it — the cart bar lives outside BlocBuilder.
+            final outerAuthState = context.read<AuthBloc>().state;
+            final roleLower = outerAuthState is AuthAuthenticated
+                ? (outerAuthState.user.roleName ?? '')
+                      .trim()
+                      .toLowerCase()
+                      .replaceAll(' ', '_')
+                : '';
+            // Cashier: browse-only — no add/edit.
+            final canAddEditProduct = roleLower != 'cashier';
+            // Inventory staff manages stock, not sales.
+            final canAddToCart = roleLower != 'inventory_staff';
+
             return Scaffold(
               backgroundColor: AppColors.background,
               body: Stack(
@@ -117,13 +131,17 @@ class _ProductsPageState extends State<ProductsPage> {
                         context,
                         state: state,
                         cartNotEmpty: cartNotEmpty,
+                        canAddEditProduct: canAddEditProduct,
+                        canAddToCart: canAddToCart,
                       ),
                     ),
                   ),
+                  // Cart bar is suppressed entirely for inventory staff —
+                  // they manage stock, not sales.
                   _CartBar(
                     cartService: _cartService,
                     cartTotal: cartTotal,
-                    visible: cartNotEmpty,
+                    visible: cartNotEmpty && canAddToCart,
                   ),
                 ],
               ),
@@ -138,6 +156,8 @@ class _ProductsPageState extends State<ProductsPage> {
     BuildContext context, {
     required ProductsState state,
     required bool cartNotEmpty,
+    required bool canAddEditProduct,
+    required bool canAddToCart,
   }) {
     if (state is ProductsInitial || state is ProductsLoading) {
       return const _LoadingState();
@@ -167,7 +187,16 @@ class _ProductsPageState extends State<ProductsPage> {
             onCategorySelected: (id) => _cubit.setCategoryFilter(id),
           ),
           const SizedBox(height: 16),
-          Expanded(child: _buildGrid(context, state, filtered, items)),
+          Expanded(
+            child: _buildGrid(
+              context,
+              state,
+              filtered,
+              items,
+              canAddEditProduct: canAddEditProduct,
+              canAddToCart: canAddToCart,
+            ),
+          ),
         ],
       ),
     );
@@ -177,11 +206,15 @@ class _ProductsPageState extends State<ProductsPage> {
     BuildContext context,
     ProductsLoaded state,
     List<Product> filtered,
-    List<(Product, List<ProductVariant>)> items,
-  ) {
+    List<(Product, List<ProductVariant>)> items, {
+    required bool canAddEditProduct,
+    required bool canAddToCart,
+  }) {
     if (state.products.isEmpty) {
       return _EmptyProductsState(
-        onAdd: () => context.push(AppRoutes.addProduct),
+        onAdd: canAddEditProduct
+            ? () => context.push(AppRoutes.addProduct)
+            : null,
       );
     }
     if (filtered.isEmpty) {
@@ -194,9 +227,13 @@ class _ProductsPageState extends State<ProductsPage> {
     return ProductGrid(
       items: items,
       variantStock: state.variantStock,
-      onAddProduct: () => context.push(AppRoutes.addProduct),
-      onAddToCart: _addToCart,
-      onEditProduct: (p) => context.push(AppRoutes.editProduct, extra: p),
+      onAddProduct: canAddEditProduct
+          ? () => context.push(AppRoutes.addProduct)
+          : null,
+      onAddToCart: canAddToCart ? _addToCart : null,
+      onEditProduct: canAddEditProduct
+          ? (p) => context.push(AppRoutes.editProduct, extra: p)
+          : null,
     );
   }
 }
@@ -445,9 +482,9 @@ class _LoadingStateState extends State<_LoadingState>
 }
 
 class _EmptyProductsState extends StatelessWidget {
-  final VoidCallback onAdd;
+  final VoidCallback? onAdd;
 
-  const _EmptyProductsState({required this.onAdd});
+  const _EmptyProductsState({this.onAdd});
 
   @override
   Widget build(BuildContext context) {
@@ -478,22 +515,25 @@ class _EmptyProductsState extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Tap "Add Product" to get started',
+            onAdd != null
+                ? 'Tap "Add Product" to get started'
+                : 'No products have been added yet',
             style: AppTextStyles.body(
               context,
             ).copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 24),
-          TextButton.icon(
-            onPressed: onAdd,
-            icon: const Icon(Icons.add_rounded, color: AppColors.brand),
-            label: Text(
-              'Add Product',
-              style: AppTextStyles.body(
-                context,
-              ).copyWith(color: AppColors.brand, fontWeight: FontWeight.w600),
+          if (onAdd != null)
+            TextButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.add_rounded, color: AppColors.brand),
+              label: Text(
+                'Add Product',
+                style: AppTextStyles.body(
+                  context,
+                ).copyWith(color: AppColors.brand, fontWeight: FontWeight.w600),
+              ),
             ),
-          ),
         ],
       ),
     );

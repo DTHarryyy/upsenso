@@ -28,15 +28,16 @@ class BranchCubit extends Cubit<BranchState> {
   BranchCubit() : super(BranchState.initial());
 
   /// Load the last selected branch from local storage, scoped to [businessId].
-  Future<_CachedBranchSelection> _getLastSelectedBranch(String businessId) async {
+  Future<_CachedBranchSelection> _getLastSelectedBranch(
+    String businessId,
+  ) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final nameKey = '${_selectedBranchNameKey}_$businessId';
       final idKey = '${_selectedBranchIdKey}_$businessId';
       // Fall back to legacy (unscoped) key on first migration
       final selectedName =
-          prefs.getString(nameKey) ??
-          prefs.getString(_legacySelectedBranchKey);
+          prefs.getString(nameKey) ?? prefs.getString(_legacySelectedBranchKey);
       final selectedId = prefs.getString(idKey);
       return _CachedBranchSelection(name: selectedName, id: selectedId);
     } catch (e) {
@@ -105,13 +106,19 @@ class BranchCubit extends Cubit<BranchState> {
     }
   }
 
-  Future<void> _saveCachedBranchOptions(String businessId, List<_BranchOption> options) async {
+  Future<void> _saveCachedBranchOptions(
+    String businessId,
+    List<_BranchOption> options,
+  ) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final payload = options
           .map((option) => {'name': option.name, 'id': option.id})
           .toList(growable: false);
-      await prefs.setString('${_cachedBranchOptionsKey}_$businessId', jsonEncode(payload));
+      await prefs.setString(
+        '${_cachedBranchOptionsKey}_$businessId',
+        jsonEncode(payload),
+      );
     } catch (e) {
       debugPrint('[BranchCubit] Error saving cached options: $e');
     }
@@ -204,7 +211,15 @@ class BranchCubit extends Cubit<BranchState> {
       final uniqueNames = idsByName.keys.toList();
       uniqueNames.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
 
-      final canSwitch = canAccessAllBranches || cachedCanSwitch == true;
+      final roleLowerKey =
+          user.roleName?.trim().toLowerCase().replaceAll(' ', '_') ?? '';
+      final isRestrictedEmployee =
+          roleLowerKey == 'cashier' || roleLowerKey == 'inventory_staff';
+      // Restricted employees are always locked to their assigned branch;
+      // never allow branch switching even if the cache says otherwise.
+      final canSwitch =
+          !isRestrictedEmployee &&
+          (canAccessAllBranches || cachedCanSwitch == true);
       if (canSwitch && !uniqueNames.contains(allBranchesLabel)) {
         uniqueNames.insert(0, allBranchesLabel);
         idsByName[allBranchesLabel] = null;
@@ -238,7 +253,11 @@ class BranchCubit extends Cubit<BranchState> {
 
       if (!persist) return;
 
-      await _saveSelectedBranch(businessId: businessId, branchName: selected, branchId: selectedId);
+      await _saveSelectedBranch(
+        businessId: businessId,
+        branchName: selected,
+        branchId: selectedId,
+      );
 
       final cacheableOptions = idsByName.entries
           .where((entry) => entry.key != allBranchesLabel)
@@ -384,7 +403,11 @@ class BranchCubit extends Cubit<BranchState> {
       ),
     );
 
-    await _saveSelectedBranch(businessId: _currentBusinessId, branchName: branchName, branchId: selectedId);
+    await _saveSelectedBranch(
+      businessId: _currentBusinessId,
+      branchName: branchName,
+      branchId: selectedId,
+    );
   }
 
   /// Get the currently selected branch ID (for filtering)
@@ -451,15 +474,21 @@ class BranchCubit extends Cubit<BranchState> {
     }
 
     // Auto-select the new branch
-    emit(BranchState(
-      selectedBranch: branch.name,
-      selectedBranchId: id,
-      availableBranches: updatedBranches,
-      canSwitchBranches: state.canSwitchBranches,
-      roleName: state.roleName,
-    ));
+    emit(
+      BranchState(
+        selectedBranch: branch.name,
+        selectedBranchId: id,
+        availableBranches: updatedBranches,
+        canSwitchBranches: state.canSwitchBranches,
+        roleName: state.roleName,
+      ),
+    );
 
-    await _saveSelectedBranch(businessId: businessId, branchName: branch.name, branchId: id);
+    await _saveSelectedBranch(
+      businessId: businessId,
+      branchName: branch.name,
+      branchId: id,
+    );
 
     final cacheableOptions = updatedIdsByName.entries
         .where((entry) => entry.key != allBranchesLabel)
@@ -474,7 +503,12 @@ class BranchCubit extends Cubit<BranchState> {
   /// "All Branches" and any placeholder entries without an ID).
   List<({String name, String id})> getAvailableBranchOptions() {
     return _branchIdsByName.entries
-        .where((e) => e.key != allBranchesLabel && e.value != null && e.value!.trim().isNotEmpty)
+        .where(
+          (e) =>
+              e.key != allBranchesLabel &&
+              e.value != null &&
+              e.value!.trim().isNotEmpty,
+        )
         .map((e) => (name: e.key, id: e.value!))
         .toList(growable: false);
   }
