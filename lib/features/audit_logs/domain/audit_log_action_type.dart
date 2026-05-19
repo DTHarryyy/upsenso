@@ -17,6 +17,13 @@ enum AuditLogActionType {
   expenseApproved,
   expenseRejected,
 
+  // ── Employees ──────────────────────────────────────────────────────────
+  employeeCreated,
+  employeeUpdated,
+  employeeArchived,
+  employeeRoleChanged,
+  employeeStatusChanged,  employeeRestored,
+  employeeDuplicateDetected,
   // ── System ───────────────────────────────────────────────────────────────
   userLogin,
   userLogout,
@@ -50,6 +57,20 @@ extension AuditLogActionTypeX on AuditLogActionType {
         return 'EXPENSE_APPROVED';
       case AuditLogActionType.expenseRejected:
         return 'EXPENSE_REJECTED';
+      case AuditLogActionType.employeeCreated:
+        return 'EMPLOYEE_CREATED';
+      case AuditLogActionType.employeeUpdated:
+        return 'EMPLOYEE_UPDATED';
+      case AuditLogActionType.employeeArchived:
+        return 'EMPLOYEE_ARCHIVED';
+      case AuditLogActionType.employeeRoleChanged:
+        return 'EMPLOYEE_ROLE_CHANGED';
+      case AuditLogActionType.employeeStatusChanged:
+        return 'EMPLOYEE_STATUS_CHANGED';
+      case AuditLogActionType.employeeRestored:
+        return 'EMPLOYEE_RESTORED';
+      case AuditLogActionType.employeeDuplicateDetected:
+        return 'EMPLOYEE_DUPLICATE_DETECTED';
       case AuditLogActionType.userLogin:
         return 'USER_LOGIN';
       case AuditLogActionType.userLogout:
@@ -94,6 +115,20 @@ extension AuditLogActionTypeX on AuditLogActionType {
         return 'Expense Approved';
       case AuditLogActionType.expenseRejected:
         return 'Expense Rejected';
+      case AuditLogActionType.employeeCreated:
+        return 'Employee Created';
+      case AuditLogActionType.employeeUpdated:
+        return 'Employee Updated';
+      case AuditLogActionType.employeeArchived:
+        return 'Employee Archived';
+      case AuditLogActionType.employeeRoleChanged:
+        return 'Employee Role Changed';
+      case AuditLogActionType.employeeStatusChanged:
+        return 'Employee Status Changed';
+      case AuditLogActionType.employeeRestored:
+        return 'Employee Restored';
+      case AuditLogActionType.employeeDuplicateDetected:
+        return 'Employee Duplicate Detected';
       case AuditLogActionType.userLogin:
         return 'User Login';
       case AuditLogActionType.userLogout:

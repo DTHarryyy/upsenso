@@ -38,7 +38,7 @@ class _AuditLogSkeletonState extends State<AuditLogSkeleton>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _ctrl,
-      builder: (_, __) {
+      builder: (_, _) {
         final p = -0.3 + 1.6 * _ctrl.value;
 
         // Shimmer gradient that slides left-to-right.
@@ -183,7 +183,7 @@ class _AuditLogSkeletonState extends State<AuditLogSkeleton>
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       itemCount: 6,
-      itemBuilder: (_, __) =>
+      itemBuilder: (_, _) =>
           Padding(padding: const EdgeInsets.only(bottom: 10), child: card()),
     );
   }

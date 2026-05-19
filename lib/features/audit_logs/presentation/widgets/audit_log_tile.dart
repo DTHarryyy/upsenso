@@ -535,6 +535,17 @@ String _badgeLabelFor(AuditLogActionType type) {
     case AuditLogActionType.syncCompleted:
     case AuditLogActionType.syncFailed:
       return 'SYNC';
+    case AuditLogActionType.employeeCreated:
+      return 'CREATE';
+    case AuditLogActionType.employeeUpdated:
+    case AuditLogActionType.employeeRoleChanged:
+    case AuditLogActionType.employeeStatusChanged:
+    case AuditLogActionType.employeeDuplicateDetected:
+      return 'UPDATE';
+    case AuditLogActionType.employeeArchived:
+      return 'ARCHIVE';
+    case AuditLogActionType.employeeRestored:
+      return 'RESTORE';
   }
 }
 
@@ -562,5 +573,14 @@ Color _colorFor(AuditLogActionType type) {
     case AuditLogActionType.userLogin:
     case AuditLogActionType.userLogout:
       return const Color(0xFF8B5CF6); // violet
+    case AuditLogActionType.employeeCreated:
+    case AuditLogActionType.employeeUpdated:
+    case AuditLogActionType.employeeRoleChanged:
+    case AuditLogActionType.employeeStatusChanged:
+    case AuditLogActionType.employeeRestored:
+      return AppColors.brand;
+    case AuditLogActionType.employeeArchived:
+    case AuditLogActionType.employeeDuplicateDetected:
+      return AppColors.warning;
   }
 }
