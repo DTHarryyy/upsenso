@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:iconly/iconly.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
-import 'package:pos/core/permissions/app_feature.dart';
+import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 
 class AppBottomNav extends StatelessWidget {
@@ -18,11 +18,9 @@ class AppBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final service = sl<PermissionService>();
-    final canUsePOS = service.canAccessFeature(AppFeature.posTerminal);
-    final canUseReports = service.canAccessFeature(AppFeature.reportsAnalytics);
-    final canUseInventory = service.canAccessFeature(
-      AppFeature.inventoryManagement,
-    );
+    final canUsePOS = service.can(PermissionKeys.navPos);
+    final canUseReports = service.can(PermissionKeys.navReports);
+    final canUseInventory = service.can(PermissionKeys.navInventory);
     // Derive nav variant from feature access — no hardcoded role strings.
     final isCashierLike = canUsePOS && !canUseReports && !canUseInventory;
     final isInventoryLike = canUseInventory && !canUsePOS;

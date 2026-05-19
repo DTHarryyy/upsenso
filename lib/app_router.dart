@@ -7,7 +7,7 @@ import 'package:pos/core/const/app_key.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
-import 'package:pos/core/permissions/app_feature.dart';
+import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/permissions/role_permission_matrix.dart';
 import 'package:pos/core/routes/app_routes.dart';
@@ -141,26 +141,24 @@ class AppRouter {
         return roleHome();
       }
 
-      // Feature-based route guard — replaces per-role allow-lists.
-      // Each route that requires a specific feature will redirect unauthorised
-      // users to the dashboard rather than throwing a 403 or blank screen.
-      // Add new entries here when adding new feature-gated routes.
+      // Feature-based route guard using PermissionKeys string constants.
+      // Each route maps to a navigation permission key. Unauthorised users
+      // are redirected to the dashboard rather than seeing a blank screen.
       if (!isPasswordResetRoute) {
-        const routeFeatureGuards = <String, AppFeature>{
-          AppRoutes.posTerminal: AppFeature.posTerminal,
-          AppRoutes.reports: AppFeature.reportsAnalytics,
-          AppRoutes.inventory: AppFeature.inventoryManagement,
-          AppRoutes.stockLevel: AppFeature.inventoryManagement,
-          AppRoutes.expenses: AppFeature.expensesModule,
-          AppRoutes.saleshistory: AppFeature.reportsAnalytics,
-          AppRoutes.employees: AppFeature.employeeManagement,
-          AppRoutes.auditLogs: AppFeature.auditLogs,
-          AppRoutes.settings: AppFeature.branchConfiguration,
-          AppRoutes.receiptSettings: AppFeature.branchConfiguration,
+        const routePermissionGuards = <String, String>{
+          AppRoutes.posTerminal: PermissionKeys.navPos,
+          AppRoutes.reports: PermissionKeys.navReports,
+          AppRoutes.inventory: PermissionKeys.navInventory,
+          AppRoutes.stockLevel: PermissionKeys.navInventory,
+          AppRoutes.expenses: PermissionKeys.navExpenses,
+          AppRoutes.saleshistory: PermissionKeys.navSalesHistory,
+          AppRoutes.employees: PermissionKeys.navEmployees,
+          AppRoutes.auditLogs: PermissionKeys.navAuditLogs,
+          AppRoutes.settings: PermissionKeys.navSettings,
+          AppRoutes.receiptSettings: PermissionKeys.navSettings,
         };
-        final requiredFeature = routeFeatureGuards[location];
-        if (requiredFeature != null &&
-            !sl<PermissionService>().canAccessFeature(requiredFeature)) {
+        final requiredKey = routePermissionGuards[location];
+        if (requiredKey != null && !sl<PermissionService>().can(requiredKey)) {
           return AppRoutes.dashboard;
         }
       }

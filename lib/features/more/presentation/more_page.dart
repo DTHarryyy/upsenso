@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
-import 'package:pos/core/permissions/app_feature.dart';
+import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/core/widgets/user_avatar.dart';
@@ -133,17 +133,13 @@ class _MorePageState extends State<MorePage>
         final permService = sl<PermissionService>();
         // Feature-based visibility — no raw role-string comparisons.
         // isRestrictedEmployee: roles without expense-module access (cashier, inventory_staff).
-        final isRestrictedEmployee = !permService.canAccessFeature(
-          AppFeature.expensesModule,
+        final isRestrictedEmployee = !permService.can(
+          PermissionKeys.navExpenses,
         );
-        // Audit logs: owner / super_admin only (branchManager excluded by feature matrix).
-        final canSeeAuditLogs = permService.canAccessFeature(
-          AppFeature.auditLogs,
-        );
+        // Audit logs: owner / super_admin only (branchManager excluded by permission matrix).
+        final canSeeAuditLogs = permService.can(PermissionKeys.navAuditLogs);
         // Employee management: branchManager / owner / super_admin.
-        final canSeeEmployees = permService.canAccessFeature(
-          AppFeature.employeeManagement,
-        );
+        final canSeeEmployees = permService.can(PermissionKeys.navEmployees);
 
         return SafeArea(
           child: Column(

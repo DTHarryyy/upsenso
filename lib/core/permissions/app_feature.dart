@@ -96,4 +96,39 @@ extension AppFeatureX on AppFeature {
   /// Default denial message.
   String get deniedMessage =>
       'You do not have access to: ${displayLabel.toLowerCase()}.';
+
+  /// Maps this legacy [AppFeature] to the canonical [PermissionKeys] nav key.
+  ///
+  /// Used by [PermissionService.canAccessFeature] to delegate to the new
+  /// per-employee matrix via [PermissionService.can].
+  String get navKey {
+    switch (this) {
+      case AppFeature.posTerminal:
+        return 'nav.pos';
+      case AppFeature.inventoryManagement:
+        return 'nav.inventory';
+      case AppFeature.expensesModule:
+        return 'nav.expenses';
+      case AppFeature.employeeManagement:
+        return 'nav.employees';
+      case AppFeature.reportsAnalytics:
+        return 'nav.reports';
+      case AppFeature.businessSettings:
+      case AppFeature.branchConfiguration:
+      case AppFeature.profileSettings:
+        return 'nav.settings';
+      case AppFeature.auditLogs:
+        return 'nav.audit_logs';
+      case AppFeature.supplierDirectory:
+        return 'nav.suppliers';
+      case AppFeature.productsCatalogue:
+        return 'nav.inventory';
+      // Dashboard variants: everyone with a session may see *some* dashboard.
+      case AppFeature.dashboardCashier:
+      case AppFeature.dashboardInventory:
+      case AppFeature.dashboardManager:
+      case AppFeature.dashboardOwner:
+        return 'dashboard.view_stats';
+    }
+  }
 }

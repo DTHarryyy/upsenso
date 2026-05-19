@@ -279,4 +279,91 @@ extension AppPermissionX on AppPermission {
   /// Default denial message shown to the user.
   String get deniedMessage =>
       'You do not have permission to: ${displayLabel.toLowerCase()}.';
+
+  /// Maps this legacy [AppPermission] to the canonical [PermissionKeys] string.
+  ///
+  /// Used by [PermissionService.hasPermission] to delegate to the new
+  /// per-employee matrix via [PermissionService.can].
+  String get permissionKey {
+    switch (this) {
+      case AppPermission.createSale:
+      case AppPermission.processPayment:
+      case AppPermission.printReceipt:
+        return 'pos.use';
+      case AppPermission.applyDiscount:
+        return 'pos.apply_discount';
+      case AppPermission.voidSale:
+      case AppPermission.deleteSale:
+      case AppPermission.approveVoidTransaction:
+        return 'pos.void_sale';
+      case AppPermission.refundSale:
+        return 'pos.refund_sale';
+      case AppPermission.approveRefund:
+        return 'pos.approve_refund';
+      case AppPermission.openShift:
+        return 'pos.open_shift';
+      case AppPermission.closeShift:
+      case AppPermission.resolveCashDiscrepancy:
+        return 'pos.close_shift';
+      case AppPermission.viewOwnShiftSales:
+      case AppPermission.viewOwnShiftSummary:
+        return 'pos.view_own_sales';
+      case AppPermission.viewAllSalesInBranch:
+      case AppPermission.viewAllShifts:
+      case AppPermission.overrideShiftClosure:
+        return 'pos.view_all_sales';
+      case AppPermission.viewProducts:
+      case AppPermission.viewPriceList:
+        return 'products.view';
+      case AppPermission.editProduct:
+        return 'products.edit';
+      case AppPermission.deleteProduct:
+        return 'products.delete';
+      case AppPermission.changeProductPricing:
+        return 'products.manage_prices';
+      case AppPermission.viewAvailableStock:
+      case AppPermission.viewStockHistory:
+        return 'inventory.view_levels';
+      case AppPermission.updateStockQuantity:
+      case AppPermission.receiveStock:
+      case AppPermission.recordStockAdjustment:
+      case AppPermission.approveStockAdjustment:
+        return 'inventory.adjust';
+      case AppPermission.transferStockBetweenBranches:
+      case AppPermission.approveStockTransfer:
+        return 'data.cross_branch_access';
+      case AppPermission.createExpense:
+        return 'expenses.create';
+      case AppPermission.viewExpenses:
+        return 'expenses.view';
+      case AppPermission.approveExpense:
+      case AppPermission.rejectExpense:
+        return 'expenses.approve';
+      case AppPermission.viewBranchReports:
+      case AppPermission.viewSalesAnalytics:
+      case AppPermission.viewInventoryAnalytics:
+      case AppPermission.viewInventoryReports:
+        return 'reports.view_branch';
+      case AppPermission.viewFinancialReports:
+      case AppPermission.viewProfitAnalytics:
+        return 'reports.view_all';
+      case AppPermission.createEmployee:
+        return 'employees.create';
+      case AppPermission.editEmployee:
+        return 'employees.edit';
+      case AppPermission.assignRole:
+      case AppPermission.manageRoles:
+        return 'employees.assign_role';
+      case AppPermission.suspendEmployee:
+        return 'employees.suspend';
+      case AppPermission.viewSupplierList:
+        return 'suppliers.view';
+      case AppPermission.accessSettings:
+        return 'settings.view';
+      case AppPermission.deleteAuditLogs:
+        return 'audit_logs.view';
+      case AppPermission.crossBranchAccess:
+        return 'data.cross_branch_access';
+    }
+  }
 }

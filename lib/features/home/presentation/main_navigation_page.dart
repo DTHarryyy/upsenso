@@ -14,7 +14,7 @@ import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/navigation/sidebar_nav_cubit.dart';
-import 'package:pos/core/permissions/app_feature.dart';
+import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_service.dart';
@@ -490,20 +490,17 @@ class _AppSidebarState extends State<_AppSidebar>
   // ── Feature-based visibility helpers — no hardcoded role strings ──────────
   PermissionService get _permService => sl<PermissionService>();
   bool get _sidebarShowDashboard => true; // all roles see the dashboard
-  bool get _sidebarShowPos =>
-      _permService.canAccessFeature(AppFeature.posTerminal);
+  bool get _sidebarShowPos => _permService.can(PermissionKeys.navPos);
   bool get _sidebarShowInventory =>
-      _permService.canAccessFeature(AppFeature.inventoryManagement);
+      _permService.can(PermissionKeys.navInventory);
   bool get _sidebarShowProducts =>
       true; // all roles see products (read-only for cashier)
-  bool get _sidebarShowReports =>
-      _permService.canAccessFeature(AppFeature.reportsAnalytics);
+  bool get _sidebarShowReports => _permService.can(PermissionKeys.navReports);
   bool get _sidebarShowOperations =>
-      _permService.canAccessFeature(AppFeature.expensesModule);
-  bool get _sidebarShowSettings =>
-      _permService.canAccessFeature(AppFeature.branchConfiguration);
+      _permService.can(PermissionKeys.navExpenses);
+  bool get _sidebarShowSettings => _permService.can(PermissionKeys.navSettings);
   bool get _sidebarShowAuditLogs =>
-      _permService.canAccessFeature(AppFeature.auditLogs);
+      _permService.can(PermissionKeys.navAuditLogs);
   @override
   Widget build(BuildContext context) {
     final w = widget.expanded ? _kSidebarExpanded : _kSidebarCollapsed;

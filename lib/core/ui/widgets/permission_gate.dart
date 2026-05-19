@@ -20,24 +20,29 @@ import 'package:pos/core/permissions/permission_service.dart';
 ///   [Tooltip] shows [deniedMessage] on long-press.  Use for buttons that the
 ///   user can see but not tap (e.g. "Refund" on a cashier's screen).
 ///
-/// Usage:
+/// Usage with string key (preferred — new API):
 /// ```dart
-/// // Hide entirely
+/// PermissionGate(
+///   permissionKey: PermissionKeys.employeesCreate,
+///   child: AddEmployeeButton(),
+/// )
+/// ```
+///
+/// Legacy usage with [AppPermission] enum (still supported):
+/// ```dart
 /// PermissionGate(
 ///   permission: AppPermission.refundSale,
 ///   child: RefundButton(onTap: _refund),
 /// )
-///
-/// // Disable with tooltip
-/// PermissionGate(
-///   permission: AppPermission.editProduct,
-///   mode: PermissionGateMode.disable,
-///   deniedMessage: 'Approval required from Branch Manager.',
-///   child: EditProductButton(),
-/// )
 /// ```
 class PermissionGate extends StatelessWidget {
-  final AppPermission permission;
+  /// String permission key (new preferred API).  Checked via [PermissionService.can].
+  final String? permissionKey;
+
+  /// Legacy [AppPermission] enum.  Checked via [PermissionService.hasPermission].
+  /// Provide either [permissionKey] or [permission], not both.
+  final AppPermission? permission;
+
   final Widget child;
 
   /// Widget rendered when access is denied and [mode] is [PermissionGateMode.hide].
@@ -47,21 +52,34 @@ class PermissionGate extends StatelessWidget {
   final PermissionGateMode mode;
 
   /// Tooltip message shown when [mode] is [PermissionGateMode.disable].
-  /// Defaults to [AppPermission.deniedMessage].
   final String? deniedMessage;
 
+  /// New API: gate by [PermissionKeys] string key.
   const PermissionGate({
     super.key,
-    required this.permission,
+    required String this.permissionKey,
     required this.child,
     this.fallback,
     this.mode = PermissionGateMode.hide,
     this.deniedMessage,
-  });
+  }) : permission = null;
+
+  /// Legacy API: gate by [AppPermission] enum.
+  const PermissionGate.legacy({
+    super.key,
+    required AppPermission this.permission,
+    required this.child,
+    this.fallback,
+    this.mode = PermissionGateMode.hide,
+    this.deniedMessage,
+  }) : permissionKey = null;
 
   @override
   Widget build(BuildContext context) {
-    final allowed = sl<PermissionService>().hasPermission(permission);
+    final service = sl<PermissionService>();
+    final allowed = permissionKey != null
+        ? service.can(permissionKey!)
+        : service.hasPermission(permission!);
 
     if (allowed) return child;
 
@@ -70,8 +88,12 @@ class PermissionGate extends StatelessWidget {
     }
 
     // ── Disable mode ────────────────────────────────────────────────────────
+    final message =
+        deniedMessage ??
+        permission?.deniedMessage ??
+        'You do not have permission to perform this action.';
     return Tooltip(
-      message: deniedMessage ?? permission.deniedMessage,
+      message: message,
       child: AbsorbPointer(child: Opacity(opacity: 0.38, child: child)),
     );
   }

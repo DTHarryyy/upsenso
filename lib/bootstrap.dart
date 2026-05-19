@@ -78,6 +78,10 @@ Future<Widget> bootstrap() async {
       branchId: u.branchId,
       userId: u.id,
     );
+    // Load cached permissions immediately (offline-safe, no network call).
+    await sl<PermissionService>().loadPermissions(u.id);
+    // Sync from Supabase in the background — does not block startup.
+    sl<PermissionService>().syncPermissions(u.id).ignore();
   } else {
     // Fallback: try to load role from local Drift cache (offline start where
     // Supabase did not respond in time).
@@ -93,6 +97,10 @@ Future<Widget> bootstrap() async {
         branchId: u.branchId,
         userId: u.id,
       );
+      // Reload permissions whenever the auth state changes (role switch, etc.)
+      sl<PermissionService>().loadPermissions(u.id).then((_) {
+        sl<PermissionService>().syncPermissions(u.id).ignore();
+      });
     } else if (state is AuthUnauthenticated) {
       sl<PermissionService>().setContext(
         roleName: null,

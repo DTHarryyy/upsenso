@@ -87,6 +87,8 @@ import 'package:pos/features/notifications/data/notifications_repository.dart';
 import 'package:pos/features/notifications/domain/repositories/i_notifications_repository.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/permissions/data_scoping_layer.dart';
+import 'package:pos/core/permissions/data/permission_remote_ds.dart';
+import 'package:pos/core/database/daos/employee_permissions_dao.dart';
 
 final sl = GetIt.instance;
 
@@ -322,10 +324,19 @@ Future<void> initDI() async {
     ),
   );
 
+  sl.registerLazySingleton<EmployeePermissionsDao>(
+    () => EmployeePermissionsDao(sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<PermissionRemoteDs>(
+    () => PermissionRemoteDs(sl<SupabaseClient>()),
+  );
+
   sl.registerLazySingleton<PermissionService>(
     () => PermissionService(
       authContextDao: sl<AuthContextDao>(),
       auditLogService: sl<AuditLogService>(),
+      permissionsDao: sl<EmployeePermissionsDao>(),
+      permissionRemoteDs: sl<PermissionRemoteDs>(),
     ),
   );
 

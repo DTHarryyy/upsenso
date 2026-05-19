@@ -13412,6 +13412,399 @@ class EmployeesTableCompanion extends UpdateCompanion<EmployeeRow> {
   }
 }
 
+class $EmployeePermissionsTableTable extends EmployeePermissionsTable
+    with TableInfo<$EmployeePermissionsTableTable, EmployeePermissionsRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $EmployeePermissionsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _authUserIdMeta = const VerificationMeta(
+    'authUserId',
+  );
+  @override
+  late final GeneratedColumn<String> authUserId = GeneratedColumn<String>(
+    'auth_user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _employeeIdMeta = const VerificationMeta(
+    'employeeId',
+  );
+  @override
+  late final GeneratedColumn<String> employeeId = GeneratedColumn<String>(
+    'employee_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _permissionsJsonMeta = const VerificationMeta(
+    'permissionsJson',
+  );
+  @override
+  late final GeneratedColumn<String> permissionsJson = GeneratedColumn<String>(
+    'permissions_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('{}'),
+  );
+  static const VerificationMeta _syncedAtMeta = const VerificationMeta(
+    'syncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+    'synced_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    authUserId,
+    employeeId,
+    permissionsJson,
+    syncedAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'employee_permissions_cache';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<EmployeePermissionsRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('auth_user_id')) {
+      context.handle(
+        _authUserIdMeta,
+        authUserId.isAcceptableOrUnknown(
+          data['auth_user_id']!,
+          _authUserIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_authUserIdMeta);
+    }
+    if (data.containsKey('employee_id')) {
+      context.handle(
+        _employeeIdMeta,
+        employeeId.isAcceptableOrUnknown(data['employee_id']!, _employeeIdMeta),
+      );
+    }
+    if (data.containsKey('permissions_json')) {
+      context.handle(
+        _permissionsJsonMeta,
+        permissionsJson.isAcceptableOrUnknown(
+          data['permissions_json']!,
+          _permissionsJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('synced_at')) {
+      context.handle(
+        _syncedAtMeta,
+        syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {authUserId};
+  @override
+  EmployeePermissionsRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return EmployeePermissionsRow(
+      authUserId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}auth_user_id'],
+      )!,
+      employeeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}employee_id'],
+      ),
+      permissionsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}permissions_json'],
+      )!,
+      syncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}synced_at'],
+      ),
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $EmployeePermissionsTableTable createAlias(String alias) {
+    return $EmployeePermissionsTableTable(attachedDatabase, alias);
+  }
+}
+
+class EmployeePermissionsRow extends DataClass
+    implements Insertable<EmployeePermissionsRow> {
+  /// Supabase auth.uid() — also the Drift primary key.
+  final String authUserId;
+
+  /// The employee record UUID in the employees table.
+  /// Nullable for the rare case where the record hasn't synced yet.
+  final String? employeeId;
+
+  /// JSON-encoded Map<String, bool>: `{"pos.use": true, ...}`.
+  final String permissionsJson;
+
+  /// Timestamp of the last successful sync from Supabase.
+  /// Null when the row was seeded locally from the role matrix.
+  final DateTime? syncedAt;
+
+  /// Last time this row was written (by load or sync).
+  final DateTime updatedAt;
+  const EmployeePermissionsRow({
+    required this.authUserId,
+    this.employeeId,
+    required this.permissionsJson,
+    this.syncedAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['auth_user_id'] = Variable<String>(authUserId);
+    if (!nullToAbsent || employeeId != null) {
+      map['employee_id'] = Variable<String>(employeeId);
+    }
+    map['permissions_json'] = Variable<String>(permissionsJson);
+    if (!nullToAbsent || syncedAt != null) {
+      map['synced_at'] = Variable<DateTime>(syncedAt);
+    }
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  EmployeePermissionsTableCompanion toCompanion(bool nullToAbsent) {
+    return EmployeePermissionsTableCompanion(
+      authUserId: Value(authUserId),
+      employeeId: employeeId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(employeeId),
+      permissionsJson: Value(permissionsJson),
+      syncedAt: syncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory EmployeePermissionsRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return EmployeePermissionsRow(
+      authUserId: serializer.fromJson<String>(json['authUserId']),
+      employeeId: serializer.fromJson<String?>(json['employeeId']),
+      permissionsJson: serializer.fromJson<String>(json['permissionsJson']),
+      syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'authUserId': serializer.toJson<String>(authUserId),
+      'employeeId': serializer.toJson<String?>(employeeId),
+      'permissionsJson': serializer.toJson<String>(permissionsJson),
+      'syncedAt': serializer.toJson<DateTime?>(syncedAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  EmployeePermissionsRow copyWith({
+    String? authUserId,
+    Value<String?> employeeId = const Value.absent(),
+    String? permissionsJson,
+    Value<DateTime?> syncedAt = const Value.absent(),
+    DateTime? updatedAt,
+  }) => EmployeePermissionsRow(
+    authUserId: authUserId ?? this.authUserId,
+    employeeId: employeeId.present ? employeeId.value : this.employeeId,
+    permissionsJson: permissionsJson ?? this.permissionsJson,
+    syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  EmployeePermissionsRow copyWithCompanion(
+    EmployeePermissionsTableCompanion data,
+  ) {
+    return EmployeePermissionsRow(
+      authUserId: data.authUserId.present
+          ? data.authUserId.value
+          : this.authUserId,
+      employeeId: data.employeeId.present
+          ? data.employeeId.value
+          : this.employeeId,
+      permissionsJson: data.permissionsJson.present
+          ? data.permissionsJson.value
+          : this.permissionsJson,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('EmployeePermissionsRow(')
+          ..write('authUserId: $authUserId, ')
+          ..write('employeeId: $employeeId, ')
+          ..write('permissionsJson: $permissionsJson, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(authUserId, employeeId, permissionsJson, syncedAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is EmployeePermissionsRow &&
+          other.authUserId == this.authUserId &&
+          other.employeeId == this.employeeId &&
+          other.permissionsJson == this.permissionsJson &&
+          other.syncedAt == this.syncedAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class EmployeePermissionsTableCompanion
+    extends UpdateCompanion<EmployeePermissionsRow> {
+  final Value<String> authUserId;
+  final Value<String?> employeeId;
+  final Value<String> permissionsJson;
+  final Value<DateTime?> syncedAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const EmployeePermissionsTableCompanion({
+    this.authUserId = const Value.absent(),
+    this.employeeId = const Value.absent(),
+    this.permissionsJson = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  EmployeePermissionsTableCompanion.insert({
+    required String authUserId,
+    this.employeeId = const Value.absent(),
+    this.permissionsJson = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : authUserId = Value(authUserId);
+  static Insertable<EmployeePermissionsRow> custom({
+    Expression<String>? authUserId,
+    Expression<String>? employeeId,
+    Expression<String>? permissionsJson,
+    Expression<DateTime>? syncedAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (authUserId != null) 'auth_user_id': authUserId,
+      if (employeeId != null) 'employee_id': employeeId,
+      if (permissionsJson != null) 'permissions_json': permissionsJson,
+      if (syncedAt != null) 'synced_at': syncedAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  EmployeePermissionsTableCompanion copyWith({
+    Value<String>? authUserId,
+    Value<String?>? employeeId,
+    Value<String>? permissionsJson,
+    Value<DateTime?>? syncedAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return EmployeePermissionsTableCompanion(
+      authUserId: authUserId ?? this.authUserId,
+      employeeId: employeeId ?? this.employeeId,
+      permissionsJson: permissionsJson ?? this.permissionsJson,
+      syncedAt: syncedAt ?? this.syncedAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (authUserId.present) {
+      map['auth_user_id'] = Variable<String>(authUserId.value);
+    }
+    if (employeeId.present) {
+      map['employee_id'] = Variable<String>(employeeId.value);
+    }
+    if (permissionsJson.present) {
+      map['permissions_json'] = Variable<String>(permissionsJson.value);
+    }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('EmployeePermissionsTableCompanion(')
+          ..write('authUserId: $authUserId, ')
+          ..write('employeeId: $employeeId, ')
+          ..write('permissionsJson: $permissionsJson, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -13444,6 +13837,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $ReceiptSettingsTableTable(this);
   late final $AuditLogsTableTable auditLogsTable = $AuditLogsTableTable(this);
   late final $EmployeesTableTable employeesTable = $EmployeesTableTable(this);
+  late final $EmployeePermissionsTableTable employeePermissionsTable =
+      $EmployeePermissionsTableTable(this);
   late final AuthContextDao authContextDao = AuthContextDao(
     this as AppDatabase,
   );
@@ -13472,6 +13867,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final AuditLogsDao auditLogsDao = AuditLogsDao(this as AppDatabase);
   late final EmployeesDao employeesDao = EmployeesDao(this as AppDatabase);
+  late final EmployeePermissionsDao employeePermissionsDao =
+      EmployeePermissionsDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -13492,6 +13889,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     receiptSettingsTable,
     auditLogsTable,
     employeesTable,
+    employeePermissionsTable,
   ];
 }
 
@@ -19752,6 +20150,231 @@ typedef $$EmployeesTableTableProcessedTableManager =
       EmployeeRow,
       PrefetchHooks Function()
     >;
+typedef $$EmployeePermissionsTableTableCreateCompanionBuilder =
+    EmployeePermissionsTableCompanion Function({
+      required String authUserId,
+      Value<String?> employeeId,
+      Value<String> permissionsJson,
+      Value<DateTime?> syncedAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$EmployeePermissionsTableTableUpdateCompanionBuilder =
+    EmployeePermissionsTableCompanion Function({
+      Value<String> authUserId,
+      Value<String?> employeeId,
+      Value<String> permissionsJson,
+      Value<DateTime?> syncedAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$EmployeePermissionsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $EmployeePermissionsTableTable> {
+  $$EmployeePermissionsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get authUserId => $composableBuilder(
+    column: $table.authUserId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get employeeId => $composableBuilder(
+    column: $table.employeeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get permissionsJson => $composableBuilder(
+    column: $table.permissionsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$EmployeePermissionsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $EmployeePermissionsTableTable> {
+  $$EmployeePermissionsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get authUserId => $composableBuilder(
+    column: $table.authUserId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get employeeId => $composableBuilder(
+    column: $table.employeeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get permissionsJson => $composableBuilder(
+    column: $table.permissionsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$EmployeePermissionsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $EmployeePermissionsTableTable> {
+  $$EmployeePermissionsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get authUserId => $composableBuilder(
+    column: $table.authUserId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get employeeId => $composableBuilder(
+    column: $table.employeeId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get permissionsJson => $composableBuilder(
+    column: $table.permissionsJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get syncedAt =>
+      $composableBuilder(column: $table.syncedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$EmployeePermissionsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $EmployeePermissionsTableTable,
+          EmployeePermissionsRow,
+          $$EmployeePermissionsTableTableFilterComposer,
+          $$EmployeePermissionsTableTableOrderingComposer,
+          $$EmployeePermissionsTableTableAnnotationComposer,
+          $$EmployeePermissionsTableTableCreateCompanionBuilder,
+          $$EmployeePermissionsTableTableUpdateCompanionBuilder,
+          (
+            EmployeePermissionsRow,
+            BaseReferences<
+              _$AppDatabase,
+              $EmployeePermissionsTableTable,
+              EmployeePermissionsRow
+            >,
+          ),
+          EmployeePermissionsRow,
+          PrefetchHooks Function()
+        > {
+  $$EmployeePermissionsTableTableTableManager(
+    _$AppDatabase db,
+    $EmployeePermissionsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$EmployeePermissionsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$EmployeePermissionsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$EmployeePermissionsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> authUserId = const Value.absent(),
+                Value<String?> employeeId = const Value.absent(),
+                Value<String> permissionsJson = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => EmployeePermissionsTableCompanion(
+                authUserId: authUserId,
+                employeeId: employeeId,
+                permissionsJson: permissionsJson,
+                syncedAt: syncedAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String authUserId,
+                Value<String?> employeeId = const Value.absent(),
+                Value<String> permissionsJson = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => EmployeePermissionsTableCompanion.insert(
+                authUserId: authUserId,
+                employeeId: employeeId,
+                permissionsJson: permissionsJson,
+                syncedAt: syncedAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$EmployeePermissionsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $EmployeePermissionsTableTable,
+      EmployeePermissionsRow,
+      $$EmployeePermissionsTableTableFilterComposer,
+      $$EmployeePermissionsTableTableOrderingComposer,
+      $$EmployeePermissionsTableTableAnnotationComposer,
+      $$EmployeePermissionsTableTableCreateCompanionBuilder,
+      $$EmployeePermissionsTableTableUpdateCompanionBuilder,
+      (
+        EmployeePermissionsRow,
+        BaseReferences<
+          _$AppDatabase,
+          $EmployeePermissionsTableTable,
+          EmployeePermissionsRow
+        >,
+      ),
+      EmployeePermissionsRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -19789,4 +20412,9 @@ class $AppDatabaseManager {
       $$AuditLogsTableTableTableManager(_db, _db.auditLogsTable);
   $$EmployeesTableTableTableManager get employeesTable =>
       $$EmployeesTableTableTableManager(_db, _db.employeesTable);
+  $$EmployeePermissionsTableTableTableManager get employeePermissionsTable =>
+      $$EmployeePermissionsTableTableTableManager(
+        _db,
+        _db.employeePermissionsTable,
+      );
 }

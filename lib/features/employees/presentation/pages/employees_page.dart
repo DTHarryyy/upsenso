@@ -9,7 +9,7 @@ import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
-import 'package:pos/core/permissions/app_permission.dart';
+import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/ui/widgets/permission_gate.dart';
 import 'package:pos/core/widgets/app_filled_button.dart';
@@ -187,7 +187,7 @@ class _EmployeesViewState extends State<_EmployeesView> {
           title: 'Employees',
           actions: [
             PermissionGate(
-              permission: AppPermission.createEmployee,
+              permissionKey: PermissionKeys.employeesCreate,
               child: IconButton(
                 icon: const Icon(IconlyLight.plus, color: AppColors.brand),
                 onPressed: _showAddDialog,
@@ -228,8 +228,8 @@ class _EmployeesViewState extends State<_EmployeesView> {
                             ? _EmptyState(
                                 hasFilters: loaded.hasActiveFilters,
                                 onAdd:
-                                    sl<PermissionService>().hasPermission(
-                                      AppPermission.createEmployee,
+                                    sl<PermissionService>().can(
+                                      PermissionKeys.employeesCreate,
                                     )
                                     ? _showAddDialog
                                     : null,
@@ -239,28 +239,28 @@ class _EmployeesViewState extends State<_EmployeesView> {
                                 branches: _branches,
                                 onTap: _showDetails,
                                 onEdit:
-                                    sl<PermissionService>().hasPermission(
-                                      AppPermission.editEmployee,
+                                    sl<PermissionService>().can(
+                                      PermissionKeys.employeesEdit,
                                     )
                                     ? _showEditDialog
                                     : null,
                                 onArchive:
-                                    sl<PermissionService>().hasPermission(
-                                      AppPermission.editEmployee,
+                                    sl<PermissionService>().can(
+                                      PermissionKeys.employeesEdit,
                                     )
                                     ? _confirmArchive
                                     : null,
                                 onSuspend:
-                                    sl<PermissionService>().hasPermission(
-                                      AppPermission.suspendEmployee,
+                                    sl<PermissionService>().can(
+                                      PermissionKeys.employeesSuspend,
                                     )
                                     ? (e) => context.read<EmployeeBloc>().add(
                                         SuspendEmployee(e.id),
                                       )
                                     : null,
                                 onReactivate:
-                                    sl<PermissionService>().hasPermission(
-                                      AppPermission.suspendEmployee,
+                                    sl<PermissionService>().can(
+                                      PermissionKeys.employeesSuspend,
                                     )
                                     ? (e) => context.read<EmployeeBloc>().add(
                                         ReactivateEmployee(e.id),
@@ -276,7 +276,7 @@ class _EmployeesViewState extends State<_EmployeesView> {
           ],
         ),
         floatingActionButton: PermissionGate(
-          permission: AppPermission.createEmployee,
+          permissionKey: PermissionKeys.employeesCreate,
           child: FloatingActionButton.extended(
             onPressed: _showAddDialog,
             backgroundColor: AppColors.brand,

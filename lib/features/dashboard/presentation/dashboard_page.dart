@@ -5,7 +5,7 @@ import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
 // import 'package:pos/features/ai_assistant/widgets/floating_ai_assistant_bar.dart';
-import 'package:pos/core/permissions/app_feature.dart';
+import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
@@ -127,9 +127,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             Builder(
                               builder: (ctx) {
                                 final isRestricted = !sl<PermissionService>()
-                                    .canAccessFeature(
-                                      AppFeature.expensesModule,
-                                    );
+                                    .can(PermissionKeys.navExpenses);
                                 if (isRestricted) {
                                   return const SizedBox.shrink();
                                 }
@@ -188,9 +186,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             Builder(
                               builder: (ctx) {
                                 final isRestricted = !sl<PermissionService>()
-                                    .canAccessFeature(
-                                      AppFeature.expensesModule,
-                                    );
+                                    .can(PermissionKeys.navExpenses);
 
                                 if (isRestricted) {
                                   // Restricted roles: Category Performance full-width.
@@ -255,9 +251,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             Builder(
                               builder: (ctx) {
                                 final isRestricted = !sl<PermissionService>()
-                                    .canAccessFeature(
-                                      AppFeature.expensesModule,
-                                    );
+                                    .can(PermissionKeys.navExpenses);
 
                                 if (isRestricted) {
                                   // Restricted roles: Payment Methods full-width.
