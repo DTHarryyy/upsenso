@@ -11,7 +11,10 @@ import 'package:pos/features/dashboard/data/dashboard_data.dart';
 import 'package:pos/features/dashboard/presentation/cubit/dashboard_cubit.dart';
 import 'package:pos/features/dashboard/presentation/cubit/dashboard_state.dart';
 // import 'package:pos/features/dashboard/presentation/widgets/ai_insights_card.dart';
+import 'package:pos/features/dashboard/presentation/widgets/branch_comparison_card.dart';
 import 'package:pos/features/dashboard/presentation/widgets/category_performance_chart.dart';
+import 'package:pos/features/dashboard/presentation/widgets/expenses_summary_card.dart';
+import 'package:pos/features/dashboard/presentation/widgets/low_stock_alerts_card.dart';
 import 'package:pos/features/dashboard/presentation/widgets/payment_methods_chart.dart';
 import 'package:pos/features/dashboard/presentation/widgets/quick_actions_bar.dart';
 import 'package:pos/features/dashboard/presentation/widgets/sales_trend_chart.dart';
@@ -115,9 +118,10 @@ class _DashboardPageState extends State<DashboardPage> {
                             _StatCardsRow(data: data, isLoading: isLoading),
 
                             const SizedBox(height: 16),
-                            // Quick actions are only shown to roles that can
-                            // actually perform those actions (cashier and
-                            // inventory staff should not see them).
+                            // Quick actions, low stock, branch comparison and
+                            // expenses are only shown to roles that can
+                            // actually use them. Cashier and inventory staff
+                            // see a trimmed-down dashboard.
                             Builder(
                               builder: (ctx) {
                                 final authState = ctx.read<AuthBloc>().state;
@@ -144,12 +148,9 @@ class _DashboardPageState extends State<DashboardPage> {
                               },
                             ),
 
-                            // ── Sales Trend ──
-                            SalesTrendChart(data: data),
-
-                            const SizedBox(height: 16),
-
-                            // ── Top Selling Items + Payment Methods ──
+                            // ── Row 1: Sales Trend + Top Selling Items ──
+                            // On wide screens they sit side by side (flex 3 : 2)
+                            // matching the skeleton layout.
                             LayoutBuilder(
                               builder: (context, constraints) {
                                 if (constraints.maxWidth > 800) {
@@ -159,14 +160,14 @@ class _DashboardPageState extends State<DashboardPage> {
                                           CrossAxisAlignment.stretch,
                                       children: [
                                         Expanded(
-                                          child: TopSellingItems(
-                                            items: data.topItems,
-                                          ),
+                                          flex: 3,
+                                          child: SalesTrendChart(data: data),
                                         ),
                                         const SizedBox(width: 16),
                                         Expanded(
-                                          child: PaymentMethodsChart(
-                                            breakdown: data.paymentBreakdown,
+                                          flex: 2,
+                                          child: TopSellingItems(
+                                            items: data.topItems,
                                           ),
                                         ),
                                       ],
@@ -175,11 +176,9 @@ class _DashboardPageState extends State<DashboardPage> {
                                 }
                                 return Column(
                                   children: [
-                                    TopSellingItems(items: data.topItems),
+                                    SalesTrendChart(data: data),
                                     const SizedBox(height: 16),
-                                    PaymentMethodsChart(
-                                      breakdown: data.paymentBreakdown,
-                                    ),
+                                    TopSellingItems(items: data.topItems),
                                   ],
                                 );
                               },
@@ -187,8 +186,141 @@ class _DashboardPageState extends State<DashboardPage> {
 
                             const SizedBox(height: 16),
 
-                            // ── Category Performance ──
-                            CategoryPerformanceChart(stats: data.categoryStats),
+                            // ── Row 2: Low Stock | Category Performance | Expenses ──
+                            // Low Stock and Expenses are hidden for cashier /
+                            // inventory staff; Category Performance is always shown.
+                            Builder(
+                              builder: (ctx) {
+                                final authState = ctx.read<AuthBloc>().state;
+                                final roleLower = authState is AuthAuthenticated
+                                    ? (authState.user.roleName ?? '')
+                                          .trim()
+                                          .toLowerCase()
+                                          .replaceAll(' ', '_')
+                                    : '';
+                                final isRestricted =
+                                    roleLower == 'cashier' ||
+                                    roleLower == 'inventory_staff';
+
+                                if (isRestricted) {
+                                  // Restricted roles: Category Performance full-width.
+                                  return CategoryPerformanceChart(
+                                    stats: data.categoryStats,
+                                  );
+                                }
+
+                                return LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    if (constraints.maxWidth > 800) {
+                                      return IntrinsicHeight(
+                                        child: Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: [
+                                            Expanded(
+                                              child: LowStockAlertsCard(
+                                                items: data.lowStockItems,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 16),
+                                            Expanded(
+                                              child: CategoryPerformanceChart(
+                                                stats: data.categoryStats,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 16),
+                                            Expanded(
+                                              child: ExpensesSummaryCard(
+                                                summary: data.expenseSummary,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }
+                                    return Column(
+                                      children: [
+                                        LowStockAlertsCard(
+                                          items: data.lowStockItems,
+                                        ),
+                                        const SizedBox(height: 16),
+                                        CategoryPerformanceChart(
+                                          stats: data.categoryStats,
+                                        ),
+                                        const SizedBox(height: 16),
+                                        ExpensesSummaryCard(
+                                          summary: data.expenseSummary,
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // ── Row 3: Branch Comparison | Payment Methods ──
+                            // Branch Comparison is hidden for cashier / inventory staff.
+                            Builder(
+                              builder: (ctx) {
+                                final authState = ctx.read<AuthBloc>().state;
+                                final roleLower = authState is AuthAuthenticated
+                                    ? (authState.user.roleName ?? '')
+                                          .trim()
+                                          .toLowerCase()
+                                          .replaceAll(' ', '_')
+                                    : '';
+                                final isRestricted =
+                                    roleLower == 'cashier' ||
+                                    roleLower == 'inventory_staff';
+
+                                if (isRestricted) {
+                                  // Restricted roles: Payment Methods full-width.
+                                  return PaymentMethodsChart(
+                                    breakdown: data.paymentBreakdown,
+                                  );
+                                }
+
+                                return LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    if (constraints.maxWidth > 800) {
+                                      return IntrinsicHeight(
+                                        child: Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: [
+                                            Expanded(
+                                              child: BranchComparisonCard(
+                                                stats: data.branchStats,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 16),
+                                            Expanded(
+                                              child: PaymentMethodsChart(
+                                                breakdown:
+                                                    data.paymentBreakdown,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }
+                                    return Column(
+                                      children: [
+                                        BranchComparisonCard(
+                                          stats: data.branchStats,
+                                        ),
+                                        const SizedBox(height: 16),
+                                        PaymentMethodsChart(
+                                          breakdown: data.paymentBreakdown,
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                );
+                              },
+                            ),
 
                             const SizedBox(height: 24),
                           ],

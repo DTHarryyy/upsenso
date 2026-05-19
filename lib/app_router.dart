@@ -40,6 +40,7 @@ import 'package:pos/features/dashboard/presentation/dashboard_page.dart';
 import 'package:pos/features/reports/presentation/pages/reports_and_analytics.dart';
 import 'package:pos/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:pos/features/audit_logs/presentation/pages/audit_log_page.dart';
+import 'package:pos/features/employees/presentation/pages/employees_page.dart';
 import 'package:pos/features/onboarding/onboarding.dart';
 
 class _AuthRefreshNotifier extends ChangeNotifier {
@@ -228,6 +229,10 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.receiptSettings,
         builder: (context, _) => const ReceiptSettingsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.employees,
+        builder: (context, _) => const EmployeesPage(),
       ),
       GoRoute(
         path: AppRoutes.addProduct,

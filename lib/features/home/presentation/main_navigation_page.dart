@@ -746,6 +746,12 @@ class _AppSidebarState extends State<_AppSidebar>
                     // ── ADMIN section ──
                     if (_sidebarShowAuditLogs) ...[
                       if (layoutExpanded) const _SectionLabel(label: 'ADMIN'),
+                      _EmployeesNavTile(
+                        expanded: layoutExpanded,
+                        currentLocation: GoRouterState.of(
+                          context,
+                        ).matchedLocation,
+                      ),
                       _NavItem(
                         icon: IconlyLight.shield_done,
                         activeIcon: IconlyBold.shield_done,
@@ -1207,6 +1213,75 @@ class _ProfileNavTile extends StatelessWidget {
       child: expanded
           ? item
           : Tooltip(message: 'My Profile', preferBelow: false, child: item),
+    );
+  }
+}
+
+/// A sidebar nav tile that navigates to the Employees management page.
+/// Shown only to owner / super_admin in the ADMIN section.
+class _EmployeesNavTile extends StatelessWidget {
+  final bool expanded;
+  final String currentLocation;
+
+  const _EmployeesNavTile({
+    required this.expanded,
+    required this.currentLocation,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = currentLocation.startsWith(AppRoutes.employees);
+    final color = isActive ? AppColors.brand : AppColors.textSecondary;
+    final bg = isActive ? AppColors.brandSoft : Colors.transparent;
+
+    final item = Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => context.push(AppRoutes.employees),
+        borderRadius: BorderRadius.circular(10),
+        mouseCursor: SystemMouseCursors.click,
+        splashColor: AppColors.brand.withAlpha(20),
+        child: Container(
+          height: 36,
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          padding: EdgeInsets.symmetric(horizontal: expanded ? 10 : 0),
+          alignment: expanded ? Alignment.centerLeft : Alignment.center,
+          child: Row(
+            mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,
+            children: [
+              Icon(
+                isActive ? IconlyBold.user_3 : IconlyLight.user_1,
+                size: 20,
+                color: color,
+              ),
+              if (expanded) ...[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Employees',
+                    overflow: TextOverflow.ellipsis,
+                    style: getOutfitStyle(
+                      fontSize: 13.5,
+                      fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                      color: color,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: expanded
+          ? item
+          : Tooltip(message: 'Employees', preferBelow: false, child: item),
     );
   }
 }
