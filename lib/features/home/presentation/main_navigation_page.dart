@@ -1237,7 +1237,7 @@ class _EmployeesNavTile extends StatelessWidget {
     final item = Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => context.push(AppRoutes.employees),
+        onTap: () => context.go(AppRoutes.employees),
         borderRadius: BorderRadius.circular(10),
         mouseCursor: SystemMouseCursors.click,
         splashColor: AppColors.brand.withAlpha(20),

@@ -231,10 +231,6 @@ class AppRouter {
         builder: (context, _) => const ReceiptSettingsPage(),
       ),
       GoRoute(
-        path: AppRoutes.employees,
-        builder: (context, _) => const EmployeesPage(),
-      ),
-      GoRoute(
         path: AppRoutes.addProduct,
         builder: (context, state) =>
             AddProductsPage(initialBarcode: state.extra as String?),
@@ -362,6 +358,14 @@ class AppRouter {
               GoRoute(
                 path: AppRoutes.auditLogs,
                 builder: (context, _) => const AuditLogPage(),
+              ),
+            ],
+          ), // ── Branch 10: Employees ──────────────────────────────────────────
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.employees,
+                builder: (context, _) => const EmployeesPage(),
               ),
             ],
           ),
