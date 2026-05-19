@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:pos/features/reports/data/reports_data.dart';
 
 abstract class IReportsRepository {
@@ -7,5 +8,6 @@ abstract class IReportsRepository {
     required String businessId,
     String? branchId,
     required ReportPeriod period,
+    DateTimeRange? customRange,
   });
 }

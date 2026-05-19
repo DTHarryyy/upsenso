@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/material.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/core/database/daos/categories_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
@@ -117,60 +118,69 @@ class ReportsRepository implements IReportsRepository {
   ];
 
   List<({DateTime start, DateTime end, String label})> _buildBuckets(
-    DateTime cutoff,
-    DateTime today,
+    DateTimeRange range,
     ReportPeriod period,
   ) {
-    switch (period) {
-      case ReportPeriod.last7Days:
-        return List.generate(7, (i) {
-          final day = today.subtract(Duration(days: 6 - i));
-          return (
-            start: day,
-            end: day.add(const Duration(days: 1)),
-            label: '${_months[day.month - 1]} ${day.day}',
-          );
-        });
+    final cutoff = range.start;
+    final rangeEnd = range.end.add(const Duration(days: 1));
+    final rangeDays = range.end.difference(range.start).inDays + 1;
 
-      case ReportPeriod.last30Days:
-        return List.generate(30, (i) {
-          final day = today.subtract(Duration(days: 29 - i));
-          return (
-            start: day,
-            end: day.add(const Duration(days: 1)),
-            label: i % 5 == 0 || i == 29
-                ? '${_months[day.month - 1]} ${day.day}'
-                : '',
-          );
-        });
-
-      case ReportPeriod.last90Days:
-        // 13 weekly buckets — oldest first
-        return List.generate(13, (w) {
-          final start = cutoff.add(Duration(days: w * 7));
-          final end = start.add(const Duration(days: 7));
-          return (
-            start: start,
-            end: end,
-            label: '${_months[start.month - 1]} ${start.day}',
-          );
-        });
-
-      case ReportPeriod.lastYear:
-        // 12 monthly buckets — oldest first
-        return List.generate(12, (m) {
-          final monthStart = _subtractMonths(
-            DateTime(today.year, today.month, 1),
-            11 - m,
-          );
-          final monthEnd = _addMonths(monthStart, 1);
-          return (
-            start: monthStart,
-            end: monthEnd,
-            label: _months[monthStart.month - 1],
-          );
-        });
+    // Single-day periods.
+    if (rangeDays <= 2) {
+      final days = rangeDays;
+      return List.generate(days, (i) {
+        final day = cutoff.add(Duration(days: i));
+        return (
+          start: day,
+          end: day.add(const Duration(days: 1)),
+          label: '${_months[day.month - 1]} ${day.day}',
+        );
+      });
     }
+
+    // Monthly bucketing for lastMonth or large custom ranges (> 60 days).
+    if (period == ReportPeriod.lastMonth ||
+        (period == ReportPeriod.custom && rangeDays > 60)) {
+      // Build one bucket per month in the range.
+      final buckets = <({DateTime start, DateTime end, String label})>[];
+      var monthStart = DateTime(cutoff.year, cutoff.month);
+      while (monthStart.isBefore(rangeEnd)) {
+        final monthEnd = _addMonths(monthStart, 1);
+        buckets.add((
+          start: monthStart,
+          end: monthEnd,
+          label: _months[monthStart.month - 1],
+        ));
+        monthStart = monthEnd;
+      }
+      return buckets;
+    }
+
+    // Weekly bucketing for large ranges (> 31 days).
+    if (rangeDays > 31) {
+      final weeks = (rangeDays / 7).ceil();
+      return List.generate(weeks, (w) {
+        final start = cutoff.add(Duration(days: w * 7));
+        final end = start.add(const Duration(days: 7));
+        return (
+          start: start,
+          end: end,
+          label: '${_months[start.month - 1]} ${start.day}',
+        );
+      });
+    }
+
+    // Daily bucketing (default: ≤ 31 days).
+    return List.generate(rangeDays, (i) {
+      final day = cutoff.add(Duration(days: i));
+      return (
+        start: day,
+        end: day.add(const Duration(days: 1)),
+        label: (rangeDays <= 14 || i % 5 == 0 || i == rangeDays - 1)
+            ? '${_months[day.month - 1]} ${day.day}'
+            : '',
+      );
+    });
   }
 
   double _sumInRange(
@@ -181,16 +191,6 @@ class ReportsRepository implements IReportsRepository {
     return txns
         .where((t) => !t.createdAt.isBefore(from) && t.createdAt.isBefore(to))
         .fold(0.0, (s, t) => s + t.totalAmount);
-  }
-
-  static DateTime _subtractMonths(DateTime date, int months) {
-    int year = date.year;
-    int month = date.month - months;
-    while (month <= 0) {
-      month += 12;
-      year--;
-    }
-    return DateTime(year, month, 1);
   }
 
   static DateTime _addMonths(DateTime date, int months) {
@@ -210,11 +210,14 @@ class ReportsRepository implements IReportsRepository {
     required String businessId,
     String? branchId,
     required ReportPeriod period,
+    DateTimeRange? customRange,
   }) async {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final cutoff = today.subtract(Duration(days: period.days));
-    final prevCutoff = today.subtract(Duration(days: period.days * 2));
+    final effectiveRange = customRange ?? period.dateRange;
+    final cutoff = effectiveRange.start;
+    final rangeEnd = effectiveRange.end.add(const Duration(days: 1));
+    final rangeDays =
+        effectiveRange.end.difference(effectiveRange.start).inDays + 1;
+    final prevCutoff = cutoff.subtract(Duration(days: rangeDays));
 
     // ── 1. Fetch transactions ──────────────────────────────────────────────
     // Fetch enough for both current and previous periods.
@@ -231,21 +234,27 @@ class ReportsRepository implements IReportsRepository {
         : allFiltered;
 
     final currentTxns = allFiltered
-        .where((t) => !t.createdAt.isBefore(cutoff))
+        .where(
+          (t) =>
+              !t.createdAt.isBefore(cutoff) && t.createdAt.isBefore(rangeEnd),
+        )
         .toList();
     final prevTxns = allFiltered
         .where(
           (t) =>
-              t.createdAt.isBefore(cutoff) && !t.createdAt.isBefore(prevCutoff),
+              !t.createdAt.isBefore(prevCutoff) && t.createdAt.isBefore(cutoff),
         )
         .toList();
     final currentAllBranch = allBranches
-        .where((t) => !t.createdAt.isBefore(cutoff))
+        .where(
+          (t) =>
+              !t.createdAt.isBefore(cutoff) && t.createdAt.isBefore(rangeEnd),
+        )
         .toList();
     final prevAllBranch = allBranches
         .where(
           (t) =>
-              t.createdAt.isBefore(cutoff) && !t.createdAt.isBefore(prevCutoff),
+              !t.createdAt.isBefore(prevCutoff) && t.createdAt.isBefore(cutoff),
         )
         .toList();
 
@@ -284,7 +293,7 @@ class ReportsRepository implements IReportsRepository {
         .round();
 
     // Sales trend
-    final buckets = _buildBuckets(cutoff, today, period);
+    final buckets = _buildBuckets(effectiveRange, period);
     final salesTrend = buckets
         .map(
           (b) => SalesTrendPoint(
@@ -328,7 +337,7 @@ class ReportsRepository implements IReportsRepository {
       final pName = productToName[v.productId] ?? 'Unknown';
       final displayName = v.name == 'Default' ? pName : '$pName (${v.name})';
       final totalQty = variantQty[v.id] ?? 0;
-      final avgDailySale = totalQty / period.days;
+      final avgDailySale = totalQty / rangeDays;
       final currentStock = v.stockDecimal ?? v.stock.toDouble();
       final daysLeft = avgDailySale > 0 ? currentStock / avgDailySale : null;
 

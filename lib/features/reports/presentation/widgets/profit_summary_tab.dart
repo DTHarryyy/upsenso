@@ -6,8 +6,7 @@ import 'package:pos/features/reports/presentation/widgets/report_card.dart';
 
 class ProfitSummaryTab extends StatelessWidget {
   final ReportsData data;
-  final ReportPeriod period;
-  const ProfitSummaryTab({super.key, required this.data, required this.period});
+  const ProfitSummaryTab({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +33,10 @@ class ProfitBarChart extends StatelessWidget {
         child: SizedBox(
           height: 260,
           child: Center(
-            child: Text('No data', style: TextStyle(color: AppColors.textMuted)),
+            child: Text(
+              'No data',
+              style: TextStyle(color: AppColors.textMuted),
+            ),
           ),
         ),
       );
@@ -88,9 +90,11 @@ class ProfitBarChart extends StatelessWidget {
                 ),
                 titlesData: FlTitlesData(
                   topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                   rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
@@ -98,9 +102,13 @@ class ProfitBarChart extends StatelessWidget {
                       interval: interval,
                       getTitlesWidget: (v, _) => Padding(
                         padding: const EdgeInsets.only(right: 6),
-                        child: Text(fmtAxisAmount(v),
-                            style: const TextStyle(
-                                fontSize: 10, color: AppColors.textMuted)),
+                        child: Text(
+                          fmtAxisAmount(v),
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -117,9 +125,13 @@ class ProfitBarChart extends StatelessWidget {
                         if (label.isEmpty) return const SizedBox();
                         return Padding(
                           padding: const EdgeInsets.only(top: 4),
-                          child: Text(label,
-                              style: const TextStyle(
-                                  fontSize: 9, color: AppColors.textMuted)),
+                          child: Text(
+                            label,
+                            style: const TextStyle(
+                              fontSize: 9,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
                         );
                       },
                     ),
@@ -141,15 +153,17 @@ class ProfitBarChart extends StatelessWidget {
                         toY: trend[i].revenue,
                         color: AppColors.brand,
                         width: 10,
-                        borderRadius:
-                            const BorderRadius.vertical(top: Radius.circular(3)),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(3),
+                        ),
                       ),
                       BarChartRodData(
                         toY: trend[i].cogs,
                         color: AppColors.error,
                         width: 10,
-                        borderRadius:
-                            const BorderRadius.vertical(top: Radius.circular(3)),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(3),
+                        ),
                       ),
                     ],
                   );
@@ -181,8 +195,9 @@ class _ProfitTrendTable extends StatelessWidget {
       totCogs += p.cogs;
     }
     final totNet = totRev - totCogs;
-    final totMargin =
-        totRev > 0 ? '${(totNet / totRev * 100).toStringAsFixed(1)}%' : '—';
+    final totMargin = totRev > 0
+        ? '${(totNet / totRev * 100).toStringAsFixed(1)}%'
+        : '—';
 
     return ReportCard(
       child: Column(
@@ -216,27 +231,41 @@ class _ProfitTrendTable extends StatelessWidget {
                 : '—';
             return Container(
               color: i.isOdd ? const Color(0xFFF7F9FC) : Colors.white,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
               child: Row(
                 children: [
                   Expanded(
-                      flex: 3,
-                      child: Text(p.label,
-                          style: const TextStyle(
-                              fontSize: 13, color: AppColors.textPrimary))),
+                    flex: 3,
+                    child: Text(
+                      p.label,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
                   Expanded(
-                      flex: 2,
-                      child: Text(fmtCurrency(p.revenue),
-                          textAlign: TextAlign.end,
-                          style: const TextStyle(
-                              fontSize: 13, color: AppColors.textPrimary))),
+                    flex: 2,
+                    child: Text(
+                      fmtCurrency(p.revenue),
+                      textAlign: TextAlign.end,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
                   Expanded(
-                      flex: 2,
-                      child: Text(fmtCurrency(p.cogs),
-                          textAlign: TextAlign.end,
-                          style: const TextStyle(
-                              fontSize: 13, color: AppColors.textSecondary))),
+                    flex: 2,
+                    child: Text(
+                      fmtCurrency(p.cogs),
+                      textAlign: TextAlign.end,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
                   Expanded(
                     flex: 2,
                     child: Text(
@@ -250,11 +279,16 @@ class _ProfitTrendTable extends StatelessWidget {
                     ),
                   ),
                   Expanded(
-                      flex: 2,
-                      child: Text(margin,
-                          textAlign: TextAlign.end,
-                          style: const TextStyle(
-                              fontSize: 12, color: AppColors.textMuted))),
+                    flex: 2,
+                    child: Text(
+                      margin,
+                      textAlign: TextAlign.end,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             );
@@ -270,47 +304,63 @@ class _ProfitTrendTable extends StatelessWidget {
               children: [
                 const Expanded(
                   flex: 3,
-                  child: Text('TOTAL',
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.brand)),
+                  child: Text(
+                    'TOTAL',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.brand,
+                    ),
+                  ),
                 ),
-                Expanded(
-                    flex: 2,
-                    child: Text(fmtCurrency(totRev),
-                        textAlign: TextAlign.end,
-                        style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary))),
-                Expanded(
-                    flex: 2,
-                    child: Text(fmtCurrency(totCogs),
-                        textAlign: TextAlign.end,
-                        style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary))),
                 Expanded(
                   flex: 2,
-                  child: Text(fmtCurrency(totNet),
-                      textAlign: TextAlign.end,
-                      style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: totNet >= 0
-                              ? AppColors.success
-                              : AppColors.error)),
+                  child: Text(
+                    fmtCurrency(totRev),
+                    textAlign: TextAlign.end,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
                 ),
                 Expanded(
-                    flex: 2,
-                    child: Text(totMargin,
-                        textAlign: TextAlign.end,
-                        style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary))),
+                  flex: 2,
+                  child: Text(
+                    fmtCurrency(totCogs),
+                    textAlign: TextAlign.end,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    fmtCurrency(totNet),
+                    textAlign: TextAlign.end,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: totNet >= 0 ? AppColors.success : AppColors.error,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    totMargin,
+                    textAlign: TextAlign.end,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -326,23 +376,30 @@ class _ProfitTableHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const s = TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w600,
-        color: AppColors.textMuted,
-        letterSpacing: 0.3);
+      fontSize: 11,
+      fontWeight: FontWeight.w600,
+      color: AppColors.textMuted,
+      letterSpacing: 0.3,
+    );
     return const Row(
       children: [
         Expanded(flex: 3, child: Text('PERIOD', style: s)),
         Expanded(
-            flex: 2, child: Text('REVENUE', style: s, textAlign: TextAlign.end)),
+          flex: 2,
+          child: Text('REVENUE', style: s, textAlign: TextAlign.end),
+        ),
         Expanded(
-            flex: 2, child: Text('COGS', style: s, textAlign: TextAlign.end)),
+          flex: 2,
+          child: Text('COGS', style: s, textAlign: TextAlign.end),
+        ),
         Expanded(
-            flex: 2,
-            child: Text('NET PROFIT', style: s, textAlign: TextAlign.end)),
+          flex: 2,
+          child: Text('NET PROFIT', style: s, textAlign: TextAlign.end),
+        ),
         Expanded(
-            flex: 2,
-            child: Text('MARGIN', style: s, textAlign: TextAlign.end)),
+          flex: 2,
+          child: Text('MARGIN', style: s, textAlign: TextAlign.end),
+        ),
       ],
     );
   }
@@ -366,9 +423,10 @@ class LegendDot extends StatelessWidget {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 5),
-        Text(label,
-            style: const TextStyle(
-                fontSize: 12, color: AppColors.textSecondary)),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        ),
       ],
     );
   }

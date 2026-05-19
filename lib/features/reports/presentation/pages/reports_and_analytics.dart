@@ -9,6 +9,7 @@ import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/ui/status/status_snack.dart';
 import 'package:pos/core/ui/status/status_type.dart';
 import 'package:pos/core/widgets/app_dropdown.dart';
+import 'package:pos/core/widgets/app_popup_menu.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/reports/data/reports_data.dart';
@@ -39,6 +40,7 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
 
   int _selectedTab = 0;
   ReportPeriod _period = ReportPeriod.last7Days;
+  DateTimeRange? _customRange;
   bool _exportingPdf = false;
   bool _exportingExcel = false;
 
@@ -70,12 +72,49 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
       businessId: authState.user.businessId ?? '',
       branchId: context.read<BranchCubit>().getSelectedBranchIdForFiltering(),
       period: _period,
+      customRange: _customRange,
     );
   }
 
-  void _onPeriodChanged(ReportPeriod p) {
-    setState(() => _period = p);
-    _cubit.changePeriod(p);
+  void _onPeriodDropdownChanged(ReportPeriod? v) async {
+    if (v == null) return;
+    if (v == ReportPeriod.custom) {
+      final picked = await showDateRangePicker(
+        context: context,
+        firstDate: DateTime(2020),
+        lastDate: DateTime.now(),
+        initialDateRange: _customRange,
+        builder: (ctx, child) => Theme(
+          data: Theme.of(ctx).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: AppColors.brand,
+              onPrimary: Colors.white,
+              surface: AppColors.surface,
+              onSurface: AppColors.textPrimary,
+              secondaryContainer: AppColors.brandSoft,
+              onSecondaryContainer: AppColors.brand,
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(foregroundColor: AppColors.brand),
+            ),
+          ),
+          child: child!,
+        ),
+      );
+      if (picked != null && mounted) {
+        setState(() {
+          _period = ReportPeriod.custom;
+          _customRange = picked;
+        });
+        _cubit.changePeriod(ReportPeriod.custom, customRange: picked);
+      }
+    } else {
+      setState(() {
+        _period = v;
+        _customRange = null;
+      });
+      _cubit.changePeriod(v);
+    }
   }
 
   // ── Export handlers ──────────────────────────────────────────────────────────
@@ -203,6 +242,7 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
                         businessName: businessName,
                         branchLabel: branchLabel,
                         period: _period,
+                        customRange: _customRange,
                       ),
                       const SizedBox(height: 16),
                       // ② KPI summary cards
@@ -219,15 +259,16 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
                       ),
                       const SizedBox(height: 20),
                       // ⑤ Tab content
-                      if (isLoading)
+                      // Tab 1 (Inventory) handles its own adaptive skeleton.
+                      if (isLoading && _selectedTab != 1)
                         const _ReportsTabSkeleton()
-                      else if (state is ReportsError)
+                      else if (state is ReportsError && _selectedTab != 1)
                         _ErrorView(
                           message: state.message,
                           onRetry: _startWatching,
                         )
                       else
-                        _buildTabContent(data),
+                        _buildTabContent(data, isLoading: isLoading),
                     ],
                   ),
                 ),
@@ -237,6 +278,16 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
         ),
       ),
     );
+  }
+
+  String get _customRangeLabel {
+    if (_customRange == null) return 'Custom range...';
+    String fmt(DateTime d) =>
+        '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+    final s = _customRange!.start;
+    final e = _customRange!.end;
+    final sameDay = s.year == e.year && s.month == e.month && s.day == e.day;
+    return sameDay ? fmt(s) : '${fmt(s)} – ${fmt(e)}';
   }
 
   Widget _buildFilterRow(
@@ -251,18 +302,17 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
           child: AppDropdown<ReportPeriod>(
             value: _period,
             dense: true,
-            items: ReportPeriod.values
-                .map(
-                  (p) => AppDropdownItem(
-                    value: p,
-                    label: p.label,
-                    icon: IconlyLight.calendar,
-                  ),
-                )
-                .toList(),
-            onChanged: (v) {
-              if (v != null) _onPeriodChanged(v);
-            },
+            items: [
+              ...ReportPeriod.values
+                  .where((p) => p != ReportPeriod.custom)
+                  .map((p) => AppDropdownItem(value: p, label: p.label)),
+              AppDropdownItem(
+                value: ReportPeriod.custom,
+                label: _customRangeLabel,
+                icon: IconlyLight.setting,
+              ),
+            ],
+            onChanged: _onPeriodDropdownChanged,
           ),
         ),
         const SizedBox(width: 8),
@@ -277,14 +327,14 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
     );
   }
 
-  Widget _buildTabContent(ReportsData data) {
+  Widget _buildTabContent(ReportsData data, {bool isLoading = false}) {
     switch (_selectedTab) {
       case 0:
-        return SalesReportTab(data: data, period: _period);
+        return SalesReportTab(data: data);
       case 1:
-        return InventoryHealthTab(data: data);
+        return InventoryHealthTab(data: data, isLoading: isLoading);
       case 2:
-        return ProfitSummaryTab(data: data, period: _period);
+        return ProfitSummaryTab(data: data);
       case 3:
         return BranchComparisonTab(data: data);
       default:
@@ -467,12 +517,26 @@ class _ReportHeaderCard extends StatelessWidget {
   final String businessName;
   final String branchLabel;
   final ReportPeriod period;
+  final DateTimeRange? customRange;
 
   const _ReportHeaderCard({
     required this.businessName,
     required this.branchLabel,
     required this.period,
+    this.customRange,
   });
+
+  String get _periodLabel {
+    if (customRange != null) {
+      String fmt(DateTime d) =>
+          '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+      final s = customRange!.start;
+      final e = customRange!.end;
+      final sameDay = s.year == e.year && s.month == e.month && s.day == e.day;
+      return sameDay ? fmt(s) : '${fmt(s)} – ${fmt(e)}';
+    }
+    return period.label;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -520,7 +584,7 @@ class _ReportHeaderCard extends StatelessWidget {
                 const SizedBox(height: 3),
                 Row(
                   children: [
-                    _Chip(IconlyLight.calendar, period.label),
+                    _Chip(IconlyLight.calendar, _periodLabel),
                     const SizedBox(width: 10),
                     _Chip(IconlyLight.work, branchLabel),
                   ],
@@ -592,103 +656,35 @@ class _ExportDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final busy = isExportingPdf || isExportingExcel;
-    final label = isExportingPdf
+    final hint = isExportingPdf
         ? 'Exporting PDF…'
         : isExportingExcel
         ? 'Exporting…'
         : 'Export';
 
-    return PopupMenuButton<_ExportType>(
-      enabled: !busy,
-      offset: const Offset(0, 40),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      color: Colors.white,
-      onSelected: (t) {
-        if (t == _ExportType.pdf) onExportPdf();
-        if (t == _ExportType.excel) onExportExcel();
-      },
-      itemBuilder: (_) => [
-        PopupMenuItem(
+    return AppPopupMenu<_ExportType>(
+      hint: hint,
+      leadingIcon: IconlyLight.upload,
+      dense: true,
+      busy: busy,
+      items: [
+        AppPopupMenuItem(
           value: _ExportType.pdf,
-          child: Row(
-            children: [
-              Icon(
-                IconlyLight.document,
-                size: 15,
-                color: AppColors.error,
-              ),
-              const SizedBox(width: 10),
-              const Text(
-                'Export as PDF',
-                style: TextStyle(fontSize: 13, color: AppColors.textPrimary),
-              ),
-            ],
-          ),
+          label: 'Export as PDF',
+          icon: IconlyLight.document,
+          iconColor: AppColors.error,
         ),
-        PopupMenuItem(
+        AppPopupMenuItem(
           value: _ExportType.excel,
-          child: Row(
-            children: [
-              Icon(
-                IconlyLight.chart,
-                size: 15,
-                color: AppColors.success,
-              ),
-              const SizedBox(width: 10),
-              const Text(
-                'Export as Excel (.xlsx)',
-                style: TextStyle(fontSize: 13, color: AppColors.textPrimary),
-              ),
-            ],
-          ),
+          label: 'Export as Excel (.xlsx)',
+          icon: IconlyLight.chart,
+          iconColor: AppColors.success,
         ),
       ],
-      child: Container(
-        height: 36,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.borderSoft),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (busy)
-              const SizedBox(
-                width: 13,
-                height: 13,
-                child: CircularProgressIndicator(
-                  strokeWidth: 1.5,
-                  color: AppColors.textSecondary,
-                ),
-              )
-            else
-              const Icon(
-                IconlyLight.download,
-                size: 15,
-                color: AppColors.textSecondary,
-              ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            if (!busy) ...[
-              const SizedBox(width: 2),
-              const Icon(
-                IconlyLight.arrow_down_2,
-                size: 16,
-                color: AppColors.textMuted,
-              ),
-            ],
-          ],
-        ),
-      ),
+      onSelected: (v) {
+        if (v == _ExportType.pdf) onExportPdf();
+        if (v == _ExportType.excel) onExportExcel();
+      },
     );
   }
 }

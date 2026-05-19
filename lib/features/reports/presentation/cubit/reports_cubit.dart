@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:pos/features/reports/data/reports_data.dart';
@@ -13,6 +14,7 @@ class ReportsCubit extends Cubit<ReportsState> {
   String? _businessId;
   String? _branchId;
   ReportPeriod _period = ReportPeriod.last7Days;
+  DateTimeRange? _customRange;
   bool _isLoading = false;
   bool _pendingReload = false;
 
@@ -26,10 +28,12 @@ class ReportsCubit extends Cubit<ReportsState> {
     required String businessId,
     String? branchId,
     required ReportPeriod period,
+    DateTimeRange? customRange,
   }) async {
     _businessId = businessId;
     _branchId = branchId;
     _period = period;
+    _customRange = customRange;
 
     await _watcher?.cancel();
 
@@ -43,8 +47,12 @@ class ReportsCubit extends Cubit<ReportsState> {
   }
 
   /// Call when the user picks a different time period.
-  Future<void> changePeriod(ReportPeriod period) async {
+  Future<void> changePeriod(
+    ReportPeriod period, {
+    DateTimeRange? customRange,
+  }) async {
     _period = period;
+    _customRange = customRange;
     await _doLoad(showSpinner: true);
   }
 
@@ -75,6 +83,7 @@ class ReportsCubit extends Cubit<ReportsState> {
         businessId: businessId,
         branchId: _branchId,
         period: _period,
+        customRange: _customRange,
       );
       if (!isClosed) emit(ReportsLoaded(data));
     } catch (e) {

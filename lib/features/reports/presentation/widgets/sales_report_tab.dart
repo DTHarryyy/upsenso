@@ -7,9 +7,8 @@ import 'package:pos/features/reports/presentation/widgets/report_card.dart';
 
 class SalesReportTab extends StatelessWidget {
   final ReportsData data;
-  final ReportPeriod period;
 
-  const SalesReportTab({super.key, required this.data, required this.period});
+  const SalesReportTab({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {
@@ -23,10 +22,7 @@ class SalesReportTab extends StatelessWidget {
                 children: [
                   Expanded(
                     flex: 3,
-                    child: SalesTrendChart(
-                      trend: data.salesTrend,
-                      period: period,
-                    ),
+                    child: SalesTrendChart(trend: data.salesTrend),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -38,7 +34,7 @@ class SalesReportTab extends StatelessWidget {
             }
             return Column(
               children: [
-                SalesTrendChart(trend: data.salesTrend, period: period),
+                SalesTrendChart(trend: data.salesTrend),
                 const SizedBox(height: 16),
                 CategoryDonutChart(stats: data.categoryBreakdown),
               ],
@@ -56,9 +52,8 @@ class SalesReportTab extends StatelessWidget {
 
 class SalesTrendChart extends StatelessWidget {
   final List<SalesTrendPoint> trend;
-  final ReportPeriod period;
 
-  const SalesTrendChart({super.key, required this.trend, required this.period});
+  const SalesTrendChart({super.key, required this.trend});
 
   @override
   Widget build(BuildContext context) {

@@ -1,23 +1,59 @@
+import 'package:flutter/material.dart';
 import 'package:pos/features/dashboard/data/dashboard_data.dart';
 
 // ─── Period enum ──────────────────────────────────────────────────────────────
 
-enum ReportPeriod { last7Days, last30Days, last90Days, lastYear }
+enum ReportPeriod {
+  today,
+  yesterday,
+  last7Days,
+  last30Days,
+  thisMonth,
+  lastMonth,
+  custom,
+}
 
 extension ReportPeriodX on ReportPeriod {
   String get label => const {
-        ReportPeriod.last7Days: 'Last 7 Days',
-        ReportPeriod.last30Days: 'Last 30 Days',
-        ReportPeriod.last90Days: 'Last 90 Days',
-        ReportPeriod.lastYear: 'Last Year',
-      }[this]!;
+    ReportPeriod.today: 'Today',
+    ReportPeriod.yesterday: 'Yesterday',
+    ReportPeriod.last7Days: 'Last 7 days',
+    ReportPeriod.last30Days: 'Last 30 days',
+    ReportPeriod.thisMonth: 'This month',
+    ReportPeriod.lastMonth: 'Last month',
+    ReportPeriod.custom: 'Custom range',
+  }[this]!;
 
-  int get days => const {
-        ReportPeriod.last7Days: 7,
-        ReportPeriod.last30Days: 30,
-        ReportPeriod.last90Days: 90,
-        ReportPeriod.lastYear: 365,
-      }[this]!;
+  DateTimeRange get dateRange {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return switch (this) {
+      ReportPeriod.today => DateTimeRange(start: today, end: today),
+      ReportPeriod.yesterday => DateTimeRange(
+        start: today.subtract(const Duration(days: 1)),
+        end: today.subtract(const Duration(days: 1)),
+      ),
+      ReportPeriod.last7Days => DateTimeRange(
+        start: today.subtract(const Duration(days: 6)),
+        end: today,
+      ),
+      ReportPeriod.last30Days => DateTimeRange(
+        start: today.subtract(const Duration(days: 29)),
+        end: today,
+      ),
+      ReportPeriod.thisMonth => DateTimeRange(
+        start: DateTime(now.year, now.month),
+        end: today,
+      ),
+      ReportPeriod.lastMonth => DateTimeRange(
+        start: DateTime(now.year, now.month - 1),
+        end: DateTime(now.year, now.month, 0),
+      ),
+      ReportPeriod.custom => DateTimeRange(start: today, end: today),
+    };
+  }
+
+  int get days => dateRange.end.difference(dateRange.start).inDays + 1;
 }
 
 // ─── Inventory status ─────────────────────────────────────────────────────────
@@ -26,11 +62,11 @@ enum InventoryStatusType { low, warning, ok, slowMoving }
 
 extension InventoryStatusTypeX on InventoryStatusType {
   String get label => const {
-        InventoryStatusType.low: 'Low',
-        InventoryStatusType.warning: 'Warning',
-        InventoryStatusType.ok: 'Ok',
-        InventoryStatusType.slowMoving: 'Slow Moving',
-      }[this]!;
+    InventoryStatusType.low: 'Low',
+    InventoryStatusType.warning: 'Warning',
+    InventoryStatusType.ok: 'Ok',
+    InventoryStatusType.slowMoving: 'Slow Moving',
+  }[this]!;
 }
 
 // ─── Data models ──────────────────────────────────────────────────────────────
@@ -145,26 +181,26 @@ class ReportsData {
   });
 
   static ReportsData empty() => const ReportsData(
-        totalRevenue: 0,
-        totalTransactions: 0,
-        avgTicket: 0,
-        itemsSold: 0,
-        prevTotalRevenue: 0,
-        prevTotalTransactions: 0,
-        prevAvgTicket: 0,
-        prevItemsSold: 0,
-        salesTrend: [],
-        categoryBreakdown: [],
-        lowStockCount: 0,
-        fastMoversCount: 0,
-        deadStockCount: 0,
-        totalSKUs: 0,
-        inventoryItems: [],
-        grossRevenue: 0,
-        costOfGoods: 0,
-        netProfit: 0,
-        prevNetProfit: 0,
-        profitTrend: [],
-        branchStats: [],
-      );
+    totalRevenue: 0,
+    totalTransactions: 0,
+    avgTicket: 0,
+    itemsSold: 0,
+    prevTotalRevenue: 0,
+    prevTotalTransactions: 0,
+    prevAvgTicket: 0,
+    prevItemsSold: 0,
+    salesTrend: [],
+    categoryBreakdown: [],
+    lowStockCount: 0,
+    fastMoversCount: 0,
+    deadStockCount: 0,
+    totalSKUs: 0,
+    inventoryItems: [],
+    grossRevenue: 0,
+    costOfGoods: 0,
+    netProfit: 0,
+    prevNetProfit: 0,
+    profitTrend: [],
+    branchStats: [],
+  );
 }

@@ -22,8 +22,7 @@ class ProfilePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, state) {
-        final user =
-            state is AuthAuthenticated ? state.user : null;
+        final user = state is AuthAuthenticated ? state.user : null;
         return _ProfileView(user: user);
       },
     );
@@ -52,7 +51,8 @@ class _ProfileViewState extends State<_ProfileView> {
   }
 
   void _onNameChanged() {
-    final isDirty = _nameCtrl.text.trim() != (widget.user?.fullName ?? '').trim();
+    final isDirty =
+        _nameCtrl.text.trim() != (widget.user?.fullName ?? '').trim();
     if (isDirty != _dirty) setState(() => _dirty = isDirty);
   }
 
@@ -76,7 +76,9 @@ class _ProfileViewState extends State<_ProfileView> {
     final newName = _nameCtrl.text.trim();
     setState(() => _saving = true);
     try {
-      final updated = await sl<AuthRepository>().updateProfile(fullName: newName);
+      final updated = await sl<AuthRepository>().updateProfile(
+        fullName: newName,
+      );
       if (!mounted) return;
       context.read<AuthBloc>().add(AuthUserContextUpdated(updated));
       setState(() {
@@ -85,7 +87,10 @@ class _ProfileViewState extends State<_ProfileView> {
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Profile updated', style: getOutfitStyle(color: Colors.white)),
+          content: Text(
+            'Profile updated',
+            style: getOutfitStyle(color: Colors.white),
+          ),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
         ),
@@ -95,8 +100,10 @@ class _ProfileViewState extends State<_ProfileView> {
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to update: $e',
-              style: getOutfitStyle(color: Colors.white)),
+          content: Text(
+            'Failed to update: $e',
+            style: getOutfitStyle(color: Colors.white),
+          ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -118,30 +125,37 @@ class _ProfileViewState extends State<_ProfileView> {
     final bytes = await picked.readAsBytes();
     if (bytes.length > _maxAvatarBytes) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Image too large. Maximum size is 5 MB.',
-            style: getOutfitStyle(color: Colors.white)),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Image too large. Maximum size is 5 MB.',
+            style: getOutfitStyle(color: Colors.white),
+          ),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
       return;
     }
     final userId = widget.user?.id;
     if (userId == null) return;
     setState(() => _saving = true);
     try {
-      final updated =
-          await sl<AuthRepository>().uploadAvatar(userId, bytes);
+      final updated = await sl<AuthRepository>().uploadAvatar(userId, bytes);
       if (!mounted) return;
       context.read<AuthBloc>().add(AuthUserContextUpdated(updated));
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Upload failed: $e',
-              style: getOutfitStyle(color: Colors.white)),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Upload failed: $e',
+              style: getOutfitStyle(color: Colors.white),
+            ),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -172,11 +186,14 @@ class _ProfileViewState extends State<_ProfileView> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Log out?',
-            style: getOutfitStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary)),
+        title: Text(
+          'Log out?',
+          style: getOutfitStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+        ),
         content: Text(
           'Are you sure you want to log out from this account?',
           style: getOutfitStyle(fontSize: 14, color: AppColors.textSecondary),
@@ -184,18 +201,25 @@ class _ProfileViewState extends State<_ProfileView> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Cancel',
-                style: getOutfitStyle(
-                    fontSize: 14, color: AppColors.textSecondary)),
+            child: Text(
+              'Cancel',
+              style: getOutfitStyle(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+              ),
+            ),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-            child: Text('Log out',
-                style: getOutfitStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white)),
+            child: Text(
+              'Log out',
+              style: getOutfitStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
           ),
         ],
       ),
@@ -217,9 +241,10 @@ class _ProfileViewState extends State<_ProfileView> {
         title: Text(
           'My Profile',
           style: getOutfitStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary),
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
         ),
         actions: [
           if (_dirty)
@@ -229,23 +254,31 @@ class _ProfileViewState extends State<_ProfileView> {
                 onPressed: _saving ? null : _save,
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.brand,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 10,
+                  ),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
                 child: _saving
                     ? const SizedBox(
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
-                    : Text('Save',
+                    : Text(
+                        'Save',
                         style: getOutfitStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white)),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
               ),
             ),
         ],
@@ -267,7 +300,9 @@ class _ProfileViewState extends State<_ProfileView> {
                             height: 84,
                             child: Center(
                               child: CircularProgressIndicator(
-                                  color: AppColors.brand, strokeWidth: 2),
+                                color: AppColors.brand,
+                                strokeWidth: 2,
+                              ),
                             ),
                           )
                         : UserAvatar(
@@ -282,25 +317,29 @@ class _ProfileViewState extends State<_ProfileView> {
                     Text(
                       user?.fullName ?? user?.email ?? 'User',
                       style: getOutfitStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     if (user?.roleName != null)
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 3),
+                          horizontal: 10,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.brandSoft,
                           borderRadius: BorderRadius.circular(100),
                         ),
                         child: Text(
-                          user!.roleName!,
+                          displayRoleName(user!.roleName) ?? '',
                           style: getOutfitStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.brand),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.brand,
+                          ),
                         ),
                       ),
                   ],
@@ -309,12 +348,15 @@ class _ProfileViewState extends State<_ProfileView> {
               const SizedBox(height: 28),
 
               // ── Personal Info ─────────────────────────────────────────
-              Text('Personal Info',
-                  style: getOutfitStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textMuted,
-                      letterSpacing: 0.4)),
+              Text(
+                'Personal Info',
+                style: getOutfitStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textMuted,
+                  letterSpacing: 0.4,
+                ),
+              ),
               const SizedBox(height: 8),
               DashboardCard(
                 padding: const EdgeInsets.all(16),
@@ -326,7 +368,9 @@ class _ProfileViewState extends State<_ProfileView> {
                       controller: _nameCtrl,
                       decoration: appInputDeco('Enter your full name'),
                       style: getOutfitStyle(
-                          fontSize: 14, color: AppColors.textPrimary),
+                        fontSize: 14,
+                        color: AppColors.textPrimary,
+                      ),
                       validator: (v) => (v == null || v.trim().isEmpty)
                           ? 'Name cannot be empty'
                           : null,
@@ -343,12 +387,15 @@ class _ProfileViewState extends State<_ProfileView> {
               const SizedBox(height: 20),
 
               // ── Work Info ─────────────────────────────────────────────
-              Text('Work Info',
-                  style: getOutfitStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textMuted,
-                      letterSpacing: 0.4)),
+              Text(
+                'Work Info',
+                style: getOutfitStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textMuted,
+                  letterSpacing: 0.4,
+                ),
+              ),
               const SizedBox(height: 8),
               DashboardCard(
                 padding: const EdgeInsets.all(16),
@@ -357,7 +404,10 @@ class _ProfileViewState extends State<_ProfileView> {
                     _InfoRow(
                       icon: Icons.badge_outlined,
                       label: 'Role',
-                      value: user?.roleName ?? user?.roleId ?? '—',
+                      value:
+                          displayRoleName(user?.roleName) ??
+                          user?.roleId ??
+                          '—',
                     ),
                     const Divider(height: 20, color: AppColors.borderSoft),
                     _InfoRow(
@@ -377,12 +427,15 @@ class _ProfileViewState extends State<_ProfileView> {
               const SizedBox(height: 20),
 
               // ── Security ──────────────────────────────────────────────
-              Text('Security',
-                  style: getOutfitStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textMuted,
-                      letterSpacing: 0.4)),
+              Text(
+                'Security',
+                style: getOutfitStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textMuted,
+                  letterSpacing: 0.4,
+                ),
+              ),
               const SizedBox(height: 8),
               DashboardCard(
                 padding: EdgeInsets.zero,
@@ -437,9 +490,13 @@ class _ReadOnlyField extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(value,
-                style: getOutfitStyle(
-                    fontSize: 14, color: AppColors.textSecondary)),
+            child: Text(
+              value,
+              style: getOutfitStyle(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+              ),
+            ),
           ),
           Icon(icon, size: 16, color: AppColors.textMuted),
         ],
@@ -452,8 +509,11 @@ class _InfoRow extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
-  const _InfoRow(
-      {required this.icon, required this.label, required this.value});
+  const _InfoRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -472,14 +532,18 @@ class _InfoRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label,
-                  style: getOutfitStyle(
-                      fontSize: 11, color: AppColors.textMuted)),
-              Text(value,
-                  style: getOutfitStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textPrimary)),
+              Text(
+                label,
+                style: getOutfitStyle(fontSize: 11, color: AppColors.textMuted),
+              ),
+              Text(
+                value,
+                style: getOutfitStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary,
+                ),
+              ),
             ],
           ),
         ),
@@ -518,20 +582,28 @@ class _ActionRow extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                  color: iconBg, borderRadius: BorderRadius.circular(10)),
+                color: iconBg,
+                borderRadius: BorderRadius.circular(10),
+              ),
               child: Icon(icon, size: 18, color: iconColor),
             ),
             const SizedBox(width: 14),
             Expanded(
-              child: Text(label,
-                  style: getOutfitStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: labelColor ?? AppColors.textPrimary)),
+              child: Text(
+                label,
+                style: getOutfitStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: labelColor ?? AppColors.textPrimary,
+                ),
+              ),
             ),
             if (showChevron)
-              const Icon(Icons.chevron_right_rounded,
-                  size: 20, color: AppColors.textMuted),
+              const Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: AppColors.textMuted,
+              ),
           ],
         ),
       ),
@@ -572,8 +644,10 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Password updated successfully',
-              style: getOutfitStyle(color: Colors.white)),
+          content: Text(
+            'Password updated successfully',
+            style: getOutfitStyle(color: Colors.white),
+          ),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
         ),
@@ -583,8 +657,10 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed: $e',
-              style: getOutfitStyle(color: Colors.white)),
+          content: Text(
+            'Failed: $e',
+            style: getOutfitStyle(color: Colors.white),
+          ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -619,16 +695,20 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                         color: AppColors.warningSoft,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.lock_reset_rounded,
-                          size: 18, color: AppColors.warning),
+                      child: const Icon(
+                        Icons.lock_reset_rounded,
+                        size: 18,
+                        color: AppColors.warning,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Text(
                       'Change Password',
                       style: getOutfitStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary),
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                     const Spacer(),
                     GestureDetector(
@@ -639,8 +719,11 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                           color: AppColors.inputFill,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(Icons.close_rounded,
-                            size: 18, color: AppColors.textMuted),
+                        child: const Icon(
+                          Icons.close_rounded,
+                          size: 18,
+                          color: AppColors.textMuted,
+                        ),
                       ),
                     ),
                   ],
@@ -664,17 +747,20 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                         decoration: appInputDeco('Enter new password').copyWith(
                           suffixIcon: IconButton(
                             icon: Icon(
-                                _obscureNew
-                                    ? Icons.visibility_outlined
-                                    : Icons.visibility_off_outlined,
-                                size: 18,
-                                color: AppColors.textMuted),
+                              _obscureNew
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                              size: 18,
+                              color: AppColors.textMuted,
+                            ),
                             onPressed: () =>
                                 setState(() => _obscureNew = !_obscureNew),
                           ),
                         ),
                         style: getOutfitStyle(
-                            fontSize: 14, color: AppColors.textPrimary),
+                          fontSize: 14,
+                          color: AppColors.textPrimary,
+                        ),
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) {
                             return 'Password is required';
@@ -690,21 +776,25 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                       TextFormField(
                         controller: _confirmCtrl,
                         obscureText: _obscureConfirm,
-                        decoration:
-                            appInputDeco('Confirm new password').copyWith(
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                                _obscureConfirm
-                                    ? Icons.visibility_outlined
-                                    : Icons.visibility_off_outlined,
-                                size: 18,
-                                color: AppColors.textMuted),
-                            onPressed: () => setState(
-                                () => _obscureConfirm = !_obscureConfirm),
-                          ),
-                        ),
+                        decoration: appInputDeco('Confirm new password')
+                            .copyWith(
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscureConfirm
+                                      ? Icons.visibility_outlined
+                                      : Icons.visibility_off_outlined,
+                                  size: 18,
+                                  color: AppColors.textMuted,
+                                ),
+                                onPressed: () => setState(
+                                  () => _obscureConfirm = !_obscureConfirm,
+                                ),
+                              ),
+                            ),
                         style: getOutfitStyle(
-                            fontSize: 14, color: AppColors.textPrimary),
+                          fontSize: 14,
+                          color: AppColors.textPrimary,
+                        ),
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) {
                             return 'Please confirm your password';
@@ -724,8 +814,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
               Container(
                 padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
                 decoration: const BoxDecoration(
-                  border: Border(
-                      top: BorderSide(color: AppColors.borderSoft)),
+                  border: Border(top: BorderSide(color: AppColors.borderSoft)),
                 ),
                 child: Row(
                   children: [
@@ -738,14 +827,16 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           side: const BorderSide(color: AppColors.borderSoft),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         child: Text(
                           'Cancel',
                           style: getOutfitStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondary),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ),
                     ),
@@ -758,21 +849,25 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                           backgroundColor: AppColors.brand,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         child: _saving
                             ? const SizedBox(
                                 width: 18,
                                 height: 18,
                                 child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white),
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
                               )
                             : Text(
                                 'Update Password',
                                 style: getOutfitStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
                               ),
                       ),
                     ),
@@ -820,8 +915,10 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Password updated successfully',
-              style: getOutfitStyle(color: Colors.white)),
+          content: Text(
+            'Password updated successfully',
+            style: getOutfitStyle(color: Colors.white),
+          ),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
         ),
@@ -831,8 +928,10 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed: $e',
-              style: getOutfitStyle(color: Colors.white)),
+          content: Text(
+            'Failed: $e',
+            style: getOutfitStyle(color: Colors.white),
+          ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -858,8 +957,9 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
               width: 36,
               height: 4,
               decoration: BoxDecoration(
-                  color: AppColors.borderSoft,
-                  borderRadius: BorderRadius.circular(100)),
+                color: AppColors.borderSoft,
+                borderRadius: BorderRadius.circular(100),
+              ),
             ),
           ),
           Padding(
@@ -867,21 +967,28 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
             child: Row(
               children: [
                 const Spacer(),
-                Text('Change Password',
-                    style: getOutfitStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary)),
+                Text(
+                  'Change Password',
+                  style: getOutfitStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
                 const Spacer(),
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                        color: AppColors.inputFill,
-                        borderRadius: BorderRadius.circular(8)),
-                    child: const Icon(Icons.close_rounded,
-                        size: 18, color: AppColors.textMuted),
+                      color: AppColors.inputFill,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.close_rounded,
+                      size: 18,
+                      color: AppColors.textMuted,
+                    ),
                   ),
                 ),
               ],
@@ -899,17 +1006,20 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                   decoration: appInputDeco('Enter new password').copyWith(
                     suffixIcon: IconButton(
                       icon: Icon(
-                          _obscureNew
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
-                          size: 18,
-                          color: AppColors.textMuted),
+                        _obscureNew
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                        size: 18,
+                        color: AppColors.textMuted,
+                      ),
                       onPressed: () =>
                           setState(() => _obscureNew = !_obscureNew),
                     ),
                   ),
                   style: getOutfitStyle(
-                      fontSize: 14, color: AppColors.textPrimary),
+                    fontSize: 14,
+                    color: AppColors.textPrimary,
+                  ),
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) {
                       return 'Password is required';
@@ -925,21 +1035,23 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                 TextFormField(
                   controller: _confirmCtrl,
                   obscureText: _obscureConfirm,
-                  decoration:
-                      appInputDeco('Confirm new password').copyWith(
+                  decoration: appInputDeco('Confirm new password').copyWith(
                     suffixIcon: IconButton(
                       icon: Icon(
-                          _obscureConfirm
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
-                          size: 18,
-                          color: AppColors.textMuted),
+                        _obscureConfirm
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                        size: 18,
+                        color: AppColors.textMuted,
+                      ),
                       onPressed: () =>
                           setState(() => _obscureConfirm = !_obscureConfirm),
                     ),
                   ),
                   style: getOutfitStyle(
-                      fontSize: 14, color: AppColors.textPrimary),
+                    fontSize: 14,
+                    color: AppColors.textPrimary,
+                  ),
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) {
                       return 'Please confirm your password';
@@ -959,20 +1071,26 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                       backgroundColor: AppColors.brand,
                       padding: const EdgeInsets.symmetric(vertical: 15),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     child: _saving
                         ? const SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white),
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           )
-                        : Text('Update Password',
+                        : Text(
+                            'Update Password',
                             style: getOutfitStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white)),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
                   ),
                 ),
               ],

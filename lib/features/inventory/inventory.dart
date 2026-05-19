@@ -4,6 +4,7 @@ import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/widgets/app_sub_page_bar.dart';
 import 'package:pos/core/widgets/app_view_toggle.dart';
@@ -150,6 +151,9 @@ class _InventoryState extends State<Inventory> {
 
             return Scaffold(
               backgroundColor: AppColors.background,
+              appBar: Breakpoints.isPhone(context)
+                  ? AppSubPageBar(title: 'Stock Level')
+                  : null,
               body: LayoutBuilder(
                 builder: (context, constraints) {
                   final w = constraints.maxWidth;
@@ -198,7 +202,7 @@ class _InventoryState extends State<Inventory> {
                             child: RefreshIndicator(
                               onRefresh: () async => _triggerLoad(),
                               child: isLoading
-                                  ? const _InventorySkeleton()
+                                  ? const _InventorySkeleton(useListView: true)
                                   : InventoryDesktopTable(
                                       items: items,
                                       branches: branches,
@@ -430,7 +434,12 @@ class _CardList extends StatelessWidget {
 // ── Inventory skeleton loader ─────────────────────────────────────────────────
 
 class _InventorySkeleton extends StatefulWidget {
-  const _InventorySkeleton();
+  /// When true the skeleton rows are inside a [ListView] (scrollable).
+  /// Use this whenever the skeleton sits inside an [Expanded] widget
+  /// (table layout). In card layout it lives inside [SingleChildScrollView]
+  /// so [Column] is correct and [useListView] should stay false.
+  final bool useListView;
+  const _InventorySkeleton({this.useListView = false});
 
   @override
   State<_InventorySkeleton> createState() => _InventorySkeletonState();
@@ -532,7 +541,10 @@ class _InventorySkeletonState extends State<_InventorySkeleton>
           ),
         );
 
-        return Column(children: List.generate(7, (_) => skRow()));
+        final rows = List.generate(7, (_) => skRow());
+        return widget.useListView
+            ? ListView(children: rows)
+            : Column(children: rows);
       },
     );
   }

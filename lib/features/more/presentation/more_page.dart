@@ -13,6 +13,7 @@ import 'package:pos/features/expenses/presentation/expenses_page.dart';
 import 'package:pos/features/inventory/inventory.dart';
 import 'package:pos/features/sales/presentation/sales_history.dart';
 import 'package:pos/features/audit_logs/presentation/pages/audit_log_page.dart';
+import 'package:pos/features/employees/presentation/pages/employees_page.dart';
 
 class MorePage extends StatefulWidget {
   const MorePage({super.key});
@@ -123,7 +124,7 @@ class _MorePageState extends State<MorePage>
       builder: (context, state) {
         final user = state is AuthAuthenticated ? state.user : null;
         final name = user?.fullName ?? user?.email ?? 'User';
-        final role = user?.roleName ?? '';
+        final role = displayRoleName(user?.roleName) ?? '';
         final business = user?.businessName ?? '';
 
         return SafeArea(
@@ -170,6 +171,11 @@ class _MorePageState extends State<MorePage>
 
                       // ADMIN
                       _SectionLabel('ADMIN'),
+                      _DrawerTile(
+                        icon: IconlyLight.profile,
+                        label: 'Employees',
+                        onTap: () => _pushFullPage(const EmployeesPage()),
+                      ),
                       _DrawerTile(
                         icon: IconlyLight.shield_done,
                         label: 'Audit Logs',
