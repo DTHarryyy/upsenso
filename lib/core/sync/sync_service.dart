@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:pos/core/database/app_database.dart';
@@ -13,6 +14,7 @@ import 'package:pos/core/database/daos/product_variants_dao.dart';
 import 'package:pos/core/database/daos/stock_ledger_dao.dart';
 import 'package:pos/core/database/daos/transactions_dao.dart';
 import 'package:pos/core/database/daos/audit_logs_dao.dart';
+import 'package:pos/core/database/daos/employees_dao.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_status.dart';
 import 'package:pos/features/business/data/datasources/business_remote_ds.dart';
@@ -23,6 +25,7 @@ import 'package:pos/features/products/data/datasources/products_remote_ds.dart';
 import 'package:pos/features/pos/data/datasources/transactions_remote_ds.dart';
 import 'package:pos/features/settings/data/receipt_settings_repository.dart';
 import 'package:pos/features/audit_logs/data/datasources/audit_log_remote_ds.dart';
+import 'package:pos/features/employees/data/datasources/employees_remote_ds.dart';
 
 /// Service to handle synchronization between local Drift DB and Supabase
 class SyncService {
@@ -44,6 +47,8 @@ class SyncService {
   final ReceiptSettingsRepository _receiptSettingsRepo;
   final AuditLogsDao _auditLogsDao;
   final AuditLogRemoteDs _auditLogRemoteDs;
+  final EmployeesDao _employeesDao;
+  final EmployeesRemoteDs _employeesRemoteDs;
 
   StreamSubscription<bool>? _connectivitySubscription;
   Timer? _retryTimer;
@@ -73,6 +78,8 @@ class SyncService {
     required ReceiptSettingsRepository receiptSettingsRepository,
     required AuditLogsDao auditLogsDao,
     required AuditLogRemoteDs auditLogRemoteDs,
+    required EmployeesDao employeesDao,
+    required EmployeesRemoteDs employeesRemoteDs,
   }) : _authContextDao = authContextDao,
        _branchesDao = branchesDao,
        _businessesDao = businessesDao,
@@ -90,7 +97,9 @@ class SyncService {
        _connectivityService = connectivityService,
        _receiptSettingsRepo = receiptSettingsRepository,
        _auditLogsDao = auditLogsDao,
-       _auditLogRemoteDs = auditLogRemoteDs;
+       _auditLogRemoteDs = auditLogRemoteDs,
+       _employeesDao = employeesDao,
+       _employeesRemoteDs = employeesRemoteDs;
 
   /// Returns [provided] if non-null, otherwise reads businessId from the
   /// locally cached auth context. This allows connectivity-triggered syncs
@@ -146,6 +155,7 @@ class SyncService {
     await _businessesDao.clearAll();
     await _receiptSettingsRepo.clearAll();
     await _auditLogsDao.clearAll();
+    await _employeesDao.clearAll();
     await _authContextDao.clearAll();
   }
 
@@ -162,13 +172,14 @@ class SyncService {
         inv = 0,
         led = 0,
         rcpt = 0,
-        audit = 0;
+        audit = 0,
+        emp = 0;
     final controller = StreamController<int>.broadcast();
 
     void emit() {
       if (!controller.isClosed) {
         controller.add(
-          cat + prod + vars + orders + exp + inv + led + rcpt + audit,
+          cat + prod + vars + orders + exp + inv + led + rcpt + audit + emp,
         );
       }
     }
@@ -210,6 +221,10 @@ class SyncService {
       audit = n;
       emit();
     });
+    final s10 = _employeesDao.watchPendingSyncCount().listen((n) {
+      emp = n;
+      emit();
+    });
 
     controller.onCancel = () {
       s1.cancel();
@@ -221,6 +236,7 @@ class SyncService {
       s7.cancel();
       s8.cancel();
       s9.cancel();
+      s10.cancel();
       controller.close();
     };
 
@@ -264,6 +280,7 @@ class SyncService {
       final ledgerResult = await _syncStockLedger();
       await _syncReceiptSettings(); // fire-and-forget style; errors logged internally
       await _syncAuditLogs(); // fire-and-forget style; errors logged internally
+      final employeeResult = await _syncEmployees();
 
       final int totalSynced =
           businessResult.syncedCount +
@@ -273,7 +290,8 @@ class SyncService {
           orderResult.syncedCount +
           expenseResult.syncedCount +
           inventoryResult.syncedCount +
-          ledgerResult.syncedCount;
+          ledgerResult.syncedCount +
+          employeeResult.syncedCount;
       final int totalFailed =
           businessResult.failedCount +
           categoryResult.failedCount +
@@ -282,7 +300,8 @@ class SyncService {
           orderResult.failedCount +
           expenseResult.failedCount +
           inventoryResult.failedCount +
-          ledgerResult.failedCount;
+          ledgerResult.failedCount +
+          employeeResult.failedCount;
 
       // pull kapag may businessId (either provided or from auth context)
       final effectiveBusinessId = await _resolveBusinessId(businessId);
@@ -303,9 +322,10 @@ class SyncService {
             expenseResult.success &&
             inventoryResult.success &&
             ledgerResult.success &&
+            employeeResult.success &&
             pullResult.success,
         message:
-            '${businessResult.message}; ${categoryResult.message}; ${productResult.message}; ${variantResult.message}; ${expenseResult.message}; ${inventoryResult.message}; ${ledgerResult.message}; ${pullResult.message}',
+            '${businessResult.message}; ${categoryResult.message}; ${productResult.message}; ${variantResult.message}; ${expenseResult.message}; ${inventoryResult.message}; ${ledgerResult.message}; ${employeeResult.message}; ${pullResult.message}',
         syncedCount: totalSynced + pullResult.syncedCount,
         failedCount: totalFailed + pullResult.failedCount,
         errors: [
@@ -316,6 +336,7 @@ class SyncService {
           ...expenseResult.errors,
           ...inventoryResult.errors,
           ...ledgerResult.errors,
+          ...employeeResult.errors,
           ...pullResult.errors,
         ],
       );
@@ -1080,6 +1101,51 @@ class SyncService {
       errors.add('Pull receipt settings: ${e.toString()}');
     }
 
+    try {
+      final employees = await _employeesRemoteDs.getEmployeesByBusiness(
+        businessId,
+      );
+      for (final row in employees) {
+        final rowId = row['id'] as String;
+        // Do not overwrite records that have pending local changes.
+        // They will be pushed by _syncEmployees() on the next sync cycle,
+        // so the server will receive the correct data. Overwriting here would
+        // silently discard offline edits made on this device.
+        final existing = await _employeesDao.getById(rowId);
+        if (existing != null && _hasPendingEmployeeChanges(existing.syncStatus)) {
+          continue;
+        }
+        await _employeesDao.upsertFromServer(
+          EmployeesTableCompanion.insert(
+            id: row['id'] as String,
+            businessId: row['business_id'] as String,
+            branchId: row['branch_id'] as String,
+            authUserId: Value(row['auth_user_id'] as String?),
+            employeeCode: row['employee_code'] as String,
+            fullName: row['full_name'] as String,
+            email: row['email'] as String,
+            phone: Value(row['phone'] as String?),
+            role: row['role'] as String,
+            status: Value(row['status'] as String? ?? 'active'),
+            profileImageUrl: Value(row['profile_image_url'] as String?),
+            hiredAt: DateTime.parse(row['hired_at'] as String),
+            archivedAt: Value(
+              row['archived_at'] != null
+                  ? DateTime.parse(row['archived_at'] as String)
+                  : null,
+            ),
+            createdAt: Value(DateTime.parse(row['created_at'] as String)),
+            updatedAt: Value(DateTime.parse(row['updated_at'] as String)),
+            syncStatus: const Value(3), // synced
+          ),
+        );
+        pulled++;
+      }
+    } catch (e) {
+      failed++;
+      errors.add('Pull employees: ${e.toString()}');
+    }
+
     return SyncResult(
       success: failed == 0,
       message: 'Pull: $pulled records, $failed errors',
@@ -1107,11 +1173,12 @@ class SyncService {
             (r) => {
               'id': r.id,
               'business_id': r.businessId,
-              'branch_id': r.branchId,
-              'user_id': r.userId,
+              'branch_id': r.branchId.isEmpty ? null : r.branchId,
+              'user_id': r.userId.isEmpty ? null : r.userId,
               'action_type': r.actionType,
               'entity_type': r.entityType,
-              'entity_id': r.entityId,
+              'entity_id':
+                  (r.entityId?.isEmpty ?? true) ? null : r.entityId,
               'description': r.description,
               'metadata': r.metadata,
               'device_id': r.deviceId,
@@ -1134,6 +1201,71 @@ class SyncService {
     }
   }
 
+  Future<SyncResult> _syncEmployees() async {
+    final pending = await _employeesDao.getPendingSync();
+    int synced = 0;
+    int failed = 0;
+    final errors = <String>[];
+
+    for (final record in pending) {
+      final status = SyncStatusExtension.fromInt(record.syncStatus);
+      try {
+        switch (status) {
+          case SyncStatus.pendingUpload:
+          case SyncStatus.failed:
+          case SyncStatus.pendingUpdate:
+            await _employeesRemoteDs.upsertEmployee(
+              id: record.id,
+              businessId: record.businessId,
+              branchId: record.branchId,
+              authUserId: record.authUserId,
+              employeeCode: record.employeeCode,
+              fullName: record.fullName,
+              email: record.email,
+              phone: record.phone,
+              role: record.role,
+              status: record.status,
+              profileImageUrl: record.profileImageUrl,
+              hiredAt: record.hiredAt,
+              archivedAt: record.archivedAt,
+              createdAt: record.createdAt,
+              updatedAt: record.updatedAt,
+            );
+            await _employeesDao.updateSyncStatus(
+              id: record.id,
+              status: SyncStatus.synced,
+            );
+            synced++;
+
+          case SyncStatus.pendingDelete:
+            await _employeesRemoteDs.deleteEmployee(record.id);
+            await _employeesDao.hardDelete(record.id);
+            synced++;
+
+          case SyncStatus.synced:
+            break;
+        }
+      } catch (e) {
+        failed++;
+        debugPrint('[SYNC] Employee ${record.fullName} FAILED: $e');
+        errors.add('Employee ${record.fullName}: ${e.toString()}');
+        await _employeesDao.updateSyncStatus(
+          id: record.id,
+          status: SyncStatus.failed,
+          error: e.toString(),
+        );
+      }
+    }
+
+    return SyncResult(
+      success: failed == 0,
+      message: 'Employees: synced $synced, failed $failed',
+      syncedCount: synced,
+      failedCount: failed,
+      errors: errors,
+    );
+  }
+
   /// Pull latest business data from server and update local DB.
   Future<void> pullBusinessFromServer(String ownerId) async {
     final online = await isOnline;
@@ -1144,6 +1276,13 @@ class SyncService {
       final business = BusinessModel.fromJson(serverData);
       await _businessesDao.upsertFromServer(business);
     }
+  }
+  /// Returns true when [syncStatus] represents a locally pending change that
+  /// must be uploaded before server data may overwrite it.
+  bool _hasPendingEmployeeChanges(int syncStatus) {
+    return syncStatus == SyncStatus.pendingUpload.toInt() ||
+        syncStatus == SyncStatus.pendingUpdate.toInt() ||
+        syncStatus == SyncStatus.pendingDelete.toInt();
   }
 }
 

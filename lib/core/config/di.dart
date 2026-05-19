@@ -67,6 +67,11 @@ import 'package:pos/features/audit_logs/data/datasources/audit_log_remote_ds.dar
 import 'package:pos/features/audit_logs/data/repositories/audit_log_repository_impl.dart';
 import 'package:pos/features/audit_logs/domain/repositories/i_audit_log_repository.dart';
 import 'package:pos/features/expenses/data/datasources/expenses_remote_ds.dart';
+import 'package:pos/core/database/daos/employees_dao.dart';
+import 'package:pos/features/employees/data/datasources/employees_remote_ds.dart';
+import 'package:pos/features/employees/data/employees_repository_impl.dart';
+import 'package:pos/features/employees/domain/repositories/i_employees_repository.dart';
+import 'package:pos/features/employees/domain/services/employee_validation_service.dart';
 import 'package:pos/features/dashboard/domain/repositories/i_dashboard_repository.dart';
 import 'package:pos/features/expenses/domain/repositories/i_expenses_repository.dart';
 import 'package:pos/features/inventory/domain/repositories/i_inventory_repository.dart';
@@ -134,8 +139,22 @@ Future<void> initDI() async {
     () => StockLedgerDao(sl<AppDatabase>()),
   );
   sl.registerLazySingleton<ExpensesDao>(() => ExpensesDao(sl<AppDatabase>()));
+  sl.registerLazySingleton<EmployeesDao>(() => EmployeesDao(sl<AppDatabase>()));
   sl.registerLazySingleton<IExpensesRepository>(
     () => ExpensesRepository(expensesDao: sl<ExpensesDao>()),
+  );
+  sl.registerLazySingleton<EmployeesRemoteDs>(
+    () => EmployeesRemoteDs(sl<SupabaseClient>()),
+  );
+  sl.registerLazySingleton<EmployeeValidationService>(
+    () => EmployeeValidationService(sl<EmployeesDao>()),
+  );
+  sl.registerLazySingleton<IEmployeesRepository>(
+    () => EmployeesRepositoryImpl(
+      dao: sl<EmployeesDao>(),
+      remoteDs: sl<EmployeesRemoteDs>(),
+      validator: sl<EmployeeValidationService>(),
+    ),
   );
   sl.registerLazySingleton<ReceiptSettingsDao>(
     () => ReceiptSettingsDao(sl<AppDatabase>()),
@@ -254,6 +273,8 @@ Future<void> initDI() async {
       receiptSettingsRepository: sl<ReceiptSettingsRepository>(),
       auditLogsDao: sl<AuditLogsDao>(),
       auditLogRemoteDs: sl<AuditLogRemoteDs>(),
+      employeesDao: sl<EmployeesDao>(),
+      employeesRemoteDs: sl<EmployeesRemoteDs>(),
     ),
   );
 

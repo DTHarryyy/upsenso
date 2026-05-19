@@ -16,8 +16,10 @@ import 'package:pos/core/database/tables/inventory_levels_table.dart';
 import 'package:pos/core/database/tables/receipt_settings_table.dart';
 import 'package:pos/core/database/tables/stock_ledger_table.dart';
 import 'package:pos/core/database/tables/audit_logs_table.dart';
+import 'package:pos/core/database/tables/employees_table.dart';
 import 'package:pos/core/database/daos/auth_context_dao.dart';
 import 'package:pos/core/database/daos/audit_logs_dao.dart';
+import 'package:pos/core/database/daos/employees_dao.dart';
 import 'package:pos/core/database/daos/business_templates_dao.dart';
 import 'package:pos/core/database/daos/businesses_dao.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
@@ -48,6 +50,7 @@ part 'app_database.g.dart';
     StockLedgerTable,
     ReceiptSettingsTable,
     AuditLogsTable,
+    EmployeesTable,
   ],
   daos: [
     AuthContextDao,
@@ -63,6 +66,7 @@ part 'app_database.g.dart';
     StockLedgerDao,
     ReceiptSettingsDao,
     AuditLogsDao,
+    EmployeesDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -79,7 +83,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 24;
+  int get schemaVersion => 25;
 
   @override
   MigrationStrategy get migration {
@@ -295,6 +299,24 @@ class AppDatabase extends _$AppDatabase {
         }
         if (from < 24) {
           await m.createTable(auditLogsTable);
+        }
+        if (from < 25) {
+          await m.createTable(employeesTable);
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_employees_business ON employees(business_id)',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_employees_branch ON employees(branch_id)',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_employees_role ON employees(role)',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_employees_status ON employees(status)',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_employees_sync ON employees(sync_status)',
+          );
         }
       },
     );

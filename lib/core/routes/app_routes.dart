@@ -41,4 +41,7 @@ class AppRoutes {
 
   // Audit Logs
   static const String auditLogs = '/more/audit-logs';
+
+  // Employees
+  static const String employees = '/more/employees';
 }

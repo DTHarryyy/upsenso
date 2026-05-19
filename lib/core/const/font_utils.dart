@@ -52,24 +52,36 @@ TextStyle getOutfitStyle({
 /// web-native typeface — no per-widget font overrides needed.
 TextTheme getOutfitTextTheme() {
   return TextTheme(
-    displayLarge:  getOutfitStyle(fontSize: 57, fontWeight: FontWeight.w400),
+    displayLarge: getOutfitStyle(fontSize: 57, fontWeight: FontWeight.w400),
     displayMedium: getOutfitStyle(fontSize: 45, fontWeight: FontWeight.w400),
-    displaySmall:  getOutfitStyle(fontSize: 36, fontWeight: FontWeight.w500),
+    displaySmall: getOutfitStyle(fontSize: 36, fontWeight: FontWeight.w500),
 
-    headlineLarge:  getOutfitStyle(fontSize: 32, fontWeight: FontWeight.w400),
+    headlineLarge: getOutfitStyle(fontSize: 32, fontWeight: FontWeight.w400),
     headlineMedium: getOutfitStyle(fontSize: 28, fontWeight: FontWeight.w500),
-    headlineSmall:  getOutfitStyle(fontSize: 24, fontWeight: FontWeight.w500),
+    headlineSmall: getOutfitStyle(fontSize: 24, fontWeight: FontWeight.w500),
 
-    titleLarge:  getOutfitStyle(fontSize: 22, fontWeight: FontWeight.w600),
+    titleLarge: getOutfitStyle(fontSize: 22, fontWeight: FontWeight.w600),
     titleMedium: getOutfitStyle(fontSize: 16, fontWeight: FontWeight.w600),
-    titleSmall:  getOutfitStyle(fontSize: 14, fontWeight: FontWeight.w600),
+    titleSmall: getOutfitStyle(fontSize: 14, fontWeight: FontWeight.w600),
 
-    bodyLarge:  getOutfitStyle(fontSize: 16, fontWeight: FontWeight.w400),
+    bodyLarge: getOutfitStyle(fontSize: 16, fontWeight: FontWeight.w400),
     bodyMedium: getOutfitStyle(fontSize: 14, fontWeight: FontWeight.w400),
-    bodySmall:  getOutfitStyle(fontSize: 12, fontWeight: FontWeight.w400),
+    bodySmall: getOutfitStyle(fontSize: 12, fontWeight: FontWeight.w400),
 
-    labelLarge:  getOutfitStyle(fontSize: 14, fontWeight: FontWeight.w600),
+    labelLarge: getOutfitStyle(fontSize: 14, fontWeight: FontWeight.w600),
     labelMedium: getOutfitStyle(fontSize: 12, fontWeight: FontWeight.w600),
-    labelSmall:  getOutfitStyle(fontSize: 11, fontWeight: FontWeight.w500),
+    labelSmall: getOutfitStyle(fontSize: 11, fontWeight: FontWeight.w500),
   );
+}
+
+/// Maps internal role names to user-facing display labels.
+///
+/// `'Super Admin'` → `'Owner'` (internal name not exposed to users)
+/// All other names pass through unchanged.
+/// Returns `null` when [roleName] is null.
+String? displayRoleName(String? roleName) {
+  if (roleName == null) return null;
+  final n = roleName.trim().toLowerCase();
+  if (n == 'super admin' || n == 'superadmin') return 'Owner';
+  return roleName;
 }

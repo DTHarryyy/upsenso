@@ -12391,6 +12391,1027 @@ class AuditLogsTableCompanion extends UpdateCompanion<AuditLogRow> {
   }
 }
 
+class $EmployeesTableTable extends EmployeesTable
+    with TableInfo<$EmployeesTableTable, EmployeeRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $EmployeesTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _authUserIdMeta = const VerificationMeta(
+    'authUserId',
+  );
+  @override
+  late final GeneratedColumn<String> authUserId = GeneratedColumn<String>(
+    'auth_user_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _employeeCodeMeta = const VerificationMeta(
+    'employeeCode',
+  );
+  @override
+  late final GeneratedColumn<String> employeeCode = GeneratedColumn<String>(
+    'employee_code',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _fullNameMeta = const VerificationMeta(
+    'fullName',
+  );
+  @override
+  late final GeneratedColumn<String> fullName = GeneratedColumn<String>(
+    'full_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _emailMeta = const VerificationMeta('email');
+  @override
+  late final GeneratedColumn<String> email = GeneratedColumn<String>(
+    'email',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _phoneMeta = const VerificationMeta('phone');
+  @override
+  late final GeneratedColumn<String> phone = GeneratedColumn<String>(
+    'phone',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _roleMeta = const VerificationMeta('role');
+  @override
+  late final GeneratedColumn<String> role = GeneratedColumn<String>(
+    'role',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('active'),
+  );
+  static const VerificationMeta _profileImageUrlMeta = const VerificationMeta(
+    'profileImageUrl',
+  );
+  @override
+  late final GeneratedColumn<String> profileImageUrl = GeneratedColumn<String>(
+    'profile_image_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _hiredAtMeta = const VerificationMeta(
+    'hiredAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> hiredAt = GeneratedColumn<DateTime>(
+    'hired_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _archivedAtMeta = const VerificationMeta(
+    'archivedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> archivedAt = GeneratedColumn<DateTime>(
+    'archived_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+    'syncStatus',
+  );
+  @override
+  late final GeneratedColumn<int> syncStatus = GeneratedColumn<int>(
+    'sync_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastSyncAttemptMeta = const VerificationMeta(
+    'lastSyncAttempt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastSyncAttempt =
+      GeneratedColumn<DateTime>(
+        'last_sync_attempt',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _syncErrorMeta = const VerificationMeta(
+    'syncError',
+  );
+  @override
+  late final GeneratedColumn<String> syncError = GeneratedColumn<String>(
+    'sync_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    businessId,
+    branchId,
+    authUserId,
+    employeeCode,
+    fullName,
+    email,
+    phone,
+    role,
+    status,
+    profileImageUrl,
+    hiredAt,
+    archivedAt,
+    createdAt,
+    updatedAt,
+    syncStatus,
+    lastSyncAttempt,
+    syncError,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'employees';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<EmployeeRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_branchIdMeta);
+    }
+    if (data.containsKey('auth_user_id')) {
+      context.handle(
+        _authUserIdMeta,
+        authUserId.isAcceptableOrUnknown(
+          data['auth_user_id']!,
+          _authUserIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('employee_code')) {
+      context.handle(
+        _employeeCodeMeta,
+        employeeCode.isAcceptableOrUnknown(
+          data['employee_code']!,
+          _employeeCodeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_employeeCodeMeta);
+    }
+    if (data.containsKey('full_name')) {
+      context.handle(
+        _fullNameMeta,
+        fullName.isAcceptableOrUnknown(data['full_name']!, _fullNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_fullNameMeta);
+    }
+    if (data.containsKey('email')) {
+      context.handle(
+        _emailMeta,
+        email.isAcceptableOrUnknown(data['email']!, _emailMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_emailMeta);
+    }
+    if (data.containsKey('phone')) {
+      context.handle(
+        _phoneMeta,
+        phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta),
+      );
+    }
+    if (data.containsKey('role')) {
+      context.handle(
+        _roleMeta,
+        role.isAcceptableOrUnknown(data['role']!, _roleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_roleMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('profile_image_url')) {
+      context.handle(
+        _profileImageUrlMeta,
+        profileImageUrl.isAcceptableOrUnknown(
+          data['profile_image_url']!,
+          _profileImageUrlMeta,
+        ),
+      );
+    }
+    if (data.containsKey('hired_at')) {
+      context.handle(
+        _hiredAtMeta,
+        hiredAt.isAcceptableOrUnknown(data['hired_at']!, _hiredAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_hiredAtMeta);
+    }
+    if (data.containsKey('archived_at')) {
+      context.handle(
+        _archivedAtMeta,
+        archivedAt.isAcceptableOrUnknown(data['archived_at']!, _archivedAtMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('sync_status')) {
+      context.handle(
+        _syncStatusMeta,
+        syncStatus.isAcceptableOrUnknown(data['sync_status']!, _syncStatusMeta),
+      );
+    }
+    if (data.containsKey('last_sync_attempt')) {
+      context.handle(
+        _lastSyncAttemptMeta,
+        lastSyncAttempt.isAcceptableOrUnknown(
+          data['last_sync_attempt']!,
+          _lastSyncAttemptMeta,
+        ),
+      );
+    }
+    if (data.containsKey('sync_error')) {
+      context.handle(
+        _syncErrorMeta,
+        syncError.isAcceptableOrUnknown(data['sync_error']!, _syncErrorMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  EmployeeRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return EmployeeRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      )!,
+      authUserId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}auth_user_id'],
+      ),
+      employeeCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}employee_code'],
+      )!,
+      fullName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}full_name'],
+      )!,
+      email: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}email'],
+      )!,
+      phone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}phone'],
+      ),
+      role: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}role'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      profileImageUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}profile_image_url'],
+      ),
+      hiredAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}hired_at'],
+      )!,
+      archivedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}archived_at'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      syncStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sync_status'],
+      )!,
+      lastSyncAttempt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_sync_attempt'],
+      ),
+      syncError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_error'],
+      ),
+    );
+  }
+
+  @override
+  $EmployeesTableTable createAlias(String alias) {
+    return $EmployeesTableTable(attachedDatabase, alias);
+  }
+}
+
+class EmployeeRow extends DataClass implements Insertable<EmployeeRow> {
+  final String id;
+  final String businessId;
+  final String branchId;
+
+  /// Nullable – employee identity is decoupled from auth accounts.
+  final String? authUserId;
+  final String employeeCode;
+  final String fullName;
+  final String email;
+  final String? phone;
+
+  /// 'owner' | 'branch_manager' | 'cashier' | 'inventory_staff'
+  final String role;
+
+  /// 'active' | 'suspended' | 'archived'
+  final String status;
+  final String? profileImageUrl;
+  final DateTime hiredAt;
+  final DateTime? archivedAt;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  /// 0=pendingUpload, 1=pendingUpdate, 2=pendingDelete, 3=synced, 4=failed
+  final int syncStatus;
+  final DateTime? lastSyncAttempt;
+  final String? syncError;
+  const EmployeeRow({
+    required this.id,
+    required this.businessId,
+    required this.branchId,
+    this.authUserId,
+    required this.employeeCode,
+    required this.fullName,
+    required this.email,
+    this.phone,
+    required this.role,
+    required this.status,
+    this.profileImageUrl,
+    required this.hiredAt,
+    this.archivedAt,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.syncStatus,
+    this.lastSyncAttempt,
+    this.syncError,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['business_id'] = Variable<String>(businessId);
+    map['branch_id'] = Variable<String>(branchId);
+    if (!nullToAbsent || authUserId != null) {
+      map['auth_user_id'] = Variable<String>(authUserId);
+    }
+    map['employee_code'] = Variable<String>(employeeCode);
+    map['full_name'] = Variable<String>(fullName);
+    map['email'] = Variable<String>(email);
+    if (!nullToAbsent || phone != null) {
+      map['phone'] = Variable<String>(phone);
+    }
+    map['role'] = Variable<String>(role);
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || profileImageUrl != null) {
+      map['profile_image_url'] = Variable<String>(profileImageUrl);
+    }
+    map['hired_at'] = Variable<DateTime>(hiredAt);
+    if (!nullToAbsent || archivedAt != null) {
+      map['archived_at'] = Variable<DateTime>(archivedAt);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['sync_status'] = Variable<int>(syncStatus);
+    if (!nullToAbsent || lastSyncAttempt != null) {
+      map['last_sync_attempt'] = Variable<DateTime>(lastSyncAttempt);
+    }
+    if (!nullToAbsent || syncError != null) {
+      map['sync_error'] = Variable<String>(syncError);
+    }
+    return map;
+  }
+
+  EmployeesTableCompanion toCompanion(bool nullToAbsent) {
+    return EmployeesTableCompanion(
+      id: Value(id),
+      businessId: Value(businessId),
+      branchId: Value(branchId),
+      authUserId: authUserId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(authUserId),
+      employeeCode: Value(employeeCode),
+      fullName: Value(fullName),
+      email: Value(email),
+      phone: phone == null && nullToAbsent
+          ? const Value.absent()
+          : Value(phone),
+      role: Value(role),
+      status: Value(status),
+      profileImageUrl: profileImageUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(profileImageUrl),
+      hiredAt: Value(hiredAt),
+      archivedAt: archivedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(archivedAt),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      syncStatus: Value(syncStatus),
+      lastSyncAttempt: lastSyncAttempt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSyncAttempt),
+      syncError: syncError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncError),
+    );
+  }
+
+  factory EmployeeRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return EmployeeRow(
+      id: serializer.fromJson<String>(json['id']),
+      businessId: serializer.fromJson<String>(json['businessId']),
+      branchId: serializer.fromJson<String>(json['branchId']),
+      authUserId: serializer.fromJson<String?>(json['authUserId']),
+      employeeCode: serializer.fromJson<String>(json['employeeCode']),
+      fullName: serializer.fromJson<String>(json['fullName']),
+      email: serializer.fromJson<String>(json['email']),
+      phone: serializer.fromJson<String?>(json['phone']),
+      role: serializer.fromJson<String>(json['role']),
+      status: serializer.fromJson<String>(json['status']),
+      profileImageUrl: serializer.fromJson<String?>(json['profileImageUrl']),
+      hiredAt: serializer.fromJson<DateTime>(json['hiredAt']),
+      archivedAt: serializer.fromJson<DateTime?>(json['archivedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      syncStatus: serializer.fromJson<int>(json['syncStatus']),
+      lastSyncAttempt: serializer.fromJson<DateTime?>(json['lastSyncAttempt']),
+      syncError: serializer.fromJson<String?>(json['syncError']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'businessId': serializer.toJson<String>(businessId),
+      'branchId': serializer.toJson<String>(branchId),
+      'authUserId': serializer.toJson<String?>(authUserId),
+      'employeeCode': serializer.toJson<String>(employeeCode),
+      'fullName': serializer.toJson<String>(fullName),
+      'email': serializer.toJson<String>(email),
+      'phone': serializer.toJson<String?>(phone),
+      'role': serializer.toJson<String>(role),
+      'status': serializer.toJson<String>(status),
+      'profileImageUrl': serializer.toJson<String?>(profileImageUrl),
+      'hiredAt': serializer.toJson<DateTime>(hiredAt),
+      'archivedAt': serializer.toJson<DateTime?>(archivedAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'syncStatus': serializer.toJson<int>(syncStatus),
+      'lastSyncAttempt': serializer.toJson<DateTime?>(lastSyncAttempt),
+      'syncError': serializer.toJson<String?>(syncError),
+    };
+  }
+
+  EmployeeRow copyWith({
+    String? id,
+    String? businessId,
+    String? branchId,
+    Value<String?> authUserId = const Value.absent(),
+    String? employeeCode,
+    String? fullName,
+    String? email,
+    Value<String?> phone = const Value.absent(),
+    String? role,
+    String? status,
+    Value<String?> profileImageUrl = const Value.absent(),
+    DateTime? hiredAt,
+    Value<DateTime?> archivedAt = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    int? syncStatus,
+    Value<DateTime?> lastSyncAttempt = const Value.absent(),
+    Value<String?> syncError = const Value.absent(),
+  }) => EmployeeRow(
+    id: id ?? this.id,
+    businessId: businessId ?? this.businessId,
+    branchId: branchId ?? this.branchId,
+    authUserId: authUserId.present ? authUserId.value : this.authUserId,
+    employeeCode: employeeCode ?? this.employeeCode,
+    fullName: fullName ?? this.fullName,
+    email: email ?? this.email,
+    phone: phone.present ? phone.value : this.phone,
+    role: role ?? this.role,
+    status: status ?? this.status,
+    profileImageUrl: profileImageUrl.present
+        ? profileImageUrl.value
+        : this.profileImageUrl,
+    hiredAt: hiredAt ?? this.hiredAt,
+    archivedAt: archivedAt.present ? archivedAt.value : this.archivedAt,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    syncStatus: syncStatus ?? this.syncStatus,
+    lastSyncAttempt: lastSyncAttempt.present
+        ? lastSyncAttempt.value
+        : this.lastSyncAttempt,
+    syncError: syncError.present ? syncError.value : this.syncError,
+  );
+  EmployeeRow copyWithCompanion(EmployeesTableCompanion data) {
+    return EmployeeRow(
+      id: data.id.present ? data.id.value : this.id,
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      authUserId: data.authUserId.present
+          ? data.authUserId.value
+          : this.authUserId,
+      employeeCode: data.employeeCode.present
+          ? data.employeeCode.value
+          : this.employeeCode,
+      fullName: data.fullName.present ? data.fullName.value : this.fullName,
+      email: data.email.present ? data.email.value : this.email,
+      phone: data.phone.present ? data.phone.value : this.phone,
+      role: data.role.present ? data.role.value : this.role,
+      status: data.status.present ? data.status.value : this.status,
+      profileImageUrl: data.profileImageUrl.present
+          ? data.profileImageUrl.value
+          : this.profileImageUrl,
+      hiredAt: data.hiredAt.present ? data.hiredAt.value : this.hiredAt,
+      archivedAt: data.archivedAt.present
+          ? data.archivedAt.value
+          : this.archivedAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      syncStatus: data.syncStatus.present
+          ? data.syncStatus.value
+          : this.syncStatus,
+      lastSyncAttempt: data.lastSyncAttempt.present
+          ? data.lastSyncAttempt.value
+          : this.lastSyncAttempt,
+      syncError: data.syncError.present ? data.syncError.value : this.syncError,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('EmployeeRow(')
+          ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
+          ..write('branchId: $branchId, ')
+          ..write('authUserId: $authUserId, ')
+          ..write('employeeCode: $employeeCode, ')
+          ..write('fullName: $fullName, ')
+          ..write('email: $email, ')
+          ..write('phone: $phone, ')
+          ..write('role: $role, ')
+          ..write('status: $status, ')
+          ..write('profileImageUrl: $profileImageUrl, ')
+          ..write('hiredAt: $hiredAt, ')
+          ..write('archivedAt: $archivedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncAttempt: $lastSyncAttempt, ')
+          ..write('syncError: $syncError')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    businessId,
+    branchId,
+    authUserId,
+    employeeCode,
+    fullName,
+    email,
+    phone,
+    role,
+    status,
+    profileImageUrl,
+    hiredAt,
+    archivedAt,
+    createdAt,
+    updatedAt,
+    syncStatus,
+    lastSyncAttempt,
+    syncError,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is EmployeeRow &&
+          other.id == this.id &&
+          other.businessId == this.businessId &&
+          other.branchId == this.branchId &&
+          other.authUserId == this.authUserId &&
+          other.employeeCode == this.employeeCode &&
+          other.fullName == this.fullName &&
+          other.email == this.email &&
+          other.phone == this.phone &&
+          other.role == this.role &&
+          other.status == this.status &&
+          other.profileImageUrl == this.profileImageUrl &&
+          other.hiredAt == this.hiredAt &&
+          other.archivedAt == this.archivedAt &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.syncStatus == this.syncStatus &&
+          other.lastSyncAttempt == this.lastSyncAttempt &&
+          other.syncError == this.syncError);
+}
+
+class EmployeesTableCompanion extends UpdateCompanion<EmployeeRow> {
+  final Value<String> id;
+  final Value<String> businessId;
+  final Value<String> branchId;
+  final Value<String?> authUserId;
+  final Value<String> employeeCode;
+  final Value<String> fullName;
+  final Value<String> email;
+  final Value<String?> phone;
+  final Value<String> role;
+  final Value<String> status;
+  final Value<String?> profileImageUrl;
+  final Value<DateTime> hiredAt;
+  final Value<DateTime?> archivedAt;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> syncStatus;
+  final Value<DateTime?> lastSyncAttempt;
+  final Value<String?> syncError;
+  final Value<int> rowid;
+  const EmployeesTableCompanion({
+    this.id = const Value.absent(),
+    this.businessId = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.authUserId = const Value.absent(),
+    this.employeeCode = const Value.absent(),
+    this.fullName = const Value.absent(),
+    this.email = const Value.absent(),
+    this.phone = const Value.absent(),
+    this.role = const Value.absent(),
+    this.status = const Value.absent(),
+    this.profileImageUrl = const Value.absent(),
+    this.hiredAt = const Value.absent(),
+    this.archivedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.lastSyncAttempt = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  EmployeesTableCompanion.insert({
+    required String id,
+    required String businessId,
+    required String branchId,
+    this.authUserId = const Value.absent(),
+    required String employeeCode,
+    required String fullName,
+    required String email,
+    this.phone = const Value.absent(),
+    required String role,
+    this.status = const Value.absent(),
+    this.profileImageUrl = const Value.absent(),
+    required DateTime hiredAt,
+    this.archivedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.lastSyncAttempt = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       businessId = Value(businessId),
+       branchId = Value(branchId),
+       employeeCode = Value(employeeCode),
+       fullName = Value(fullName),
+       email = Value(email),
+       role = Value(role),
+       hiredAt = Value(hiredAt);
+  static Insertable<EmployeeRow> custom({
+    Expression<String>? id,
+    Expression<String>? businessId,
+    Expression<String>? branchId,
+    Expression<String>? authUserId,
+    Expression<String>? employeeCode,
+    Expression<String>? fullName,
+    Expression<String>? email,
+    Expression<String>? phone,
+    Expression<String>? role,
+    Expression<String>? status,
+    Expression<String>? profileImageUrl,
+    Expression<DateTime>? hiredAt,
+    Expression<DateTime>? archivedAt,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? syncStatus,
+    Expression<DateTime>? lastSyncAttempt,
+    Expression<String>? syncError,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (businessId != null) 'business_id': businessId,
+      if (branchId != null) 'branch_id': branchId,
+      if (authUserId != null) 'auth_user_id': authUserId,
+      if (employeeCode != null) 'employee_code': employeeCode,
+      if (fullName != null) 'full_name': fullName,
+      if (email != null) 'email': email,
+      if (phone != null) 'phone': phone,
+      if (role != null) 'role': role,
+      if (status != null) 'status': status,
+      if (profileImageUrl != null) 'profile_image_url': profileImageUrl,
+      if (hiredAt != null) 'hired_at': hiredAt,
+      if (archivedAt != null) 'archived_at': archivedAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (lastSyncAttempt != null) 'last_sync_attempt': lastSyncAttempt,
+      if (syncError != null) 'sync_error': syncError,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  EmployeesTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? businessId,
+    Value<String>? branchId,
+    Value<String?>? authUserId,
+    Value<String>? employeeCode,
+    Value<String>? fullName,
+    Value<String>? email,
+    Value<String?>? phone,
+    Value<String>? role,
+    Value<String>? status,
+    Value<String?>? profileImageUrl,
+    Value<DateTime>? hiredAt,
+    Value<DateTime?>? archivedAt,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? syncStatus,
+    Value<DateTime?>? lastSyncAttempt,
+    Value<String?>? syncError,
+    Value<int>? rowid,
+  }) {
+    return EmployeesTableCompanion(
+      id: id ?? this.id,
+      businessId: businessId ?? this.businessId,
+      branchId: branchId ?? this.branchId,
+      authUserId: authUserId ?? this.authUserId,
+      employeeCode: employeeCode ?? this.employeeCode,
+      fullName: fullName ?? this.fullName,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
+      role: role ?? this.role,
+      status: status ?? this.status,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
+      hiredAt: hiredAt ?? this.hiredAt,
+      archivedAt: archivedAt ?? this.archivedAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      syncStatus: syncStatus ?? this.syncStatus,
+      lastSyncAttempt: lastSyncAttempt ?? this.lastSyncAttempt,
+      syncError: syncError ?? this.syncError,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
+    }
+    if (authUserId.present) {
+      map['auth_user_id'] = Variable<String>(authUserId.value);
+    }
+    if (employeeCode.present) {
+      map['employee_code'] = Variable<String>(employeeCode.value);
+    }
+    if (fullName.present) {
+      map['full_name'] = Variable<String>(fullName.value);
+    }
+    if (email.present) {
+      map['email'] = Variable<String>(email.value);
+    }
+    if (phone.present) {
+      map['phone'] = Variable<String>(phone.value);
+    }
+    if (role.present) {
+      map['role'] = Variable<String>(role.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (profileImageUrl.present) {
+      map['profile_image_url'] = Variable<String>(profileImageUrl.value);
+    }
+    if (hiredAt.present) {
+      map['hired_at'] = Variable<DateTime>(hiredAt.value);
+    }
+    if (archivedAt.present) {
+      map['archived_at'] = Variable<DateTime>(archivedAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<int>(syncStatus.value);
+    }
+    if (lastSyncAttempt.present) {
+      map['last_sync_attempt'] = Variable<DateTime>(lastSyncAttempt.value);
+    }
+    if (syncError.present) {
+      map['sync_error'] = Variable<String>(syncError.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('EmployeesTableCompanion(')
+          ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
+          ..write('branchId: $branchId, ')
+          ..write('authUserId: $authUserId, ')
+          ..write('employeeCode: $employeeCode, ')
+          ..write('fullName: $fullName, ')
+          ..write('email: $email, ')
+          ..write('phone: $phone, ')
+          ..write('role: $role, ')
+          ..write('status: $status, ')
+          ..write('profileImageUrl: $profileImageUrl, ')
+          ..write('hiredAt: $hiredAt, ')
+          ..write('archivedAt: $archivedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncAttempt: $lastSyncAttempt, ')
+          ..write('syncError: $syncError, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -12422,6 +13443,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ReceiptSettingsTableTable receiptSettingsTable =
       $ReceiptSettingsTableTable(this);
   late final $AuditLogsTableTable auditLogsTable = $AuditLogsTableTable(this);
+  late final $EmployeesTableTable employeesTable = $EmployeesTableTable(this);
   late final AuthContextDao authContextDao = AuthContextDao(
     this as AppDatabase,
   );
@@ -12449,6 +13471,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this as AppDatabase,
   );
   late final AuditLogsDao auditLogsDao = AuditLogsDao(this as AppDatabase);
+  late final EmployeesDao employeesDao = EmployeesDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -12468,6 +13491,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     stockLedgerTable,
     receiptSettingsTable,
     auditLogsTable,
+    employeesTable,
   ];
 }
 
@@ -18265,6 +19289,469 @@ typedef $$AuditLogsTableTableProcessedTableManager =
       AuditLogRow,
       PrefetchHooks Function()
     >;
+typedef $$EmployeesTableTableCreateCompanionBuilder =
+    EmployeesTableCompanion Function({
+      required String id,
+      required String businessId,
+      required String branchId,
+      Value<String?> authUserId,
+      required String employeeCode,
+      required String fullName,
+      required String email,
+      Value<String?> phone,
+      required String role,
+      Value<String> status,
+      Value<String?> profileImageUrl,
+      required DateTime hiredAt,
+      Value<DateTime?> archivedAt,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> syncStatus,
+      Value<DateTime?> lastSyncAttempt,
+      Value<String?> syncError,
+      Value<int> rowid,
+    });
+typedef $$EmployeesTableTableUpdateCompanionBuilder =
+    EmployeesTableCompanion Function({
+      Value<String> id,
+      Value<String> businessId,
+      Value<String> branchId,
+      Value<String?> authUserId,
+      Value<String> employeeCode,
+      Value<String> fullName,
+      Value<String> email,
+      Value<String?> phone,
+      Value<String> role,
+      Value<String> status,
+      Value<String?> profileImageUrl,
+      Value<DateTime> hiredAt,
+      Value<DateTime?> archivedAt,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> syncStatus,
+      Value<DateTime?> lastSyncAttempt,
+      Value<String?> syncError,
+      Value<int> rowid,
+    });
+
+class $$EmployeesTableTableFilterComposer
+    extends Composer<_$AppDatabase, $EmployeesTableTable> {
+  $$EmployeesTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get authUserId => $composableBuilder(
+    column: $table.authUserId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get employeeCode => $composableBuilder(
+    column: $table.employeeCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fullName => $composableBuilder(
+    column: $table.fullName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get profileImageUrl => $composableBuilder(
+    column: $table.profileImageUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get hiredAt => $composableBuilder(
+    column: $table.hiredAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get archivedAt => $composableBuilder(
+    column: $table.archivedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$EmployeesTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $EmployeesTableTable> {
+  $$EmployeesTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get authUserId => $composableBuilder(
+    column: $table.authUserId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get employeeCode => $composableBuilder(
+    column: $table.employeeCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fullName => $composableBuilder(
+    column: $table.fullName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get profileImageUrl => $composableBuilder(
+    column: $table.profileImageUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get hiredAt => $composableBuilder(
+    column: $table.hiredAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get archivedAt => $composableBuilder(
+    column: $table.archivedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$EmployeesTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $EmployeesTableTable> {
+  $$EmployeesTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
+
+  GeneratedColumn<String> get authUserId => $composableBuilder(
+    column: $table.authUserId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get employeeCode => $composableBuilder(
+    column: $table.employeeCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get fullName =>
+      $composableBuilder(column: $table.fullName, builder: (column) => column);
+
+  GeneratedColumn<String> get email =>
+      $composableBuilder(column: $table.email, builder: (column) => column);
+
+  GeneratedColumn<String> get phone =>
+      $composableBuilder(column: $table.phone, builder: (column) => column);
+
+  GeneratedColumn<String> get role =>
+      $composableBuilder(column: $table.role, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get profileImageUrl => $composableBuilder(
+    column: $table.profileImageUrl,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get hiredAt =>
+      $composableBuilder(column: $table.hiredAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get archivedAt => $composableBuilder(
+    column: $table.archivedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get syncError =>
+      $composableBuilder(column: $table.syncError, builder: (column) => column);
+}
+
+class $$EmployeesTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $EmployeesTableTable,
+          EmployeeRow,
+          $$EmployeesTableTableFilterComposer,
+          $$EmployeesTableTableOrderingComposer,
+          $$EmployeesTableTableAnnotationComposer,
+          $$EmployeesTableTableCreateCompanionBuilder,
+          $$EmployeesTableTableUpdateCompanionBuilder,
+          (
+            EmployeeRow,
+            BaseReferences<_$AppDatabase, $EmployeesTableTable, EmployeeRow>,
+          ),
+          EmployeeRow,
+          PrefetchHooks Function()
+        > {
+  $$EmployeesTableTableTableManager(
+    _$AppDatabase db,
+    $EmployeesTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$EmployeesTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$EmployeesTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$EmployeesTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> businessId = const Value.absent(),
+                Value<String> branchId = const Value.absent(),
+                Value<String?> authUserId = const Value.absent(),
+                Value<String> employeeCode = const Value.absent(),
+                Value<String> fullName = const Value.absent(),
+                Value<String> email = const Value.absent(),
+                Value<String?> phone = const Value.absent(),
+                Value<String> role = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> profileImageUrl = const Value.absent(),
+                Value<DateTime> hiredAt = const Value.absent(),
+                Value<DateTime?> archivedAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> syncStatus = const Value.absent(),
+                Value<DateTime?> lastSyncAttempt = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => EmployeesTableCompanion(
+                id: id,
+                businessId: businessId,
+                branchId: branchId,
+                authUserId: authUserId,
+                employeeCode: employeeCode,
+                fullName: fullName,
+                email: email,
+                phone: phone,
+                role: role,
+                status: status,
+                profileImageUrl: profileImageUrl,
+                hiredAt: hiredAt,
+                archivedAt: archivedAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                syncStatus: syncStatus,
+                lastSyncAttempt: lastSyncAttempt,
+                syncError: syncError,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String businessId,
+                required String branchId,
+                Value<String?> authUserId = const Value.absent(),
+                required String employeeCode,
+                required String fullName,
+                required String email,
+                Value<String?> phone = const Value.absent(),
+                required String role,
+                Value<String> status = const Value.absent(),
+                Value<String?> profileImageUrl = const Value.absent(),
+                required DateTime hiredAt,
+                Value<DateTime?> archivedAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> syncStatus = const Value.absent(),
+                Value<DateTime?> lastSyncAttempt = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => EmployeesTableCompanion.insert(
+                id: id,
+                businessId: businessId,
+                branchId: branchId,
+                authUserId: authUserId,
+                employeeCode: employeeCode,
+                fullName: fullName,
+                email: email,
+                phone: phone,
+                role: role,
+                status: status,
+                profileImageUrl: profileImageUrl,
+                hiredAt: hiredAt,
+                archivedAt: archivedAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                syncStatus: syncStatus,
+                lastSyncAttempt: lastSyncAttempt,
+                syncError: syncError,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$EmployeesTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $EmployeesTableTable,
+      EmployeeRow,
+      $$EmployeesTableTableFilterComposer,
+      $$EmployeesTableTableOrderingComposer,
+      $$EmployeesTableTableAnnotationComposer,
+      $$EmployeesTableTableCreateCompanionBuilder,
+      $$EmployeesTableTableUpdateCompanionBuilder,
+      (
+        EmployeeRow,
+        BaseReferences<_$AppDatabase, $EmployeesTableTable, EmployeeRow>,
+      ),
+      EmployeeRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -18300,4 +19787,6 @@ class $AppDatabaseManager {
       $$ReceiptSettingsTableTableTableManager(_db, _db.receiptSettingsTable);
   $$AuditLogsTableTableTableManager get auditLogsTable =>
       $$AuditLogsTableTableTableManager(_db, _db.auditLogsTable);
+  $$EmployeesTableTableTableManager get employeesTable =>
+      $$EmployeesTableTableTableManager(_db, _db.employeesTable);
 }
