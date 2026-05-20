@@ -183,19 +183,24 @@ class _EmployeesViewState extends State<_EmployeesView> {
       listener: (ctx, _) => _initialize(),
       child: Scaffold(
         backgroundColor: AppColors.background,
-        appBar: AppSubPageBar(
-          title: 'Employees',
-          actions: [
-            PermissionGate(
-              permissionKey: PermissionKeys.employeesCreate,
-              child: IconButton(
-                icon: const Icon(IconlyLight.plus, color: AppColors.brand),
-                onPressed: _showAddDialog,
-                tooltip: 'Add Employee',
-              ),
-            ),
-          ],
-        ),
+        appBar: Breakpoints.isPhone(context)
+            ? AppSubPageBar(
+                title: 'Employees',
+                actions: [
+                  PermissionGate(
+                    permissionKey: PermissionKeys.employeesCreate,
+                    child: IconButton(
+                      icon: const Icon(
+                        IconlyLight.plus,
+                        color: AppColors.brand,
+                      ),
+                      onPressed: _showAddDialog,
+                      tooltip: 'Add Employee',
+                    ),
+                  ),
+                ],
+              )
+            : null,
         body: Column(
           children: [
             const EmployeeFilterBar(),

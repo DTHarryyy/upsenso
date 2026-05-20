@@ -175,7 +175,9 @@ Future<void> _waitForSessionRecovery() async {
       try {
         await auth.refreshSession();
       } catch (_) {
-        // No valid refresh token — the user is genuinely signed out.
+        // No valid refresh token — clear the stale session from local storage
+        // so it is not retried on the next app launch.
+        await auth.signOut(scope: SignOutScope.local);
       }
     }
   }

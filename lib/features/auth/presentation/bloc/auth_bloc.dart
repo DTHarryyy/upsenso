@@ -409,6 +409,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     if (!event.isLoggedIn) {
+      // If we were authenticated when the sign-out arrived, this was not
+      // triggered by our explicit logout flow (which emits AuthUnauthenticated
+      // before calling signOut()). Treat it as a forced/expired session.
+      if (state is AuthAuthenticated) {
+        emit(
+          const AuthError('Your session has expired. Please sign in again.'),
+        );
+      }
       emit(AuthUnauthenticated());
       return;
     }
