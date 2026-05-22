@@ -81,16 +81,20 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
   /// payment_method is now synced via Supabase; other local-only fields
   /// (itemCount, customerName, subtotal, amountReceived, changeDue) are
   /// preserved if the row already exists.
+  ///
+  /// Note: createdAt is intentionally NOT overwritten when the row exists
+  /// locally, to preserve the original local timestamp (Supabase may store
+  /// it in UTC which would cause incorrect display times after tz conversion).
   Future<void> upsertFromServer(Map<String, dynamic> row) async {
     final id = row['id'] as String;
-    final createdAt = DateTime.parse(row['created_at'] as String);
     final paymentMethod = (row['payment_method'] as String?) ?? 'cash';
     final existing = await (select(
       transactionsTable,
     )..where((t) => t.id.equals(id))).getSingleOrNull();
 
     if (existing != null) {
-      // Row exists — overwrite server-side fields including payment_method.
+      // Row exists locally — preserve original createdAt; only update
+      // server-controlled fields (totals, payment, sync metadata).
       await (update(transactionsTable)..where((t) => t.id.equals(id))).write(
         TransactionsTableCompanion(
           cashierId: Value(row['cashier_id'] as String),
@@ -99,13 +103,14 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
           totalAmount: Value((row['total_amount'] as num).toDouble()),
           taxAmount: Value((row['tax_amount'] as num).toDouble()),
           paymentMethod: Value(paymentMethod),
-          createdAt: Value(createdAt),
           syncStatus: const Value(3),
           lastSyncAttempt: Value(DateTime.now()),
         ),
       );
     } else {
       // New row from server — insert with payment_method from server.
+      // For new server rows, use server's created_at timestamp.
+      final createdAt = DateTime.parse(row['created_at'] as String);
       await into(transactionsTable).insert(
         TransactionsTableCompanion.insert(
           id: id,

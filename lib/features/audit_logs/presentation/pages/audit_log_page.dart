@@ -17,6 +17,7 @@ import 'package:pos/features/audit_logs/presentation/bloc/audit_log_state.dart';
 import 'package:pos/features/audit_logs/presentation/widgets/audit_log_filter_bar.dart';
 import 'package:pos/features/audit_logs/presentation/widgets/audit_log_skeleton.dart';
 import 'package:pos/features/audit_logs/presentation/widgets/audit_log_tile.dart';
+import 'package:pos/features/audit_logs/presentation/widgets/audit_log_empty_state.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -93,7 +94,9 @@ class _AuditLogViewState extends State<_AuditLogView> {
               _viewMode ?? (isNarrow ? AppViewMode.cards : AppViewMode.table);
           return Scaffold(
             backgroundColor: AppColors.background,
-            appBar: AppSubPageBar(title: 'Audit Logs'),
+            appBar: Breakpoints.isPhone(context)
+                ? AppSubPageBar(title: 'Audit Logs')
+                : null,
             body: Column(
               children: [
                 AuditLogFilterBar(
@@ -175,7 +178,7 @@ class _Body extends StatelessWidget {
 
           if (viewMode == AppViewMode.cards) {
             if (logs.isEmpty) {
-              return _EmptyState(
+              return AuditLogEmptyState(
                 hasFilters: state.hasActiveFilter || query.isNotEmpty,
               );
             }
@@ -206,7 +209,7 @@ class _Body extends StatelessWidget {
                 logs[i],
                 onViewDetails: () => showAuditLogDetails(ctx, logs[i]),
               ),
-              emptyState: _EmptyState(
+              emptyState: AuditLogEmptyState(
                 hasFilters: state.hasActiveFilter || query.isNotEmpty,
               ),
             ),
@@ -215,49 +218,6 @@ class _Body extends StatelessWidget {
 
         return const SizedBox.shrink();
       },
-    );
-  }
-}
-
-// ── Empty state ──────────────────────────────────────────────────────────────
-
-class _EmptyState extends StatelessWidget {
-  final bool hasFilters;
-  const _EmptyState({required this.hasFilters});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            hasFilters ? IconlyLight.filter : IconlyLight.activity,
-            size: 56,
-            color: AppColors.textMuted.withValues(alpha: 0.4),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            hasFilters
-                ? 'No logs match the current filters.'
-                : 'No audit logs yet.',
-            style: AppTextStyles.caption(
-              context,
-            ).copyWith(color: AppColors.textMuted),
-            textAlign: TextAlign.center,
-          ),
-          if (hasFilters) ...[
-            const SizedBox(height: 6),
-            Text(
-              'Try adjusting or clearing the filters.',
-              style: AppTextStyles.caption(
-                context,
-              ).copyWith(color: AppColors.textMuted.withValues(alpha: 0.7)),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ],
-      ),
     );
   }
 }
