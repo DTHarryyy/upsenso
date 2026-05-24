@@ -253,7 +253,11 @@ class _CustomAppBarState extends State<CustomAppBar> {
           ),
           title: Row(
             children: [
-              Icon(Icons.add_business_rounded, color: AppColors.brand, size: 24),
+              Icon(
+                Icons.add_business_rounded,
+                color: AppColors.brand,
+                size: 24,
+              ),
               const SizedBox(width: 8),
               Text(
                 'Add New Branch',
@@ -283,11 +287,16 @@ class _CustomAppBarState extends State<CustomAppBar> {
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.borderSoft),
+                        borderSide: const BorderSide(
+                          color: AppColors.borderSoft,
+                        ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.brand, width: 2),
+                        borderSide: const BorderSide(
+                          color: AppColors.brand,
+                          width: 2,
+                        ),
                       ),
                     ),
                     validator: (value) {
@@ -303,17 +312,25 @@ class _CustomAppBarState extends State<CustomAppBar> {
                     decoration: InputDecoration(
                       labelText: 'Address',
                       hintText: 'e.g. 123 Main St',
-                      prefixIcon: const Icon(Icons.location_on_outlined, size: 20),
+                      prefixIcon: const Icon(
+                        Icons.location_on_outlined,
+                        size: 20,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.borderSoft),
+                        borderSide: const BorderSide(
+                          color: AppColors.borderSoft,
+                        ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.brand, width: 2),
+                        borderSide: const BorderSide(
+                          color: AppColors.brand,
+                          width: 2,
+                        ),
                       ),
                     ),
                   ),
@@ -330,11 +347,16 @@ class _CustomAppBarState extends State<CustomAppBar> {
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.borderSoft),
+                        borderSide: const BorderSide(
+                          color: AppColors.borderSoft,
+                        ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.brand, width: 2),
+                        borderSide: const BorderSide(
+                          color: AppColors.brand,
+                          width: 2,
+                        ),
                       ),
                     ),
                   ),
@@ -414,9 +436,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
             if (value == _addNewBranchValue) {
               _showAddBranchDialog(context);
             } else if (widget.onBranchChanged != null && canSwitch) {
-              unawaited(
-                context.read<BranchCubit>().selectBranch(value),
-              );
+              unawaited(context.read<BranchCubit>().selectBranch(value));
               widget.onBranchChanged?.call(value);
             }
           },
@@ -428,68 +448,72 @@ class _CustomAppBarState extends State<CustomAppBar> {
           itemBuilder: (context) {
             final items = <PopupMenuEntry<String>>[];
             for (final branch in branches) {
-              items.add(PopupMenuItem<String>(
-                value: branch,
-                child: Row(
-                  children: [
-                    Icon(
-                      branch == BranchCubit.allBranchesLabel
-                          ? Icons.all_inclusive_rounded
-                          : Icons.store_rounded,
-                      size: 18,
-                      color: branch == selectedBranch
-                          ? AppColors.brand
-                          : AppColors.textMuted,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        branch,
-                        overflow: TextOverflow.ellipsis,
-                        style: getOutfitStyle(
-                          fontSize: 14,
-                          fontWeight: branch == selectedBranch
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                          color: branch == selectedBranch
-                              ? AppColors.brand
-                              : AppColors.textPrimary,
+              items.add(
+                PopupMenuItem<String>(
+                  value: branch,
+                  child: Row(
+                    children: [
+                      Icon(
+                        branch == BranchCubit.allBranchesLabel
+                            ? Icons.all_inclusive_rounded
+                            : Icons.store_rounded,
+                        size: 18,
+                        color: branch == selectedBranch
+                            ? AppColors.brand
+                            : AppColors.textMuted,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          branch,
+                          overflow: TextOverflow.ellipsis,
+                          style: getOutfitStyle(
+                            fontSize: 14,
+                            fontWeight: branch == selectedBranch
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: branch == selectedBranch
+                                ? AppColors.brand
+                                : AppColors.textPrimary,
+                          ),
                         ),
                       ),
-                    ),
-                    if (branch == selectedBranch)
-                      const Icon(
-                        Icons.check_rounded,
-                        size: 18,
-                        color: AppColors.brand,
-                      ),
-                  ],
+                      if (branch == selectedBranch)
+                        const Icon(
+                          Icons.check_rounded,
+                          size: 18,
+                          color: AppColors.brand,
+                        ),
+                    ],
+                  ),
                 ),
-              ));
+              );
             }
             if (canSwitch) {
               items.add(const PopupMenuDivider());
-              items.add(PopupMenuItem<String>(
-                value: _addNewBranchValue,
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.add_rounded,
-                      size: 18,
-                      color: AppColors.brand,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Add New Branch',
-                      style: getOutfitStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+              items.add(
+                PopupMenuItem<String>(
+                  value: _addNewBranchValue,
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.add_rounded,
+                        size: 18,
                         color: AppColors.brand,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      Text(
+                        'Add New Branch',
+                        style: getOutfitStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.brand,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ));
+              );
             }
             return items;
           },
@@ -542,75 +566,77 @@ class _CustomAppBarState extends State<CustomAppBar> {
         return GestureDetector(
           onTap: canSwitch
               ? () {
-                  final RenderBox box =
-                      context.findRenderObject() as RenderBox;
-                  final Offset offset =
-                      box.localToGlobal(Offset.zero);
+                  final RenderBox box = context.findRenderObject() as RenderBox;
+                  final Offset offset = box.localToGlobal(Offset.zero);
 
                   final items = <PopupMenuEntry<String>>[];
                   for (final branch in branches) {
-                    items.add(PopupMenuItem<String>(
-                      value: branch,
-                      child: Row(
-                        children: [
-                          Icon(
-                            branch == BranchCubit.allBranchesLabel
-                                ? Icons.all_inclusive_rounded
-                                : Icons.store_rounded,
-                            size: 16,
-                            color: branch == selectedBranch
-                                ? AppColors.brand
-                                : AppColors.textMuted,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              branch,
-                              overflow: TextOverflow.ellipsis,
-                              style: getOutfitStyle(
-                                fontSize: 13,
-                                fontWeight: branch == selectedBranch
-                                    ? FontWeight.w700
-                                    : FontWeight.w500,
-                                color: branch == selectedBranch
-                                    ? AppColors.brand
-                                    : AppColors.textPrimary,
+                    items.add(
+                      PopupMenuItem<String>(
+                        value: branch,
+                        child: Row(
+                          children: [
+                            Icon(
+                              branch == BranchCubit.allBranchesLabel
+                                  ? Icons.all_inclusive_rounded
+                                  : Icons.store_rounded,
+                              size: 16,
+                              color: branch == selectedBranch
+                                  ? AppColors.brand
+                                  : AppColors.textMuted,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                branch,
+                                overflow: TextOverflow.ellipsis,
+                                style: getOutfitStyle(
+                                  fontSize: 13,
+                                  fontWeight: branch == selectedBranch
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                  color: branch == selectedBranch
+                                      ? AppColors.brand
+                                      : AppColors.textPrimary,
+                                ),
                               ),
                             ),
-                          ),
-                          if (branch == selectedBranch)
-                            const Icon(
-                              Icons.check_rounded,
-                              size: 16,
-                              color: AppColors.brand,
-                            ),
-                        ],
+                            if (branch == selectedBranch)
+                              const Icon(
+                                Icons.check_rounded,
+                                size: 16,
+                                color: AppColors.brand,
+                              ),
+                          ],
+                        ),
                       ),
-                    ));
+                    );
                   }
                   if (canSwitch) {
                     items.add(const PopupMenuDivider());
-                    items.add(PopupMenuItem<String>(
-                      value: _addNewBranchValue,
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.add_rounded,
-                            size: 16,
-                            color: AppColors.brand,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Add New Branch',
-                            style: getOutfitStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
+                    items.add(
+                      PopupMenuItem<String>(
+                        value: _addNewBranchValue,
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.add_rounded,
+                              size: 16,
                               color: AppColors.brand,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 8),
+                            Text(
+                              'Add New Branch',
+                              style: getOutfitStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.brand,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ));
+                    );
                   }
 
                   showMenu<String>(
@@ -627,14 +653,12 @@ class _CustomAppBarState extends State<CustomAppBar> {
                     items: items,
                   ).then((value) {
                     if (value == null) return;
-                    if(!context.mounted) return;
+                    if (!context.mounted) return;
                     if (value == _addNewBranchValue) {
                       _showAddBranchDialog(context);
                     } else {
                       unawaited(
-                        context
-                            .read<BranchCubit>()
-                            .selectBranch(value),
+                        context.read<BranchCubit>().selectBranch(value),
                       );
                       widget.onBranchChanged?.call(value);
                     }
