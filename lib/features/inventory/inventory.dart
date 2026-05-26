@@ -4,8 +4,8 @@ import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
-import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
+// ignore: unused_import
 import 'package:pos/core/widgets/app_sub_page_bar.dart';
 import 'package:pos/core/widgets/app_view_toggle.dart';
 import 'package:pos/core/widgets/branch_action_dialog.dart';
@@ -151,9 +151,6 @@ class _InventoryState extends State<Inventory> {
 
             return Scaffold(
               backgroundColor: AppColors.background,
-              appBar: Breakpoints.isPhone(context)
-                  ? AppSubPageBar(title: 'Stock Level')
-                  : null,
               body: LayoutBuilder(
                 builder: (context, constraints) {
                   final w = constraints.maxWidth;

@@ -13,7 +13,6 @@ import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/expenses/presentation/expenses_page.dart';
-import 'package:pos/features/inventory/inventory.dart';
 import 'package:pos/features/sales/presentation/sales_history.dart';
 import 'package:pos/features/audit_logs/presentation/pages/audit_log_page.dart';
 import 'package:pos/features/employees/presentation/pages/employees_page.dart';
@@ -183,11 +182,6 @@ class _MorePageState extends State<MorePage>
                           icon: IconlyLight.time_circle,
                           label: 'Sales History',
                           onTap: () => _pushFullPage(const SalesHistory()),
-                        ),
-                        _DrawerTile(
-                          icon: IconlyLight.chart,
-                          label: 'Stock Level',
-                          onTap: () => _pushFullPage(const Inventory()),
                         ),
                         _DrawerTile(
                           icon: IconlyLight.wallet,
