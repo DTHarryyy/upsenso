@@ -22,12 +22,11 @@ Future<Widget> bootstrap() async {
   // can read the live Supabase session that was just restored.
   await _initSupabase();
 
-  // Step 2: On web, wait for the auth session to be recovered from
-  // localStorage before initializing DI. Without this, currentUser()
-  // returns null even though a valid session exists in localStorage.
-  if (kIsWeb) {
-    await _waitForSessionRecovery();
-  }
+  // Step 2: Wait for the auth session to be recovered / validated on all
+  // platforms. On web this avoids the missed-broadcast-event race; on
+  // mobile/desktop it catches a stale refresh token at startup so the app
+  // never briefly shows the home screen before being kicked to sign-in.
+  await _waitForSessionRecovery();
 
   // Step 3: Initialize DI (includes initializeCachedUser which reads
   // the now-available Supabase session).
@@ -135,25 +134,46 @@ Future<void> _initSupabase() async {
   );
 }
 
-/// On web, Supabase recovers the session from localStorage.
+/// Validates the locally-stored Supabase session on every platform before
+/// the rest of the app boots.
 ///
-/// The tricky part: [AuthChangeEvent.initialSession] fires **synchronously
-/// inside** [Supabase.initialize], so by the time we subscribe to
-/// [onAuthStateChange] it has already been emitted and is gone (broadcast
-/// streams don't replay). A two-phase listen therefore routinely misses it
-/// and wastes 3 s waiting for an event that never comes.
+/// **Web** — `initialSession` fires synchronously inside `initialize()` and
+/// is gone by the time we subscribe (broadcast stream, no replay). We
+/// therefore use a two-phase approach: fast path if `currentUser` is already
+/// set, slow path waiting for the next decisive event.
+///
+/// **Mobile / Desktop** — same broadcast-stream caveat applies during a
+/// background token refresh. Additionally, if the stored refresh token has
+/// been revoked on the server ("refresh_token_not_found"), `autoRefreshToken`
+/// will eventually log a WARNING and fire `signedOut`. By proactively calling
+/// `refreshSession()` here we surface that failure *before* the UI renders,
+/// preventing a brief authenticated flash followed by a forced sign-out.
 ///
 /// Strategy:
-///   1. Fast path — if [currentUser] is already set after [initialize]
-///      returns (valid non-expired token), return immediately.
-///   2. Slow path — token is expired and a network refresh is in flight.
-///      Listen for the decisive event with a single generous timeout so
-///      slow networks don't cause a false sign-out.
+///   1. Fast path — `currentUser != null` means a non-expired access token is
+///      in memory. Attempt a silent `refreshSession()` to validate the refresh
+///      token; on failure clear the stale local session immediately.
+///   2. Slow path — access token is expired / missing. Wait for the in-flight
+///      background refresh event. On timeout, force a refresh; sign out
+///      locally if the refresh token is invalid.
 Future<void> _waitForSessionRecovery() async {
   final auth = Supabase.instance.client.auth;
 
-  // Fast path: session was fully recovered synchronously during initialize().
-  if (auth.currentUser != null) return;
+  // Fast path: a valid (non-expired) access token is already in memory.
+  // Proactively validate the refresh token so we don't boot into an
+  // authenticated state only to be kicked out moments later when the
+  // background auto-refresh fires a "refresh_token_not_found" warning.
+  if (auth.currentUser != null) {
+    try {
+      await auth.refreshSession();
+    } catch (e) {
+      debugPrint(
+        'Session recovery: refresh token invalid at startup — signing out locally. ($e)',
+      );
+      await auth.signOut(scope: SignOutScope.local);
+    }
+    return;
+  }
 
   // Slow path: the stored access token is expired and Supabase is refreshing
   // it via a background network call. Wait for the result.
@@ -168,15 +188,15 @@ Future<void> _waitForSessionRecovery() async {
         )
         .timeout(const Duration(seconds: 8));
   } catch (_) {
-    // Timed out. This can happen after a hot-restart or page re-init where the
-    // JS Supabase singleton is already "done" and won't fire new events.
-    // Call refreshSession() to force it to re-read the stored token.
+    // Timed out — the broadcast event was already emitted before we subscribed
+    // (e.g. hot-restart, web page re-init) or the network is very slow.
+    // Force a refresh so we get the definitive server answer.
     if (auth.currentUser == null) {
       try {
         await auth.refreshSession();
       } catch (_) {
-        // No valid refresh token — clear the stale session from local storage
-        // so it is not retried on the next app launch.
+        // Refresh token is invalid — clear the stale local session so it is
+        // not retried on the next cold start.
         await auth.signOut(scope: SignOutScope.local);
       }
     }

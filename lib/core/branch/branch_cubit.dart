@@ -134,17 +134,6 @@ class BranchCubit extends Cubit<BranchState> {
     }
   }
 
-  /// Load whether the user can switch branches, scoped to [businessId].
-  Future<bool?> _getCachedCanSwitch(String businessId) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getBool('${_cachedCanSwitchKey}_$businessId');
-    } catch (e) {
-      debugPrint('[BranchCubit] Error loading cached canSwitch: $e');
-      return null;
-    }
-  }
-
   /// Check if a role is Super Admin
   bool _isSuperAdmin(String? roleName) {
     final normalized = roleName?.trim().toLowerCase() ?? '';
@@ -179,7 +168,6 @@ class BranchCubit extends Cubit<BranchState> {
     _currentBusinessId = businessId;
     final cachedSelection = await _getLastSelectedBranch(businessId);
     final cachedOptions = await _getCachedBranchOptions(businessId);
-    final cachedCanSwitch = await _getCachedCanSwitch(businessId);
     final canAccessAllBranches = _canAccessAllBranches(user);
     final branchOptions = <_BranchOption>[];
 
@@ -213,13 +201,18 @@ class BranchCubit extends Cubit<BranchState> {
 
       final roleLowerKey =
           user.roleName?.trim().toLowerCase().replaceAll(' ', '_') ?? '';
-      final isRestrictedEmployee =
-          roleLowerKey == 'cashier' || roleLowerKey == 'inventory_staff';
-      // Restricted employees are always locked to their assigned branch;
-      // never allow branch switching even if the cache says otherwise.
-      final canSwitch =
-          !isRestrictedEmployee &&
-          (canAccessAllBranches || cachedCanSwitch == true);
+      // Roles that are always scoped to a single assigned branch and must
+      // never be allowed to switch — regardless of cache or branchId state.
+      final isBranchScopedRole =
+          roleLowerKey == 'cashier' ||
+          roleLowerKey == 'inventory_staff' ||
+          roleLowerKey == 'branch_manager';
+      // Can switch only when the role is NOT branch-scoped AND the user has
+      // no explicit branch assignment (canAccessAllBranches already encodes
+      // the !hasAssignedBranch logic for non-super-admin users).
+      // The cached value is intentionally excluded: it must never override
+      // the role / branch assignment determined from the live session.
+      final canSwitch = !isBranchScopedRole && canAccessAllBranches;
       if (canSwitch && !uniqueNames.contains(allBranchesLabel)) {
         uniqueNames.insert(0, allBranchesLabel);
         idsByName[allBranchesLabel] = null;
@@ -497,6 +490,17 @@ class BranchCubit extends Cubit<BranchState> {
     await _saveCachedBranchOptions(businessId, cacheableOptions);
 
     return id;
+  }
+
+  /// Returns the branch name for a given [branchId], or `null` if unknown.
+  String? branchNameForId(String? branchId) {
+    if (branchId == null || branchId.trim().isEmpty) return null;
+    for (final entry in _branchIdsByName.entries) {
+      if (entry.value == branchId && entry.key != allBranchesLabel) {
+        return entry.key;
+      }
+    }
+    return null;
   }
 
   /// Returns all real branch options that have a known ID (excludes

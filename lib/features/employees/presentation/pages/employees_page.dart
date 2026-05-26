@@ -98,8 +98,37 @@ class _EmployeesViewState extends State<_EmployeesView> {
     }
   }
 
+  /// Returns the roles this user is allowed to assign when creating/editing
+  /// an employee. Branch managers may only assign cashier or inventory staff.
+  List<EmployeeRole>? _allowedRoles() {
+    final branchState = context.read<BranchCubit>().state;
+    final roleKey =
+        branchState.roleName?.trim().toLowerCase().replaceAll(' ', '_') ?? '';
+    if (roleKey == 'branch_manager') {
+      return const [EmployeeRole.cashier, EmployeeRole.inventoryStaff];
+    }
+    return null; // null = no restriction (super admin / owner)
+  }
+
+  /// Returns the branch ID to lock the form to, or null if the user can
+  /// freely pick a branch. Branch managers are always locked to their branch.
+  String? _lockedBranchId() {
+    final branchState = context.read<BranchCubit>().state;
+    final roleKey =
+        branchState.roleName?.trim().toLowerCase().replaceAll(' ', '_') ?? '';
+    if (roleKey == 'branch_manager') {
+      return branchState.selectedBranchId;
+    }
+    return null;
+  }
+
   void _showAddDialog() {
-    showEmployeeFormDialog(context: context, branches: _branches);
+    showEmployeeFormDialog(
+      context: context,
+      branches: _branches,
+      allowedRoles: _allowedRoles(),
+      lockedBranchId: _lockedBranchId(),
+    );
   }
 
   void _showEditDialog(Employee employee) {
@@ -107,6 +136,8 @@ class _EmployeesViewState extends State<_EmployeesView> {
       context: context,
       branches: _branches,
       employee: employee,
+      allowedRoles: _allowedRoles(),
+      lockedBranchId: _lockedBranchId(),
     );
   }
 

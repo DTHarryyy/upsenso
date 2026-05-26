@@ -38,6 +38,18 @@ class EmployeesDao extends DatabaseAccessor<AppDatabase>
     )..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
+  /// Returns a map of authUserId → fullName for the given auth user IDs.
+  Future<Map<String, String>> getNamesForAuthUserIds(List<String> ids) async {
+    if (ids.isEmpty) return {};
+    final rows = await (select(
+      employeesTable,
+    )..where((t) => t.authUserId.isIn(ids))).get();
+    return {
+      for (final r in rows)
+        if (r.authUserId != null) r.authUserId!: r.fullName,
+    };
+  }
+
   Future<void> insertEmployee(EmployeesTableCompanion companion) {
     return into(employeesTable).insert(companion);
   }
@@ -125,13 +137,13 @@ class EmployeesDao extends DatabaseAccessor<AppDatabase>
     String email, {
     String? excludeId,
   }) async {
-    final rows = await (select(employeesTable)
-          ..where(
-            (t) =>
-                t.businessId.equals(businessId) &
-                t.syncStatus.isNotIn([SyncStatus.pendingDelete.toInt()]),
-          ))
-        .get();
+    final rows =
+        await (select(employeesTable)..where(
+              (t) =>
+                  t.businessId.equals(businessId) &
+                  t.syncStatus.isNotIn([SyncStatus.pendingDelete.toInt()]),
+            ))
+            .get();
     return rows.where((r) {
       if (r.email.toLowerCase() != email.toLowerCase()) return false;
       if (excludeId != null && r.id == excludeId) return false;
@@ -146,14 +158,14 @@ class EmployeesDao extends DatabaseAccessor<AppDatabase>
     String phone, {
     String? excludeId,
   }) async {
-    final rows = await (select(employeesTable)
-          ..where(
-            (t) =>
-                t.businessId.equals(businessId) &
-                t.syncStatus.isNotIn([SyncStatus.pendingDelete.toInt()]) &
-                t.phone.isNotNull(),
-          ))
-        .get();
+    final rows =
+        await (select(employeesTable)..where(
+              (t) =>
+                  t.businessId.equals(businessId) &
+                  t.syncStatus.isNotIn([SyncStatus.pendingDelete.toInt()]) &
+                  t.phone.isNotNull(),
+            ))
+            .get();
     return rows.where((r) {
       if (r.phone != phone) return false;
       if (excludeId != null && r.id == excludeId) return false;

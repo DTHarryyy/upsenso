@@ -1,6 +1,4 @@
-<!DOCTYPE html>
-<html>
-<head>
+<!DOCTYPE html><html><head>
   <!-- Base path — replaced by flutter build --base-href -->
   <base href="$FLUTTER_BASE_HREF">
 
@@ -22,7 +20,7 @@
 
   <!-- ── Network hints ──────────────────────────────────────────────────── -->
   <!-- DNS pre-connect for Supabase so the first API call skips DNS lookup -->
-  <link rel="preconnect" href="https://ltcvjttxomshxaotrrki.supabase.co" crossorigin>
+  <link rel="preconnect" href="https://ltcvjttxomshxaotrrki.supabase.co" crossorigin="">
   <link rel="dns-prefetch" href="https://ltcvjttxomshxaotrrki.supabase.co">
 
   <!-- Preload Flutter bootstrap script (critical path) -->
@@ -35,7 +33,7 @@
        the "preloaded but not used" warning. drift_worker.js is a SharedWorker
        script — preload it as="worker" so the browser can correctly match it to
        the SharedWorker constructor call instead of discarding it as a plain script. -->
-  <link rel="preload" href="sqlite3.wasm" as="fetch" crossorigin type="application/wasm">
+  <link rel="preload" href="sqlite3.wasm" as="fetch" crossorigin="" type="application/wasm">
   <link rel="preload" href="drift_worker.js" as="worker">
 
   <!-- ── Web Renderer ───────────────────────────────────────────────────────
@@ -120,20 +118,88 @@
     }
     @keyframes fl-spin { to { transform: rotate(360deg); } }
   </style>
+  
+  
+  <style id="splash-screen-style">
+    html {
+      height: 100%
+    }
+
+    body {
+      margin: 0;
+      min-height: 100%;
+      background-color: #4569ff;
+          background-size: 100% 100%;
+    }
+
+    .center {
+      margin: 0;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      -ms-transform: translate(-50%, -50%);
+      transform: translate(-50%, -50%);
+    }
+
+    .contain {
+      display:block;
+      width:100%; height:100%;
+      object-fit: contain;
+    }
+
+    .stretch {
+      display:block;
+      width:100%; height:100%;
+    }
+
+    .cover {
+      display:block;
+      width:100%; height:100%;
+      object-fit: cover;
+    }
+
+    .bottom {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      -ms-transform: translate(-50%, 0);
+      transform: translate(-50%, 0);
+    }
+
+    .bottomLeft {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+    }
+
+    .bottomRight {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+    }
+  </style>
+  <script id="splash-screen-script">
+    function removeSplashFromWeb() {
+      document.getElementById("splash")?.remove();
+      document.getElementById("splash-branding")?.remove();
+      document.body.style.background = "transparent";
+    }
+  </script>
 </head>
 <body>
+  <picture id="splash">
+      <source srcset="splash/img/light-1x.png 1x, splash/img/light-2x.png 2x, splash/img/light-3x.png 3x, splash/img/light-4x.png 4x" media="(prefers-color-scheme: light)">
+      <source srcset="splash/img/dark-1x.png 1x, splash/img/dark-2x.png 2x, splash/img/dark-3x.png 3x, splash/img/dark-4x.png 4x" media="(prefers-color-scheme: dark)">
+      <img class="center" aria-hidden="true" src="splash/img/light-1x.png" alt="">
+  </picture>
+  
   <!-- Visible immediately — dismissed on flutter-first-frame event -->
   <div id="flutter-loading" aria-label="Loading Upsenso" role="status">
     <div class="fl-logo">
       <!-- Store icon in brand colour — no external request needed -->
-      <svg width="40" height="40" viewBox="0 0 24 24" fill="none"
-           xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
-              stroke="#557FF4" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round"/>
-        <polyline points="9 22 9 12 15 12 15 22"
-                  stroke="#557FF4" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round"/>
+      <svg width="40" height="40" fill="none" aria-hidden="true" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="#557FF4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+        <polyline points="9 22 9 12 15 12 15 22" stroke="#557FF4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></polyline>
       </svg>
     </div>
     <div class="fl-spinner"></div>
@@ -217,5 +283,5 @@
       setTimeout(function () { el.remove(); }, 300);
     });
   </script>
-</body>
-</html>
+
+</body></html>

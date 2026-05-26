@@ -538,14 +538,14 @@ class _CustomAppBarState extends State<CustomAppBar> {
                   ),
                 ),
               ),
-              const SizedBox(width: 4),
-              Icon(
-                Icons.unfold_more,
-                size: 18,
-                color: canSwitch
-                    ? AppColors.textSecondary
-                    : AppColors.textMuted,
-              ),
+              if (canSwitch) ...[
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.unfold_more,
+                  size: 18,
+                  color: AppColors.textSecondary,
+                ),
+              ],
             ],
           ),
         );
@@ -688,14 +688,14 @@ class _CustomAppBarState extends State<CustomAppBar> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 4),
-                Icon(
-                  Icons.expand_more,
-                  size: 16,
-                  color: canSwitch
-                      ? AppColors.textSecondary
-                      : AppColors.textMuted,
-                ),
+                if (canSwitch) ...[
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.expand_more,
+                    size: 16,
+                    color: AppColors.textSecondary,
+                  ),
+                ],
               ],
             ),
           ),

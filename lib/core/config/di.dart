@@ -367,7 +367,7 @@ Future<void> initDI() async {
   );
 
   sl.registerLazySingleton<ISalesRepository>(
-    () => SalesRepository(sl<TransactionsDao>()),
+    () => SalesRepository(sl<TransactionsDao>(), sl<EmployeesDao>()),
   );
 
   sl.registerLazySingleton<IDashboardRepository>(

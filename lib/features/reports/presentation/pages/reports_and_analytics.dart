@@ -582,10 +582,11 @@ class _ReportHeaderCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 3),
-                Row(
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 4,
                   children: [
                     _Chip(IconlyLight.calendar, _periodLabel),
-                    const SizedBox(width: 10),
                     _Chip(IconlyLight.work, branchLabel),
                   ],
                 ),

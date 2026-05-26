@@ -318,9 +318,9 @@ class _AddProductsViewState extends State<_AddProductsView> {
               const SizedBox(height: 4),
               Text(
                 'Saved locally and synced when online.',
-                style: AppTextStyles.caption(sheetCtx).copyWith(
-                  color: AppColors.textMuted,
-                ),
+                style: AppTextStyles.caption(
+                  sheetCtx,
+                ).copyWith(color: AppColors.textMuted),
               ),
               const SizedBox(height: 16),
               TextField(
@@ -394,13 +394,13 @@ class _AddProductsViewState extends State<_AddProductsView> {
       costPrice: (isAdvanced && !state.hasVariants)
           ? _costPriceController.text
           : null,
-      taxPercent:
-          (isAdvanced && !state.hasVariants) ? _taxController.text : null,
+      taxPercent: (isAdvanced && !state.hasVariants)
+          ? _taxController.text
+          : null,
       stock: (isAdvanced && !state.hasVariants && state.trackInventory)
           ? _stockController.text
           : null,
-      lowStockAlert:
-          (isAdvanced && !state.hasVariants && state.trackInventory)
+      lowStockAlert: (isAdvanced && !state.hasVariants && state.trackInventory)
           ? _lowStockController.text
           : null,
       imagePath: state.imagePath,
@@ -484,9 +484,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
             backgroundColor: AppColors.background,
             appBar: _buildAppBar(ctx, state),
             // Sticky bottom save bar — mobile & tablet only
-            bottomNavigationBar: isDesktop
-                ? null
-                : _buildBottomSaveBar(state),
+            bottomNavigationBar: isDesktop ? null : _buildBottomSaveBar(state),
             body: Form(
               key: _formKey,
               child: isDesktop
@@ -501,10 +499,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
 
   // ── AppBar ─────────────────────────────────────────────────────────────────
 
-  PreferredSizeWidget _buildAppBar(
-    BuildContext ctx,
-    ProductFormState state,
-  ) {
+  PreferredSizeWidget _buildAppBar(BuildContext ctx, ProductFormState state) {
     final isEdit = widget.productToEdit != null;
     final pageTitle = isEdit ? 'Edit Product' : 'Add Product';
 
@@ -544,10 +539,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
             children: [
               Text(
                 'Products',
-                style: getOutfitStyle(
-                  color: AppColors.textMuted,
-                  fontSize: 12,
-                ),
+                style: getOutfitStyle(color: AppColors.textMuted, fontSize: 12),
               ),
               const SizedBox(width: 4),
               const Icon(
@@ -800,10 +792,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
               ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 3,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: AppColors.successSoft,
                   borderRadius: BorderRadius.circular(20),
@@ -886,11 +875,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
     final path = state.imagePath;
     if (path == null) {
       return const Center(
-        child: Icon(
-          Icons.image_outlined,
-          color: AppColors.textMuted,
-          size: 28,
-        ),
+        child: Icon(Icons.image_outlined, color: AppColors.textMuted, size: 28),
       );
     }
     if (path.startsWith('http')) {
@@ -977,9 +962,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
                     decoration: BoxDecoration(
                       color: AppColors.brandSoft,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: AppColors.brand.withAlpha(30),
-                      ),
+                      border: Border.all(color: AppColors.brand.withAlpha(30)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -1019,10 +1002,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
         Center(
           child: Text(
             '⌘ + S  to save',
-            style: getOutfitStyle(
-              color: AppColors.textMuted,
-              fontSize: 11,
-            ),
+            style: getOutfitStyle(color: AppColors.textMuted, fontSize: 11),
           ),
         ),
       ],
@@ -1047,8 +1027,9 @@ class _AddProductsViewState extends State<_AddProductsView> {
             label: 'Product name',
           ),
           style: getOutfitStyle(color: AppColors.textPrimary, fontSize: 16),
-          validator: (v) =>
-              (v == null || v.trim().isEmpty) ? 'Product name is required' : null,
+          validator: (v) => (v == null || v.trim().isEmpty)
+              ? 'Product name is required'
+              : null,
         ),
         const SizedBox(height: 14),
         const AppFieldLabel('Category'),
@@ -1070,8 +1051,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
             FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
           ],
           textInputAction: TextInputAction.next,
-          decoration:
-              appInputDeco('0.00', label: 'Price', prefixText: '₱ '),
+          decoration: appInputDeco('0.00', label: 'Price', prefixText: '₱ '),
           style: getOutfitStyle(
             color: AppColors.textPrimary,
             fontSize: 18,
@@ -1104,8 +1084,9 @@ class _AddProductsViewState extends State<_AddProductsView> {
             label: 'Product name',
           ),
           style: getOutfitStyle(color: AppColors.textPrimary, fontSize: 16),
-          validator: (v) =>
-              (v == null || v.trim().isEmpty) ? 'Product name is required' : null,
+          validator: (v) => (v == null || v.trim().isEmpty)
+              ? 'Product name is required'
+              : null,
         ),
         const SizedBox(height: 14),
         const AppFieldLabel('Category'),
@@ -1159,8 +1140,9 @@ class _AddProductsViewState extends State<_AddProductsView> {
             fontSize: 18,
             fontWeight: FontWeight.w700,
           ),
-          validator: (v) =>
-              (v == null || v.trim().isEmpty) ? 'Selling price is required' : null,
+          validator: (v) => (v == null || v.trim().isEmpty)
+              ? 'Selling price is required'
+              : null,
         ),
         // Live tax-inclusive preview
         ValueListenableBuilder<TextEditingValue>(
@@ -1216,8 +1198,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
                                     ),
                                   ),
                                   TextSpan(
-                                    text:
-                                        '₱${finalPrice.toStringAsFixed(2)}',
+                                    text: '₱${finalPrice.toStringAsFixed(2)}',
                                     style: getOutfitStyle(
                                       color: AppColors.brand,
                                       fontSize: 13,
@@ -1295,15 +1276,11 @@ class _AddProductsViewState extends State<_AddProductsView> {
                                           RegExp(r'^\d*\.?\d{0,3}'),
                                         ),
                                       ]
-                                    : [
-                                        FilteringTextInputFormatter
-                                            .digitsOnly,
-                                      ],
+                                    : [FilteringTextInputFormatter.digitsOnly],
                                 textInputAction: TextInputAction.next,
                                 decoration: appInputDeco(
                                   isFraction ? '0.000' : '0',
-                                  label:
-                                      isFraction ? 'Stock (kg)' : 'Stock',
+                                  label: isFraction ? 'Stock (kg)' : 'Stock',
                                   fillColor: isAllBranchesEdit
                                       ? AppColors.surfaceAlt
                                       : null,
@@ -1485,10 +1462,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
             onTap: cubit.toggleMoreOptions,
             borderRadius: BorderRadius.circular(18),
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 16,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               child: Row(
                 children: [
                   Container(
@@ -1620,9 +1594,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
                     controller: _simpleBarcodeController,
                     keyboardType: TextInputType.number,
                     textInputAction: TextInputAction.done,
-                    decoration: appInputDeco(
-                      'Scan or type barcode',
-                    ).copyWith(
+                    decoration: appInputDeco('Scan or type barcode').copyWith(
                       prefixIcon: const Icon(
                         Icons.qr_code_rounded,
                         size: 17,
@@ -1641,10 +1613,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
 
   // ── Advanced — More Options body ──────────────────────────────────────────
 
-  Widget _buildMoreOptionsBody(
-    ProductFormState state,
-    ProductFormCubit cubit,
-  ) {
+  Widget _buildMoreOptionsBody(ProductFormState state, ProductFormCubit cubit) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1688,9 +1657,9 @@ class _AddProductsViewState extends State<_AddProductsView> {
         SkuSectionToggle(
           controller: _skuController,
           onAutoSku: () {
-            final sku = context
-                .read<ProductFormCubit>()
-                .generateSku(_nameController.text);
+            final sku = context.read<ProductFormCubit>().generateSku(
+              _nameController.text,
+            );
             if (sku.isNotEmpty) setState(() => _skuController.text = sku);
           },
         ),
@@ -1747,9 +1716,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
                                 final sell = double.tryParse(
                                   sellVal.text.trim(),
                                 );
-                                if (srp == null ||
-                                    sell == null ||
-                                    srp <= 0) {
+                                if (srp == null || sell == null || srp <= 0) {
                                   return const SizedBox.shrink();
                                 }
                                 final diff = sell - srp;
@@ -1792,12 +1759,15 @@ class _AddProductsViewState extends State<_AddProductsView> {
                                       children: [
                                         Icon(ico, size: 12, color: fg),
                                         const SizedBox(width: 4),
-                                        Text(
-                                          lbl,
-                                          style: getOutfitStyle(
-                                            color: fg,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600,
+                                        Flexible(
+                                          child: Text(
+                                            lbl,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: getOutfitStyle(
+                                              color: fg,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                            ),
                                           ),
                                         ),
                                       ],
@@ -1879,16 +1849,14 @@ class _AddProductsViewState extends State<_AddProductsView> {
                     controller: _expiryController,
                     readOnly: true,
                     onTap: _pickExpiryDate,
-                    decoration: appInputDeco(
-                      'dd/mm/yyyy',
-                      label: 'Expiry date',
-                    ).copyWith(
-                      suffixIcon: const Icon(
-                        Icons.calendar_today_rounded,
-                        size: 17,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
+                    decoration: appInputDeco('dd/mm/yyyy', label: 'Expiry date')
+                        .copyWith(
+                          suffixIcon: const Icon(
+                            Icons.calendar_today_rounded,
+                            size: 17,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
                     style: getOutfitStyle(
                       color: AppColors.textPrimary,
                       fontSize: 16,
@@ -1978,8 +1946,9 @@ class _ModeToggle extends StatelessWidget {
               AnimatedAlign(
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.easeOutCubic,
-                alignment:
-                    isSimple ? Alignment.centerLeft : Alignment.centerRight,
+                alignment: isSimple
+                    ? Alignment.centerLeft
+                    : Alignment.centerRight,
                 child: Container(
                   width: pillWidth,
                   height: 38,
@@ -2109,8 +2078,7 @@ class _BranchAssignmentSheet extends StatefulWidget {
   });
 
   @override
-  State<_BranchAssignmentSheet> createState() =>
-      _BranchAssignmentSheetState();
+  State<_BranchAssignmentSheet> createState() => _BranchAssignmentSheetState();
 }
 
 class _BranchAssignmentSheetState extends State<_BranchAssignmentSheet> {
@@ -2125,8 +2093,7 @@ class _BranchAssignmentSheetState extends State<_BranchAssignmentSheet> {
   }
 
   Future<void> _loadBranches() async {
-    final branches =
-        await sl<BranchesDao>().getByBusinessId(widget.businessId);
+    final branches = await sl<BranchesDao>().getByBusinessId(widget.businessId);
     final active = branches.where((b) => b.isActive).toList();
     if (!mounted) return;
     setState(() {
@@ -2163,16 +2130,13 @@ class _BranchAssignmentSheetState extends State<_BranchAssignmentSheet> {
             ),
           ),
           const SizedBox(height: 20),
-          Text(
-            'Assign Opening Inventory',
-            style: AppTextStyles.title(context),
-          ),
+          Text('Assign Opening Inventory', style: AppTextStyles.title(context)),
           const SizedBox(height: 6),
           Text(
             'You\'re viewing All Branches. Choose which branch should receive the initial inventory you entered.',
-            style: AppTextStyles.body(context).copyWith(
-              color: AppColors.textSecondary,
-            ),
+            style: AppTextStyles.body(
+              context,
+            ).copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 20),
           if (_branches == null)
@@ -2190,9 +2154,9 @@ class _BranchAssignmentSheetState extends State<_BranchAssignmentSheet> {
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Text(
                 'No active branches found.',
-                style: AppTextStyles.body(context).copyWith(
-                  color: AppColors.textSecondary,
-                ),
+                style: AppTextStyles.body(
+                  context,
+                ).copyWith(color: AppColors.textSecondary),
               ),
             )
           else

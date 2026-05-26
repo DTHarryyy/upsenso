@@ -97,7 +97,7 @@ class ProductsRemoteDs {
     String? barcode,
     double? stockDecimal,
     bool trackExpiry = false,
-    String? expiryDate,
+    int? expiryDate,
     required bool isActive,
   }) async {
     await client.from('product_variants').upsert({
@@ -128,7 +128,7 @@ class ProductsRemoteDs {
     String? sku,
     String? barcode,
     bool trackExpiry = false,
-    String? expiryDate,
+    int? expiryDate,
     required bool isActive,
   }) async {
     await client

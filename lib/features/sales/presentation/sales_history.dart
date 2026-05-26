@@ -236,6 +236,67 @@ class _SalesHistoryState extends State<SalesHistory> {
                               context,
                             ).copyWith(color: AppColors.textMuted),
                           ),
+                          Builder(
+                            builder: (context) {
+                              final branchCubit = context.read<BranchCubit>();
+                              if (!branchCubit.state.canSwitchBranches) {
+                                return const SizedBox.shrink();
+                              }
+                              final branchName = branchCubit.branchNameForId(
+                                tx.branchId,
+                              );
+                              if (branchName == null) {
+                                return const SizedBox.shrink();
+                              }
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      IconlyLight.location,
+                                      size: 11,
+                                      color: AppColors.brand,
+                                    ),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      branchName,
+                                      style: AppTextStyles.caption(context)
+                                          .copyWith(
+                                            color: AppColors.brand,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                          if (tx.cashierName != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    IconlyLight.profile,
+                                    size: 11,
+                                    color: AppColors.textMuted,
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Flexible(
+                                    child: Text(
+                                      tx.cashierName!,
+                                      style: AppTextStyles.caption(context)
+                                          .copyWith(
+                                            color: AppColors.textSecondary,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -395,6 +456,41 @@ class _SalesHistoryState extends State<SalesHistory> {
                   context,
                   'Change',
                   AppFormatters.currency(tx.changeDue ?? 0),
+                ),
+              ],
+              if (tx.cashierName != null) ...[
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Divider(height: 1, color: AppColors.borderSoft),
+                ),
+                Row(
+                  children: [
+                    Icon(
+                      IconlyLight.profile,
+                      size: 13,
+                      color: AppColors.textMuted,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      'Sold by',
+                      style: AppTextStyles.caption(
+                        context,
+                      ).copyWith(color: AppColors.textMuted),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        tx.cashierName!,
+                        textAlign: TextAlign.end,
+                        style: AppTextStyles.caption(context).copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ],

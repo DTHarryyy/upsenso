@@ -14,6 +14,7 @@ class SaleTransaction extends Equatable {
   final String paymentMethod;
   final String? customerName;
   final String cashierId;
+  final String? cashierName;
   final String? branchId;
   final int itemCount;
 
@@ -29,6 +30,7 @@ class SaleTransaction extends Equatable {
     required this.paymentMethod,
     this.customerName,
     required this.cashierId,
+    this.cashierName,
     this.branchId,
     required this.itemCount,
   });
@@ -46,6 +48,7 @@ class SaleTransaction extends Equatable {
     paymentMethod,
     customerName,
     cashierId,
+    cashierName,
     branchId,
     itemCount,
   ];

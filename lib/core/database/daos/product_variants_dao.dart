@@ -162,7 +162,9 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
         trackExpiry: Value((row['track_expiry'] as bool?) ?? false),
         expiryDate: Value(
           row['expiry_date'] != null
-              ? DateTime.tryParse(row['expiry_date'] as String)
+              ? DateTime.fromMillisecondsSinceEpoch(
+                  (row['expiry_date'] as num).toInt(),
+                )
               : null,
         ),
         isActive: Value((row['is_active'] as bool?) ?? true),

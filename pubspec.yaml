@@ -5,16 +5,16 @@ flutter_launcher_icons:
   remove_alpha_ios: true
 
 flutter_native_splash:
-  color: "#ffffff"
-  image: "assets/icons/AppIconNoBg.png"
+  color: "#4569ff"
+  image: "assets/icons/SplashScreenLogo.png"
 
 
   android_12:
-    color: "#ffffff"
-    image: assets/icons/AppIconNoBg.png
+    color: "#4569ff"
+    image: assets/icons/SplashScreenLogo.png
 
 name: pos
-description: "A new Flutter project."
+description: "Upsenso — Manage your business smarter"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev

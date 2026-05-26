@@ -6,6 +6,47 @@ import 'package:pos/core/const/app_typography.dart';
 class ScanPage extends StatelessWidget {
   const ScanPage({super.key});
 
+  void _showManualEntryDialog(BuildContext context) {
+    final controller = TextEditingController();
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Enter Code Manually'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'Enter QR / barcode value',
+            border: OutlineInputBorder(),
+          ),
+          onSubmitted: (_) => _submitCode(ctx, controller.text),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => _submitCode(ctx, controller.text),
+            child: const Text('Submit'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _submitCode(BuildContext context, String code) {
+    final trimmed = code.trim();
+    Navigator.of(context).pop();
+    if (trimmed.isEmpty) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Code entered: $trimmed'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -81,9 +122,7 @@ class ScanPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 TextButton.icon(
-                  onPressed: () {
-                    // TODO: Implement manual entry 
-                  },
+                  onPressed: () => _showManualEntryDialog(context),
                   icon: const Icon(IconlyLight.edit),
                   label: const Text('Enter Code Manually'),
                 ),

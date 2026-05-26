@@ -528,7 +528,7 @@ class SyncService {
               barcode: record.barcode,
               stockDecimal: record.stockDecimal,
               trackExpiry: record.trackExpiry,
-              expiryDate: record.expiryDate?.toIso8601String(),
+              expiryDate: record.expiryDate?.millisecondsSinceEpoch,
               isActive: record.isActive,
             );
             await _productVariantsDao.updateSyncStatus(
@@ -548,7 +548,7 @@ class SyncService {
               sku: record.sku,
               barcode: record.barcode,
               trackExpiry: record.trackExpiry,
-              expiryDate: record.expiryDate?.toIso8601String(),
+              expiryDate: record.expiryDate?.millisecondsSinceEpoch,
               isActive: record.isActive,
             );
             await _productVariantsDao.updateSyncStatus(
@@ -1112,7 +1112,8 @@ class SyncService {
         // so the server will receive the correct data. Overwriting here would
         // silently discard offline edits made on this device.
         final existing = await _employeesDao.getById(rowId);
-        if (existing != null && _hasPendingEmployeeChanges(existing.syncStatus)) {
+        if (existing != null &&
+            _hasPendingEmployeeChanges(existing.syncStatus)) {
           continue;
         }
         await _employeesDao.upsertFromServer(
@@ -1177,8 +1178,7 @@ class SyncService {
               'user_id': r.userId.isEmpty ? null : r.userId,
               'action_type': r.actionType,
               'entity_type': r.entityType,
-              'entity_id':
-                  (r.entityId?.isEmpty ?? true) ? null : r.entityId,
+              'entity_id': (r.entityId?.isEmpty ?? true) ? null : r.entityId,
               'description': r.description,
               'metadata': r.metadata,
               'device_id': r.deviceId,
@@ -1277,6 +1277,7 @@ class SyncService {
       await _businessesDao.upsertFromServer(business);
     }
   }
+
   /// Returns true when [syncStatus] represents a locally pending change that
   /// must be uploaded before server data may overwrite it.
   bool _hasPendingEmployeeChanges(int syncStatus) {
