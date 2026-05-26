@@ -144,13 +144,13 @@ class _SignUpState extends State<SignUp> {
                 const SizedBox(height: 6),
                 Text(
                   AppStrings.signUpSubHeadline,
-                  style: AppTextStyles.subtitle(context).copyWith(
+                  style: AppTextStyles.body(context).copyWith(
                     color: AppColors.textSecondary,
                     height: 1.5,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 16),
 
                 // Email
                 TextFormField(
@@ -225,7 +225,7 @@ class _SignUpState extends State<SignUp> {
                         Validators.confirmPassword(x, _passwordController.text),
                   ]),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 8),
 
                 // Already have account
                 Row(
@@ -252,7 +252,7 @@ class _SignUpState extends State<SignUp> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
 
                 // Sign up button
                 FilledButton(
@@ -271,7 +271,7 @@ class _SignUpState extends State<SignUp> {
                         )
                       : Text(AppStrings.signUp),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 16),
 
                 // OAuth options
                 AuthOptions(

@@ -92,7 +92,7 @@ class _SignInState extends State<SignIn> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 2),
                   Text(
                     'Please wait while we finish setting up your account',
                     style: AppTextStyles.caption(
@@ -128,21 +128,20 @@ class _SignInState extends State<SignIn> {
                 // Heading
                 Text(
                   AppStrings.signInHeadline,
-                  style: AppTextStyles.headline(context).copyWith(
-                    color: AppColors.textPrimary,
-                    height: 1.3,
-                  ),
+                  style: AppTextStyles.headline(
+                    context,
+                  ).copyWith(color: AppColors.textPrimary, height: 1.3),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   AppStrings.signInSubHeadline,
-                  style: AppTextStyles.subtitle(context).copyWith(
+                  style: AppTextStyles.body(context).copyWith(
                     color: AppColors.textSecondary,
                     height: 1.5,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 16),
 
                 // Email
                 TextFormField(
@@ -155,7 +154,7 @@ class _SignInState extends State<SignIn> {
                     Validators.email,
                   ]),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
 
                 // Password
                 TextFormField(
@@ -183,7 +182,7 @@ class _SignInState extends State<SignIn> {
                   validator: (v) =>
                       Validators.required(v, fieldName: 'Password'),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
 
                 // Forgot / Sign up row
                 Row(
@@ -223,7 +222,7 @@ class _SignInState extends State<SignIn> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
 
                 // Sign in button
                 FilledButton(
@@ -242,7 +241,7 @@ class _SignInState extends State<SignIn> {
                         )
                       : Text(AppStrings.signIn),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 16),
 
                 // OAuth options
                 AuthOptions(
