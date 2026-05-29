@@ -10,6 +10,7 @@ import 'package:pos/core/const/validators.dart';
 import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/core/ui/status/status_snack.dart';
 import 'package:pos/core/ui/status/status_type.dart';
+import 'package:pos/core/widgets/app_dropdown.dart';
 
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
@@ -59,9 +60,7 @@ class _BusinessProfilePageState extends State<BusinessProfileSetup> {
       // triggered by AuthStarted usually completes within 1-2 s.
       await authBloc.stream
           .firstWhere(
-            (s) =>
-                s is AuthAuthenticated &&
-                _hasText(s.user.businessId),
+            (s) => s is AuthAuthenticated && _hasText(s.user.businessId),
           )
           .timeout(const Duration(seconds: 6));
     } catch (_) {
@@ -153,10 +152,9 @@ class _BusinessProfilePageState extends State<BusinessProfileSetup> {
                 // Heading
                 Text(
                   'Set up your business',
-                  style: AppTextStyles.headline(context).copyWith(
-                    color: AppColors.textPrimary,
-                    height: 1.3,
-                  ),
+                  style: AppTextStyles.headline(
+                    context,
+                  ).copyWith(color: AppColors.textPrimary, height: 1.3),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -172,27 +170,29 @@ class _BusinessProfilePageState extends State<BusinessProfileSetup> {
                 // Business name
                 _FieldLabel(label: 'Business name'),
                 const SizedBox(height: 8),
+
                 TextFormField(
                   controller: _nameController,
                   decoration: const InputDecoration(
                     hintText: 'e.g., Dela Cruz Store',
                     prefixIcon: Icon(IconlyLight.work),
                   ),
+
                   textCapitalization: TextCapitalization.words,
                   textInputAction: TextInputAction.next,
                   validator: (v) =>
                       Validators.required(v, fieldName: 'Business name'),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
 
                 // Branch name
                 _FieldLabel(label: 'First branch name'),
                 const SizedBox(height: 4),
                 Text(
                   'Name for your main location',
-                  style: AppTextStyles.caption(context).copyWith(
-                    color: AppColors.textMuted,
-                  ),
+                  style: AppTextStyles.caption(
+                    context,
+                  ).copyWith(color: AppColors.textMuted),
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
@@ -206,48 +206,41 @@ class _BusinessProfilePageState extends State<BusinessProfileSetup> {
                   validator: (v) =>
                       Validators.required(v, fieldName: 'Branch name'),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
 
                 // Business type dropdown
                 _FieldLabel(label: 'Business type'),
                 const SizedBox(height: 4),
                 Text(
                   'Customizes your POS modules and default settings',
-                  style: AppTextStyles.caption(context).copyWith(
-                    color: AppColors.textMuted,
-                  ),
+                  style: AppTextStyles.caption(
+                    context,
+                  ).copyWith(color: AppColors.textMuted),
                 ),
                 const SizedBox(height: 8),
-                DropdownButtonFormField<BusinessTemplate>(
-                  initialValue: _selectedTemplate,
-                  decoration: const InputDecoration(
-                    hintText: 'Select a business type',
-                    prefixIcon: Icon(IconlyLight.category),
-                  ),
-                  isExpanded: true,
-                  items: templates.map((t) {
-                    return DropdownMenuItem<BusinessTemplate>(
-                      value: t,
-                      child: Text(t.name),
-                    );
-                  }).toList(),
+
+                AppDropdown<BusinessTemplate>(
+                  value: _selectedTemplate,
+                  hint: 'Select a business type',
+                  validator: (v) =>
+                      v == null ? 'Please select a business type' : null,
+                  items: templates
+                      .map(
+                        (t) => AppDropdownItem<BusinessTemplate>(
+                          value: t,
+                          label: t.name,
+                        ),
+                      )
+                      .toList(),
                   onChanged: (t) {
                     setState(() => _selectedTemplate = t);
                     if (t != null) {
                       context.read<BusinessBloc>().add(SelectTemplate(t));
                     }
                   },
-                  validator: (v) =>
-                      v == null ? 'Please select a business type' : null,
                 ),
 
-                // Template details
-                if (_selectedTemplate != null) ...[
-                  const SizedBox(height: 16),
-                  _TemplateDetailsCard(template: _selectedTemplate!),
-                ],
-
-                const SizedBox(height: 32),
+                const SizedBox(height: 16),
 
                 // Submit
                 FilledButton(
@@ -285,118 +278,9 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       label,
-      style: AppTextStyles.subtitle(context).copyWith(
-        color: AppColors.textPrimary,
-        fontWeight: FontWeight.w600,
-      ),
-    );
-  }
-}
-
-class _TemplateDetailsCard extends StatelessWidget {
-  final BusinessTemplate template;
-  const _TemplateDetailsCard({required this.template});
-
-  @override
-  Widget build(BuildContext context) {
-    final modules = template.defaultModules.entries
-        .where((e) => e.value == true)
-        .map((e) => e.key)
-        .toList();
-    final roles = template.defaultRoles.map((r) => r['name'] as String).toList();
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderSoft),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                IconlyLight.info_circle,
-                size: 16,
-                color: AppColors.brand,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'Template details',
-                style: AppTextStyles.caption(context).copyWith(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          _DetailRow(
-            icon: IconlyLight.category,
-            label: 'Modules',
-            value: modules.join(', '),
-          ),
-          _DetailRow(
-            icon: IconlyLight.user,
-            label: 'Roles',
-            value: roles.join(', '),
-          ),
-          if (template.defaultTaxRate != null)
-            _DetailRow(
-              icon: Icons.percent_rounded,
-              label: 'Default tax',
-              value: '${template.defaultTaxRate}%',
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DetailRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  const _DetailRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 14, color: AppColors.textMuted),
-          const SizedBox(width: 6),
-          Expanded(
-            child: RichText(
-              text: TextSpan(
-                children: [
-                  TextSpan(
-                    text: '$label: ',
-                    style: AppTextStyles.caption(context).copyWith(
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  TextSpan(
-                    text: value,
-                    style: AppTextStyles.caption(context).copyWith(
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+      style: AppTextStyles.subtitle(
+        context,
+      ).copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
     );
   }
 }
@@ -512,7 +396,11 @@ class _SetupStep extends StatelessWidget {
             ),
           ),
           child: done
-              ? const Icon(IconlyLight.tick_square, size: 14, color: Colors.white)
+              ? const Icon(
+                  IconlyLight.tick_square,
+                  size: 14,
+                  color: Colors.white,
+                )
               : Center(
                   child: Text(
                     number,
@@ -528,9 +416,7 @@ class _SetupStep extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            color: done
-                ? Colors.white.withValues(alpha: 0.65)
-                : Colors.white,
+            color: done ? Colors.white.withValues(alpha: 0.65) : Colors.white,
             fontSize: 14,
             fontWeight: done ? FontWeight.w400 : FontWeight.w600,
             decoration: done ? TextDecoration.lineThrough : null,
