@@ -11,18 +11,25 @@ It is used for:
 - Admin panel toggles
 - AI permission reasoning
 
+> **Architecture v2.0**: The permission system has been upgraded to a hybrid RBAC + ABAC + Context-aware model.
+> See [UPSENSO_ACCESS_CONTROL.md](./UPSENSO_ACCESS_CONTROL.md) for the full enterprise design,
+> new database tables, evaluation algorithm, offline sync strategy, and migration plan.
+
 ---
 
 # CORE CONCEPT
 
-UPSENSO uses **RBAC (Role-Based Access Control)**.
+UPSENSO uses a **Hybrid Access Control System** (RBAC + ABAC + Context Rules).
 
-Flow:
+Evaluation order (strict priority):
 
-Employee
-→ Roles
-→ Permissions
-→ Access Granted / Denied
+1. Module gate (business_modules)
+2. Context policies (shift hours, offline mode, device trust)
+3. Explicit DENY (user_permissions or branch_permissions)
+4. User-level ALLOW override
+5. Branch-level ALLOW override
+6. Role permissions (RBAC base)
+7. Default DENY (zero trust)
 
 Permissions are NEVER hardcoded in UI or backend logic.
 
@@ -348,6 +355,10 @@ Example rules:
 - NEVER hardcode roles
 - NEVER hardcode permissions
 - ALWAYS use permission codes
-- ALWAYS validate module access first
+- ALWAYS validate module access first (module gate)
 - ALWAYS log sensitive actions
 - ALWAYS consider fraud risk
+- ALWAYS evaluate permissions from the effective_permissions snapshot offline
+- NEVER make live DB calls for permission checks on the client
+- NEVER allow permission configuration changes while offline
+- ALWAYS respect the evaluation priority order (see UPSENSO_ACCESS_CONTROL.md Section C)

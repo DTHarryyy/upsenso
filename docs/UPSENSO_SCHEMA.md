@@ -248,13 +248,109 @@ expenses.approve
 
 ## role_permissions
 
-Permission matrix.
+Permission matrix (base RBAC layer).
 
 | Column | Type |
 |----------|----------|
 | role_id | uuid |
 | permission_id | uuid |
 | allowed | boolean |
+
+---
+
+## user_permissions
+
+Employee-level permission overrides (allow or deny exceptions to role-based access).
+See [UPSENSO_ACCESS_CONTROL.md](./UPSENSO_ACCESS_CONTROL.md) for full schema.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK |
+| business_id | uuid | FK businesses |
+| employee_id | uuid | FK employees |
+| branch_id | uuid | FK branches (nullable — null = all branches) |
+| permission_id | uuid | FK permissions |
+| is_granted | boolean | true = ALLOW, false = DENY |
+| granted_by | uuid | FK employees |
+| reason | text | nullable |
+| expires_at | timestamptz | nullable |
+| is_active | boolean | |
+| created_at | timestamptz | |
+| updated_at | timestamptz | |
+
+---
+
+## branch_permissions
+
+Branch-level permission restrictions. Blocks or allows a permission for ALL employees at a branch.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK |
+| business_id | uuid | FK businesses |
+| branch_id | uuid | FK branches |
+| permission_id | uuid | FK permissions |
+| is_granted | boolean | false = blocked for entire branch |
+| reason | text | nullable |
+| created_by | uuid | FK employees |
+| created_at | timestamptz | |
+| updated_at | timestamptz | |
+
+---
+
+## permission_policies
+
+Context-based rules engine. Constrains already-granted permissions based on runtime attributes.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK |
+| business_id | uuid | FK businesses |
+| branch_id | uuid | nullable — null = all branches |
+| permission_id | uuid | nullable — null = all permissions |
+| role_id | uuid | nullable — null = all roles |
+| policy_type | text | shift_hours, offline_mode, device_trust, max_amount, require_shift_open |
+| policy_config | jsonb | type-specific configuration |
+| priority | integer | evaluation order (higher = first) |
+| is_active | boolean | |
+| created_by | uuid | FK employees |
+| created_at | timestamptz | |
+| updated_at | timestamptz | |
+
+---
+
+## effective_permissions
+
+Pre-computed offline snapshot of all resolved permissions per employee per branch.
+This is the ONLY source the Flutter client reads for permission checks.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK |
+| business_id | uuid | FK businesses |
+| employee_id | uuid | FK employees |
+| branch_id | uuid | FK branches |
+| permission_code | text | denormalized for fast offline lookup |
+| is_granted | boolean | final computed result |
+| grant_source | text | role, user_allow, user_deny, branch_allow, branch_deny, module_disabled, context_blocked, default_deny |
+| deny_reason | text | nullable — human-readable reason when denied |
+| snapshot_version | bigint | increments on any permission change |
+| computed_at | timestamptz | |
+| valid_until | timestamptz | nullable |
+
+---
+
+## permission_snapshot_versions
+
+Tracks current snapshot version per employee per branch. Used for delta sync.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| employee_id | uuid | PK (composite) |
+| branch_id | uuid | PK (composite) |
+| business_id | uuid | FK businesses |
+| current_version | bigint | monotonically increasing |
+| last_recomputed | timestamptz | |
 
 ---
 

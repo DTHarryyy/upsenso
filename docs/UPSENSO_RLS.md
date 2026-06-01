@@ -287,6 +287,72 @@ USING (business_id = auth.jwt() ->> 'business_id')
 
 ---
 
+## user_permissions
+
+```sql
+USING (business_id = (auth.jwt() ->> 'business_id')::uuid)
+```
+
+Only owners and admins may write:
+
+```sql
+WITH CHECK (
+  business_id = (auth.jwt() ->> 'business_id')::uuid
+  AND (auth.jwt() ->> 'role') IN ('owner', 'admin')
+)
+```
+
+---
+
+## branch_permissions
+
+```sql
+USING (business_id = (auth.jwt() ->> 'business_id')::uuid)
+```
+
+Only owners and admins may write:
+
+```sql
+WITH CHECK (
+  business_id = (auth.jwt() ->> 'business_id')::uuid
+  AND (auth.jwt() ->> 'role') IN ('owner', 'admin')
+)
+```
+
+---
+
+## permission_policies
+
+```sql
+USING (business_id = (auth.jwt() ->> 'business_id')::uuid)
+```
+
+---
+
+## effective_permissions
+
+Read: employees see only their own snapshot; admins/owners see all:
+
+```sql
+USING (
+  business_id = (auth.jwt() ->> 'business_id')::uuid
+  AND (
+    employee_id = (auth.jwt() ->> 'employee_id')::uuid
+    OR (auth.jwt() ->> 'role') IN ('owner', 'admin')
+  )
+)
+```
+
+No direct INSERT/UPDATE/DELETE — only the `compute_employee_permissions` SECURITY DEFINER function may write:
+
+```sql
+-- All write policies return false for direct access
+CREATE POLICY effective_permissions_no_direct_write
+  ON effective_permissions FOR INSERT USING (false);
+```
+
+---
+
 # INSERT POLICIES
 
 Standard rule:
