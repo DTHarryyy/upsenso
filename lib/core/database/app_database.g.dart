@@ -841,6 +841,16 @@ class $BusinessTemplatesTableTable extends BusinessTemplatesTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _codeMeta = const VerificationMeta('code');
+  @override
+  late final GeneratedColumn<String> code = GeneratedColumn<String>(
+    'code',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
@@ -850,49 +860,32 @@ class $BusinessTemplatesTableTable extends BusinessTemplatesTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _defaultModulesMeta = const VerificationMeta(
-    'defaultModules',
+  static const VerificationMeta _versionMeta = const VerificationMeta(
+    'version',
   );
   @override
-  late final GeneratedColumn<String> defaultModules = GeneratedColumn<String>(
-    'default_modules',
+  late final GeneratedColumn<int> version = GeneratedColumn<int>(
+    'version',
     aliasedName,
     false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _defaultRolesMeta = const VerificationMeta(
-    'defaultRoles',
-  );
-  @override
-  late final GeneratedColumn<String> defaultRoles = GeneratedColumn<String>(
-    'default_roles',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _defaultPermissionsMeta =
-      const VerificationMeta('defaultPermissions');
-  @override
-  late final GeneratedColumn<String> defaultPermissions =
-      GeneratedColumn<String>(
-        'default_permissions',
-        aliasedName,
-        false,
-        type: DriftSqlType.string,
-        requiredDuringInsert: true,
-      );
-  static const VerificationMeta _defaultTaxRateMeta = const VerificationMeta(
-    'defaultTaxRate',
-  );
-  @override
-  late final GeneratedColumn<double> defaultTaxRate = GeneratedColumn<double>(
-    'default_tax_rate',
-    aliasedName,
-    true,
-    type: DriftSqlType.double,
+    type: DriftSqlType.int,
     requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+    'isActive',
+  );
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+    'is_active',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_active" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
   );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
@@ -921,11 +914,10 @@ class $BusinessTemplatesTableTable extends BusinessTemplatesTable
   @override
   List<GeneratedColumn> get $columns => [
     id,
+    code,
     name,
-    defaultModules,
-    defaultRoles,
-    defaultPermissions,
-    defaultTaxRate,
+    version,
+    isActive,
     createdAt,
     localUpdatedAt,
   ];
@@ -946,6 +938,12 @@ class $BusinessTemplatesTableTable extends BusinessTemplatesTable
     } else if (isInserting) {
       context.missing(_idMeta);
     }
+    if (data.containsKey('code')) {
+      context.handle(
+        _codeMeta,
+        code.isAcceptableOrUnknown(data['code']!, _codeMeta),
+      );
+    }
     if (data.containsKey('name')) {
       context.handle(
         _nameMeta,
@@ -954,46 +952,16 @@ class $BusinessTemplatesTableTable extends BusinessTemplatesTable
     } else if (isInserting) {
       context.missing(_nameMeta);
     }
-    if (data.containsKey('default_modules')) {
+    if (data.containsKey('version')) {
       context.handle(
-        _defaultModulesMeta,
-        defaultModules.isAcceptableOrUnknown(
-          data['default_modules']!,
-          _defaultModulesMeta,
-        ),
+        _versionMeta,
+        version.isAcceptableOrUnknown(data['version']!, _versionMeta),
       );
-    } else if (isInserting) {
-      context.missing(_defaultModulesMeta);
     }
-    if (data.containsKey('default_roles')) {
+    if (data.containsKey('is_active')) {
       context.handle(
-        _defaultRolesMeta,
-        defaultRoles.isAcceptableOrUnknown(
-          data['default_roles']!,
-          _defaultRolesMeta,
-        ),
-      );
-    } else if (isInserting) {
-      context.missing(_defaultRolesMeta);
-    }
-    if (data.containsKey('default_permissions')) {
-      context.handle(
-        _defaultPermissionsMeta,
-        defaultPermissions.isAcceptableOrUnknown(
-          data['default_permissions']!,
-          _defaultPermissionsMeta,
-        ),
-      );
-    } else if (isInserting) {
-      context.missing(_defaultPermissionsMeta);
-    }
-    if (data.containsKey('default_tax_rate')) {
-      context.handle(
-        _defaultTaxRateMeta,
-        defaultTaxRate.isAcceptableOrUnknown(
-          data['default_tax_rate']!,
-          _defaultTaxRateMeta,
-        ),
+        _isActiveMeta,
+        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
       );
     }
     if (data.containsKey('created_at')) {
@@ -1027,26 +995,22 @@ class $BusinessTemplatesTableTable extends BusinessTemplatesTable
         DriftSqlType.string,
         data['${effectivePrefix}id'],
       )!,
+      code: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}code'],
+      )!,
       name: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}name'],
       )!,
-      defaultModules: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}default_modules'],
+      version: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}version'],
       )!,
-      defaultRoles: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}default_roles'],
+      isActive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_active'],
       )!,
-      defaultPermissions: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}default_permissions'],
-      )!,
-      defaultTaxRate: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
-        data['${effectivePrefix}default_tax_rate'],
-      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -1067,20 +1031,20 @@ class $BusinessTemplatesTableTable extends BusinessTemplatesTable
 class BusinessTemplatesTableData extends DataClass
     implements Insertable<BusinessTemplatesTableData> {
   final String id;
+
+  /// Stable machine-readable key matching business_templates.code on server.
+  final String code;
   final String name;
-  final String defaultModules;
-  final String defaultRoles;
-  final String defaultPermissions;
-  final double? defaultTaxRate;
+  final int version;
+  final bool isActive;
   final DateTime? createdAt;
   final DateTime localUpdatedAt;
   const BusinessTemplatesTableData({
     required this.id,
+    required this.code,
     required this.name,
-    required this.defaultModules,
-    required this.defaultRoles,
-    required this.defaultPermissions,
-    this.defaultTaxRate,
+    required this.version,
+    required this.isActive,
     this.createdAt,
     required this.localUpdatedAt,
   });
@@ -1088,13 +1052,10 @@ class BusinessTemplatesTableData extends DataClass
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
+    map['code'] = Variable<String>(code);
     map['name'] = Variable<String>(name);
-    map['default_modules'] = Variable<String>(defaultModules);
-    map['default_roles'] = Variable<String>(defaultRoles);
-    map['default_permissions'] = Variable<String>(defaultPermissions);
-    if (!nullToAbsent || defaultTaxRate != null) {
-      map['default_tax_rate'] = Variable<double>(defaultTaxRate);
-    }
+    map['version'] = Variable<int>(version);
+    map['is_active'] = Variable<bool>(isActive);
     if (!nullToAbsent || createdAt != null) {
       map['created_at'] = Variable<DateTime>(createdAt);
     }
@@ -1105,13 +1066,10 @@ class BusinessTemplatesTableData extends DataClass
   BusinessTemplatesTableCompanion toCompanion(bool nullToAbsent) {
     return BusinessTemplatesTableCompanion(
       id: Value(id),
+      code: Value(code),
       name: Value(name),
-      defaultModules: Value(defaultModules),
-      defaultRoles: Value(defaultRoles),
-      defaultPermissions: Value(defaultPermissions),
-      defaultTaxRate: defaultTaxRate == null && nullToAbsent
-          ? const Value.absent()
-          : Value(defaultTaxRate),
+      version: Value(version),
+      isActive: Value(isActive),
       createdAt: createdAt == null && nullToAbsent
           ? const Value.absent()
           : Value(createdAt),
@@ -1126,13 +1084,10 @@ class BusinessTemplatesTableData extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return BusinessTemplatesTableData(
       id: serializer.fromJson<String>(json['id']),
+      code: serializer.fromJson<String>(json['code']),
       name: serializer.fromJson<String>(json['name']),
-      defaultModules: serializer.fromJson<String>(json['defaultModules']),
-      defaultRoles: serializer.fromJson<String>(json['defaultRoles']),
-      defaultPermissions: serializer.fromJson<String>(
-        json['defaultPermissions'],
-      ),
-      defaultTaxRate: serializer.fromJson<double?>(json['defaultTaxRate']),
+      version: serializer.fromJson<int>(json['version']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
       createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
       localUpdatedAt: serializer.fromJson<DateTime>(json['localUpdatedAt']),
     );
@@ -1142,11 +1097,10 @@ class BusinessTemplatesTableData extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
+      'code': serializer.toJson<String>(code),
       'name': serializer.toJson<String>(name),
-      'defaultModules': serializer.toJson<String>(defaultModules),
-      'defaultRoles': serializer.toJson<String>(defaultRoles),
-      'defaultPermissions': serializer.toJson<String>(defaultPermissions),
-      'defaultTaxRate': serializer.toJson<double?>(defaultTaxRate),
+      'version': serializer.toJson<int>(version),
+      'isActive': serializer.toJson<bool>(isActive),
       'createdAt': serializer.toJson<DateTime?>(createdAt),
       'localUpdatedAt': serializer.toJson<DateTime>(localUpdatedAt),
     };
@@ -1154,22 +1108,18 @@ class BusinessTemplatesTableData extends DataClass
 
   BusinessTemplatesTableData copyWith({
     String? id,
+    String? code,
     String? name,
-    String? defaultModules,
-    String? defaultRoles,
-    String? defaultPermissions,
-    Value<double?> defaultTaxRate = const Value.absent(),
+    int? version,
+    bool? isActive,
     Value<DateTime?> createdAt = const Value.absent(),
     DateTime? localUpdatedAt,
   }) => BusinessTemplatesTableData(
     id: id ?? this.id,
+    code: code ?? this.code,
     name: name ?? this.name,
-    defaultModules: defaultModules ?? this.defaultModules,
-    defaultRoles: defaultRoles ?? this.defaultRoles,
-    defaultPermissions: defaultPermissions ?? this.defaultPermissions,
-    defaultTaxRate: defaultTaxRate.present
-        ? defaultTaxRate.value
-        : this.defaultTaxRate,
+    version: version ?? this.version,
+    isActive: isActive ?? this.isActive,
     createdAt: createdAt.present ? createdAt.value : this.createdAt,
     localUpdatedAt: localUpdatedAt ?? this.localUpdatedAt,
   );
@@ -1178,19 +1128,10 @@ class BusinessTemplatesTableData extends DataClass
   ) {
     return BusinessTemplatesTableData(
       id: data.id.present ? data.id.value : this.id,
+      code: data.code.present ? data.code.value : this.code,
       name: data.name.present ? data.name.value : this.name,
-      defaultModules: data.defaultModules.present
-          ? data.defaultModules.value
-          : this.defaultModules,
-      defaultRoles: data.defaultRoles.present
-          ? data.defaultRoles.value
-          : this.defaultRoles,
-      defaultPermissions: data.defaultPermissions.present
-          ? data.defaultPermissions.value
-          : this.defaultPermissions,
-      defaultTaxRate: data.defaultTaxRate.present
-          ? data.defaultTaxRate.value
-          : this.defaultTaxRate,
+      version: data.version.present ? data.version.value : this.version,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       localUpdatedAt: data.localUpdatedAt.present
           ? data.localUpdatedAt.value
@@ -1202,11 +1143,10 @@ class BusinessTemplatesTableData extends DataClass
   String toString() {
     return (StringBuffer('BusinessTemplatesTableData(')
           ..write('id: $id, ')
+          ..write('code: $code, ')
           ..write('name: $name, ')
-          ..write('defaultModules: $defaultModules, ')
-          ..write('defaultRoles: $defaultRoles, ')
-          ..write('defaultPermissions: $defaultPermissions, ')
-          ..write('defaultTaxRate: $defaultTaxRate, ')
+          ..write('version: $version, ')
+          ..write('isActive: $isActive, ')
           ..write('createdAt: $createdAt, ')
           ..write('localUpdatedAt: $localUpdatedAt')
           ..write(')'))
@@ -1214,26 +1154,17 @@ class BusinessTemplatesTableData extends DataClass
   }
 
   @override
-  int get hashCode => Object.hash(
-    id,
-    name,
-    defaultModules,
-    defaultRoles,
-    defaultPermissions,
-    defaultTaxRate,
-    createdAt,
-    localUpdatedAt,
-  );
+  int get hashCode =>
+      Object.hash(id, code, name, version, isActive, createdAt, localUpdatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is BusinessTemplatesTableData &&
           other.id == this.id &&
+          other.code == this.code &&
           other.name == this.name &&
-          other.defaultModules == this.defaultModules &&
-          other.defaultRoles == this.defaultRoles &&
-          other.defaultPermissions == this.defaultPermissions &&
-          other.defaultTaxRate == this.defaultTaxRate &&
+          other.version == this.version &&
+          other.isActive == this.isActive &&
           other.createdAt == this.createdAt &&
           other.localUpdatedAt == this.localUpdatedAt);
 }
@@ -1241,58 +1172,50 @@ class BusinessTemplatesTableData extends DataClass
 class BusinessTemplatesTableCompanion
     extends UpdateCompanion<BusinessTemplatesTableData> {
   final Value<String> id;
+  final Value<String> code;
   final Value<String> name;
-  final Value<String> defaultModules;
-  final Value<String> defaultRoles;
-  final Value<String> defaultPermissions;
-  final Value<double?> defaultTaxRate;
+  final Value<int> version;
+  final Value<bool> isActive;
   final Value<DateTime?> createdAt;
   final Value<DateTime> localUpdatedAt;
   final Value<int> rowid;
   const BusinessTemplatesTableCompanion({
     this.id = const Value.absent(),
+    this.code = const Value.absent(),
     this.name = const Value.absent(),
-    this.defaultModules = const Value.absent(),
-    this.defaultRoles = const Value.absent(),
-    this.defaultPermissions = const Value.absent(),
-    this.defaultTaxRate = const Value.absent(),
+    this.version = const Value.absent(),
+    this.isActive = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.localUpdatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   BusinessTemplatesTableCompanion.insert({
     required String id,
+    this.code = const Value.absent(),
     required String name,
-    required String defaultModules,
-    required String defaultRoles,
-    required String defaultPermissions,
-    this.defaultTaxRate = const Value.absent(),
+    this.version = const Value.absent(),
+    this.isActive = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.localUpdatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
-       name = Value(name),
-       defaultModules = Value(defaultModules),
-       defaultRoles = Value(defaultRoles),
-       defaultPermissions = Value(defaultPermissions);
+       name = Value(name);
   static Insertable<BusinessTemplatesTableData> custom({
     Expression<String>? id,
+    Expression<String>? code,
     Expression<String>? name,
-    Expression<String>? defaultModules,
-    Expression<String>? defaultRoles,
-    Expression<String>? defaultPermissions,
-    Expression<double>? defaultTaxRate,
+    Expression<int>? version,
+    Expression<bool>? isActive,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? localUpdatedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (code != null) 'code': code,
       if (name != null) 'name': name,
-      if (defaultModules != null) 'default_modules': defaultModules,
-      if (defaultRoles != null) 'default_roles': defaultRoles,
-      if (defaultPermissions != null) 'default_permissions': defaultPermissions,
-      if (defaultTaxRate != null) 'default_tax_rate': defaultTaxRate,
+      if (version != null) 'version': version,
+      if (isActive != null) 'is_active': isActive,
       if (createdAt != null) 'created_at': createdAt,
       if (localUpdatedAt != null) 'local_updated_at': localUpdatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -1301,22 +1224,20 @@ class BusinessTemplatesTableCompanion
 
   BusinessTemplatesTableCompanion copyWith({
     Value<String>? id,
+    Value<String>? code,
     Value<String>? name,
-    Value<String>? defaultModules,
-    Value<String>? defaultRoles,
-    Value<String>? defaultPermissions,
-    Value<double?>? defaultTaxRate,
+    Value<int>? version,
+    Value<bool>? isActive,
     Value<DateTime?>? createdAt,
     Value<DateTime>? localUpdatedAt,
     Value<int>? rowid,
   }) {
     return BusinessTemplatesTableCompanion(
       id: id ?? this.id,
+      code: code ?? this.code,
       name: name ?? this.name,
-      defaultModules: defaultModules ?? this.defaultModules,
-      defaultRoles: defaultRoles ?? this.defaultRoles,
-      defaultPermissions: defaultPermissions ?? this.defaultPermissions,
-      defaultTaxRate: defaultTaxRate ?? this.defaultTaxRate,
+      version: version ?? this.version,
+      isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       localUpdatedAt: localUpdatedAt ?? this.localUpdatedAt,
       rowid: rowid ?? this.rowid,
@@ -1329,20 +1250,17 @@ class BusinessTemplatesTableCompanion
     if (id.present) {
       map['id'] = Variable<String>(id.value);
     }
+    if (code.present) {
+      map['code'] = Variable<String>(code.value);
+    }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
     }
-    if (defaultModules.present) {
-      map['default_modules'] = Variable<String>(defaultModules.value);
+    if (version.present) {
+      map['version'] = Variable<int>(version.value);
     }
-    if (defaultRoles.present) {
-      map['default_roles'] = Variable<String>(defaultRoles.value);
-    }
-    if (defaultPermissions.present) {
-      map['default_permissions'] = Variable<String>(defaultPermissions.value);
-    }
-    if (defaultTaxRate.present) {
-      map['default_tax_rate'] = Variable<double>(defaultTaxRate.value);
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -1360,11 +1278,10 @@ class BusinessTemplatesTableCompanion
   String toString() {
     return (StringBuffer('BusinessTemplatesTableCompanion(')
           ..write('id: $id, ')
+          ..write('code: $code, ')
           ..write('name: $name, ')
-          ..write('defaultModules: $defaultModules, ')
-          ..write('defaultRoles: $defaultRoles, ')
-          ..write('defaultPermissions: $defaultPermissions, ')
-          ..write('defaultTaxRate: $defaultTaxRate, ')
+          ..write('version: $version, ')
+          ..write('isActive: $isActive, ')
           ..write('createdAt: $createdAt, ')
           ..write('localUpdatedAt: $localUpdatedAt, ')
           ..write('rowid: $rowid')
@@ -13580,7 +13497,7 @@ class EmployeePermissionsRow extends DataClass
   /// Nullable for the rare case where the record hasn't synced yet.
   final String? employeeId;
 
-  /// JSON-encoded Map<String, bool>: `{"pos.use": true, ...}`.
+  /// JSON-encoded `Map<String, bool>`: `{"pos.use": true, ...}`.
   final String permissionsJson;
 
   /// Timestamp of the last successful sync from Supabase.
@@ -14270,11 +14187,10 @@ typedef $$AuthContextTableTableProcessedTableManager =
 typedef $$BusinessTemplatesTableTableCreateCompanionBuilder =
     BusinessTemplatesTableCompanion Function({
       required String id,
+      Value<String> code,
       required String name,
-      required String defaultModules,
-      required String defaultRoles,
-      required String defaultPermissions,
-      Value<double?> defaultTaxRate,
+      Value<int> version,
+      Value<bool> isActive,
       Value<DateTime?> createdAt,
       Value<DateTime> localUpdatedAt,
       Value<int> rowid,
@@ -14282,11 +14198,10 @@ typedef $$BusinessTemplatesTableTableCreateCompanionBuilder =
 typedef $$BusinessTemplatesTableTableUpdateCompanionBuilder =
     BusinessTemplatesTableCompanion Function({
       Value<String> id,
+      Value<String> code,
       Value<String> name,
-      Value<String> defaultModules,
-      Value<String> defaultRoles,
-      Value<String> defaultPermissions,
-      Value<double?> defaultTaxRate,
+      Value<int> version,
+      Value<bool> isActive,
       Value<DateTime?> createdAt,
       Value<DateTime> localUpdatedAt,
       Value<int> rowid,
@@ -14306,28 +14221,23 @@ class $$BusinessTemplatesTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get code => $composableBuilder(
+    column: $table.code,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get name => $composableBuilder(
     column: $table.name,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get defaultModules => $composableBuilder(
-    column: $table.defaultModules,
+  ColumnFilters<int> get version => $composableBuilder(
+    column: $table.version,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get defaultRoles => $composableBuilder(
-    column: $table.defaultRoles,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get defaultPermissions => $composableBuilder(
-    column: $table.defaultPermissions,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<double> get defaultTaxRate => $composableBuilder(
-    column: $table.defaultTaxRate,
+  ColumnFilters<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -14356,28 +14266,23 @@ class $$BusinessTemplatesTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get code => $composableBuilder(
+    column: $table.code,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get name => $composableBuilder(
     column: $table.name,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get defaultModules => $composableBuilder(
-    column: $table.defaultModules,
+  ColumnOrderings<int> get version => $composableBuilder(
+    column: $table.version,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get defaultRoles => $composableBuilder(
-    column: $table.defaultRoles,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get defaultPermissions => $composableBuilder(
-    column: $table.defaultPermissions,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<double> get defaultTaxRate => $composableBuilder(
-    column: $table.defaultTaxRate,
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -14404,28 +14309,17 @@ class $$BusinessTemplatesTableTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
+  GeneratedColumn<String> get code =>
+      $composableBuilder(column: $table.code, builder: (column) => column);
+
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
 
-  GeneratedColumn<String> get defaultModules => $composableBuilder(
-    column: $table.defaultModules,
-    builder: (column) => column,
-  );
+  GeneratedColumn<int> get version =>
+      $composableBuilder(column: $table.version, builder: (column) => column);
 
-  GeneratedColumn<String> get defaultRoles => $composableBuilder(
-    column: $table.defaultRoles,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get defaultPermissions => $composableBuilder(
-    column: $table.defaultPermissions,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<double> get defaultTaxRate => $composableBuilder(
-    column: $table.defaultTaxRate,
-    builder: (column) => column,
-  );
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -14483,21 +14377,19 @@ class $$BusinessTemplatesTableTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
+                Value<String> code = const Value.absent(),
                 Value<String> name = const Value.absent(),
-                Value<String> defaultModules = const Value.absent(),
-                Value<String> defaultRoles = const Value.absent(),
-                Value<String> defaultPermissions = const Value.absent(),
-                Value<double?> defaultTaxRate = const Value.absent(),
+                Value<int> version = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime> localUpdatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => BusinessTemplatesTableCompanion(
                 id: id,
+                code: code,
                 name: name,
-                defaultModules: defaultModules,
-                defaultRoles: defaultRoles,
-                defaultPermissions: defaultPermissions,
-                defaultTaxRate: defaultTaxRate,
+                version: version,
+                isActive: isActive,
                 createdAt: createdAt,
                 localUpdatedAt: localUpdatedAt,
                 rowid: rowid,
@@ -14505,21 +14397,19 @@ class $$BusinessTemplatesTableTableTableManager
           createCompanionCallback:
               ({
                 required String id,
+                Value<String> code = const Value.absent(),
                 required String name,
-                required String defaultModules,
-                required String defaultRoles,
-                required String defaultPermissions,
-                Value<double?> defaultTaxRate = const Value.absent(),
+                Value<int> version = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime> localUpdatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => BusinessTemplatesTableCompanion.insert(
                 id: id,
+                code: code,
                 name: name,
-                defaultModules: defaultModules,
-                defaultRoles: defaultRoles,
-                defaultPermissions: defaultPermissions,
-                defaultTaxRate: defaultTaxRate,
+                version: version,
+                isActive: isActive,
                 createdAt: createdAt,
                 localUpdatedAt: localUpdatedAt,
                 rowid: rowid,
