@@ -76,43 +76,23 @@ class BusinessRemoteDs {
     return firstName[0].toUpperCase() + firstName.substring(1).toLowerCase();
   }
 
-  /// Get or create super admin role for a business
-  Future<String> getSuperAdminRoleId({
+  /// Apply the business template server-side (atomic, idempotent).
+  ///
+  /// Calls the `apply_business_template` Postgres function which:
+  ///   - Creates the 4 standard roles with correct permission maps
+  ///   - Seeds product categories from the template's default_categories list
+  ///   - Initialises receipt_settings for the business
+  ///
+  /// Returns the Super Admin role UUID so the caller can link the owner.
+  Future<String> applyBusinessTemplate({
     required String businessId,
-    required List<Map<String, dynamic>> templateRoles,
+    required String templateId,
   }) async {
-    // Try to find existing super admin role
-    final existing = await client
-        .from('roles')
-        .select('id')
-        .eq('business_id', businessId)
-        .eq('name', 'Super Admin')
-        .maybeSingle();
-
-    if (existing != null) {
-      return existing['id'];
-    }
-
-    // Create super admin role from template
-    final superAdminTemplate = templateRoles.firstWhere(
-      (role) => role['name'] == 'Super Admin',
-      orElse: () => {
-        'name': 'Super Admin',
-        'permissions': {'all': true},
-      },
+    final result = await client.rpc(
+      'apply_business_template',
+      params: {'p_business_id': businessId, 'p_template_id': templateId},
     );
-
-    final created = await client
-        .from('roles')
-        .insert({
-          'business_id': businessId,
-          'name': superAdminTemplate['name'],
-          'permissions': superAdminTemplate['permissions'] ?? {'all': true},
-        })
-        .select()
-        .single();
-
-    return created['id'];
+    return result as String;
   }
 
   /// Get business by owner ID
@@ -182,10 +162,10 @@ class BusinessRemoteDs {
     required String name,
     required int sortOrder,
   }) async {
-    await client.from('categories').update({
-      'name': name,
-      'sort_order': sortOrder,
-    }).eq('id', id);
+    await client
+        .from('categories')
+        .update({'name': name, 'sort_order': sortOrder})
+        .eq('id', id);
   }
 
   /// Delete a category from Supabase.

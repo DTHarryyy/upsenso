@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:pos/features/auth/domain/repositories/auth_repository.dart';
@@ -62,6 +63,8 @@ class BusinessBloc extends Bloc<BusinessEvent, BusinessState> {
 
       emit(BusinessCreated(business));
     } catch (e) {
+      debugPrint('Error creating business: $e');
+      
       emit(BusinessError(AppErrorMapper.message(e)));
       // Re-emit templates loaded state so user can retry
       emit(currentState);

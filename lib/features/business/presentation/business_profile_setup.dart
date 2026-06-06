@@ -228,7 +228,9 @@ class _BusinessProfilePageState extends State<BusinessProfileSetup> {
                       .map(
                         (t) => AppDropdownItem<BusinessTemplate>(
                           value: t,
-                          label: t.name,
+                          label: t.description.isNotEmpty
+                              ? '${t.name} — ${t.description}'
+                              : t.name,
                         ),
                       )
                       .toList(),

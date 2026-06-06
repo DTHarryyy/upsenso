@@ -54,6 +54,12 @@ class BusinessRepositoryImpl implements BusinessRepository {
             .map((json) => BusinessTemplateModel.fromJson(json))
             .toList();
 
+        if (templates.isEmpty) {
+          // Migration not yet applied — server has no templates.
+          // Fall through to local cache / hardcoded fallback below.
+          throw StateError('Server returned empty templates');
+        }
+
         // Replace local cache with server data
         await templatesDao.clearAll();
         await templatesDao.upsertTemplates(templates);
@@ -112,11 +118,10 @@ class BusinessRepositoryImpl implements BusinessRepository {
     await businessesDao.insertBusiness(business);
     await branchesDao.insertBranch(branch);
 
-    // 5. Seed default categories locally (offline-first, sync happens later)
-    final template = await templatesDao.getTemplateById(templateId);
+    // 5. Seed default categories locally (offline-first fallback)
     await categoriesDao.insertDefaults(
       businessId: businessId,
-      categories: DefaultCategories.forTemplate(template?.name ?? ''),
+      categories: DefaultCategories.forTemplateId(templateId),
     );
 
     // 6. Try to sync to server if online
@@ -138,14 +143,12 @@ class BusinessRepositoryImpl implements BusinessRepository {
           name: branchName,
         );
 
-        // Create Super Admin role for this business and link the owner to it.
-        // Super Admin is not restricted to any branch (branch_id stays null).
-        final templateEntity = template != null
-            ? BusinessTemplatesDao.toEntity(template)
-            : null;
-        final superAdminRoleId = await remote.getSuperAdminRoleId(
+        // Apply template server-side: creates all 4 roles, seeds server categories,
+        // and initialises receipt_settings in one atomic RPC call.
+        // Returns the Super Admin role UUID so we can link the owner.
+        final superAdminRoleId = await remote.applyBusinessTemplate(
           businessId: businessId,
-          templateRoles: templateEntity?.defaultRoles ?? [],
+          templateId: templateId,
         );
         final currentUser = authRepository.getCurrentUser();
         await remote.createUserForBusiness(
