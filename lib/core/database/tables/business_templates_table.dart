@@ -1,17 +1,20 @@
 import 'package:drift/drift.dart';
 
-/// Local table for business templates (read-only from server)
-/// These are synced from Supabase but not modified locally
+/// Local cache of business templates (read-only, synced from server).
+/// Run `dart run build_runner build --delete-conflicting-outputs` after
+/// modifying this file to regenerate app_database.g.dart.
 class BusinessTemplatesTable extends Table {
   @override
   String get tableName => 'business_templates';
 
   TextColumn get id => text()();
+
+  /// Stable machine-readable key matching business_templates.code on server.
+  TextColumn get code => text().withDefault(const Constant(''))();
+
   TextColumn get name => text()();
-  TextColumn get defaultModules => text()(); // JSON string
-  TextColumn get defaultRoles => text()(); // JSON string
-  TextColumn get defaultPermissions => text()(); // JSON string
-  RealColumn get defaultTaxRate => real().nullable()();
+  IntColumn get version => integer().withDefault(const Constant(1))();
+  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
   DateTimeColumn get createdAt => dateTime().nullable()();
   DateTimeColumn get localUpdatedAt =>
       dateTime().withDefault(currentDateAndTime)();

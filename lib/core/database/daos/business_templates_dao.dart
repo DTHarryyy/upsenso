@@ -1,7 +1,7 @@
-import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/tables/business_templates_table.dart';
+import 'package:pos/core/seeding/default_business_templates.dart';
 import 'package:pos/features/business/domain/entities/business_template.dart';
 
 part 'business_templates_dao.g.dart';
@@ -11,37 +11,34 @@ class BusinessTemplatesDao extends DatabaseAccessor<AppDatabase>
     with _$BusinessTemplatesDaoMixin {
   BusinessTemplatesDao(super.db);
 
-  /// Get all templates
-  Future<List<BusinessTemplatesTableData>> getAllTemplates() {
-    return select(businessTemplatesTable).get();
-  }
+  Future<List<BusinessTemplatesTableData>> getAllTemplates() =>
+      select(businessTemplatesTable).get();
 
-  /// Watch all templates (for reactive UI)
-  Stream<List<BusinessTemplatesTableData>> watchAllTemplates() {
-    return select(businessTemplatesTable).watch();
-  }
+  Stream<List<BusinessTemplatesTableData>> watchAllTemplates() =>
+      select(businessTemplatesTable).watch();
 
-  /// Get template by ID
-  Future<BusinessTemplatesTableData?> getTemplateById(String id) {
-    return (select(
-      businessTemplatesTable,
-    )..where((t) => t.id.equals(id))).getSingleOrNull();
-  }
+  Future<BusinessTemplatesTableData?> getTemplateById(String id) => (select(
+    businessTemplatesTable,
+  )..where((t) => t.id.equals(id))).getSingleOrNull();
 
-  /// Insert or replace templates (used when syncing from server)
+  Future<BusinessTemplatesTableData?> getTemplateByCode(String code) => (select(
+    businessTemplatesTable,
+  )..where((t) => t.code.equals(code))).getSingleOrNull();
+
+  /// Insert or replace templates when syncing from server.
+  // ignore: avoid_renaming_method_parameters
   Future<void> upsertTemplates(List<BusinessTemplate> templates) async {
-    await batch((batch) {
-      for (final template in templates) {
-        batch.insert(
+    await batch((b) {
+      for (final tpl in templates) {
+        b.insert(
           businessTemplatesTable,
           BusinessTemplatesTableCompanion.insert(
-            id: template.id,
-            name: template.name,
-            defaultModules: jsonEncode(template.defaultModules),
-            defaultRoles: jsonEncode(template.defaultRoles),
-            defaultPermissions: jsonEncode(template.defaultPermissions),
-            defaultTaxRate: Value(template.defaultTaxRate),
-            createdAt: Value(template.createdAt),
+            id: tpl.id,
+            code: Value(tpl.code),
+            name: tpl.name,
+            version: Value(tpl.version),
+            isActive: Value(tpl.isActive),
+            createdAt: Value(tpl.createdAt),
           ),
           mode: InsertMode.insertOrReplace,
         );
@@ -49,26 +46,22 @@ class BusinessTemplatesDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
-  /// Clear all templates (for full refresh)
-  Future<void> clearAll() {
-    return delete(businessTemplatesTable).go();
-  }
+  Future<void> clearAll() => delete(businessTemplatesTable).go();
 
-  /// Convert table data to domain entity
+  /// Convert a cached table row to the domain entity.\n  /// [description] is not stored locally; the server provides it when online.\n  /// [defaultCategories] is derived from [DefaultCategories] via template code.
   static BusinessTemplate toEntity(BusinessTemplatesTableData data) {
+    // Map known UUIDs → code for rows cached before the schema upgrade.
+    final code = data.code.isNotEmpty
+        ? data.code
+        : DefaultBusinessTemplates.codeFromId(data.id);
+
     return BusinessTemplate(
       id: data.id,
+      code: code,
       name: data.name,
-      defaultModules: Map<String, dynamic>.from(
-        jsonDecode(data.defaultModules),
-      ),
-      defaultRoles: (jsonDecode(data.defaultRoles) as List)
-          .map((e) => Map<String, dynamic>.from(e))
-          .toList(),
-      defaultPermissions: Map<String, dynamic>.from(
-        jsonDecode(data.defaultPermissions),
-      ),
-      defaultTaxRate: data.defaultTaxRate,
+      description: '',
+      version: data.version,
+      isActive: data.isActive,
       createdAt: data.createdAt,
     );
   }
