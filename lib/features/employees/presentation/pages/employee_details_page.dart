@@ -39,57 +39,13 @@ class EmployeeDetailsPage extends StatelessWidget {
             children: [
               _DetailRow(
                 label: 'Status',
-                value: EmployeeStatusBadge(status: employee.status),
+                value: EmployeeStatusBadge(isActive: employee.isActive),
               ),
               const SizedBox(height: 12),
               _DetailRow(
                 label: 'Role',
-                value: EmployeeRoleBadge(role: employee.role),
+                value: EmployeeRoleBadge(roleName: employee.roleName),
               ),
-              const SizedBox(height: 12),
-              _DetailRow(
-                label: 'Employee Code',
-                value: Text(
-                  employee.employeeCode,
-                  style: getOutfitStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // ── Contact ──────────────────────────────────────────────────
-          AppSectionCard(
-            title: 'Contact Information',
-            icon: IconlyLight.message,
-            children: [
-              _DetailRow(
-                label: 'Email',
-                value: Text(
-                  employee.email,
-                  style: getOutfitStyle(
-                    fontSize: 14,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-              if (employee.phone != null) ...[
-                const SizedBox(height: 12),
-                _DetailRow(
-                  label: 'Phone',
-                  value: Text(
-                    employee.phone!,
-                    style: getOutfitStyle(
-                      fontSize: 14,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-              ],
             ],
           ),
           const SizedBox(height: 16),
@@ -102,7 +58,7 @@ class EmployeeDetailsPage extends StatelessWidget {
               _DetailRow(
                 label: 'Branch',
                 value: Text(
-                  branchName ?? employee.branchId,
+                  branchName ?? employee.branchId ?? '-',
                   style: getOutfitStyle(
                     fontSize: 14,
                     color: AppColors.textPrimary,
@@ -119,39 +75,17 @@ class EmployeeDetailsPage extends StatelessWidget {
             icon: IconlyLight.time_circle,
             children: [
               _DetailRow(
-                label: 'Hired',
-                value: Text(
-                  _formatDate(employee.hiredAt),
-                  style: getOutfitStyle(
-                    fontSize: 14,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              _DetailRow(
                 label: 'Created',
                 value: Text(
-                  _formatDate(employee.createdAt),
+                  employee.createdAt != null
+                      ? _formatDate(employee.createdAt!)
+                      : '-',
                   style: getOutfitStyle(
                     fontSize: 14,
                     color: AppColors.textMuted,
                   ),
                 ),
               ),
-              if (employee.archivedAt != null) ...[
-                const SizedBox(height: 12),
-                _DetailRow(
-                  label: 'Archived',
-                  value: Text(
-                    _formatDate(employee.archivedAt!),
-                    style: getOutfitStyle(
-                      fontSize: 14,
-                      color: AppColors.error,
-                    ),
-                  ),
-                ),
-              ],
             ],
           ),
           const SizedBox(height: 40),
@@ -190,7 +124,7 @@ class _ProfileHeader extends StatelessWidget {
       child: Row(
         children: [
           UserAvatar(
-            avatarUrl: employee.profileImageUrl,
+            avatarUrl: null,
             name: employee.fullName,
             radius: 32,
           ),
@@ -205,20 +139,12 @@ class _ProfileHeader extends StatelessWidget {
                     color: AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  employee.email,
-                  style: getOutfitStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    EmployeeRoleBadge(role: employee.role),
+                    EmployeeRoleBadge(roleName: employee.roleName),
                     const SizedBox(width: 8),
-                    EmployeeStatusBadge(status: employee.status),
+                    EmployeeStatusBadge(isActive: employee.isActive),
                   ],
                 ),
               ],

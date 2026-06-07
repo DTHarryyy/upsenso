@@ -390,12 +390,9 @@ class _CustomAppBarState extends State<CustomAppBar> {
                 await context.read<BranchCubit>().addBranch(
                   businessId: businessId,
                   name: nameController.text,
-                  address: addressController.text.isEmpty
+                  location: addressController.text.isEmpty
                       ? null
                       : addressController.text,
-                  phone: phoneController.text.isEmpty
-                      ? null
-                      : phoneController.text,
                 );
               },
               style: ElevatedButton.styleFrom(

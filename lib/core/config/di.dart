@@ -157,7 +157,6 @@ Future<void> initDI() async {
     () => EmployeesRepositoryImpl(
       dao: sl<EmployeesDao>(),
       remoteDs: sl<EmployeesRemoteDs>(),
-      validator: sl<EmployeeValidationService>(),
     ),
   );
   sl.registerLazySingleton<ReceiptSettingsDao>(

@@ -1,33 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
-import 'package:pos/features/employees/domain/entities/employee.dart';
 
 class EmployeeRoleBadge extends StatelessWidget {
-  final EmployeeRole role;
+  final String? roleName;
 
-  const EmployeeRoleBadge({super.key, required this.role});
+  const EmployeeRoleBadge({super.key, required this.roleName});
 
   @override
   Widget build(BuildContext context) {
-    final (bg, fg) = switch (role) {
-      EmployeeRole.owner => (
-          const Color(0xFFEDE9FE),
-          const Color(0xFF6D28D9),
-        ),
-      EmployeeRole.branchManager => (
-          AppColors.infoSoft,
-          AppColors.info,
-        ),
-      EmployeeRole.cashier => (
-          AppColors.brandSoft,
-          AppColors.brand,
-        ),
-      EmployeeRole.inventoryStaff => (
-          AppColors.warningSoft,
-          AppColors.warning,
-        ),
-    };
+    final label = roleName ?? 'No Role';
+    final lowerLabel = label.toLowerCase();
+
+    final (bg, fg) = lowerLabel.contains('admin') || lowerLabel.contains('owner')
+        ? (const Color(0xFFEDE9FE), const Color(0xFF6D28D9))
+        : lowerLabel.contains('manager')
+            ? (AppColors.infoSoft, AppColors.info)
+            : lowerLabel.contains('cashier')
+                ? (AppColors.brandSoft, AppColors.brand)
+                : lowerLabel.contains('inventory')
+                    ? (AppColors.warningSoft, AppColors.warning)
+                    : (AppColors.surfaceAlt, AppColors.textMuted);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -36,7 +29,7 @@ class EmployeeRoleBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        role.displayName,
+        label,
         style: getOutfitStyle(
           fontSize: 11,
           fontWeight: FontWeight.w600,

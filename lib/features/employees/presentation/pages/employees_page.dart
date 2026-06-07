@@ -73,9 +73,7 @@ class _EmployeesViewState extends State<_EmployeesView> {
                 id: r.id,
                 businessId: r.businessId,
                 name: r.name,
-                address: r.address,
-                phone: r.phone,
-                isActive: r.isActive,
+                location: r.location,
               ),
             )
             .toList();
@@ -351,14 +349,8 @@ class _StatsRow extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           _StatChip(
-            label: 'Suspended',
-            count: loaded.suspendedCount,
-            color: AppColors.warning,
-          ),
-          const SizedBox(width: 8),
-          _StatChip(
-            label: 'Archived',
-            count: loaded.archivedCount,
+            label: 'Inactive',
+            count: loaded.inactiveCount,
             color: AppColors.textMuted,
           ),
           const Spacer(),
@@ -507,11 +499,10 @@ class _EmployeeList extends StatelessWidget {
       onTap: () => onTap(employee),
       onEdit: onEdit != null ? () => onEdit!(employee) : null,
       onArchive: onArchive != null ? () => onArchive!(employee) : null,
-      onSuspend: onSuspend != null && employee.status == EmployeeStatus.active
+      onSuspend: onSuspend != null && employee.isActive
           ? () => onSuspend!(employee)
           : null,
-      onReactivate:
-          onReactivate != null && employee.status != EmployeeStatus.active
+      onReactivate: onReactivate != null && !employee.isActive
           ? () => onReactivate!(employee)
           : null,
     );

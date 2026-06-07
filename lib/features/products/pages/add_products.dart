@@ -2094,11 +2094,10 @@ class _BranchAssignmentSheetState extends State<_BranchAssignmentSheet> {
 
   Future<void> _loadBranches() async {
     final branches = await sl<BranchesDao>().getByBusinessId(widget.businessId);
-    final active = branches.where((b) => b.isActive).toList();
     if (!mounted) return;
     setState(() {
-      _branches = active;
-      _selectedBranchId = active.isNotEmpty ? active.first.id : null;
+      _branches = branches;
+      _selectedBranchId = branches.isNotEmpty ? branches.first.id : null;
     });
   }
 

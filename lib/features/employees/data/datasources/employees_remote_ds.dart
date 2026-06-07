@@ -7,53 +7,48 @@ class EmployeesRemoteDs {
   Future<void> upsertEmployee({
     required String id,
     required String businessId,
-    required String branchId,
+    String? userId,
     String? authUserId,
-    required String employeeCode,
     required String fullName,
-    required String email,
-    String? phone,
-    required String role,
-    required String status,
-    String? profileImageUrl,
-    required DateTime hiredAt,
-    DateTime? archivedAt,
-    required DateTime createdAt,
-    required DateTime updatedAt,
+    String? roleId,
+    bool isActive = true,
   }) async {
     await client.from('employees').upsert({
       'id': id,
       'business_id': businessId,
-      'branch_id': branchId,
-      'auth_user_id': authUserId,
-      'employee_code': employeeCode,
+      'user_id': ?userId,
+      'auth_user_id': ?authUserId,
       'full_name': fullName,
-      'email': email,
-      'phone': phone,
-      'role': role,
-      'status': status,
-      'profile_image_url': profileImageUrl,
-      'hired_at': hiredAt.toIso8601String(),
-      'archived_at': archivedAt?.toIso8601String(),
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
+      'role_id': ?roleId,
+      'is_active': isActive,
     });
   }
 
-  Future<void> updateEmployeeStatus({
-    required String id,
-    required String status,
-    DateTime? archivedAt,
-    required DateTime updatedAt,
+  /// Assign an employee to a branch via the employee_branches join table.
+  Future<void> assignBranch({
+    required String employeeId,
+    required String branchId,
+  }) async {
+    await client.from('employee_branches').upsert({
+      'employee_id': employeeId,
+      'branch_id': branchId,
+    });
+  }
+
+  /// Remove an employee's branch assignment.
+  Future<void> removeBranch({
+    required String employeeId,
+    required String branchId,
   }) async {
     await client
-        .from('employees')
-        .update({
-          'status': status,
-          'archived_at': archivedAt?.toIso8601String(),
-          'updated_at': updatedAt.toIso8601String(),
-        })
-        .eq('id', id);
+        .from('employee_branches')
+        .delete()
+        .eq('employee_id', employeeId)
+        .eq('branch_id', branchId);
+  }
+
+  Future<void> setActive({required String id, required bool isActive}) async {
+    await client.from('employees').update({'is_active': isActive}).eq('id', id);
   }
 
   Future<void> deleteEmployee(String id) async {
@@ -65,21 +60,14 @@ class EmployeesRemoteDs {
   ) async {
     final response = await client
         .from('employees')
-        .select()
+        .select('*, roles(name), employee_branches(branch_id)')
         .eq('business_id', businessId)
         .order('full_name');
     return List<Map<String, dynamic>>.from(response as List);
   }
 
-  /// Creates a Supabase Auth account for the employee via RPC so they can
-  /// log into the app.  Returns the new (or existing) `auth_user_id`, or
-  /// `null` if the call fails (e.g. offline — the employee record still
-  /// exists locally and can be linked to an auth account later).
-  ///
-  /// When the optional employee fields are supplied the RPC also upserts
-  /// the `public.employees` row atomically, so `get_my_business_context()`
-  /// works the moment the employee first logs in — without waiting for the
-  /// Flutter sync cycle to run.
+  /// Creates a Supabase Auth account for the employee via RPC.
+  /// Returns the new auth_user_id, or null if offline / RPC unavailable.
   Future<String?> createAuthAccount({
     required String email,
     required String password,
@@ -87,10 +75,7 @@ class EmployeesRemoteDs {
     String? businessId,
     String? branchId,
     String? fullName,
-    String? role,
-    String? employeeCode,
-    String? phone,
-    DateTime? hiredAt,
+    String? roleId,
   }) async {
     try {
       final params = <String, dynamic>{
@@ -101,10 +86,7 @@ class EmployeesRemoteDs {
       if (businessId != null) params['p_business_id'] = businessId;
       if (branchId != null) params['p_branch_id'] = branchId;
       if (fullName != null) params['p_full_name'] = fullName;
-      if (role != null) params['p_role'] = role;
-      if (employeeCode != null) params['p_employee_code'] = employeeCode;
-      if (phone != null) params['p_phone'] = phone;
-      if (hiredAt != null) params['p_hired_at'] = hiredAt.toIso8601String();
+      if (roleId != null) params['p_role_id'] = roleId;
       final result =
           await client.rpc('create_employee_auth_account', params: params)
               as String?;

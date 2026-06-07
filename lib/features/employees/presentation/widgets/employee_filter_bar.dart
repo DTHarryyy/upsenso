@@ -3,7 +3,6 @@ import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/widgets/app_dropdown.dart';
 import 'package:pos/core/widgets/app_search_bar.dart';
-import 'package:pos/features/employees/domain/entities/employee.dart';
 import 'package:pos/features/employees/presentation/bloc/employee_bloc.dart';
 import 'package:pos/features/employees/presentation/bloc/employee_event.dart';
 import 'package:pos/features/employees/presentation/bloc/employee_state.dart';
@@ -19,7 +18,7 @@ class EmployeeFilterBar extends StatelessWidget {
           c is EmployeeLoaded &&
           (p is! EmployeeLoaded ||
               p.roleFilter != c.roleFilter ||
-              p.statusFilter != c.statusFilter ||
+              p.isActiveFilter != c.isActiveFilter ||
               p.searchQuery != c.searchQuery),
       builder: (context, state) {
         final loaded = state is EmployeeLoaded ? state : null;
@@ -28,7 +27,7 @@ class EmployeeFilterBar extends StatelessWidget {
           child: Column(
             children: [
               AppSearchBar(
-                hint: 'Search by name, email or code…',
+                hint: 'Search by name…',
                 onChanged: (q) =>
                     context.read<EmployeeBloc>().add(SearchEmployees(q)),
               ),
@@ -36,51 +35,19 @@ class EmployeeFilterBar extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: AppDropdown<EmployeeRole?>(
-                      value: loaded?.roleFilter,
-                      hint: 'All Roles',
-                      items: [
-                        const AppDropdownItem(value: null, label: 'All Roles'),
-                        ...EmployeeRole.values.map(
-                          (r) => AppDropdownItem(
-                            value: r,
-                            label: r.displayName,
-                          ),
-                        ),
-                      ],
-                      onChanged: (role) {
-                        context.read<EmployeeBloc>().add(
-                          FilterEmployees(
-                            roleFilter: role,
-                            statusFilter: loaded?.statusFilter,
-                            branchFilter: loaded?.branchFilter,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: AppDropdown<EmployeeStatus?>(
-                      value: loaded?.statusFilter,
+                    child: AppDropdown<bool?>(
+                      value: loaded?.isActiveFilter,
                       hint: 'All Status',
-                      items: [
-                        const AppDropdownItem(
-                          value: null,
-                          label: 'All Status',
-                        ),
-                        ...EmployeeStatus.values.map(
-                          (s) => AppDropdownItem(
-                            value: s,
-                            label: s.displayName,
-                          ),
-                        ),
+                      items: const [
+                        AppDropdownItem(value: null, label: 'All Status'),
+                        AppDropdownItem(value: true, label: 'Active'),
+                        AppDropdownItem(value: false, label: 'Inactive'),
                       ],
-                      onChanged: (status) {
+                      onChanged: (isActive) {
                         context.read<EmployeeBloc>().add(
                           FilterEmployees(
                             roleFilter: loaded?.roleFilter,
-                            statusFilter: status,
+                            isActiveFilter: isActive,
                             branchFilter: loaded?.branchFilter,
                           ),
                         );

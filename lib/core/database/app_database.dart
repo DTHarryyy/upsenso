@@ -87,7 +87,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 26;
+  int get schemaVersion => 27;
 
   @override
   MigrationStrategy get migration {
@@ -324,6 +324,11 @@ class AppDatabase extends _$AppDatabase {
         }
         if (from < 26) {
           await m.createTable(employeePermissionsTable);
+        }
+        if (from < 27) {
+          try {
+            await customStatement('ALTER TABLE branches ADD COLUMN location TEXT');
+          } catch (_) {}
         }
       },
     );

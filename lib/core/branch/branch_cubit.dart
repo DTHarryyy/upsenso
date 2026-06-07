@@ -292,9 +292,7 @@ class BranchCubit extends Cubit<BranchState> {
         try {
           final localRows = await branchesDao.getByBusinessId(businessId);
           for (final row in localRows) {
-            if (row.isActive) {
-              addBranchOption(id: row.id, name: row.name);
-            }
+            addBranchOption(id: row.id, name: row.name);
           }
         } catch (_) {
           // Ignore local fallback errors; cached options will still apply.
@@ -320,7 +318,7 @@ class BranchCubit extends Cubit<BranchState> {
         } else {
           try {
             final local = await branchesDao.getById(assignedBranchId);
-            if (local != null && local.isActive) {
+            if (local != null) {
               addBranchOption(id: local.id, name: local.name);
             }
           } catch (_) {
@@ -416,8 +414,7 @@ class BranchCubit extends Cubit<BranchState> {
   Future<String?> addBranch({
     required String businessId,
     required String name,
-    String? address,
-    String? phone,
+    String? location,
   }) async {
     if (!state.canSwitchBranches) return null;
 
@@ -426,8 +423,7 @@ class BranchCubit extends Cubit<BranchState> {
       id: id,
       businessId: businessId,
       name: name.trim(),
-      address: address?.trim(),
-      phone: phone?.trim(),
+      location: location?.trim(),
     );
 
     // Save locally
@@ -441,8 +437,7 @@ class BranchCubit extends Cubit<BranchState> {
         id: id,
         businessId: businessId,
         name: branch.name,
-        address: branch.address,
-        phone: branch.phone,
+        location: branch.location,
       );
       await branchesDao.updateSyncStatus(id: id, status: SyncStatus.synced);
     } catch (e) {

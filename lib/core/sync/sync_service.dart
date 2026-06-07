@@ -373,7 +373,6 @@ class SyncService {
               id: record.id,
               businessId: record.businessId,
               name: record.name,
-              sortOrder: record.sortOrder,
             );
             await _categoriesDao.updateSyncStatus(
               id: record.id,
@@ -385,7 +384,6 @@ class SyncService {
             await _businessRemoteDs.updateCategory(
               id: record.id,
               name: record.name,
-              sortOrder: record.sortOrder,
             );
             await _categoriesDao.updateSyncStatus(
               id: record.id,
@@ -1068,9 +1066,7 @@ class SyncService {
             id: row['id'] as String,
             businessId: row['business_id'] as String,
             name: row['name'] as String,
-            address: row['address'] as String?,
-            phone: row['phone'] as String?,
-            isActive: (row['is_active'] as bool?) ?? true,
+            location: row['location'] as String?,
           ),
         );
         pulled++;
@@ -1116,27 +1112,31 @@ class SyncService {
             _hasPendingEmployeeChanges(existing.syncStatus)) {
           continue;
         }
+        // Extract denormalized branch from employee_branches join
+        final branches = row['employee_branches'] as List?;
+        final branchId = branches != null && branches.isNotEmpty
+            ? branches.first['branch_id'] as String?
+            : null;
+        final roleName = row['roles'] != null
+            ? (row['roles'] as Map<String, dynamic>)['name'] as String?
+            : null;
+
         await _employeesDao.upsertFromServer(
           EmployeesTableCompanion.insert(
             id: row['id'] as String,
             businessId: row['business_id'] as String,
-            branchId: row['branch_id'] as String,
+            userId: Value(row['user_id'] as String?),
             authUserId: Value(row['auth_user_id'] as String?),
-            employeeCode: row['employee_code'] as String,
-            fullName: row['full_name'] as String,
-            email: row['email'] as String,
-            phone: Value(row['phone'] as String?),
-            role: row['role'] as String,
-            status: Value(row['status'] as String? ?? 'active'),
-            profileImageUrl: Value(row['profile_image_url'] as String?),
-            hiredAt: DateTime.parse(row['hired_at'] as String),
-            archivedAt: Value(
-              row['archived_at'] != null
-                  ? DateTime.parse(row['archived_at'] as String)
+            fullName: Value(row['full_name'] as String?),
+            roleId: Value(row['role_id'] as String?),
+            roleName: Value(roleName),
+            branchId: Value(branchId),
+            isActive: Value((row['is_active'] as bool?) ?? true),
+            createdAt: Value(
+              row['created_at'] != null
+                  ? DateTime.parse(row['created_at'] as String)
                   : null,
             ),
-            createdAt: Value(DateTime.parse(row['created_at'] as String)),
-            updatedAt: Value(DateTime.parse(row['updated_at'] as String)),
             syncStatus: const Value(3), // synced
           ),
         );
@@ -1217,20 +1217,18 @@ class SyncService {
             await _employeesRemoteDs.upsertEmployee(
               id: record.id,
               businessId: record.businessId,
-              branchId: record.branchId,
+              userId: record.userId,
               authUserId: record.authUserId,
-              employeeCode: record.employeeCode,
-              fullName: record.fullName,
-              email: record.email,
-              phone: record.phone,
-              role: record.role,
-              status: record.status,
-              profileImageUrl: record.profileImageUrl,
-              hiredAt: record.hiredAt,
-              archivedAt: record.archivedAt,
-              createdAt: record.createdAt,
-              updatedAt: record.updatedAt,
+              fullName: record.fullName ?? '',
+              roleId: record.roleId,
+              isActive: record.isActive,
             );
+            if (record.branchId != null) {
+              await _employeesRemoteDs.assignBranch(
+                employeeId: record.id,
+                branchId: record.branchId!,
+              );
+            }
             await _employeesDao.updateSyncStatus(
               id: record.id,
               status: SyncStatus.synced,

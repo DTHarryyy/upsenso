@@ -37,48 +37,38 @@ class AddEmployee extends EmployeeEvent {
   final String branchId;
   final String fullName;
   final String email;
-  final String? phone;
-  final EmployeeRole role;
-  final DateTime hiredAt;
   final String password;
-  final String? profileImageUrl;
+  final String? roleId;
 
   const AddEmployee({
     required this.branchId,
     required this.fullName,
     required this.email,
-    this.phone,
-    required this.role,
-    required this.hiredAt,
     required this.password,
-    this.profileImageUrl,
+    this.roleId,
   });
 
   @override
-  List<Object?> get props => [fullName, email, branchId, role];
+  List<Object?> get props => [fullName, email, branchId, roleId];
 }
 
 class UpdateEmployee extends EmployeeEvent {
   final String id;
   final String fullName;
-  final String email;
-  final String? phone;
-  final String branchId;
-  final EmployeeRole role;
-  final String? profileImageUrl;
+  final String? roleId;
+  final String? branchId;
+  final bool? isActive;
 
   const UpdateEmployee({
     required this.id,
     required this.fullName,
-    required this.email,
-    this.phone,
-    required this.branchId,
-    required this.role,
-    this.profileImageUrl,
+    this.roleId,
+    this.branchId,
+    this.isActive,
   });
 
   @override
-  List<Object?> get props => [id, fullName, email, branchId, role];
+  List<Object?> get props => [id, fullName, roleId, branchId, isActive];
 }
 
 class ArchiveEmployee extends EmployeeEvent {
@@ -110,18 +100,22 @@ class SearchEmployees extends EmployeeEvent {
 }
 
 class FilterEmployees extends EmployeeEvent {
-  final EmployeeRole? roleFilter;
-  final EmployeeStatus? statusFilter;
+  /// Filter by role name string (e.g. 'Cashier', 'Branch Manager'). Null = all.
+  final String? roleFilter;
+
+  /// Filter by active status. Null = all.
+  final bool? isActiveFilter;
+
   final String? branchFilter;
 
   const FilterEmployees({
     this.roleFilter,
-    this.statusFilter,
+    this.isActiveFilter,
     this.branchFilter,
   });
 
   @override
-  List<Object?> get props => [roleFilter, statusFilter, branchFilter];
+  List<Object?> get props => [roleFilter, isActiveFilter, branchFilter];
 }
 
 class ClearEmployeeFilters extends EmployeeEvent {

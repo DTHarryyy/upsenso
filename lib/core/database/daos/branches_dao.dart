@@ -49,9 +49,7 @@ class BranchesDao extends DatabaseAccessor<AppDatabase>
         id: branch.id,
         businessId: branch.businessId,
         name: branch.name,
-        address: Value(branch.address),
-        phone: Value(branch.phone),
-        isActive: Value(branch.isActive),
+        location: Value(branch.location),
         syncStatus: const Value(0), // pendingUpload
       ),
     );
@@ -64,9 +62,7 @@ class BranchesDao extends DatabaseAccessor<AppDatabase>
         id: branch.id,
         businessId: branch.businessId,
         name: branch.name,
-        address: Value(branch.address),
-        phone: Value(branch.phone),
-        isActive: Value(branch.isActive),
+        location: Value(branch.location),
         syncStatus: const Value(3), // synced
       ),
       mode: InsertMode.insertOrReplace,
@@ -78,9 +74,7 @@ class BranchesDao extends DatabaseAccessor<AppDatabase>
     await (update(branchesTable)..where((t) => t.id.equals(branch.id))).write(
       BranchesTableCompanion(
         name: Value(branch.name),
-        address: Value(branch.address),
-        phone: Value(branch.phone),
-        isActive: Value(branch.isActive),
+        location: Value(branch.location),
         syncStatus: const Value(1), // pendingUpdate
         localUpdatedAt: Value(DateTime.now()),
       ),
@@ -135,9 +129,7 @@ class BranchesDao extends DatabaseAccessor<AppDatabase>
       id: data.id,
       businessId: data.businessId,
       name: data.name,
-      address: data.address,
-      phone: data.phone,
-      isActive: data.isActive,
+      location: data.location,
     );
   }
 }

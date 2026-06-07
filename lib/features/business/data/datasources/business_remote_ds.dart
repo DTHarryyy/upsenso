@@ -122,8 +122,7 @@ class BusinessRemoteDs {
     required String id,
     required String businessId,
     required String name,
-    String? address,
-    String? phone,
+    String? location,
   }) async {
     final response = await client
         .from('branches')
@@ -131,9 +130,7 @@ class BusinessRemoteDs {
           'id': id,
           'business_id': businessId,
           'name': name,
-          'address': address,
-          'phone': phone,
-          'is_active': true,
+          'location': location,
         })
         .select()
         .single();
@@ -146,13 +143,11 @@ class BusinessRemoteDs {
     required String id,
     required String businessId,
     required String name,
-    required int sortOrder,
   }) async {
     await client.from('categories').upsert({
       'id': id,
       'business_id': businessId,
       'name': name,
-      'sort_order': sortOrder,
     });
   }
 
@@ -160,11 +155,10 @@ class BusinessRemoteDs {
   Future<void> updateCategory({
     required String id,
     required String name,
-    required int sortOrder,
   }) async {
     await client
         .from('categories')
-        .update({'name': name, 'sort_order': sortOrder})
+        .update({'name': name})
         .eq('id', id);
   }
 
@@ -181,31 +175,29 @@ class BusinessRemoteDs {
         .from('categories')
         .select()
         .eq('business_id', businessId)
-        .order('sort_order');
+        .order('created_at');
     return List<Map<String, dynamic>>.from(response);
   }
 
-  /// Fetch all active branches for a business (used by Super Admin branch picker)
+  /// Fetch all branches for a business (used by Super Admin branch picker)
   Future<List<Map<String, dynamic>>> getActiveBranchesByBusiness(
     String businessId,
   ) async {
     final response = await client
         .from('branches')
-        .select('id, name, business_id, is_active')
+        .select('id, name, business_id, location')
         .eq('business_id', businessId)
-        .eq('is_active', true)
         .order('name');
 
     return List<Map<String, dynamic>>.from(response);
   }
 
-  /// Fetch one active branch by ID (used by Admin restricted to assigned branch)
+  /// Fetch one branch by ID
   Future<Map<String, dynamic>?> getActiveBranchById(String branchId) async {
     final response = await client
         .from('branches')
-        .select('id, name, business_id, is_active')
+        .select('id, name, business_id, location')
         .eq('id', branchId)
-        .eq('is_active', true)
         .maybeSingle();
 
     return response != null ? Map<String, dynamic>.from(response) : null;

@@ -17,23 +17,17 @@ class AddEmployeeUseCase {
     required String branchId,
     required String fullName,
     required String email,
-    required String? phone,
-    required EmployeeRole role,
-    required DateTime hiredAt,
     required String password,
-    String? authUserId,
-    String? profileImageUrl,
+    String? roleId,
+    bool isActive = true,
   }) => _repository.addEmployee(
     businessId: businessId,
     branchId: branchId,
     fullName: fullName,
     email: email,
-    phone: phone,
-    role: role,
-    hiredAt: hiredAt,
     password: password,
-    authUserId: authUserId,
-    profileImageUrl: profileImageUrl,
+    roleId: roleId,
+    isActive: isActive,
   );
 }
 
@@ -44,19 +38,15 @@ class UpdateEmployeeUseCase {
   Future<void> call({
     required String id,
     required String fullName,
-    required String email,
-    required String? phone,
-    required String branchId,
-    required EmployeeRole role,
-    String? profileImageUrl,
+    String? roleId,
+    String? branchId,
+    bool? isActive,
   }) => _repository.updateEmployee(
     id: id,
     fullName: fullName,
-    email: email,
-    phone: phone,
+    roleId: roleId,
     branchId: branchId,
-    role: role,
-    profileImageUrl: profileImageUrl,
+    isActive: isActive,
   );
 }
 

@@ -10,22 +10,17 @@ abstract class IEmployeesRepository {
     required String branchId,
     required String fullName,
     required String email,
-    required String? phone,
-    required EmployeeRole role,
-    required DateTime hiredAt,
     required String password,
-    String? authUserId,
-    String? profileImageUrl,
+    String? roleId,
+    bool isActive = true,
   });
 
   Future<void> updateEmployee({
     required String id,
     required String fullName,
-    required String email,
-    required String? phone,
-    required String branchId,
-    required EmployeeRole role,
-    String? profileImageUrl,
+    String? roleId,
+    String? branchId,
+    bool? isActive,
   });
 
   Future<void> archiveEmployee(String id);

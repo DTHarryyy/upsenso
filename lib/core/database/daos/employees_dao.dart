@@ -33,20 +33,19 @@ class EmployeesDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<EmployeeRow?> getById(String id) {
-    return (select(
-      employeesTable,
-    )..where((t) => t.id.equals(id))).getSingleOrNull();
+    return (select(employeesTable)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
   }
 
   /// Returns a map of authUserId → fullName for the given auth user IDs.
   Future<Map<String, String>> getNamesForAuthUserIds(List<String> ids) async {
     if (ids.isEmpty) return {};
-    final rows = await (select(
-      employeesTable,
-    )..where((t) => t.authUserId.isIn(ids))).get();
+    final rows = await (select(employeesTable)
+          ..where((t) => t.authUserId.isIn(ids)))
+        .get();
     return {
       for (final r in rows)
-        if (r.authUserId != null) r.authUserId!: r.fullName,
+        if (r.authUserId != null) r.authUserId!: r.fullName ?? '',
     };
   }
 
@@ -55,9 +54,8 @@ class EmployeesDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<void> updateEmployee(String id, EmployeesTableCompanion companion) {
-    return (update(
-      employeesTable,
-    )..where((t) => t.id.equals(id))).write(companion);
+    return (update(employeesTable)..where((t) => t.id.equals(id)))
+        .write(companion);
   }
 
   Future<void> upsertFromServer(EmployeesTableCompanion companion) {
@@ -65,9 +63,8 @@ class EmployeesDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<void> deleteEmployee(String id) async {
-    final row = await (select(
-      employeesTable,
-    )..where((t) => t.id.equals(id))).getSingleOrNull();
+    final row = await (select(employeesTable)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
     if (row == null) return;
     if (row.syncStatus == SyncStatus.pendingUpload.toInt()) {
       await (delete(employeesTable)..where((t) => t.id.equals(id))).go();
@@ -100,14 +97,15 @@ class EmployeesDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<List<EmployeeRow>> getPendingSync() {
-    return (select(employeesTable)..where(
-          (t) => t.syncStatus.isIn([
-            SyncStatus.pendingUpload.toInt(),
-            SyncStatus.pendingUpdate.toInt(),
-            SyncStatus.pendingDelete.toInt(),
-            SyncStatus.failed.toInt(),
-          ]),
-        ))
+    return (select(employeesTable)
+          ..where(
+            (t) => t.syncStatus.isIn([
+              SyncStatus.pendingUpload.toInt(),
+              SyncStatus.pendingUpdate.toInt(),
+              SyncStatus.pendingDelete.toInt(),
+              SyncStatus.failed.toInt(),
+            ]),
+          ))
         .get();
   }
 
@@ -127,49 +125,5 @@ class EmployeesDao extends DatabaseAccessor<AppDatabase>
 
   Future<void> hardDelete(String id) {
     return (delete(employeesTable)..where((t) => t.id.equals(id))).go();
-  }
-
-  /// Returns the first active employee in [businessId] whose email matches
-  /// [email] (case-insensitive), excluding the employee with [excludeId] when
-  /// editing an existing record.
-  Future<EmployeeRow?> findByEmail(
-    String businessId,
-    String email, {
-    String? excludeId,
-  }) async {
-    final rows =
-        await (select(employeesTable)..where(
-              (t) =>
-                  t.businessId.equals(businessId) &
-                  t.syncStatus.isNotIn([SyncStatus.pendingDelete.toInt()]),
-            ))
-            .get();
-    return rows.where((r) {
-      if (r.email.toLowerCase() != email.toLowerCase()) return false;
-      if (excludeId != null && r.id == excludeId) return false;
-      return true;
-    }).firstOrNull;
-  }
-
-  /// Returns the first active employee in [businessId] whose phone matches
-  /// [phone] exactly, excluding the employee with [excludeId] when editing.
-  Future<EmployeeRow?> findByPhone(
-    String businessId,
-    String phone, {
-    String? excludeId,
-  }) async {
-    final rows =
-        await (select(employeesTable)..where(
-              (t) =>
-                  t.businessId.equals(businessId) &
-                  t.syncStatus.isNotIn([SyncStatus.pendingDelete.toInt()]) &
-                  t.phone.isNotNull(),
-            ))
-            .get();
-    return rows.where((r) {
-      if (r.phone != phone) return false;
-      if (excludeId != null && r.id == excludeId) return false;
-      return true;
-    }).firstOrNull;
   }
 }

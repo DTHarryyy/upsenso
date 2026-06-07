@@ -54,7 +54,7 @@ class EmployeeCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 UserAvatar(
-                  avatarUrl: employee.profileImageUrl,
+                  avatarUrl: null,
                   name: employee.fullName,
                   radius: 22,
                 ),
@@ -72,24 +72,14 @@ class EmployeeCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        employee.email,
-                        style: getOutfitStyle(
-                          fontSize: 12,
-                          color: AppColors.textMuted,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
                       const SizedBox(height: 6),
                       // ── Role + Status inline under name ────────────
                       Wrap(
                         spacing: 6,
                         runSpacing: 4,
                         children: [
-                          EmployeeRoleBadge(role: employee.role),
-                          EmployeeStatusBadge(status: employee.status),
+                          EmployeeRoleBadge(roleName: employee.roleName),
+                          EmployeeStatusBadge(isActive: employee.isActive),
                         ],
                       ),
                     ],
@@ -110,10 +100,10 @@ class EmployeeCard extends StatelessWidget {
             const Divider(color: AppColors.borderSoft, height: 1),
             const SizedBox(height: 10),
 
-            // ── Branch + Employee code in one row ───────────────────
-            Row(
-              children: [
-                if (branchName != null) ...[
+            // ── Branch row ─────────────────────────────────────────────
+            if (branchName != null)
+              Row(
+                children: [
                   const Icon(
                     Icons.store_outlined,
                     size: 13,
@@ -131,23 +121,8 @@ class EmployeeCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const SizedBox(width: 12),
                 ],
-                const Icon(
-                  Icons.badge_outlined,
-                  size: 13,
-                  color: AppColors.textMuted,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  employee.employeeCode,
-                  style: getOutfitStyle(
-                    fontSize: 12,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-              ],
-            ),
+              ),
           ],
         ),
       ),
@@ -194,7 +169,7 @@ class _ActionMenu extends StatelessWidget {
             value: 'edit',
             child: _MenuItem(icon: Icons.edit_outlined, label: 'Edit'),
           ),
-        if (employee.status == EmployeeStatus.active && onSuspend != null)
+        if (employee.isActive && onSuspend != null)
           const PopupMenuItem(
             value: 'suspend',
             child: _MenuItem(
@@ -203,7 +178,7 @@ class _ActionMenu extends StatelessWidget {
               color: AppColors.warning,
             ),
           ),
-        if (employee.status != EmployeeStatus.active && onReactivate != null)
+        if (!employee.isActive && onReactivate != null)
           const PopupMenuItem(
             value: 'reactivate',
             child: _MenuItem(
@@ -212,7 +187,7 @@ class _ActionMenu extends StatelessWidget {
               color: AppColors.success,
             ),
           ),
-        if (employee.status != EmployeeStatus.archived && onArchive != null)
+        if (onArchive != null)
           const PopupMenuItem(
             value: 'archive',
             child: _MenuItem(

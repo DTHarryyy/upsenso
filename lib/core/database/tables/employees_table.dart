@@ -7,27 +7,19 @@ class EmployeesTable extends Table {
 
   TextColumn get id => text()();
   TextColumn get businessId => text()();
-  TextColumn get branchId => text()();
-
-  /// Nullable – employee identity is decoupled from auth accounts.
+  TextColumn get userId => text().nullable()();
   TextColumn get authUserId => text().nullable()();
+  TextColumn get fullName => text().nullable()();
+  TextColumn get roleId => text().nullable()();
 
-  TextColumn get employeeCode => text()();
-  TextColumn get fullName => text()();
-  TextColumn get email => text()();
-  TextColumn get phone => text().nullable()();
+  /// Denormalized from roles join — avoids a local join on every read.
+  TextColumn get roleName => text().nullable()();
 
-  /// 'owner' | 'branch_manager' | 'cashier' | 'inventory_staff'
-  TextColumn get role => text()();
+  /// Denormalized primary branch from employee_branches join table.
+  TextColumn get branchId => text().nullable()();
 
-  /// 'active' | 'suspended' | 'archived'
-  TextColumn get status => text().withDefault(const Constant('active'))();
-
-  TextColumn get profileImageUrl => text().nullable()();
-  DateTimeColumn get hiredAt => dateTime()();
-  DateTimeColumn get archivedAt => dateTime().nullable()();
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
-  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+  DateTimeColumn get createdAt => dateTime().nullable()();
 
   /// 0=pendingUpload, 1=pendingUpdate, 2=pendingDelete, 3=synced, 4=failed
   IntColumn get syncStatus => integer().withDefault(const Constant(0))();

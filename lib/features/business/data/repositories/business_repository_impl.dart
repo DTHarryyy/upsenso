@@ -104,14 +104,11 @@ class BusinessRepositoryImpl implements BusinessRepository {
       isActive: true,
     );
 
-    // 3. Create initial branch entity (address and phone are null initially)
+    // 3. Create initial branch entity
     final branch = Branch(
       id: branchId,
       businessId: businessId,
       name: branchName,
-      address: null,
-      phone: null,
-      isActive: true,
     );
 
     // 4. Save locally FIRST (offline-first)

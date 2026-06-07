@@ -1953,40 +1953,16 @@ class $BranchesTableTable extends BranchesTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _addressMeta = const VerificationMeta(
-    'address',
+  static const VerificationMeta _locationMeta = const VerificationMeta(
+    'location',
   );
   @override
-  late final GeneratedColumn<String> address = GeneratedColumn<String>(
-    'address',
+  late final GeneratedColumn<String> location = GeneratedColumn<String>(
+    'location',
     aliasedName,
     true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
-  );
-  static const VerificationMeta _phoneMeta = const VerificationMeta('phone');
-  @override
-  late final GeneratedColumn<String> phone = GeneratedColumn<String>(
-    'phone',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _isActiveMeta = const VerificationMeta(
-    'isActive',
-  );
-  @override
-  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
-    'is_active',
-    aliasedName,
-    false,
-    type: DriftSqlType.bool,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("is_active" IN (0, 1))',
-    ),
-    defaultValue: const Constant(true),
   );
   static const VerificationMeta _syncStatusMeta = const VerificationMeta(
     'syncStatus',
@@ -2041,9 +2017,7 @@ class $BranchesTableTable extends BranchesTable
     id,
     businessId,
     name,
-    address,
-    phone,
-    isActive,
+    location,
     syncStatus,
     lastSyncAttempt,
     syncError,
@@ -2082,22 +2056,10 @@ class $BranchesTableTable extends BranchesTable
     } else if (isInserting) {
       context.missing(_nameMeta);
     }
-    if (data.containsKey('address')) {
+    if (data.containsKey('location')) {
       context.handle(
-        _addressMeta,
-        address.isAcceptableOrUnknown(data['address']!, _addressMeta),
-      );
-    }
-    if (data.containsKey('phone')) {
-      context.handle(
-        _phoneMeta,
-        phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta),
-      );
-    }
-    if (data.containsKey('is_active')) {
-      context.handle(
-        _isActiveMeta,
-        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
+        _locationMeta,
+        location.isAcceptableOrUnknown(data['location']!, _locationMeta),
       );
     }
     if (data.containsKey('sync_status')) {
@@ -2151,18 +2113,10 @@ class $BranchesTableTable extends BranchesTable
         DriftSqlType.string,
         data['${effectivePrefix}name'],
       )!,
-      address: attachedDatabase.typeMapping.read(
+      location: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}address'],
+        data['${effectivePrefix}location'],
       ),
-      phone: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}phone'],
-      ),
-      isActive: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}is_active'],
-      )!,
       syncStatus: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}sync_status'],
@@ -2199,14 +2153,8 @@ class BranchesTableData extends DataClass
   /// Branch name (required)
   final String name;
 
-  /// Branch address (optional, completed later in settings)
-  final String? address;
-
-  /// Branch phone number (optional, completed later in settings)
-  final String? phone;
-
-  /// Whether branch is active
-  final bool isActive;
+  /// Branch location/address (optional)
+  final String? location;
 
   /// Sync tracking fields
   /// 0=pendingUpload, 1=pendingUpdate, 2=pendingDelete, 3=synced, 4=failed
@@ -2218,9 +2166,7 @@ class BranchesTableData extends DataClass
     required this.id,
     required this.businessId,
     required this.name,
-    this.address,
-    this.phone,
-    required this.isActive,
+    this.location,
     required this.syncStatus,
     this.lastSyncAttempt,
     this.syncError,
@@ -2232,13 +2178,9 @@ class BranchesTableData extends DataClass
     map['id'] = Variable<String>(id);
     map['business_id'] = Variable<String>(businessId);
     map['name'] = Variable<String>(name);
-    if (!nullToAbsent || address != null) {
-      map['address'] = Variable<String>(address);
+    if (!nullToAbsent || location != null) {
+      map['location'] = Variable<String>(location);
     }
-    if (!nullToAbsent || phone != null) {
-      map['phone'] = Variable<String>(phone);
-    }
-    map['is_active'] = Variable<bool>(isActive);
     map['sync_status'] = Variable<int>(syncStatus);
     if (!nullToAbsent || lastSyncAttempt != null) {
       map['last_sync_attempt'] = Variable<DateTime>(lastSyncAttempt);
@@ -2255,13 +2197,9 @@ class BranchesTableData extends DataClass
       id: Value(id),
       businessId: Value(businessId),
       name: Value(name),
-      address: address == null && nullToAbsent
+      location: location == null && nullToAbsent
           ? const Value.absent()
-          : Value(address),
-      phone: phone == null && nullToAbsent
-          ? const Value.absent()
-          : Value(phone),
-      isActive: Value(isActive),
+          : Value(location),
       syncStatus: Value(syncStatus),
       lastSyncAttempt: lastSyncAttempt == null && nullToAbsent
           ? const Value.absent()
@@ -2282,9 +2220,7 @@ class BranchesTableData extends DataClass
       id: serializer.fromJson<String>(json['id']),
       businessId: serializer.fromJson<String>(json['businessId']),
       name: serializer.fromJson<String>(json['name']),
-      address: serializer.fromJson<String?>(json['address']),
-      phone: serializer.fromJson<String?>(json['phone']),
-      isActive: serializer.fromJson<bool>(json['isActive']),
+      location: serializer.fromJson<String?>(json['location']),
       syncStatus: serializer.fromJson<int>(json['syncStatus']),
       lastSyncAttempt: serializer.fromJson<DateTime?>(json['lastSyncAttempt']),
       syncError: serializer.fromJson<String?>(json['syncError']),
@@ -2298,9 +2234,7 @@ class BranchesTableData extends DataClass
       'id': serializer.toJson<String>(id),
       'businessId': serializer.toJson<String>(businessId),
       'name': serializer.toJson<String>(name),
-      'address': serializer.toJson<String?>(address),
-      'phone': serializer.toJson<String?>(phone),
-      'isActive': serializer.toJson<bool>(isActive),
+      'location': serializer.toJson<String?>(location),
       'syncStatus': serializer.toJson<int>(syncStatus),
       'lastSyncAttempt': serializer.toJson<DateTime?>(lastSyncAttempt),
       'syncError': serializer.toJson<String?>(syncError),
@@ -2312,9 +2246,7 @@ class BranchesTableData extends DataClass
     String? id,
     String? businessId,
     String? name,
-    Value<String?> address = const Value.absent(),
-    Value<String?> phone = const Value.absent(),
-    bool? isActive,
+    Value<String?> location = const Value.absent(),
     int? syncStatus,
     Value<DateTime?> lastSyncAttempt = const Value.absent(),
     Value<String?> syncError = const Value.absent(),
@@ -2323,9 +2255,7 @@ class BranchesTableData extends DataClass
     id: id ?? this.id,
     businessId: businessId ?? this.businessId,
     name: name ?? this.name,
-    address: address.present ? address.value : this.address,
-    phone: phone.present ? phone.value : this.phone,
-    isActive: isActive ?? this.isActive,
+    location: location.present ? location.value : this.location,
     syncStatus: syncStatus ?? this.syncStatus,
     lastSyncAttempt: lastSyncAttempt.present
         ? lastSyncAttempt.value
@@ -2340,9 +2270,7 @@ class BranchesTableData extends DataClass
           ? data.businessId.value
           : this.businessId,
       name: data.name.present ? data.name.value : this.name,
-      address: data.address.present ? data.address.value : this.address,
-      phone: data.phone.present ? data.phone.value : this.phone,
-      isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      location: data.location.present ? data.location.value : this.location,
       syncStatus: data.syncStatus.present
           ? data.syncStatus.value
           : this.syncStatus,
@@ -2362,9 +2290,7 @@ class BranchesTableData extends DataClass
           ..write('id: $id, ')
           ..write('businessId: $businessId, ')
           ..write('name: $name, ')
-          ..write('address: $address, ')
-          ..write('phone: $phone, ')
-          ..write('isActive: $isActive, ')
+          ..write('location: $location, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('lastSyncAttempt: $lastSyncAttempt, ')
           ..write('syncError: $syncError, ')
@@ -2378,9 +2304,7 @@ class BranchesTableData extends DataClass
     id,
     businessId,
     name,
-    address,
-    phone,
-    isActive,
+    location,
     syncStatus,
     lastSyncAttempt,
     syncError,
@@ -2393,9 +2317,7 @@ class BranchesTableData extends DataClass
           other.id == this.id &&
           other.businessId == this.businessId &&
           other.name == this.name &&
-          other.address == this.address &&
-          other.phone == this.phone &&
-          other.isActive == this.isActive &&
+          other.location == this.location &&
           other.syncStatus == this.syncStatus &&
           other.lastSyncAttempt == this.lastSyncAttempt &&
           other.syncError == this.syncError &&
@@ -2406,9 +2328,7 @@ class BranchesTableCompanion extends UpdateCompanion<BranchesTableData> {
   final Value<String> id;
   final Value<String> businessId;
   final Value<String> name;
-  final Value<String?> address;
-  final Value<String?> phone;
-  final Value<bool> isActive;
+  final Value<String?> location;
   final Value<int> syncStatus;
   final Value<DateTime?> lastSyncAttempt;
   final Value<String?> syncError;
@@ -2418,9 +2338,7 @@ class BranchesTableCompanion extends UpdateCompanion<BranchesTableData> {
     this.id = const Value.absent(),
     this.businessId = const Value.absent(),
     this.name = const Value.absent(),
-    this.address = const Value.absent(),
-    this.phone = const Value.absent(),
-    this.isActive = const Value.absent(),
+    this.location = const Value.absent(),
     this.syncStatus = const Value.absent(),
     this.lastSyncAttempt = const Value.absent(),
     this.syncError = const Value.absent(),
@@ -2431,9 +2349,7 @@ class BranchesTableCompanion extends UpdateCompanion<BranchesTableData> {
     required String id,
     required String businessId,
     required String name,
-    this.address = const Value.absent(),
-    this.phone = const Value.absent(),
-    this.isActive = const Value.absent(),
+    this.location = const Value.absent(),
     this.syncStatus = const Value.absent(),
     this.lastSyncAttempt = const Value.absent(),
     this.syncError = const Value.absent(),
@@ -2446,9 +2362,7 @@ class BranchesTableCompanion extends UpdateCompanion<BranchesTableData> {
     Expression<String>? id,
     Expression<String>? businessId,
     Expression<String>? name,
-    Expression<String>? address,
-    Expression<String>? phone,
-    Expression<bool>? isActive,
+    Expression<String>? location,
     Expression<int>? syncStatus,
     Expression<DateTime>? lastSyncAttempt,
     Expression<String>? syncError,
@@ -2459,9 +2373,7 @@ class BranchesTableCompanion extends UpdateCompanion<BranchesTableData> {
       if (id != null) 'id': id,
       if (businessId != null) 'business_id': businessId,
       if (name != null) 'name': name,
-      if (address != null) 'address': address,
-      if (phone != null) 'phone': phone,
-      if (isActive != null) 'is_active': isActive,
+      if (location != null) 'location': location,
       if (syncStatus != null) 'sync_status': syncStatus,
       if (lastSyncAttempt != null) 'last_sync_attempt': lastSyncAttempt,
       if (syncError != null) 'sync_error': syncError,
@@ -2474,9 +2386,7 @@ class BranchesTableCompanion extends UpdateCompanion<BranchesTableData> {
     Value<String>? id,
     Value<String>? businessId,
     Value<String>? name,
-    Value<String?>? address,
-    Value<String?>? phone,
-    Value<bool>? isActive,
+    Value<String?>? location,
     Value<int>? syncStatus,
     Value<DateTime?>? lastSyncAttempt,
     Value<String?>? syncError,
@@ -2487,9 +2397,7 @@ class BranchesTableCompanion extends UpdateCompanion<BranchesTableData> {
       id: id ?? this.id,
       businessId: businessId ?? this.businessId,
       name: name ?? this.name,
-      address: address ?? this.address,
-      phone: phone ?? this.phone,
-      isActive: isActive ?? this.isActive,
+      location: location ?? this.location,
       syncStatus: syncStatus ?? this.syncStatus,
       lastSyncAttempt: lastSyncAttempt ?? this.lastSyncAttempt,
       syncError: syncError ?? this.syncError,
@@ -2510,14 +2418,8 @@ class BranchesTableCompanion extends UpdateCompanion<BranchesTableData> {
     if (name.present) {
       map['name'] = Variable<String>(name.value);
     }
-    if (address.present) {
-      map['address'] = Variable<String>(address.value);
-    }
-    if (phone.present) {
-      map['phone'] = Variable<String>(phone.value);
-    }
-    if (isActive.present) {
-      map['is_active'] = Variable<bool>(isActive.value);
+    if (location.present) {
+      map['location'] = Variable<String>(location.value);
     }
     if (syncStatus.present) {
       map['sync_status'] = Variable<int>(syncStatus.value);
@@ -2543,9 +2445,7 @@ class BranchesTableCompanion extends UpdateCompanion<BranchesTableData> {
           ..write('id: $id, ')
           ..write('businessId: $businessId, ')
           ..write('name: $name, ')
-          ..write('address: $address, ')
-          ..write('phone: $phone, ')
-          ..write('isActive: $isActive, ')
+          ..write('location: $location, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('lastSyncAttempt: $lastSyncAttempt, ')
           ..write('syncError: $syncError, ')
@@ -12334,16 +12234,14 @@ class $EmployeesTableTable extends EmployeesTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _branchIdMeta = const VerificationMeta(
-    'branchId',
-  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
   @override
-  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
-    'branch_id',
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _authUserIdMeta = const VerificationMeta(
     'authUserId',
@@ -12356,17 +12254,6 @@ class $EmployeesTableTable extends EmployeesTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _employeeCodeMeta = const VerificationMeta(
-    'employeeCode',
-  );
-  @override
-  late final GeneratedColumn<String> employeeCode = GeneratedColumn<String>(
-    'employee_code',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
   static const VerificationMeta _fullNameMeta = const VerificationMeta(
     'fullName',
   );
@@ -12374,79 +12261,55 @@ class $EmployeesTableTable extends EmployeesTable
   late final GeneratedColumn<String> fullName = GeneratedColumn<String>(
     'full_name',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
-  static const VerificationMeta _emailMeta = const VerificationMeta('email');
+  static const VerificationMeta _roleIdMeta = const VerificationMeta('roleId');
   @override
-  late final GeneratedColumn<String> email = GeneratedColumn<String>(
-    'email',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _phoneMeta = const VerificationMeta('phone');
-  @override
-  late final GeneratedColumn<String> phone = GeneratedColumn<String>(
-    'phone',
+  late final GeneratedColumn<String> roleId = GeneratedColumn<String>(
+    'role_id',
     aliasedName,
     true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _roleMeta = const VerificationMeta('role');
-  @override
-  late final GeneratedColumn<String> role = GeneratedColumn<String>(
-    'role',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _statusMeta = const VerificationMeta('status');
-  @override
-  late final GeneratedColumn<String> status = GeneratedColumn<String>(
-    'status',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    defaultValue: const Constant('active'),
-  );
-  static const VerificationMeta _profileImageUrlMeta = const VerificationMeta(
-    'profileImageUrl',
+  static const VerificationMeta _roleNameMeta = const VerificationMeta(
+    'roleName',
   );
   @override
-  late final GeneratedColumn<String> profileImageUrl = GeneratedColumn<String>(
-    'profile_image_url',
+  late final GeneratedColumn<String> roleName = GeneratedColumn<String>(
+    'role_name',
     aliasedName,
     true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _hiredAtMeta = const VerificationMeta(
-    'hiredAt',
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
   );
   @override
-  late final GeneratedColumn<DateTime> hiredAt = GeneratedColumn<DateTime>(
-    'hired_at',
-    aliasedName,
-    false,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _archivedAtMeta = const VerificationMeta(
-    'archivedAt',
-  );
-  @override
-  late final GeneratedColumn<DateTime> archivedAt = GeneratedColumn<DateTime>(
-    'archived_at',
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
     aliasedName,
     true,
-    type: DriftSqlType.dateTime,
+    type: DriftSqlType.string,
     requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+    'isActive',
+  );
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+    'is_active',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_active" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
   );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
@@ -12455,22 +12318,9 @@ class $EmployeesTableTable extends EmployeesTable
   late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
     'created_at',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    defaultValue: currentDateAndTime,
-  );
-  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
-    'updatedAt',
-  );
-  @override
-  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
-    'updated_at',
-    aliasedName,
-    false,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: false,
-    defaultValue: currentDateAndTime,
   );
   static const VerificationMeta _syncStatusMeta = const VerificationMeta(
     'syncStatus',
@@ -12511,19 +12361,14 @@ class $EmployeesTableTable extends EmployeesTable
   List<GeneratedColumn> get $columns => [
     id,
     businessId,
-    branchId,
+    userId,
     authUserId,
-    employeeCode,
     fullName,
-    email,
-    phone,
-    role,
-    status,
-    profileImageUrl,
-    hiredAt,
-    archivedAt,
+    roleId,
+    roleName,
+    branchId,
+    isActive,
     createdAt,
-    updatedAt,
     syncStatus,
     lastSyncAttempt,
     syncError,
@@ -12553,13 +12398,11 @@ class $EmployeesTableTable extends EmployeesTable
     } else if (isInserting) {
       context.missing(_businessIdMeta);
     }
-    if (data.containsKey('branch_id')) {
+    if (data.containsKey('user_id')) {
       context.handle(
-        _branchIdMeta,
-        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
       );
-    } else if (isInserting) {
-      context.missing(_branchIdMeta);
     }
     if (data.containsKey('auth_user_id')) {
       context.handle(
@@ -12570,86 +12413,40 @@ class $EmployeesTableTable extends EmployeesTable
         ),
       );
     }
-    if (data.containsKey('employee_code')) {
-      context.handle(
-        _employeeCodeMeta,
-        employeeCode.isAcceptableOrUnknown(
-          data['employee_code']!,
-          _employeeCodeMeta,
-        ),
-      );
-    } else if (isInserting) {
-      context.missing(_employeeCodeMeta);
-    }
     if (data.containsKey('full_name')) {
       context.handle(
         _fullNameMeta,
         fullName.isAcceptableOrUnknown(data['full_name']!, _fullNameMeta),
       );
-    } else if (isInserting) {
-      context.missing(_fullNameMeta);
     }
-    if (data.containsKey('email')) {
+    if (data.containsKey('role_id')) {
       context.handle(
-        _emailMeta,
-        email.isAcceptableOrUnknown(data['email']!, _emailMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_emailMeta);
-    }
-    if (data.containsKey('phone')) {
-      context.handle(
-        _phoneMeta,
-        phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta),
+        _roleIdMeta,
+        roleId.isAcceptableOrUnknown(data['role_id']!, _roleIdMeta),
       );
     }
-    if (data.containsKey('role')) {
+    if (data.containsKey('role_name')) {
       context.handle(
-        _roleMeta,
-        role.isAcceptableOrUnknown(data['role']!, _roleMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_roleMeta);
-    }
-    if (data.containsKey('status')) {
-      context.handle(
-        _statusMeta,
-        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+        _roleNameMeta,
+        roleName.isAcceptableOrUnknown(data['role_name']!, _roleNameMeta),
       );
     }
-    if (data.containsKey('profile_image_url')) {
+    if (data.containsKey('branch_id')) {
       context.handle(
-        _profileImageUrlMeta,
-        profileImageUrl.isAcceptableOrUnknown(
-          data['profile_image_url']!,
-          _profileImageUrlMeta,
-        ),
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
       );
     }
-    if (data.containsKey('hired_at')) {
+    if (data.containsKey('is_active')) {
       context.handle(
-        _hiredAtMeta,
-        hiredAt.isAcceptableOrUnknown(data['hired_at']!, _hiredAtMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_hiredAtMeta);
-    }
-    if (data.containsKey('archived_at')) {
-      context.handle(
-        _archivedAtMeta,
-        archivedAt.isAcceptableOrUnknown(data['archived_at']!, _archivedAtMeta),
+        _isActiveMeta,
+        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
       );
     }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
-      );
-    }
-    if (data.containsKey('updated_at')) {
-      context.handle(
-        _updatedAtMeta,
-        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
       );
     }
     if (data.containsKey('sync_status')) {
@@ -12690,58 +12487,38 @@ class $EmployeesTableTable extends EmployeesTable
         DriftSqlType.string,
         data['${effectivePrefix}business_id'],
       )!,
-      branchId: attachedDatabase.typeMapping.read(
+      userId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}branch_id'],
-      )!,
+        data['${effectivePrefix}user_id'],
+      ),
       authUserId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}auth_user_id'],
       ),
-      employeeCode: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}employee_code'],
-      )!,
       fullName: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}full_name'],
-      )!,
-      email: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}email'],
-      )!,
-      phone: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}phone'],
       ),
-      role: attachedDatabase.typeMapping.read(
+      roleId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}role'],
-      )!,
-      status: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}status'],
-      )!,
-      profileImageUrl: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}profile_image_url'],
+        data['${effectivePrefix}role_id'],
       ),
-      hiredAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}hired_at'],
-      )!,
-      archivedAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}archived_at'],
+      roleName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}role_name'],
       ),
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      ),
+      isActive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_active'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
-      )!,
-      updatedAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}updated_at'],
-      )!,
+      ),
       syncStatus: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}sync_status'],
@@ -12766,25 +12543,18 @@ class $EmployeesTableTable extends EmployeesTable
 class EmployeeRow extends DataClass implements Insertable<EmployeeRow> {
   final String id;
   final String businessId;
-  final String branchId;
-
-  /// Nullable – employee identity is decoupled from auth accounts.
+  final String? userId;
   final String? authUserId;
-  final String employeeCode;
-  final String fullName;
-  final String email;
-  final String? phone;
+  final String? fullName;
+  final String? roleId;
 
-  /// 'owner' | 'branch_manager' | 'cashier' | 'inventory_staff'
-  final String role;
+  /// Denormalized from roles join — avoids a local join on every read.
+  final String? roleName;
 
-  /// 'active' | 'suspended' | 'archived'
-  final String status;
-  final String? profileImageUrl;
-  final DateTime hiredAt;
-  final DateTime? archivedAt;
-  final DateTime createdAt;
-  final DateTime updatedAt;
+  /// Denormalized primary branch from employee_branches join table.
+  final String? branchId;
+  final bool isActive;
+  final DateTime? createdAt;
 
   /// 0=pendingUpload, 1=pendingUpdate, 2=pendingDelete, 3=synced, 4=failed
   final int syncStatus;
@@ -12793,19 +12563,14 @@ class EmployeeRow extends DataClass implements Insertable<EmployeeRow> {
   const EmployeeRow({
     required this.id,
     required this.businessId,
-    required this.branchId,
+    this.userId,
     this.authUserId,
-    required this.employeeCode,
-    required this.fullName,
-    required this.email,
-    this.phone,
-    required this.role,
-    required this.status,
-    this.profileImageUrl,
-    required this.hiredAt,
-    this.archivedAt,
-    required this.createdAt,
-    required this.updatedAt,
+    this.fullName,
+    this.roleId,
+    this.roleName,
+    this.branchId,
+    required this.isActive,
+    this.createdAt,
     required this.syncStatus,
     this.lastSyncAttempt,
     this.syncError,
@@ -12815,27 +12580,28 @@ class EmployeeRow extends DataClass implements Insertable<EmployeeRow> {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['business_id'] = Variable<String>(businessId);
-    map['branch_id'] = Variable<String>(branchId);
+    if (!nullToAbsent || userId != null) {
+      map['user_id'] = Variable<String>(userId);
+    }
     if (!nullToAbsent || authUserId != null) {
       map['auth_user_id'] = Variable<String>(authUserId);
     }
-    map['employee_code'] = Variable<String>(employeeCode);
-    map['full_name'] = Variable<String>(fullName);
-    map['email'] = Variable<String>(email);
-    if (!nullToAbsent || phone != null) {
-      map['phone'] = Variable<String>(phone);
+    if (!nullToAbsent || fullName != null) {
+      map['full_name'] = Variable<String>(fullName);
     }
-    map['role'] = Variable<String>(role);
-    map['status'] = Variable<String>(status);
-    if (!nullToAbsent || profileImageUrl != null) {
-      map['profile_image_url'] = Variable<String>(profileImageUrl);
+    if (!nullToAbsent || roleId != null) {
+      map['role_id'] = Variable<String>(roleId);
     }
-    map['hired_at'] = Variable<DateTime>(hiredAt);
-    if (!nullToAbsent || archivedAt != null) {
-      map['archived_at'] = Variable<DateTime>(archivedAt);
+    if (!nullToAbsent || roleName != null) {
+      map['role_name'] = Variable<String>(roleName);
     }
-    map['created_at'] = Variable<DateTime>(createdAt);
-    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || branchId != null) {
+      map['branch_id'] = Variable<String>(branchId);
+    }
+    map['is_active'] = Variable<bool>(isActive);
+    if (!nullToAbsent || createdAt != null) {
+      map['created_at'] = Variable<DateTime>(createdAt);
+    }
     map['sync_status'] = Variable<int>(syncStatus);
     if (!nullToAbsent || lastSyncAttempt != null) {
       map['last_sync_attempt'] = Variable<DateTime>(lastSyncAttempt);
@@ -12850,27 +12616,28 @@ class EmployeeRow extends DataClass implements Insertable<EmployeeRow> {
     return EmployeesTableCompanion(
       id: Value(id),
       businessId: Value(businessId),
-      branchId: Value(branchId),
+      userId: userId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(userId),
       authUserId: authUserId == null && nullToAbsent
           ? const Value.absent()
           : Value(authUserId),
-      employeeCode: Value(employeeCode),
-      fullName: Value(fullName),
-      email: Value(email),
-      phone: phone == null && nullToAbsent
+      fullName: fullName == null && nullToAbsent
           ? const Value.absent()
-          : Value(phone),
-      role: Value(role),
-      status: Value(status),
-      profileImageUrl: profileImageUrl == null && nullToAbsent
+          : Value(fullName),
+      roleId: roleId == null && nullToAbsent
           ? const Value.absent()
-          : Value(profileImageUrl),
-      hiredAt: Value(hiredAt),
-      archivedAt: archivedAt == null && nullToAbsent
+          : Value(roleId),
+      roleName: roleName == null && nullToAbsent
           ? const Value.absent()
-          : Value(archivedAt),
-      createdAt: Value(createdAt),
-      updatedAt: Value(updatedAt),
+          : Value(roleName),
+      branchId: branchId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(branchId),
+      isActive: Value(isActive),
+      createdAt: createdAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(createdAt),
       syncStatus: Value(syncStatus),
       lastSyncAttempt: lastSyncAttempt == null && nullToAbsent
           ? const Value.absent()
@@ -12889,19 +12656,14 @@ class EmployeeRow extends DataClass implements Insertable<EmployeeRow> {
     return EmployeeRow(
       id: serializer.fromJson<String>(json['id']),
       businessId: serializer.fromJson<String>(json['businessId']),
-      branchId: serializer.fromJson<String>(json['branchId']),
+      userId: serializer.fromJson<String?>(json['userId']),
       authUserId: serializer.fromJson<String?>(json['authUserId']),
-      employeeCode: serializer.fromJson<String>(json['employeeCode']),
-      fullName: serializer.fromJson<String>(json['fullName']),
-      email: serializer.fromJson<String>(json['email']),
-      phone: serializer.fromJson<String?>(json['phone']),
-      role: serializer.fromJson<String>(json['role']),
-      status: serializer.fromJson<String>(json['status']),
-      profileImageUrl: serializer.fromJson<String?>(json['profileImageUrl']),
-      hiredAt: serializer.fromJson<DateTime>(json['hiredAt']),
-      archivedAt: serializer.fromJson<DateTime?>(json['archivedAt']),
-      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
-      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      fullName: serializer.fromJson<String?>(json['fullName']),
+      roleId: serializer.fromJson<String?>(json['roleId']),
+      roleName: serializer.fromJson<String?>(json['roleName']),
+      branchId: serializer.fromJson<String?>(json['branchId']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
+      createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
       syncStatus: serializer.fromJson<int>(json['syncStatus']),
       lastSyncAttempt: serializer.fromJson<DateTime?>(json['lastSyncAttempt']),
       syncError: serializer.fromJson<String?>(json['syncError']),
@@ -12913,19 +12675,14 @@ class EmployeeRow extends DataClass implements Insertable<EmployeeRow> {
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'businessId': serializer.toJson<String>(businessId),
-      'branchId': serializer.toJson<String>(branchId),
+      'userId': serializer.toJson<String?>(userId),
       'authUserId': serializer.toJson<String?>(authUserId),
-      'employeeCode': serializer.toJson<String>(employeeCode),
-      'fullName': serializer.toJson<String>(fullName),
-      'email': serializer.toJson<String>(email),
-      'phone': serializer.toJson<String?>(phone),
-      'role': serializer.toJson<String>(role),
-      'status': serializer.toJson<String>(status),
-      'profileImageUrl': serializer.toJson<String?>(profileImageUrl),
-      'hiredAt': serializer.toJson<DateTime>(hiredAt),
-      'archivedAt': serializer.toJson<DateTime?>(archivedAt),
-      'createdAt': serializer.toJson<DateTime>(createdAt),
-      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'fullName': serializer.toJson<String?>(fullName),
+      'roleId': serializer.toJson<String?>(roleId),
+      'roleName': serializer.toJson<String?>(roleName),
+      'branchId': serializer.toJson<String?>(branchId),
+      'isActive': serializer.toJson<bool>(isActive),
+      'createdAt': serializer.toJson<DateTime?>(createdAt),
       'syncStatus': serializer.toJson<int>(syncStatus),
       'lastSyncAttempt': serializer.toJson<DateTime?>(lastSyncAttempt),
       'syncError': serializer.toJson<String?>(syncError),
@@ -12935,40 +12692,28 @@ class EmployeeRow extends DataClass implements Insertable<EmployeeRow> {
   EmployeeRow copyWith({
     String? id,
     String? businessId,
-    String? branchId,
+    Value<String?> userId = const Value.absent(),
     Value<String?> authUserId = const Value.absent(),
-    String? employeeCode,
-    String? fullName,
-    String? email,
-    Value<String?> phone = const Value.absent(),
-    String? role,
-    String? status,
-    Value<String?> profileImageUrl = const Value.absent(),
-    DateTime? hiredAt,
-    Value<DateTime?> archivedAt = const Value.absent(),
-    DateTime? createdAt,
-    DateTime? updatedAt,
+    Value<String?> fullName = const Value.absent(),
+    Value<String?> roleId = const Value.absent(),
+    Value<String?> roleName = const Value.absent(),
+    Value<String?> branchId = const Value.absent(),
+    bool? isActive,
+    Value<DateTime?> createdAt = const Value.absent(),
     int? syncStatus,
     Value<DateTime?> lastSyncAttempt = const Value.absent(),
     Value<String?> syncError = const Value.absent(),
   }) => EmployeeRow(
     id: id ?? this.id,
     businessId: businessId ?? this.businessId,
-    branchId: branchId ?? this.branchId,
+    userId: userId.present ? userId.value : this.userId,
     authUserId: authUserId.present ? authUserId.value : this.authUserId,
-    employeeCode: employeeCode ?? this.employeeCode,
-    fullName: fullName ?? this.fullName,
-    email: email ?? this.email,
-    phone: phone.present ? phone.value : this.phone,
-    role: role ?? this.role,
-    status: status ?? this.status,
-    profileImageUrl: profileImageUrl.present
-        ? profileImageUrl.value
-        : this.profileImageUrl,
-    hiredAt: hiredAt ?? this.hiredAt,
-    archivedAt: archivedAt.present ? archivedAt.value : this.archivedAt,
-    createdAt: createdAt ?? this.createdAt,
-    updatedAt: updatedAt ?? this.updatedAt,
+    fullName: fullName.present ? fullName.value : this.fullName,
+    roleId: roleId.present ? roleId.value : this.roleId,
+    roleName: roleName.present ? roleName.value : this.roleName,
+    branchId: branchId.present ? branchId.value : this.branchId,
+    isActive: isActive ?? this.isActive,
+    createdAt: createdAt.present ? createdAt.value : this.createdAt,
     syncStatus: syncStatus ?? this.syncStatus,
     lastSyncAttempt: lastSyncAttempt.present
         ? lastSyncAttempt.value
@@ -12981,27 +12726,16 @@ class EmployeeRow extends DataClass implements Insertable<EmployeeRow> {
       businessId: data.businessId.present
           ? data.businessId.value
           : this.businessId,
-      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      userId: data.userId.present ? data.userId.value : this.userId,
       authUserId: data.authUserId.present
           ? data.authUserId.value
           : this.authUserId,
-      employeeCode: data.employeeCode.present
-          ? data.employeeCode.value
-          : this.employeeCode,
       fullName: data.fullName.present ? data.fullName.value : this.fullName,
-      email: data.email.present ? data.email.value : this.email,
-      phone: data.phone.present ? data.phone.value : this.phone,
-      role: data.role.present ? data.role.value : this.role,
-      status: data.status.present ? data.status.value : this.status,
-      profileImageUrl: data.profileImageUrl.present
-          ? data.profileImageUrl.value
-          : this.profileImageUrl,
-      hiredAt: data.hiredAt.present ? data.hiredAt.value : this.hiredAt,
-      archivedAt: data.archivedAt.present
-          ? data.archivedAt.value
-          : this.archivedAt,
+      roleId: data.roleId.present ? data.roleId.value : this.roleId,
+      roleName: data.roleName.present ? data.roleName.value : this.roleName,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
-      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       syncStatus: data.syncStatus.present
           ? data.syncStatus.value
           : this.syncStatus,
@@ -13017,19 +12751,14 @@ class EmployeeRow extends DataClass implements Insertable<EmployeeRow> {
     return (StringBuffer('EmployeeRow(')
           ..write('id: $id, ')
           ..write('businessId: $businessId, ')
-          ..write('branchId: $branchId, ')
+          ..write('userId: $userId, ')
           ..write('authUserId: $authUserId, ')
-          ..write('employeeCode: $employeeCode, ')
           ..write('fullName: $fullName, ')
-          ..write('email: $email, ')
-          ..write('phone: $phone, ')
-          ..write('role: $role, ')
-          ..write('status: $status, ')
-          ..write('profileImageUrl: $profileImageUrl, ')
-          ..write('hiredAt: $hiredAt, ')
-          ..write('archivedAt: $archivedAt, ')
+          ..write('roleId: $roleId, ')
+          ..write('roleName: $roleName, ')
+          ..write('branchId: $branchId, ')
+          ..write('isActive: $isActive, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('lastSyncAttempt: $lastSyncAttempt, ')
           ..write('syncError: $syncError')
@@ -13041,19 +12770,14 @@ class EmployeeRow extends DataClass implements Insertable<EmployeeRow> {
   int get hashCode => Object.hash(
     id,
     businessId,
-    branchId,
+    userId,
     authUserId,
-    employeeCode,
     fullName,
-    email,
-    phone,
-    role,
-    status,
-    profileImageUrl,
-    hiredAt,
-    archivedAt,
+    roleId,
+    roleName,
+    branchId,
+    isActive,
     createdAt,
-    updatedAt,
     syncStatus,
     lastSyncAttempt,
     syncError,
@@ -13064,19 +12788,14 @@ class EmployeeRow extends DataClass implements Insertable<EmployeeRow> {
       (other is EmployeeRow &&
           other.id == this.id &&
           other.businessId == this.businessId &&
-          other.branchId == this.branchId &&
+          other.userId == this.userId &&
           other.authUserId == this.authUserId &&
-          other.employeeCode == this.employeeCode &&
           other.fullName == this.fullName &&
-          other.email == this.email &&
-          other.phone == this.phone &&
-          other.role == this.role &&
-          other.status == this.status &&
-          other.profileImageUrl == this.profileImageUrl &&
-          other.hiredAt == this.hiredAt &&
-          other.archivedAt == this.archivedAt &&
+          other.roleId == this.roleId &&
+          other.roleName == this.roleName &&
+          other.branchId == this.branchId &&
+          other.isActive == this.isActive &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt &&
           other.syncStatus == this.syncStatus &&
           other.lastSyncAttempt == this.lastSyncAttempt &&
           other.syncError == this.syncError);
@@ -13085,19 +12804,14 @@ class EmployeeRow extends DataClass implements Insertable<EmployeeRow> {
 class EmployeesTableCompanion extends UpdateCompanion<EmployeeRow> {
   final Value<String> id;
   final Value<String> businessId;
-  final Value<String> branchId;
+  final Value<String?> userId;
   final Value<String?> authUserId;
-  final Value<String> employeeCode;
-  final Value<String> fullName;
-  final Value<String> email;
-  final Value<String?> phone;
-  final Value<String> role;
-  final Value<String> status;
-  final Value<String?> profileImageUrl;
-  final Value<DateTime> hiredAt;
-  final Value<DateTime?> archivedAt;
-  final Value<DateTime> createdAt;
-  final Value<DateTime> updatedAt;
+  final Value<String?> fullName;
+  final Value<String?> roleId;
+  final Value<String?> roleName;
+  final Value<String?> branchId;
+  final Value<bool> isActive;
+  final Value<DateTime?> createdAt;
   final Value<int> syncStatus;
   final Value<DateTime?> lastSyncAttempt;
   final Value<String?> syncError;
@@ -13105,19 +12819,14 @@ class EmployeesTableCompanion extends UpdateCompanion<EmployeeRow> {
   const EmployeesTableCompanion({
     this.id = const Value.absent(),
     this.businessId = const Value.absent(),
-    this.branchId = const Value.absent(),
+    this.userId = const Value.absent(),
     this.authUserId = const Value.absent(),
-    this.employeeCode = const Value.absent(),
     this.fullName = const Value.absent(),
-    this.email = const Value.absent(),
-    this.phone = const Value.absent(),
-    this.role = const Value.absent(),
-    this.status = const Value.absent(),
-    this.profileImageUrl = const Value.absent(),
-    this.hiredAt = const Value.absent(),
-    this.archivedAt = const Value.absent(),
+    this.roleId = const Value.absent(),
+    this.roleName = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.isActive = const Value.absent(),
     this.createdAt = const Value.absent(),
-    this.updatedAt = const Value.absent(),
     this.syncStatus = const Value.absent(),
     this.lastSyncAttempt = const Value.absent(),
     this.syncError = const Value.absent(),
@@ -13126,47 +12835,31 @@ class EmployeesTableCompanion extends UpdateCompanion<EmployeeRow> {
   EmployeesTableCompanion.insert({
     required String id,
     required String businessId,
-    required String branchId,
+    this.userId = const Value.absent(),
     this.authUserId = const Value.absent(),
-    required String employeeCode,
-    required String fullName,
-    required String email,
-    this.phone = const Value.absent(),
-    required String role,
-    this.status = const Value.absent(),
-    this.profileImageUrl = const Value.absent(),
-    required DateTime hiredAt,
-    this.archivedAt = const Value.absent(),
+    this.fullName = const Value.absent(),
+    this.roleId = const Value.absent(),
+    this.roleName = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.isActive = const Value.absent(),
     this.createdAt = const Value.absent(),
-    this.updatedAt = const Value.absent(),
     this.syncStatus = const Value.absent(),
     this.lastSyncAttempt = const Value.absent(),
     this.syncError = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
-       businessId = Value(businessId),
-       branchId = Value(branchId),
-       employeeCode = Value(employeeCode),
-       fullName = Value(fullName),
-       email = Value(email),
-       role = Value(role),
-       hiredAt = Value(hiredAt);
+       businessId = Value(businessId);
   static Insertable<EmployeeRow> custom({
     Expression<String>? id,
     Expression<String>? businessId,
-    Expression<String>? branchId,
+    Expression<String>? userId,
     Expression<String>? authUserId,
-    Expression<String>? employeeCode,
     Expression<String>? fullName,
-    Expression<String>? email,
-    Expression<String>? phone,
-    Expression<String>? role,
-    Expression<String>? status,
-    Expression<String>? profileImageUrl,
-    Expression<DateTime>? hiredAt,
-    Expression<DateTime>? archivedAt,
+    Expression<String>? roleId,
+    Expression<String>? roleName,
+    Expression<String>? branchId,
+    Expression<bool>? isActive,
     Expression<DateTime>? createdAt,
-    Expression<DateTime>? updatedAt,
     Expression<int>? syncStatus,
     Expression<DateTime>? lastSyncAttempt,
     Expression<String>? syncError,
@@ -13175,19 +12868,14 @@ class EmployeesTableCompanion extends UpdateCompanion<EmployeeRow> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (businessId != null) 'business_id': businessId,
-      if (branchId != null) 'branch_id': branchId,
+      if (userId != null) 'user_id': userId,
       if (authUserId != null) 'auth_user_id': authUserId,
-      if (employeeCode != null) 'employee_code': employeeCode,
       if (fullName != null) 'full_name': fullName,
-      if (email != null) 'email': email,
-      if (phone != null) 'phone': phone,
-      if (role != null) 'role': role,
-      if (status != null) 'status': status,
-      if (profileImageUrl != null) 'profile_image_url': profileImageUrl,
-      if (hiredAt != null) 'hired_at': hiredAt,
-      if (archivedAt != null) 'archived_at': archivedAt,
+      if (roleId != null) 'role_id': roleId,
+      if (roleName != null) 'role_name': roleName,
+      if (branchId != null) 'branch_id': branchId,
+      if (isActive != null) 'is_active': isActive,
       if (createdAt != null) 'created_at': createdAt,
-      if (updatedAt != null) 'updated_at': updatedAt,
       if (syncStatus != null) 'sync_status': syncStatus,
       if (lastSyncAttempt != null) 'last_sync_attempt': lastSyncAttempt,
       if (syncError != null) 'sync_error': syncError,
@@ -13198,19 +12886,14 @@ class EmployeesTableCompanion extends UpdateCompanion<EmployeeRow> {
   EmployeesTableCompanion copyWith({
     Value<String>? id,
     Value<String>? businessId,
-    Value<String>? branchId,
+    Value<String?>? userId,
     Value<String?>? authUserId,
-    Value<String>? employeeCode,
-    Value<String>? fullName,
-    Value<String>? email,
-    Value<String?>? phone,
-    Value<String>? role,
-    Value<String>? status,
-    Value<String?>? profileImageUrl,
-    Value<DateTime>? hiredAt,
-    Value<DateTime?>? archivedAt,
-    Value<DateTime>? createdAt,
-    Value<DateTime>? updatedAt,
+    Value<String?>? fullName,
+    Value<String?>? roleId,
+    Value<String?>? roleName,
+    Value<String?>? branchId,
+    Value<bool>? isActive,
+    Value<DateTime?>? createdAt,
     Value<int>? syncStatus,
     Value<DateTime?>? lastSyncAttempt,
     Value<String?>? syncError,
@@ -13219,19 +12902,14 @@ class EmployeesTableCompanion extends UpdateCompanion<EmployeeRow> {
     return EmployeesTableCompanion(
       id: id ?? this.id,
       businessId: businessId ?? this.businessId,
-      branchId: branchId ?? this.branchId,
+      userId: userId ?? this.userId,
       authUserId: authUserId ?? this.authUserId,
-      employeeCode: employeeCode ?? this.employeeCode,
       fullName: fullName ?? this.fullName,
-      email: email ?? this.email,
-      phone: phone ?? this.phone,
-      role: role ?? this.role,
-      status: status ?? this.status,
-      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
-      hiredAt: hiredAt ?? this.hiredAt,
-      archivedAt: archivedAt ?? this.archivedAt,
+      roleId: roleId ?? this.roleId,
+      roleName: roleName ?? this.roleName,
+      branchId: branchId ?? this.branchId,
+      isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
       syncStatus: syncStatus ?? this.syncStatus,
       lastSyncAttempt: lastSyncAttempt ?? this.lastSyncAttempt,
       syncError: syncError ?? this.syncError,
@@ -13248,44 +12926,29 @@ class EmployeesTableCompanion extends UpdateCompanion<EmployeeRow> {
     if (businessId.present) {
       map['business_id'] = Variable<String>(businessId.value);
     }
-    if (branchId.present) {
-      map['branch_id'] = Variable<String>(branchId.value);
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
     }
     if (authUserId.present) {
       map['auth_user_id'] = Variable<String>(authUserId.value);
     }
-    if (employeeCode.present) {
-      map['employee_code'] = Variable<String>(employeeCode.value);
-    }
     if (fullName.present) {
       map['full_name'] = Variable<String>(fullName.value);
     }
-    if (email.present) {
-      map['email'] = Variable<String>(email.value);
+    if (roleId.present) {
+      map['role_id'] = Variable<String>(roleId.value);
     }
-    if (phone.present) {
-      map['phone'] = Variable<String>(phone.value);
+    if (roleName.present) {
+      map['role_name'] = Variable<String>(roleName.value);
     }
-    if (role.present) {
-      map['role'] = Variable<String>(role.value);
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
     }
-    if (status.present) {
-      map['status'] = Variable<String>(status.value);
-    }
-    if (profileImageUrl.present) {
-      map['profile_image_url'] = Variable<String>(profileImageUrl.value);
-    }
-    if (hiredAt.present) {
-      map['hired_at'] = Variable<DateTime>(hiredAt.value);
-    }
-    if (archivedAt.present) {
-      map['archived_at'] = Variable<DateTime>(archivedAt.value);
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
-    }
-    if (updatedAt.present) {
-      map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
     if (syncStatus.present) {
       map['sync_status'] = Variable<int>(syncStatus.value);
@@ -13307,19 +12970,14 @@ class EmployeesTableCompanion extends UpdateCompanion<EmployeeRow> {
     return (StringBuffer('EmployeesTableCompanion(')
           ..write('id: $id, ')
           ..write('businessId: $businessId, ')
-          ..write('branchId: $branchId, ')
+          ..write('userId: $userId, ')
           ..write('authUserId: $authUserId, ')
-          ..write('employeeCode: $employeeCode, ')
           ..write('fullName: $fullName, ')
-          ..write('email: $email, ')
-          ..write('phone: $phone, ')
-          ..write('role: $role, ')
-          ..write('status: $status, ')
-          ..write('profileImageUrl: $profileImageUrl, ')
-          ..write('hiredAt: $hiredAt, ')
-          ..write('archivedAt: $archivedAt, ')
+          ..write('roleId: $roleId, ')
+          ..write('roleName: $roleName, ')
+          ..write('branchId: $branchId, ')
+          ..write('isActive: $isActive, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('lastSyncAttempt: $lastSyncAttempt, ')
           ..write('syncError: $syncError, ')
@@ -14761,9 +14419,7 @@ typedef $$BranchesTableTableCreateCompanionBuilder =
       required String id,
       required String businessId,
       required String name,
-      Value<String?> address,
-      Value<String?> phone,
-      Value<bool> isActive,
+      Value<String?> location,
       Value<int> syncStatus,
       Value<DateTime?> lastSyncAttempt,
       Value<String?> syncError,
@@ -14775,9 +14431,7 @@ typedef $$BranchesTableTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> businessId,
       Value<String> name,
-      Value<String?> address,
-      Value<String?> phone,
-      Value<bool> isActive,
+      Value<String?> location,
       Value<int> syncStatus,
       Value<DateTime?> lastSyncAttempt,
       Value<String?> syncError,
@@ -14809,18 +14463,8 @@ class $$BranchesTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get address => $composableBuilder(
-    column: $table.address,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get phone => $composableBuilder(
-    column: $table.phone,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<bool> get isActive => $composableBuilder(
-    column: $table.isActive,
+  ColumnFilters<String> get location => $composableBuilder(
+    column: $table.location,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -14869,18 +14513,8 @@ class $$BranchesTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get address => $composableBuilder(
-    column: $table.address,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get phone => $composableBuilder(
-    column: $table.phone,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<bool> get isActive => $composableBuilder(
-    column: $table.isActive,
+  ColumnOrderings<String> get location => $composableBuilder(
+    column: $table.location,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -14925,14 +14559,8 @@ class $$BranchesTableTableAnnotationComposer
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
 
-  GeneratedColumn<String> get address =>
-      $composableBuilder(column: $table.address, builder: (column) => column);
-
-  GeneratedColumn<String> get phone =>
-      $composableBuilder(column: $table.phone, builder: (column) => column);
-
-  GeneratedColumn<bool> get isActive =>
-      $composableBuilder(column: $table.isActive, builder: (column) => column);
+  GeneratedColumn<String> get location =>
+      $composableBuilder(column: $table.location, builder: (column) => column);
 
   GeneratedColumn<int> get syncStatus => $composableBuilder(
     column: $table.syncStatus,
@@ -14991,9 +14619,7 @@ class $$BranchesTableTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> businessId = const Value.absent(),
                 Value<String> name = const Value.absent(),
-                Value<String?> address = const Value.absent(),
-                Value<String?> phone = const Value.absent(),
-                Value<bool> isActive = const Value.absent(),
+                Value<String?> location = const Value.absent(),
                 Value<int> syncStatus = const Value.absent(),
                 Value<DateTime?> lastSyncAttempt = const Value.absent(),
                 Value<String?> syncError = const Value.absent(),
@@ -15003,9 +14629,7 @@ class $$BranchesTableTableTableManager
                 id: id,
                 businessId: businessId,
                 name: name,
-                address: address,
-                phone: phone,
-                isActive: isActive,
+                location: location,
                 syncStatus: syncStatus,
                 lastSyncAttempt: lastSyncAttempt,
                 syncError: syncError,
@@ -15017,9 +14641,7 @@ class $$BranchesTableTableTableManager
                 required String id,
                 required String businessId,
                 required String name,
-                Value<String?> address = const Value.absent(),
-                Value<String?> phone = const Value.absent(),
-                Value<bool> isActive = const Value.absent(),
+                Value<String?> location = const Value.absent(),
                 Value<int> syncStatus = const Value.absent(),
                 Value<DateTime?> lastSyncAttempt = const Value.absent(),
                 Value<String?> syncError = const Value.absent(),
@@ -15029,9 +14651,7 @@ class $$BranchesTableTableTableManager
                 id: id,
                 businessId: businessId,
                 name: name,
-                address: address,
-                phone: phone,
-                isActive: isActive,
+                location: location,
                 syncStatus: syncStatus,
                 lastSyncAttempt: lastSyncAttempt,
                 syncError: syncError,
@@ -19581,19 +19201,14 @@ typedef $$EmployeesTableTableCreateCompanionBuilder =
     EmployeesTableCompanion Function({
       required String id,
       required String businessId,
-      required String branchId,
+      Value<String?> userId,
       Value<String?> authUserId,
-      required String employeeCode,
-      required String fullName,
-      required String email,
-      Value<String?> phone,
-      required String role,
-      Value<String> status,
-      Value<String?> profileImageUrl,
-      required DateTime hiredAt,
-      Value<DateTime?> archivedAt,
-      Value<DateTime> createdAt,
-      Value<DateTime> updatedAt,
+      Value<String?> fullName,
+      Value<String?> roleId,
+      Value<String?> roleName,
+      Value<String?> branchId,
+      Value<bool> isActive,
+      Value<DateTime?> createdAt,
       Value<int> syncStatus,
       Value<DateTime?> lastSyncAttempt,
       Value<String?> syncError,
@@ -19603,19 +19218,14 @@ typedef $$EmployeesTableTableUpdateCompanionBuilder =
     EmployeesTableCompanion Function({
       Value<String> id,
       Value<String> businessId,
-      Value<String> branchId,
+      Value<String?> userId,
       Value<String?> authUserId,
-      Value<String> employeeCode,
-      Value<String> fullName,
-      Value<String> email,
-      Value<String?> phone,
-      Value<String> role,
-      Value<String> status,
-      Value<String?> profileImageUrl,
-      Value<DateTime> hiredAt,
-      Value<DateTime?> archivedAt,
-      Value<DateTime> createdAt,
-      Value<DateTime> updatedAt,
+      Value<String?> fullName,
+      Value<String?> roleId,
+      Value<String?> roleName,
+      Value<String?> branchId,
+      Value<bool> isActive,
+      Value<DateTime?> createdAt,
       Value<int> syncStatus,
       Value<DateTime?> lastSyncAttempt,
       Value<String?> syncError,
@@ -19641,8 +19251,8 @@ class $$EmployeesTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get branchId => $composableBuilder(
-    column: $table.branchId,
+  ColumnFilters<String> get userId => $composableBuilder(
+    column: $table.userId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -19651,58 +19261,33 @@ class $$EmployeesTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get employeeCode => $composableBuilder(
-    column: $table.employeeCode,
-    builder: (column) => ColumnFilters(column),
-  );
-
   ColumnFilters<String> get fullName => $composableBuilder(
     column: $table.fullName,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get email => $composableBuilder(
-    column: $table.email,
+  ColumnFilters<String> get roleId => $composableBuilder(
+    column: $table.roleId,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get phone => $composableBuilder(
-    column: $table.phone,
+  ColumnFilters<String> get roleName => $composableBuilder(
+    column: $table.roleName,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get role => $composableBuilder(
-    column: $table.role,
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get status => $composableBuilder(
-    column: $table.status,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get profileImageUrl => $composableBuilder(
-    column: $table.profileImageUrl,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get hiredAt => $composableBuilder(
-    column: $table.hiredAt,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get archivedAt => $composableBuilder(
-    column: $table.archivedAt,
+  ColumnFilters<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
     builder: (column) => ColumnFilters(column),
   );
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
-    column: $table.updatedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -19741,8 +19326,8 @@ class $$EmployeesTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get branchId => $composableBuilder(
-    column: $table.branchId,
+  ColumnOrderings<String> get userId => $composableBuilder(
+    column: $table.userId,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -19751,58 +19336,33 @@ class $$EmployeesTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get employeeCode => $composableBuilder(
-    column: $table.employeeCode,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<String> get fullName => $composableBuilder(
     column: $table.fullName,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get email => $composableBuilder(
-    column: $table.email,
+  ColumnOrderings<String> get roleId => $composableBuilder(
+    column: $table.roleId,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get phone => $composableBuilder(
-    column: $table.phone,
+  ColumnOrderings<String> get roleName => $composableBuilder(
+    column: $table.roleName,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get role => $composableBuilder(
-    column: $table.role,
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get status => $composableBuilder(
-    column: $table.status,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get profileImageUrl => $composableBuilder(
-    column: $table.profileImageUrl,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get hiredAt => $composableBuilder(
-    column: $table.hiredAt,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get archivedAt => $composableBuilder(
-    column: $table.archivedAt,
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
     builder: (column) => ColumnOrderings(column),
   );
 
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
-    column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -19839,52 +19399,31 @@ class $$EmployeesTableTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get branchId =>
-      $composableBuilder(column: $table.branchId, builder: (column) => column);
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
 
   GeneratedColumn<String> get authUserId => $composableBuilder(
     column: $table.authUserId,
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get employeeCode => $composableBuilder(
-    column: $table.employeeCode,
-    builder: (column) => column,
-  );
-
   GeneratedColumn<String> get fullName =>
       $composableBuilder(column: $table.fullName, builder: (column) => column);
 
-  GeneratedColumn<String> get email =>
-      $composableBuilder(column: $table.email, builder: (column) => column);
+  GeneratedColumn<String> get roleId =>
+      $composableBuilder(column: $table.roleId, builder: (column) => column);
 
-  GeneratedColumn<String> get phone =>
-      $composableBuilder(column: $table.phone, builder: (column) => column);
+  GeneratedColumn<String> get roleName =>
+      $composableBuilder(column: $table.roleName, builder: (column) => column);
 
-  GeneratedColumn<String> get role =>
-      $composableBuilder(column: $table.role, builder: (column) => column);
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
 
-  GeneratedColumn<String> get status =>
-      $composableBuilder(column: $table.status, builder: (column) => column);
-
-  GeneratedColumn<String> get profileImageUrl => $composableBuilder(
-    column: $table.profileImageUrl,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<DateTime> get hiredAt =>
-      $composableBuilder(column: $table.hiredAt, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get archivedAt => $composableBuilder(
-    column: $table.archivedAt,
-    builder: (column) => column,
-  );
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get updatedAt =>
-      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 
   GeneratedColumn<int> get syncStatus => $composableBuilder(
     column: $table.syncStatus,
@@ -19935,19 +19474,14 @@ class $$EmployeesTableTableTableManager
               ({
                 Value<String> id = const Value.absent(),
                 Value<String> businessId = const Value.absent(),
-                Value<String> branchId = const Value.absent(),
+                Value<String?> userId = const Value.absent(),
                 Value<String?> authUserId = const Value.absent(),
-                Value<String> employeeCode = const Value.absent(),
-                Value<String> fullName = const Value.absent(),
-                Value<String> email = const Value.absent(),
-                Value<String?> phone = const Value.absent(),
-                Value<String> role = const Value.absent(),
-                Value<String> status = const Value.absent(),
-                Value<String?> profileImageUrl = const Value.absent(),
-                Value<DateTime> hiredAt = const Value.absent(),
-                Value<DateTime?> archivedAt = const Value.absent(),
-                Value<DateTime> createdAt = const Value.absent(),
-                Value<DateTime> updatedAt = const Value.absent(),
+                Value<String?> fullName = const Value.absent(),
+                Value<String?> roleId = const Value.absent(),
+                Value<String?> roleName = const Value.absent(),
+                Value<String?> branchId = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<DateTime?> createdAt = const Value.absent(),
                 Value<int> syncStatus = const Value.absent(),
                 Value<DateTime?> lastSyncAttempt = const Value.absent(),
                 Value<String?> syncError = const Value.absent(),
@@ -19955,19 +19489,14 @@ class $$EmployeesTableTableTableManager
               }) => EmployeesTableCompanion(
                 id: id,
                 businessId: businessId,
-                branchId: branchId,
+                userId: userId,
                 authUserId: authUserId,
-                employeeCode: employeeCode,
                 fullName: fullName,
-                email: email,
-                phone: phone,
-                role: role,
-                status: status,
-                profileImageUrl: profileImageUrl,
-                hiredAt: hiredAt,
-                archivedAt: archivedAt,
+                roleId: roleId,
+                roleName: roleName,
+                branchId: branchId,
+                isActive: isActive,
                 createdAt: createdAt,
-                updatedAt: updatedAt,
                 syncStatus: syncStatus,
                 lastSyncAttempt: lastSyncAttempt,
                 syncError: syncError,
@@ -19977,19 +19506,14 @@ class $$EmployeesTableTableTableManager
               ({
                 required String id,
                 required String businessId,
-                required String branchId,
+                Value<String?> userId = const Value.absent(),
                 Value<String?> authUserId = const Value.absent(),
-                required String employeeCode,
-                required String fullName,
-                required String email,
-                Value<String?> phone = const Value.absent(),
-                required String role,
-                Value<String> status = const Value.absent(),
-                Value<String?> profileImageUrl = const Value.absent(),
-                required DateTime hiredAt,
-                Value<DateTime?> archivedAt = const Value.absent(),
-                Value<DateTime> createdAt = const Value.absent(),
-                Value<DateTime> updatedAt = const Value.absent(),
+                Value<String?> fullName = const Value.absent(),
+                Value<String?> roleId = const Value.absent(),
+                Value<String?> roleName = const Value.absent(),
+                Value<String?> branchId = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<DateTime?> createdAt = const Value.absent(),
                 Value<int> syncStatus = const Value.absent(),
                 Value<DateTime?> lastSyncAttempt = const Value.absent(),
                 Value<String?> syncError = const Value.absent(),
@@ -19997,19 +19521,14 @@ class $$EmployeesTableTableTableManager
               }) => EmployeesTableCompanion.insert(
                 id: id,
                 businessId: businessId,
-                branchId: branchId,
+                userId: userId,
                 authUserId: authUserId,
-                employeeCode: employeeCode,
                 fullName: fullName,
-                email: email,
-                phone: phone,
-                role: role,
-                status: status,
-                profileImageUrl: profileImageUrl,
-                hiredAt: hiredAt,
-                archivedAt: archivedAt,
+                roleId: roleId,
+                roleName: roleName,
+                branchId: branchId,
+                isActive: isActive,
                 createdAt: createdAt,
-                updatedAt: updatedAt,
                 syncStatus: syncStatus,
                 lastSyncAttempt: lastSyncAttempt,
                 syncError: syncError,

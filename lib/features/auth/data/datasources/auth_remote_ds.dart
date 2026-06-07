@@ -321,7 +321,6 @@ class AuthRemoteDs {
                 .from('branches')
                 .select('id, name')
                 .eq('business_id', businessId)
-                .eq('is_active', true)
                 .order('id', ascending: true)
                 .limit(1),
           );
@@ -337,7 +336,6 @@ class AuthRemoteDs {
                     'id': const Uuid().v4(),
                     'business_id': businessId,
                     'name': 'Main Branch',
-                    'is_active': true,
                   })
                   .select('id, name')
                   .single(),

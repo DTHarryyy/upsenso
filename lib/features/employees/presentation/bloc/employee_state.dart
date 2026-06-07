@@ -19,8 +19,13 @@ class EmployeeLoaded extends EmployeeState {
   final List<Employee> allEmployees;
   final List<Employee> displayEmployees;
   final String searchQuery;
-  final EmployeeRole? roleFilter;
-  final EmployeeStatus? statusFilter;
+
+  /// Filter by role name string. Null = all roles.
+  final String? roleFilter;
+
+  /// Filter by active status. Null = all.
+  final bool? isActiveFilter;
+
   final String? branchFilter;
 
   const EmployeeLoaded({
@@ -28,23 +33,17 @@ class EmployeeLoaded extends EmployeeState {
     required this.displayEmployees,
     this.searchQuery = '',
     this.roleFilter,
-    this.statusFilter,
+    this.isActiveFilter,
     this.branchFilter,
   });
 
-  int get activeCount =>
-      allEmployees.where((e) => e.status == EmployeeStatus.active).length;
-
-  int get suspendedCount =>
-      allEmployees.where((e) => e.status == EmployeeStatus.suspended).length;
-
-  int get archivedCount =>
-      allEmployees.where((e) => e.status == EmployeeStatus.archived).length;
+  int get activeCount => allEmployees.where((e) => e.isActive).length;
+  int get inactiveCount => allEmployees.where((e) => !e.isActive).length;
 
   bool get hasActiveFilters =>
       searchQuery.isNotEmpty ||
       roleFilter != null ||
-      statusFilter != null ||
+      isActiveFilter != null ||
       branchFilter != null;
 
   EmployeeLoaded copyWith({
@@ -52,7 +51,7 @@ class EmployeeLoaded extends EmployeeState {
     List<Employee>? displayEmployees,
     String? searchQuery,
     Object? roleFilter = _sentinel,
-    Object? statusFilter = _sentinel,
+    Object? isActiveFilter = _sentinel,
     Object? branchFilter = _sentinel,
   }) {
     return EmployeeLoaded(
@@ -61,10 +60,10 @@ class EmployeeLoaded extends EmployeeState {
       searchQuery: searchQuery ?? this.searchQuery,
       roleFilter: identical(roleFilter, _sentinel)
           ? this.roleFilter
-          : roleFilter as EmployeeRole?,
-      statusFilter: identical(statusFilter, _sentinel)
-          ? this.statusFilter
-          : statusFilter as EmployeeStatus?,
+          : roleFilter as String?,
+      isActiveFilter: identical(isActiveFilter, _sentinel)
+          ? this.isActiveFilter
+          : isActiveFilter as bool?,
       branchFilter: identical(branchFilter, _sentinel)
           ? this.branchFilter
           : branchFilter as String?,
@@ -88,11 +87,6 @@ class EmployeeError extends EmployeeState {
   List<Object?> get props => [message];
 }
 
-/// Emitted when creation or update is rejected because a duplicate value
-/// (email, phone) was detected in the local database.
-///
-/// [fieldErrors] maps each conflicting field name to a human-readable message.
-/// [loaded] preserves the previous list state so the page does not go blank.
 class EmployeeValidationFailure extends EmployeeState {
   final Map<String, String> fieldErrors;
   final EmployeeLoaded? loaded;
@@ -102,7 +96,6 @@ class EmployeeValidationFailure extends EmployeeState {
     this.loaded,
   });
 
-  /// The first conflict message, suitable for a snackbar / toast.
   String get firstMessage => fieldErrors.values.first;
 
   @override

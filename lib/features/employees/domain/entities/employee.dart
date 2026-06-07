@@ -1,96 +1,58 @@
-/// Business role of an employee (display-layer roles).
-enum EmployeeRole { owner, branchManager, cashier, inventoryStaff }
-
-/// Lifecycle status of an employee record.
-enum EmployeeStatus { active, suspended, archived }
-
 class Employee {
   final String id;
   final String businessId;
-  final String branchId;
-
-  /// Nullable – employee identity is decoupled from auth accounts.
+  final String? userId;
   final String? authUserId;
-
-  final String employeeCode;
   final String fullName;
-  final String email;
-  final String? phone;
-  final EmployeeRole role;
-  final EmployeeStatus status;
-  final String? profileImageUrl;
-  final DateTime hiredAt;
-  final DateTime? archivedAt;
-  final DateTime createdAt;
-  final DateTime updatedAt;
+  final String? roleId;
+  final String? roleName;
+  final String? branchId;
+  final bool isActive;
+  final DateTime? createdAt;
 
   const Employee({
     required this.id,
     required this.businessId,
-    required this.branchId,
+    this.userId,
     this.authUserId,
-    required this.employeeCode,
     required this.fullName,
-    required this.email,
-    this.phone,
-    required this.role,
-    required this.status,
-    this.profileImageUrl,
-    required this.hiredAt,
-    this.archivedAt,
-    required this.createdAt,
-    required this.updatedAt,
+    this.roleId,
+    this.roleName,
+    this.branchId,
+    this.isActive = true,
+    this.createdAt,
   });
 
   Employee copyWith({
     String? fullName,
-    String? email,
-    String? phone,
+    String? roleId,
+    String? roleName,
     String? branchId,
-    EmployeeRole? role,
-    EmployeeStatus? status,
-    String? profileImageUrl,
-    DateTime? archivedAt,
-    DateTime? updatedAt,
+    bool? isActive,
   }) {
     return Employee(
       id: id,
       businessId: businessId,
-      branchId: branchId ?? this.branchId,
+      userId: userId,
       authUserId: authUserId,
-      employeeCode: employeeCode,
       fullName: fullName ?? this.fullName,
-      email: email ?? this.email,
-      phone: phone ?? this.phone,
-      role: role ?? this.role,
-      status: status ?? this.status,
-      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
-      hiredAt: hiredAt,
-      archivedAt: archivedAt ?? this.archivedAt,
+      roleId: roleId ?? this.roleId,
+      roleName: roleName ?? this.roleName,
+      branchId: branchId ?? this.branchId,
+      isActive: isActive ?? this.isActive,
       createdAt: createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 }
 
-extension EmployeeRoleX on EmployeeRole {
-  String get dbValue {
-    switch (this) {
-      case EmployeeRole.owner:
-        return 'owner';
-      case EmployeeRole.branchManager:
-        return 'branch_manager';
-      case EmployeeRole.cashier:
-        return 'cashier';
-      case EmployeeRole.inventoryStaff:
-        return 'inventory_staff';
-    }
-  }
+/// Kept for display/UI purposes only — role identity on the server is a UUID.
+enum EmployeeRole { superAdmin, branchManager, cashier, inventoryStaff }
 
+extension EmployeeRoleX on EmployeeRole {
   String get displayName {
     switch (this) {
-      case EmployeeRole.owner:
-        return 'Owner';
+      case EmployeeRole.superAdmin:
+        return 'Super Admin';
       case EmployeeRole.branchManager:
         return 'Branch Manager';
       case EmployeeRole.cashier:
@@ -100,55 +62,20 @@ extension EmployeeRoleX on EmployeeRole {
     }
   }
 
-  static EmployeeRole fromDb(String value) {
-    switch (value) {
+  static EmployeeRole fromRoleName(String? name) {
+    switch (name?.toLowerCase().trim()) {
+      case 'super admin':
+      case 'superadmin':
       case 'owner':
-        return EmployeeRole.owner;
-      case 'branch_manager':
+        return EmployeeRole.superAdmin;
+      case 'branch manager':
         return EmployeeRole.branchManager;
       case 'cashier':
         return EmployeeRole.cashier;
-      case 'inventory_staff':
+      case 'inventory staff':
         return EmployeeRole.inventoryStaff;
       default:
         return EmployeeRole.cashier;
-    }
-  }
-}
-
-extension EmployeeStatusX on EmployeeStatus {
-  String get dbValue {
-    switch (this) {
-      case EmployeeStatus.active:
-        return 'active';
-      case EmployeeStatus.suspended:
-        return 'suspended';
-      case EmployeeStatus.archived:
-        return 'archived';
-    }
-  }
-
-  String get displayName {
-    switch (this) {
-      case EmployeeStatus.active:
-        return 'Active';
-      case EmployeeStatus.suspended:
-        return 'Suspended';
-      case EmployeeStatus.archived:
-        return 'Archived';
-    }
-  }
-
-  static EmployeeStatus fromDb(String value) {
-    switch (value) {
-      case 'active':
-        return EmployeeStatus.active;
-      case 'suspended':
-        return EmployeeStatus.suspended;
-      case 'archived':
-        return EmployeeStatus.archived;
-      default:
-        return EmployeeStatus.active;
     }
   }
 }

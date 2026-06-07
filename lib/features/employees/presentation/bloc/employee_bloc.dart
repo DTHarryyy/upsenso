@@ -14,10 +14,9 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
   StreamSubscription<List<Employee>>? _watcher;
   String? _businessId;
 
-  // Local filter state
   String _searchQuery = '';
-  EmployeeRole? _roleFilter;
-  EmployeeStatus? _statusFilter;
+  String? _roleFilter;
+  bool? _isActiveFilter;
   String? _branchFilter;
 
   EmployeeBloc(this._repository) : super(const EmployeeInitial()) {
@@ -77,7 +76,7 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
           displayEmployees: filtered,
           searchQuery: _searchQuery,
           roleFilter: _roleFilter,
-          statusFilter: _statusFilter,
+          isActiveFilter: _isActiveFilter,
           branchFilter: _branchFilter,
         ),
       );
@@ -94,13 +93,9 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
         branchId: event.branchId,
         fullName: event.fullName,
         email: event.email,
-        phone: event.phone,
-        role: event.role,
-        hiredAt: event.hiredAt,
         password: event.password,
-        profileImageUrl: event.profileImageUrl,
+        roleId: event.roleId,
       );
-      // Stream watcher will re-emit loaded state automatically.
     } on EmployeeDuplicateException catch (e) {
       emit(EmployeeValidationFailure(fieldErrors: e.fieldErrors, loaded: current));
     } catch (e) {
@@ -119,11 +114,9 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
       await _repository.updateEmployee(
         id: event.id,
         fullName: event.fullName,
-        email: event.email,
-        phone: event.phone,
+        roleId: event.roleId,
         branchId: event.branchId,
-        role: event.role,
-        profileImageUrl: event.profileImageUrl,
+        isActive: event.isActive,
       );
     } on EmployeeDuplicateException catch (e) {
       emit(EmployeeValidationFailure(fieldErrors: e.fieldErrors, loaded: current));
@@ -181,7 +174,7 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
 
   void _onFilter(FilterEmployees event, Emitter<EmployeeState> emit) {
     _roleFilter = event.roleFilter;
-    _statusFilter = event.statusFilter;
+    _isActiveFilter = event.isActiveFilter;
     _branchFilter = event.branchFilter;
     _rebuildDisplay(emit);
   }
@@ -192,7 +185,7 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
   ) {
     _searchQuery = '';
     _roleFilter = null;
-    _statusFilter = null;
+    _isActiveFilter = null;
     _branchFilter = null;
     _rebuildDisplay(emit);
   }
@@ -215,7 +208,7 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
         displayEmployees: filtered,
         searchQuery: _searchQuery,
         roleFilter: _roleFilter,
-        statusFilter: _statusFilter,
+        isActiveFilter: _isActiveFilter,
         branchFilter: _branchFilter,
       ),
     );
@@ -224,15 +217,12 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
   List<Employee> _filter(List<Employee> employees) {
     return employees.where((e) {
       final q = _searchQuery.toLowerCase();
-      if (q.isNotEmpty) {
-        if (!e.fullName.toLowerCase().contains(q) &&
-            !e.email.toLowerCase().contains(q) &&
-            !e.employeeCode.toLowerCase().contains(q)) {
-          return false;
-        }
+      if (q.isNotEmpty && !e.fullName.toLowerCase().contains(q)) return false;
+      if (_roleFilter != null &&
+          (e.roleName?.toLowerCase() != _roleFilter!.toLowerCase())) {
+        return false;
       }
-      if (_roleFilter != null && e.role != _roleFilter) return false;
-      if (_statusFilter != null && e.status != _statusFilter) return false;
+      if (_isActiveFilter != null && e.isActive != _isActiveFilter) return false;
       if (_branchFilter != null && e.branchId != _branchFilter) return false;
       return true;
     }).toList();

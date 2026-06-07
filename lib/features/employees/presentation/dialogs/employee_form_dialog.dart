@@ -24,8 +24,6 @@ import 'package:pos/features/employees/presentation/bloc/employee_state.dart';
 /// allow all roles (Super Admin / Owner behaviour).
 ///
 /// [lockedBranchId] forces a specific branch and hides the branch picker.
-/// Pass the branch manager's assigned branch so new employees are always
-/// added to the correct branch.
 Future<void> showEmployeeFormDialog({
   required BuildContext context,
   required List<Branch> branches,
@@ -142,12 +140,11 @@ class _EmployeeFormBody extends StatefulWidget {
   final List<Branch> branches;
   final Employee? employee;
 
-  /// When true the widget is hosted inside a [Scaffold] with [AppSubPageBar],
-  /// so the inline header row and Cancel button are hidden.
+  /// When true the widget is hosted inside a [Scaffold] with [AppSubPageBar].
   final bool isPage;
 
   /// Restricts which roles are available in the role picker.
-  /// Null means all roles are shown (Super Admin / Owner).
+  /// Null means all roles are shown.
   final List<EmployeeRole>? allowedRoles;
 
   /// When set, the branch picker is hidden and this branch ID is always used.
@@ -169,60 +166,35 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
-  final _phoneCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _confirmPasswordCtrl = TextEditingController();
 
   EmployeeRole _role = EmployeeRole.cashier;
   String? _selectedBranchId;
-  DateTime _hiredAt = DateTime.now();
   bool _submitting = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
   bool get _isEditing => widget.employee != null;
 
-  static const _months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
-
-  String _formatDate(DateTime d) =>
-      '${d.day} ${_months[d.month - 1]} ${d.year}';
-
   @override
   void initState() {
     super.initState();
-    // If a branch is locked (e.g. branch manager), pre-select it immediately.
     if (widget.lockedBranchId != null) {
       _selectedBranchId = widget.lockedBranchId;
     }
     final e = widget.employee;
     if (e != null) {
       _nameCtrl.text = e.fullName;
-      _emailCtrl.text = e.email;
-      _phoneCtrl.text = e.phone ?? '';
-      // Clamp role to the allowed set; if the existing role is restricted,
-      // fall back to the first permitted role so the form stays consistent.
+      // Determine role display from roleName
       final allowed = widget.allowedRoles;
-      _role = (allowed == null || allowed.contains(e.role))
-          ? e.role
+      final derivedRole = EmployeeRoleX.fromRoleName(e.roleName);
+      _role = (allowed == null || allowed.contains(derivedRole))
+          ? derivedRole
           : allowed.first;
-      // Only use employee's branch if no branch is locked.
       if (widget.lockedBranchId == null) {
         _selectedBranchId = e.branchId;
       }
-      _hiredAt = e.hiredAt;
     } else if (widget.lockedBranchId == null && widget.branches.isNotEmpty) {
       _selectedBranchId = widget.branches.first.id;
     }
@@ -232,7 +204,6 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
   void dispose() {
     _nameCtrl.dispose();
     _emailCtrl.dispose();
-    _phoneCtrl.dispose();
     _passwordCtrl.dispose();
     _confirmPasswordCtrl.dispose();
     super.dispose();
@@ -241,9 +212,9 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedBranchId == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please select a branch')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a branch')),
+      );
       return;
     }
     setState(() => _submitting = true);
@@ -253,10 +224,8 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
         UpdateEmployee(
           id: widget.employee!.id,
           fullName: _nameCtrl.text.trim(),
-          email: _emailCtrl.text.trim(),
-          phone: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
-          branchId: _selectedBranchId!,
-          role: _role,
+          branchId: _selectedBranchId,
+          // roleId will be wired up when the roles feature provides UUIDs
         ),
       );
     } else {
@@ -265,38 +234,16 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
           branchId: _selectedBranchId!,
           fullName: _nameCtrl.text.trim(),
           email: _emailCtrl.text.trim(),
-          phone: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
-          role: _role,
-          hiredAt: _hiredAt,
           password: _passwordCtrl.text,
+          // roleId will be wired up when the roles feature provides UUIDs
         ),
       );
     }
-
-    // Do NOT pop here. The BlocListener below closes the form on success
-    // and surfaces errors without closing when validation fails.
-  }
-
-  Future<void> _pickHireDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _hiredAt,
-      firstDate: DateTime(2000),
-      lastDate: DateTime.now().add(const Duration(days: 1)),
-      builder: (ctx, child) => Theme(
-        data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.light(primary: AppColors.brand),
-        ),
-        child: child!,
-      ),
-    );
-    if (picked != null) setState(() => _hiredAt = picked);
   }
 
   @override
   Widget build(BuildContext context) {
     return BlocListener<EmployeeBloc, EmployeeState>(
-      // Only react to state changes that result from our own submission.
       listenWhen: (prev, curr) =>
           _submitting && curr is! EmployeeOperationInProgress,
       listener: (context, state) {
@@ -383,31 +330,23 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
                     validator: (v) =>
                         (v == null || v.trim().isEmpty) ? 'Required' : null,
                   ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _emailCtrl,
-                    decoration: appInputDeco(
-                      'e.g. maria@business.com',
-                      label: 'Email',
+                  if (!_isEditing) ...[
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _emailCtrl,
+                      decoration: appInputDeco(
+                        'e.g. maria@business.com',
+                        label: 'Email',
+                      ),
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Required';
+                        if (!v.contains('@')) return 'Enter a valid email';
+                        return null;
+                      },
                     ),
-                    keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.next,
-                    validator: (v) {
-                      if (v == null || v.trim().isEmpty) return 'Required';
-                      if (!v.contains('@')) return 'Enter a valid email';
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _phoneCtrl,
-                    decoration: appInputDeco(
-                      'e.g. +63 912 345 6789',
-                      label: 'Phone (optional)',
-                    ),
-                    keyboardType: TextInputType.phone,
-                    textInputAction: TextInputAction.done,
-                  ),
+                  ],
                 ],
               ),
 
@@ -422,24 +361,23 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
                     TextFormField(
                       controller: _passwordCtrl,
                       obscureText: _obscurePassword,
-                      decoration:
-                          appInputDeco(
-                            'Min. 6 characters',
-                            label: 'Password',
-                          ).copyWith(
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility_off_outlined
-                                    : Icons.visibility_outlined,
-                                size: 20,
-                                color: AppColors.textMuted,
-                              ),
-                              onPressed: () => setState(
-                                () => _obscurePassword = !_obscurePassword,
-                              ),
-                            ),
+                      decoration: appInputDeco(
+                        'Min. 6 characters',
+                        label: 'Password',
+                      ).copyWith(
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                            size: 20,
+                            color: AppColors.textMuted,
                           ),
+                          onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
+                        ),
+                      ),
                       textInputAction: TextInputAction.next,
                       validator: (v) {
                         if (v == null || v.isEmpty) return 'Required';
@@ -453,25 +391,24 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
                     TextFormField(
                       controller: _confirmPasswordCtrl,
                       obscureText: _obscureConfirmPassword,
-                      decoration:
-                          appInputDeco(
-                            'Re-enter password',
-                            label: 'Confirm Password',
-                          ).copyWith(
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscureConfirmPassword
-                                    ? Icons.visibility_off_outlined
-                                    : Icons.visibility_outlined,
-                                size: 20,
-                                color: AppColors.textMuted,
-                              ),
-                              onPressed: () => setState(
-                                () => _obscureConfirmPassword =
-                                    !_obscureConfirmPassword,
-                              ),
-                            ),
+                      decoration: appInputDeco(
+                        'Re-enter password',
+                        label: 'Confirm Password',
+                      ).copyWith(
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscureConfirmPassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                            size: 20,
+                            color: AppColors.textMuted,
                           ),
+                          onPressed: () => setState(
+                            () => _obscureConfirmPassword =
+                                !_obscureConfirmPassword,
+                          ),
+                        ),
+                      ),
                       textInputAction: TextInputAction.done,
                       validator: (v) {
                         if (v == null || v.isEmpty) return 'Required';
@@ -491,7 +428,6 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
                 title: 'Assignment',
                 icon: IconlyLight.work,
                 children: [
-                  // Hide branch picker when the branch is locked (branch manager).
                   if (widget.lockedBranchId == null) ...[
                     AppDropdown<String>(
                       value: _selectedBranchId,
@@ -517,32 +453,6 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
                     onChanged: (v) {
                       if (v != null) setState(() => _role = v);
                     },
-                  ),
-                  const SizedBox(height: 12),
-                  // Hire date — styled to match TextFormField
-                  InkWell(
-                    onTap: _pickHireDate,
-                    borderRadius: BorderRadius.circular(12),
-                    child: InputDecorator(
-                      decoration: appInputDeco(null, label: 'Hire Date')
-                          .copyWith(
-                            suffixIcon: const Padding(
-                              padding: EdgeInsets.only(right: 4),
-                              child: Icon(
-                                IconlyLight.calendar,
-                                size: 18,
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                          ),
-                      child: Text(
-                        _formatDate(_hiredAt),
-                        style: getOutfitStyle(
-                          fontSize: 15,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
                   ),
                 ],
               ),

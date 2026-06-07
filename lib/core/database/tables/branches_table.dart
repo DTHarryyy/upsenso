@@ -14,14 +14,8 @@ class BranchesTable extends Table {
   /// Branch name (required)
   TextColumn get name => text()();
 
-  /// Branch address (optional, completed later in settings)
-  TextColumn get address => text().nullable()();
-
-  /// Branch phone number (optional, completed later in settings)
-  TextColumn get phone => text().nullable()();
-
-  /// Whether branch is active
-  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+  /// Branch location/address (optional)
+  TextColumn get location => text().nullable()();
 
   /// Sync tracking fields
   /// 0=pendingUpload, 1=pendingUpdate, 2=pendingDelete, 3=synced, 4=failed
