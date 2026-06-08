@@ -18,10 +18,12 @@ import 'package:pos/core/database/tables/stock_ledger_table.dart';
 import 'package:pos/core/database/tables/audit_logs_table.dart';
 import 'package:pos/core/database/tables/employees_table.dart';
 import 'package:pos/core/database/tables/employee_permissions_table.dart';
+import 'package:pos/core/database/tables/business_modules_table.dart';
 import 'package:pos/core/database/daos/auth_context_dao.dart';
 import 'package:pos/core/database/daos/audit_logs_dao.dart';
 import 'package:pos/core/database/daos/employees_dao.dart';
 import 'package:pos/core/database/daos/employee_permissions_dao.dart';
+import 'package:pos/core/database/daos/business_modules_dao.dart';
 import 'package:pos/core/database/daos/business_templates_dao.dart';
 import 'package:pos/core/database/daos/businesses_dao.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
@@ -54,6 +56,7 @@ part 'app_database.g.dart';
     AuditLogsTable,
     EmployeesTable,
     EmployeePermissionsTable,
+    BusinessModulesTable,
   ],
   daos: [
     AuthContextDao,
@@ -71,6 +74,7 @@ part 'app_database.g.dart';
     AuditLogsDao,
     EmployeesDao,
     EmployeePermissionsDao,
+    BusinessModulesDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -87,7 +91,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 27;
+  int get schemaVersion => 31;
 
   @override
   MigrationStrategy get migration {
@@ -313,12 +317,6 @@ class AppDatabase extends _$AppDatabase {
             'CREATE INDEX IF NOT EXISTS idx_employees_branch ON employees(branch_id)',
           );
           await customStatement(
-            'CREATE INDEX IF NOT EXISTS idx_employees_role ON employees(role)',
-          );
-          await customStatement(
-            'CREATE INDEX IF NOT EXISTS idx_employees_status ON employees(status)',
-          );
-          await customStatement(
             'CREATE INDEX IF NOT EXISTS idx_employees_sync ON employees(sync_status)',
           );
         }
@@ -329,6 +327,80 @@ class AppDatabase extends _$AppDatabase {
           try {
             await customStatement('ALTER TABLE branches ADD COLUMN location TEXT');
           } catch (_) {}
+        }
+        if (from < 28) {
+          await m.createTable(businessModulesTable);
+        }
+        if (from < 29) {
+          // Add columns that were added to EmployeesTable after the initial
+          // v25 creation but never had their own migration step.
+          // Each is wrapped in try/catch so devices that already have the
+          // column (e.g. fresh installs at v25+) don't throw.
+          for (final sql in [
+            'ALTER TABLE employees ADD COLUMN auth_user_id TEXT',
+            'ALTER TABLE employees ADD COLUMN role_id TEXT',
+            'ALTER TABLE employees ADD COLUMN role_name TEXT',
+            'ALTER TABLE employees ADD COLUMN last_sync_attempt INTEGER',
+            'ALTER TABLE employees ADD COLUMN sync_error TEXT',
+          ]) {
+            try {
+              await customStatement(sql);
+            } catch (_) {}
+          }
+        }
+        if (from < 30) {
+          // The v25 createTable call used whatever EmployeesTable looked like
+          // at deploy time. Columns added to the Dart class afterward were
+          // never backfilled for existing devices. Attempt to add every column
+          // in the current schema; try/catch silently skips ones that exist.
+          for (final sql in [
+            'ALTER TABLE employees ADD COLUMN user_id TEXT',
+            'ALTER TABLE employees ADD COLUMN full_name TEXT',
+            'ALTER TABLE employees ADD COLUMN branch_id TEXT',
+            'ALTER TABLE employees ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1',
+            'ALTER TABLE employees ADD COLUMN created_at INTEGER',
+            'ALTER TABLE employees ADD COLUMN sync_status INTEGER NOT NULL DEFAULT 0',
+            // These were added in v29 but are included here for devices that
+            // somehow skipped v29 or had it fail mid-run.
+            'ALTER TABLE employees ADD COLUMN auth_user_id TEXT',
+            'ALTER TABLE employees ADD COLUMN role_id TEXT',
+            'ALTER TABLE employees ADD COLUMN role_name TEXT',
+            'ALTER TABLE employees ADD COLUMN last_sync_attempt INTEGER',
+            'ALTER TABLE employees ADD COLUMN sync_error TEXT',
+          ]) {
+            try {
+              await customStatement(sql);
+            } catch (_) {}
+          }
+        }
+        if (from < 31) {
+          // The original v25 employees table was created with an employee_code
+          // column (NOT NULL, no default) that was later removed from the Dart
+          // schema. SQLite does not support DROP COLUMN or ALTER COLUMN, so the
+          // only way to remove a NOT NULL column is to recreate the table.
+          // All current-schema columns are carried forward; employee_code is
+          // intentionally discarded.
+          await customStatement(
+            'ALTER TABLE employees RENAME TO employees_old',
+          );
+          await m.createTable(employeesTable);
+          await customStatement('''
+            INSERT INTO employees (
+              id, business_id, user_id, auth_user_id, full_name,
+              role_id, role_name, branch_id,
+              is_active, created_at, sync_status,
+              last_sync_attempt, sync_error
+            )
+            SELECT
+              id, business_id, user_id, auth_user_id, full_name,
+              role_id, role_name, branch_id,
+              COALESCE(is_active, 1),
+              created_at,
+              COALESCE(sync_status, 0),
+              last_sync_attempt, sync_error
+            FROM employees_old
+          ''');
+          await customStatement('DROP TABLE employees_old');
         }
       },
     );

@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:iconly/iconly.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/database/daos/auth_context_dao.dart';
+import 'package:pos/core/permissions/permission_keys.dart';
+import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/routes/app_routes.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -48,6 +52,24 @@ class SettingsPage extends StatelessWidget {
             subtitle: 'Logo, paper size, tax, header & footer',
             onTap: () => context.push(AppRoutes.receiptSettings),
           ),
+          // Module management — owner/admin only
+          if (sl<PermissionService>().can(PermissionKeys.settingsEditBusiness)) ...[
+            const SizedBox(height: 12),
+            _SettingsRow(
+              icon: IconlyLight.setting,
+              iconBg: AppColors.brandSoft,
+              iconColor: AppColors.brand,
+              title: 'Module Management',
+              subtitle: 'Enable or disable features for your business',
+              onTap: () async {
+                final ctx = await sl<AuthContextDao>().getAny();
+                final businessId = ctx?.businessId ?? '';
+                if (context.mounted) {
+                  context.push(AppRoutes.moduleSettings, extra: businessId);
+                }
+              },
+            ),
+          ],
           const SizedBox(height: 24),
         ],
       ),

@@ -18,9 +18,12 @@ class AppBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final service = sl<PermissionService>();
-    final canUsePOS = service.can(PermissionKeys.navPos);
-    final canUseReports = service.can(PermissionKeys.navReports);
-    final canUseInventory = service.can(PermissionKeys.navInventory);
+    final canUsePOS = service.can(PermissionKeys.navPos) &&
+        service.isModuleEnabled('pos');
+    final canUseReports = service.can(PermissionKeys.navReports) &&
+        service.isModuleEnabled('reports');
+    final canUseInventory = service.can(PermissionKeys.navInventory) &&
+        service.isModuleEnabled('inventory');
     // Derive nav variant from feature access — no hardcoded role strings.
     final isCashierLike = canUsePOS && !canUseReports && !canUseInventory;
     final isInventoryLike = canUseInventory && !canUsePOS;

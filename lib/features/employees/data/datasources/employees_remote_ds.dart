@@ -11,6 +11,7 @@ class EmployeesRemoteDs {
     String? authUserId,
     required String fullName,
     String? roleId,
+    String? roleName,
     bool isActive = true,
   }) async {
     await client.from('employees').upsert({
@@ -20,6 +21,7 @@ class EmployeesRemoteDs {
       'auth_user_id': ?authUserId,
       'full_name': fullName,
       'role_id': ?roleId,
+      'role_name': ?roleName,
       'is_active': isActive,
     });
   }
@@ -66,33 +68,30 @@ class EmployeesRemoteDs {
     return List<Map<String, dynamic>>.from(response as List);
   }
 
-  /// Creates a Supabase Auth account for the employee via RPC.
-  /// Returns the new auth_user_id, or null if offline / RPC unavailable.
-  Future<String?> createAuthAccount({
+  /// Creates a Supabase Auth user for the employee and returns the new UUID.
+  ///
+  /// Throws on any error (duplicate email, network failure, auth failure).
+  /// The caller is responsible for catching and surfacing the error — the
+  /// password is only available at call time and cannot be stored for retry.
+  Future<String> createAuthAccount({
     required String email,
     required String password,
-    String? employeeId,
     String? businessId,
     String? branchId,
     String? fullName,
     String? roleId,
   }) async {
-    try {
-      final params = <String, dynamic>{
-        'p_email': email,
-        'p_password': password,
-      };
-      if (employeeId != null) params['p_employee_id'] = employeeId;
-      if (businessId != null) params['p_business_id'] = businessId;
-      if (branchId != null) params['p_branch_id'] = branchId;
-      if (fullName != null) params['p_full_name'] = fullName;
-      if (roleId != null) params['p_role_id'] = roleId;
-      final result =
-          await client.rpc('create_employee_auth_account', params: params)
-              as String?;
-      return result;
-    } catch (_) {
-      return null;
-    }
+    final params = <String, dynamic>{
+      'p_email': email,
+      'p_password': password,
+    };
+    if (businessId != null) params['p_business_id'] = businessId;
+    if (branchId != null) params['p_branch_id'] = branchId;
+    if (fullName != null) params['p_full_name'] = fullName;
+    if (roleId != null) params['p_role_id'] = roleId;
+    final result =
+        await client.rpc('create_employee_auth_account', params: params)
+            as String;
+    return result;
   }
 }

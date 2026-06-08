@@ -1,27 +1,40 @@
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import 'package:pos/core/audit/audit_log_service.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/database/app_database.dart';
+import 'package:pos/core/database/daos/employee_permissions_dao.dart';
 import 'package:pos/core/database/daos/employees_dao.dart';
+import 'package:pos/core/permissions/data/permission_remote_ds.dart';
+import 'package:pos/core/permissions/default_permission_matrix.dart';
 import 'package:pos/core/sync/sync_status.dart';
-import 'package:pos/features/employees/data/datasources/employees_remote_ds.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
+import 'package:pos/features/employees/data/datasources/employees_remote_ds.dart';
 import 'package:pos/features/employees/domain/entities/employee.dart';
+import 'package:pos/features/employees/domain/errors/employee_errors.dart';
 import 'package:pos/features/employees/domain/repositories/i_employees_repository.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class EmployeesRepositoryImpl implements IEmployeesRepository {
   final EmployeesDao _dao;
   final EmployeesRemoteDs _remoteDs;
+  final EmployeePermissionsDao _permissionsDao;
+  final PermissionRemoteDs _permissionRemoteDs;
+
   static const _uuid = Uuid();
 
   EmployeesRepositoryImpl({
     required EmployeesDao dao,
     required EmployeesRemoteDs remoteDs,
-  }) : _dao = dao,
-       _remoteDs = remoteDs;
+    required EmployeePermissionsDao permissionsDao,
+    required PermissionRemoteDs permissionRemoteDs,
+  })  : _dao = dao,
+        _remoteDs = remoteDs,
+        _permissionsDao = permissionsDao,
+        _permissionRemoteDs = permissionRemoteDs;
 
-  // ── Read ──────────────────────────────────────────────────────────────────
+  // ── Read ───────────────────────────────────────────────────────────────────
 
   @override
   Stream<List<Employee>> watchEmployees(String businessId) {
@@ -42,7 +55,7 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
     return row == null ? null : _toEntity(row);
   }
 
-  // ── Write ─────────────────────────────────────────────────────────────────
+  // ── Write ──────────────────────────────────────────────────────────────────
 
   @override
   Future<void> addEmployee({
@@ -52,22 +65,92 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
     required String email,
     required String password,
     String? roleId,
+    String? roleName,
     bool isActive = true,
   }) async {
     final id = _uuid.v4();
     final now = DateTime.now();
 
+    // Step 1: Create the Supabase Auth user. This MUST succeed — the password
+    // is only available now and cannot be stored for a later retry.
+    // If the email is already linked to a complete employee in this business,
+    // the RPC raises DUPLICATE_EMAIL which we translate to a field-level error
+    // so the form can show it inline rather than as a generic snackbar.
+    final String authUserId;
+    try {
+      authUserId = await _remoteDs.createAuthAccount(
+        email: email,
+        password: password,
+        businessId: businessId,
+        branchId: branchId.isEmpty ? null : branchId,
+        fullName: fullName,
+        roleId: roleId,
+      );
+    } on PostgrestException catch (e) {
+      if (e.message.contains('DUPLICATE_EMAIL') ||
+          e.message.toLowerCase().contains('email already') ||
+          e.message.toLowerCase().contains('already registered')) {
+        throw EmployeeDuplicateException({
+          'email': 'This email is already registered to an employee.',
+        });
+      }
+      rethrow;
+    }
+
+    // Step 2: Upsert the employee row and branch assignment to Supabase.
+    // This is also required: without the employee row in Supabase the new
+    // user's my_business_id() call returns null and they cannot log in.
+    await _remoteDs.upsertEmployee(
+      id: id,
+      businessId: businessId,
+      authUserId: authUserId,
+      fullName: fullName,
+      roleId: roleId,
+      roleName: roleName,
+      isActive: isActive,
+    );
+    if (branchId.isNotEmpty) {
+      await _remoteDs.assignBranch(employeeId: id, branchId: branchId);
+    }
+
+    // Step 3: Derive default permissions for the chosen role.
+    final permissions = DefaultPermissionMatrix.forRole(roleName);
+
+    // Step 4: Seed permissions in Supabase (best-effort; FK is satisfied since
+    // the employee row was just created above).
+    if (permissions.isNotEmpty) {
+      try {
+        await _permissionRemoteDs.savePermissions(id, permissions);
+      } catch (e) {
+        debugPrint('[EmployeesRepo] Remote permission seeding failed: $e');
+      }
+    }
+
+    // Step 5: Persist the employee locally as already-synced.
     await _dao.insertEmployee(
       EmployeesTableCompanion.insert(
         id: id,
         businessId: businessId,
+        authUserId: Value(authUserId),
         fullName: Value(fullName),
-        branchId: Value(branchId),
+        branchId: Value(branchId.isEmpty ? null : branchId),
         roleId: Value(roleId),
+        roleName: Value(roleName),
         isActive: Value(isActive),
         createdAt: Value(now),
+        syncStatus: Value(SyncStatus.synced.toInt()),
       ),
     );
+
+    // Step 6: Cache permissions locally so the employee's very first login
+    // resolves permissions without a Supabase round-trip.
+    if (permissions.isNotEmpty) {
+      await _permissionsDao.savePermissions(
+        authUserId,
+        permissions,
+        employeeId: id,
+      );
+    }
 
     sl<AuditLogService>().log(
       actionType: AuditLogActionType.employeeCreated,
@@ -75,24 +158,8 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
       entityId: id,
       entityName: fullName,
       description: 'Employee $fullName created',
-      metadata: {'role_id': roleId, 'branch_id': branchId},
+      metadata: {'role': roleName, 'branch_id': branchId},
     );
-
-    final createdAuthId = await _remoteDs.createAuthAccount(
-      email: email,
-      password: password,
-      employeeId: id,
-      businessId: businessId,
-      branchId: branchId,
-      fullName: fullName,
-      roleId: roleId,
-    );
-    if (createdAuthId != null) {
-      await _dao.updateEmployee(
-        id,
-        EmployeesTableCompanion(authUserId: Value(createdAuthId)),
-      );
-    }
   }
 
   @override
@@ -105,19 +172,20 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
   }) async {
     final existing = await _dao.getById(id);
 
-    final companion = EmployeesTableCompanion(
-      fullName: Value(fullName),
-      roleId: roleId != null ? Value(roleId) : const Value.absent(),
-      branchId: branchId != null ? Value(branchId) : const Value.absent(),
-      isActive: isActive != null ? Value(isActive) : const Value.absent(),
-      syncStatus: Value(
-        existing?.syncStatus == SyncStatus.pendingUpload.toInt()
-            ? SyncStatus.pendingUpload.toInt()
-            : SyncStatus.pendingUpdate.toInt(),
+    await _dao.updateEmployee(
+      id,
+      EmployeesTableCompanion(
+        fullName: Value(fullName),
+        roleId: roleId != null ? Value(roleId) : const Value.absent(),
+        branchId: branchId != null ? Value(branchId) : const Value.absent(),
+        isActive: isActive != null ? Value(isActive) : const Value.absent(),
+        syncStatus: Value(
+          existing?.syncStatus == SyncStatus.pendingUpload.toInt()
+              ? SyncStatus.pendingUpload.toInt()
+              : SyncStatus.pendingUpdate.toInt(),
+        ),
       ),
     );
-
-    await _dao.updateEmployee(id, companion);
 
     sl<AuditLogService>().log(
       actionType: AuditLogActionType.employeeUpdated,
@@ -129,16 +197,16 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
   }
 
   @override
-  Future<void> archiveEmployee(String id) => _setActive(id, false,
-      AuditLogActionType.employeeArchived, 'archived');
+  Future<void> archiveEmployee(String id) =>
+      _setActive(id, false, AuditLogActionType.employeeArchived, 'archived');
 
   @override
-  Future<void> suspendEmployee(String id) => _setActive(id, false,
-      AuditLogActionType.employeeStatusChanged, 'suspended');
+  Future<void> suspendEmployee(String id) =>
+      _setActive(id, false, AuditLogActionType.employeeStatusChanged, 'suspended');
 
   @override
-  Future<void> reactivateEmployee(String id) => _setActive(id, true,
-      AuditLogActionType.employeeStatusChanged, 'active');
+  Future<void> reactivateEmployee(String id) =>
+      _setActive(id, true, AuditLogActionType.employeeStatusChanged, 'active');
 
   Future<void> _setActive(
     String id,
@@ -168,7 +236,7 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
     );
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
+  // ── Helpers ────────────────────────────────────────────────────────────────
 
   Employee _toEntity(EmployeeRow row) {
     return Employee(

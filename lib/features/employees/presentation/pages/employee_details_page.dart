@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:iconly/iconly.dart';
+import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/permissions/permission_keys.dart';
+import 'package:pos/core/permissions/permission_service.dart';
+import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/core/widgets/app_section_card.dart';
 import 'package:pos/core/widgets/app_sub_page_bar.dart';
 import 'package:pos/core/widgets/user_avatar.dart';
@@ -88,6 +93,11 @@ class EmployeeDetailsPage extends StatelessWidget {
               ),
             ],
           ),
+          // ── Permission overrides (owner/admin only) ──────────────────
+          if (sl<PermissionService>().can(PermissionKeys.employeesAssignRole)) ...[
+            const SizedBox(height: 16),
+            _ManagePermissionsButton(employee: employee),
+          ],
           const SizedBox(height: 40),
         ],
       ),
@@ -151,6 +161,78 @@ class _ProfileHeader extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Manage Permissions Button ──────────────────────────────────────────────
+
+class _ManagePermissionsButton extends StatelessWidget {
+  final Employee employee;
+  const _ManagePermissionsButton({required this.employee});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: () => context.push(AppRoutes.employeePermissions, extra: employee),
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.borderSoft),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.brandSoft,
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: const Icon(
+                  IconlyLight.shield_done,
+                  size: 20,
+                  color: AppColors.brand,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Permission Overrides',
+                      style: getOutfitStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Grant or deny specific permissions for this employee',
+                      style: getOutfitStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                IconlyLight.arrow_right_2,
+                size: 20,
+                color: AppColors.textMuted,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

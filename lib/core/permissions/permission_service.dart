@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:pos/core/audit/audit_log_service.dart';
 import 'package:pos/core/database/daos/auth_context_dao.dart';
+import 'package:pos/core/database/daos/business_modules_dao.dart';
 import 'package:pos/core/database/daos/employee_permissions_dao.dart';
 import 'package:pos/core/permissions/app_feature.dart';
 import 'package:pos/core/permissions/app_permission.dart';
@@ -57,6 +58,7 @@ class PermissionService {
   final AuditLogService _auditLogService;
   final EmployeePermissionsDao _permissionsDao;
   final PermissionRemoteDs _permissionRemoteDs;
+  final BusinessModulesDao _businessModulesDao;
 
   /// In-memory role key (snake_case), kept in sync with [AuthContextTable].
   String? _roleKey;
@@ -68,6 +70,11 @@ class PermissionService {
   /// Empty map = not yet loaded; fall back to [DefaultPermissionMatrix].
   Map<String, bool> _permissionsMap = {};
 
+  /// Module codes that are currently enabled for the business.
+  ///
+  /// `null` = not loaded yet (treat all modules as enabled until first sync).
+  Set<String>? _enabledModules;
+
   bool get _hasLoadedPermissions => _permissionsMap.isNotEmpty;
 
   PermissionService({
@@ -75,10 +82,12 @@ class PermissionService {
     required AuditLogService auditLogService,
     required EmployeePermissionsDao permissionsDao,
     required PermissionRemoteDs permissionRemoteDs,
+    required BusinessModulesDao businessModulesDao,
   }) : _authContextDao = authContextDao,
        _auditLogService = auditLogService,
        _permissionsDao = permissionsDao,
-       _permissionRemoteDs = permissionRemoteDs;
+       _permissionRemoteDs = permissionRemoteDs,
+       _businessModulesDao = businessModulesDao;
 
   // ── Role management ───────────────────────────────────────────────────────
 
@@ -160,6 +169,54 @@ class PermissionService {
   /// Clear the in-memory permission map.  Call on sign-out.
   void clearPermissions() {
     _permissionsMap = {};
+    _enabledModules = null;
+  }
+
+  // ── Module gate ───────────────────────────────────────────────────────────
+
+  /// Returns `true` if [moduleCode] is enabled for the current business.
+  ///
+  /// When [_enabledModules] is null (not yet loaded) this returns `true` so
+  /// that a slow first sync doesn't block the UI.
+  bool isModuleEnabled(String moduleCode) {
+    if (_enabledModules == null) return true;
+    return _enabledModules!.contains(moduleCode);
+  }
+
+  /// Load the enabled module set from the local Drift cache for [businessId].
+  ///
+  /// An empty cache (no rows) keeps [_enabledModules] null so all modules
+  /// appear enabled until the first remote sync populates the table.
+  Future<void> loadEnabledModules(String businessId) async {
+    final codes = await _businessModulesDao.getEnabledModuleCodes(businessId);
+    if (codes.isNotEmpty) {
+      _enabledModules = codes;
+      debugPrint(
+        '[PermissionService] modules loaded from cache (${codes.length} enabled)',
+      );
+    }
+  }
+
+  /// Fetch the live module state from Supabase and refresh the Drift cache.
+  ///
+  /// Silently ignored when offline.  Call after [loadEnabledModules].
+  Future<void> syncModules(String businessId) async {
+    try {
+      final modules = await _permissionRemoteDs.fetchEnabledModules(businessId);
+      if (modules.isNotEmpty) {
+        await _businessModulesDao.saveModules(businessId, modules);
+        _enabledModules = modules.entries
+            .where((e) => e.value)
+            .map((e) => e.key)
+            .toSet();
+        debugPrint(
+          '[PermissionService] modules synced from Supabase '
+          '(${_enabledModules!.length} enabled)',
+        );
+      }
+    } catch (e) {
+      debugPrint('[PermissionService] module sync skipped (offline?) — $e');
+    }
   }
 
   // ── Sync permission check (offline-safe, no I/O) ─────────────────────────
@@ -278,9 +335,14 @@ class PermissionService {
 
   /// Returns `true` if the current user is allowed to open [feature].
   ///
-  /// Delegates to [can] via [AppFeature.navKey] so the per-employee matrix is
-  /// consulted.
-  bool canAccessFeature(AppFeature feature) => can(feature.navKey);
+  /// Evaluation order (mirrors the server-side 6-layer hierarchy):
+  ///   1. Module gate — if the business has disabled the module, deny.
+  ///   2. Per-employee permission check via [can] / [AppFeature.navKey].
+  bool canAccessFeature(AppFeature feature) {
+    final code = feature.moduleCode;
+    if (code != null && !isModuleEnabled(code)) return false;
+    return can(feature.navKey);
+  }
 
   /// Set of all features accessible to the current user.
   Set<AppFeature> get currentFeatures =>
@@ -381,7 +443,8 @@ class PermissionService {
     setRole(roleName);
     _branchId = branchId;
     _userId = userId;
-    // Clear the map so loadPermissions re-reads for the new user.
+    // Clear maps so load* methods re-read for the new user/business.
     _permissionsMap = {};
+    _enabledModules = null;
   }
 }

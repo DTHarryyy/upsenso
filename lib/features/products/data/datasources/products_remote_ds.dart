@@ -178,7 +178,7 @@ class ProductsRemoteDs {
   // ── INVENTORY LEVELS ────────────────────────────────────────────────────────
 
   Future<void> upsertInventoryLevel({
-    required String id,
+    required String id, // local composite key — not sent to Supabase (uuid mismatch)
     required String variantId,
     required String branchId,
     required String businessId,
@@ -186,15 +186,19 @@ class ProductsRemoteDs {
     double? quantityDecimal,
     int? lowStockAlertOverride,
   }) async {
-    await client.from('inventory_levels').upsert({
-      'id': id,
-      'variant_id': variantId,
-      'branch_id': branchId,
-      'business_id': businessId,
-      'quantity': quantity,
-      'quantity_decimal': quantityDecimal ?? 0.0,
-      'low_stock_alert_override': lowStockAlertOverride,
-    });
+    // Do NOT send 'id': Supabase generates a UUID on insert.
+    // Conflict is resolved via the unique constraint on (product_variant_id, branch_id).
+    await client.from('inventory_levels').upsert(
+      {
+        'product_variant_id': variantId,
+        'branch_id': branchId,
+        'business_id': businessId,
+        'quantity': quantity,
+        'quantity_decimal': quantityDecimal ?? 0.0,
+        'low_stock_alert_override': lowStockAlertOverride,
+      },
+      onConflict: 'product_variant_id,branch_id',
+    );
   }
 
   Future<List<Map<String, dynamic>>> getInventoryLevelsByBusiness(

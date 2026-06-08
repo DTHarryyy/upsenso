@@ -89,6 +89,7 @@ import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/permissions/data_scoping_layer.dart';
 import 'package:pos/core/permissions/data/permission_remote_ds.dart';
 import 'package:pos/core/database/daos/employee_permissions_dao.dart';
+import 'package:pos/core/database/daos/business_modules_dao.dart';
 
 final sl = GetIt.instance;
 
@@ -157,6 +158,8 @@ Future<void> initDI() async {
     () => EmployeesRepositoryImpl(
       dao: sl<EmployeesDao>(),
       remoteDs: sl<EmployeesRemoteDs>(),
+      permissionsDao: sl<EmployeePermissionsDao>(),
+      permissionRemoteDs: sl<PermissionRemoteDs>(),
     ),
   );
   sl.registerLazySingleton<ReceiptSettingsDao>(
@@ -326,6 +329,9 @@ Future<void> initDI() async {
   sl.registerLazySingleton<EmployeePermissionsDao>(
     () => EmployeePermissionsDao(sl<AppDatabase>()),
   );
+  sl.registerLazySingleton<BusinessModulesDao>(
+    () => BusinessModulesDao(sl<AppDatabase>()),
+  );
   sl.registerLazySingleton<PermissionRemoteDs>(
     () => PermissionRemoteDs(sl<SupabaseClient>()),
   );
@@ -336,6 +342,7 @@ Future<void> initDI() async {
       auditLogService: sl<AuditLogService>(),
       permissionsDao: sl<EmployeePermissionsDao>(),
       permissionRemoteDs: sl<PermissionRemoteDs>(),
+      businessModulesDao: sl<BusinessModulesDao>(),
     ),
   );
 

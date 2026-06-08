@@ -117,7 +117,7 @@ class BusinessRemoteDs {
     return response != null ? Map<String, dynamic>.from(response) : null;
   }
 
-  /// Create a new branch
+  /// Upsert a branch (safe for re-sync — won't fail on duplicate key).
   Future<Map<String, dynamic>> createBranch({
     required String id,
     required String businessId,
@@ -126,7 +126,7 @@ class BusinessRemoteDs {
   }) async {
     final response = await client
         .from('branches')
-        .insert({
+        .upsert({
           'id': id,
           'business_id': businessId,
           'name': name,
@@ -136,6 +136,23 @@ class BusinessRemoteDs {
         .single();
 
     return Map<String, dynamic>.from(response);
+  }
+
+  /// Update an existing branch on Supabase.
+  Future<void> updateBranch({
+    required String id,
+    required String name,
+    String? location,
+  }) async {
+    await client
+        .from('branches')
+        .update({'name': name, 'location': location})
+        .eq('id', id);
+  }
+
+  /// Delete a branch from Supabase.
+  Future<void> deleteBranch(String id) async {
+    await client.from('branches').delete().eq('id', id);
   }
 
   /// Upsert a single category to Supabase (safe for re-sync).

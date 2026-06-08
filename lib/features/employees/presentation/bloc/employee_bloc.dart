@@ -69,6 +69,13 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
           displayEmployees: filtered,
         ),
       );
+    } else if (current is EmployeeOperationSuccess) {
+      emit(
+        current.loaded.copyWith(
+          allEmployees: event.employees,
+          displayEmployees: filtered,
+        ),
+      );
     } else {
       emit(
         EmployeeLoaded(
@@ -95,7 +102,14 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
         email: event.email,
         password: event.password,
         roleId: event.roleId,
+        roleName: event.roleName,
       );
+      // Always emit success so the form can close regardless of current state.
+      emit(EmployeeOperationSuccess(
+        message: 'Employee added',
+        loaded: current ??
+            const EmployeeLoaded(allEmployees: [], displayEmployees: []),
+      ));
     } on EmployeeDuplicateException catch (e) {
       emit(EmployeeValidationFailure(fieldErrors: e.fieldErrors, loaded: current));
     } catch (e) {
@@ -118,6 +132,9 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
         branchId: event.branchId,
         isActive: event.isActive,
       );
+      if (current != null) {
+        emit(EmployeeOperationSuccess(message: 'Employee updated', loaded: current));
+      }
     } on EmployeeDuplicateException catch (e) {
       emit(EmployeeValidationFailure(fieldErrors: e.fieldErrors, loaded: current));
     } catch (e) {

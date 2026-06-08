@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
+import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/font_utils.dart';
@@ -119,7 +120,9 @@ class _ProductsPageState extends State<ProductsPage> {
             // Cashier: browse-only — no add/edit.
             final canAddEditProduct = roleLower != 'cashier';
             // Inventory staff manages stock, not sales.
-            final canAddToCart = roleLower != 'inventory_staff';
+            // Also hide cart when the POS module is disabled for this business.
+            final canAddToCart = roleLower != 'inventory_staff' &&
+                sl<PermissionService>().isModuleEnabled('pos');
 
             return Scaffold(
               backgroundColor: AppColors.background,

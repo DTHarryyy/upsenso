@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/audit/audit_log_service.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/errors/supabase_error_mapper.dart';
+import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_service.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
@@ -67,6 +68,37 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final id = user.businessId;
     if (id == null || id.trim().isEmpty) return;
     unawaited(syncService?.syncAll(businessId: id));
+  }
+
+  // ── Permission helpers ────────────────────────────────────────────────────
+
+  /// Sets the in-memory role/branch/user context on [PermissionService].
+  void _applyPermissionContext(AppUser user) {
+    sl<PermissionService>().setContext(
+      roleName: user.roleName,
+      branchId: user.branchId,
+      userId: user.id,
+    );
+  }
+
+  /// Sets context + loads permissions and module state from the local Drift
+  /// cache.  Fast — no network I/O.  Call before emitting [AuthAuthenticated].
+  Future<void> _loadPermissionsFromCache(AppUser user) async {
+    _applyPermissionContext(user);
+    await sl<PermissionService>().loadPermissions(user.id);
+    final bid = user.businessId;
+    if (bid != null && bid.isNotEmpty) {
+      await sl<PermissionService>().loadEnabledModules(bid);
+    }
+  }
+
+  /// Fire-and-forget Supabase sync for both permissions and module state.
+  void _syncPermissionsBackground(AppUser user) {
+    unawaited(sl<PermissionService>().syncPermissions(user.id));
+    final bid = user.businessId;
+    if (bid != null && bid.isNotEmpty) {
+      unawaited(sl<PermissionService>().syncModules(bid));
+    }
   }
 
   bool _hasText(String? value) {
@@ -188,8 +220,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     // kick off a background sync without blocking the UI.
     if (_hasCompleteContext(user)) {
       debugPrint('AuthBloc: Emitting cached user (with complete context)');
+      await _loadPermissionsFromCache(user);
       emit(AuthAuthenticated(user));
       _backgroundSync(user);
+      _syncPermissionsBackground(user);
       return;
     }
 
@@ -214,12 +248,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         'AuthBloc: Emitting resolved user '
         '(${authed.businessId != null ? "with" : "without"} business)',
       );
+      await _loadPermissionsFromCache(authed);
       emit(AuthAuthenticated(authed));
       _backgroundSync(authed);
+      _syncPermissionsBackground(authed);
     } catch (e) {
       debugPrint('AuthBloc: Context fetch failed: $e — emitting partial user');
+      await _loadPermissionsFromCache(user);
       emit(AuthAuthenticated(user));
       _backgroundSync(user);
+      _syncPermissionsBackground(user);
     }
   }
 
@@ -241,7 +279,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final user = await signIn(e.email, e.password);
       final authed = (await _getUserContextWithRetry(user.id)) ?? user;
       await _initialSync(authed);
+      await _loadPermissionsFromCache(authed);
       emit(AuthAuthenticated(authed));
+      _syncPermissionsBackground(authed);
       sl<AuditLogService>().log(
         actionType: AuditLogActionType.userLogin,
         entityType: 'user',
@@ -344,7 +384,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
       final authed = (await _getUserContextWithRetry(user.id)) ?? user;
       await _initialSync(authed);
+      await _loadPermissionsFromCache(authed);
       emit(AuthAuthenticated(authed));
+      _syncPermissionsBackground(authed);
     } catch (err) {
       emit(AuthError(_errorMessage(err)));
     }
@@ -393,6 +435,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     // Clear all local data before redirecting so the next account cannot
     // see the previous account's records.
+    sl<PermissionService>().clearPermissions();
     await syncService?.clearLocalData();
 
     emit(AuthUnauthenticated());
@@ -443,6 +486,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     // Avoid extra network fetches when current user already has complete context.
     if (_hasCompleteContext(user)) {
+      _applyPermissionContext(user);
       emit(AuthAuthenticated(user));
       return;
     }
@@ -482,6 +526,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       return;
     }
 
+    _applyPermissionContext(resolved);
     emit(AuthAuthenticated(resolved));
   }
 

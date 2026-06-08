@@ -43,7 +43,10 @@ import 'package:pos/features/dashboard/presentation/dashboard_page.dart';
 import 'package:pos/features/reports/presentation/pages/reports_and_analytics.dart';
 import 'package:pos/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:pos/features/audit_logs/presentation/pages/audit_log_page.dart';
+import 'package:pos/features/employees/domain/entities/employee.dart';
 import 'package:pos/features/employees/presentation/pages/employees_page.dart';
+import 'package:pos/features/employees/presentation/pages/employee_permissions_page.dart';
+import 'package:pos/features/settings/presentation/module_settings_page.dart';
 import 'package:pos/features/onboarding/onboarding.dart';
 
 class _AuthRefreshNotifier extends ChangeNotifier {
@@ -156,6 +159,8 @@ class AppRouter {
           AppRoutes.auditLogs: PermissionKeys.navAuditLogs,
           AppRoutes.settings: PermissionKeys.navSettings,
           AppRoutes.receiptSettings: PermissionKeys.navSettings,
+          AppRoutes.moduleSettings: PermissionKeys.settingsEditBusiness,
+          AppRoutes.employeePermissions: PermissionKeys.navEmployees,
         };
         final requiredKey = routePermissionGuards[location];
         if (requiredKey != null && !sl<PermissionService>().can(requiredKey)) {
@@ -217,6 +222,20 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.receiptSettings,
         builder: (context, _) => const ReceiptSettingsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.moduleSettings,
+        builder: (context, state) {
+          final businessId = state.extra as String? ?? '';
+          return ModuleSettingsPage(businessId: businessId);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.employeePermissions,
+        builder: (context, state) {
+          final employee = state.extra as Employee;
+          return EmployeePermissionsPage(employee: employee);
+        },
       ),
       GoRoute(
         path: AppRoutes.addProduct,

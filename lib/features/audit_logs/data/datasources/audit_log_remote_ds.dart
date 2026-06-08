@@ -7,7 +7,13 @@ class AuditLogRemoteDs {
 
   Future<void> upsertLogs(List<Map<String, dynamic>> rows) async {
     if (rows.isEmpty) return;
-    await _client.from('audit_logs').upsert(rows);
+    try {
+      await _client.from('audit_logs').insert(rows);
+    } on PostgrestException catch (e) {
+      // 23505 = unique_violation: row already synced from a previous attempt.
+      if (e.code == '23505') return;
+      rethrow;
+    }
   }
 
   Future<List<Map<String, dynamic>>> getByBusiness(

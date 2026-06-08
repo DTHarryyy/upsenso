@@ -270,6 +270,7 @@ class SyncService {
 
     try {
       // upload na here  bag o i pull
+      final branchResult = await _syncBranches();
       final businessResult = await _syncBusinesses();
       final categoryResult = await _syncCategories();
       final productResult = await _syncProducts();
@@ -283,6 +284,7 @@ class SyncService {
       final employeeResult = await _syncEmployees();
 
       final int totalSynced =
+          branchResult.syncedCount +
           businessResult.syncedCount +
           categoryResult.syncedCount +
           productResult.syncedCount +
@@ -293,6 +295,7 @@ class SyncService {
           ledgerResult.syncedCount +
           employeeResult.syncedCount;
       final int totalFailed =
+          branchResult.failedCount +
           businessResult.failedCount +
           categoryResult.failedCount +
           productResult.failedCount +
@@ -353,6 +356,71 @@ class SyncService {
         });
       }
     }
+  }
+
+  Future<SyncResult> _syncBranches() async {
+    final pending = await _branchesDao.getPendingSync();
+    int synced = 0;
+    int failed = 0;
+    final errors = <String>[];
+
+    for (final record in pending) {
+      final status = SyncStatusExtension.fromInt(record.syncStatus);
+      try {
+        switch (status) {
+          case SyncStatus.pendingUpload:
+          case SyncStatus.failed:
+            await _businessRemoteDs.createBranch(
+              id: record.id,
+              businessId: record.businessId,
+              name: record.name,
+              location: record.location,
+            );
+            await _branchesDao.updateSyncStatus(
+              id: record.id,
+              status: SyncStatus.synced,
+            );
+            synced++;
+
+          case SyncStatus.pendingUpdate:
+            await _businessRemoteDs.updateBranch(
+              id: record.id,
+              name: record.name,
+              location: record.location,
+            );
+            await _branchesDao.updateSyncStatus(
+              id: record.id,
+              status: SyncStatus.synced,
+            );
+            synced++;
+
+          case SyncStatus.pendingDelete:
+            await _businessRemoteDs.deleteBranch(record.id);
+            await _branchesDao.hardDelete(record.id);
+            synced++;
+
+          case SyncStatus.synced:
+            break;
+        }
+      } catch (e) {
+        failed++;
+        debugPrint('[SYNC] Branch ${record.name} FAILED: $e');
+        errors.add('Branch ${record.name}: ${e.toString()}');
+        await _branchesDao.updateSyncStatus(
+          id: record.id,
+          status: SyncStatus.failed,
+          error: e.toString(),
+        );
+      }
+    }
+
+    return SyncResult(
+      success: failed == 0,
+      message: 'Branches: synced $synced, failed $failed',
+      syncedCount: synced,
+      failedCount: failed,
+      errors: errors,
+    );
   }
 
   // i sync na yung categories
@@ -1117,9 +1185,14 @@ class SyncService {
         final branchId = branches != null && branches.isNotEmpty
             ? branches.first['branch_id'] as String?
             : null;
-        final roleName = row['roles'] != null
+        // Prefer the direct role_name column (set at creation time), then the
+        // roles join (if a role_id UUID is assigned), then fall back to
+        // whatever is already stored locally so offline-only labels survive sync.
+        final directRoleName = row['role_name'] as String?;
+        final joinedRoleName = row['roles'] != null
             ? (row['roles'] as Map<String, dynamic>)['name'] as String?
             : null;
+        final roleName = directRoleName ?? joinedRoleName ?? existing?.roleName;
 
         await _employeesDao.upsertFromServer(
           EmployeesTableCompanion.insert(
@@ -1165,39 +1238,49 @@ class SyncService {
   }
 
   Future<void> _syncAuditLogs() async {
-    try {
-      final pending = await _auditLogsDao.getPendingSync();
-      if (pending.isEmpty) return;
+    final pending = await _auditLogsDao.getPendingSync();
+    if (pending.isEmpty) return;
 
-      final rows = pending
-          .map(
-            (r) => {
-              'id': r.id,
-              'business_id': r.businessId,
-              'branch_id': r.branchId.isEmpty ? null : r.branchId,
-              'user_id': r.userId.isEmpty ? null : r.userId,
-              'action_type': r.actionType,
-              'entity_type': r.entityType,
-              'entity_id': (r.entityId?.isEmpty ?? true) ? null : r.entityId,
-              'description': r.description,
-              'metadata': r.metadata,
-              'device_id': r.deviceId,
-              'created_at': r.createdAt.toUtc().toIso8601String(),
-            },
-          )
-          .toList();
+    int synced = 0;
+    int failed = 0;
 
-      await _auditLogRemoteDs.upsertLogs(rows);
-
-      for (final r in pending) {
+    for (final r in pending) {
+      final row = {
+        'id': r.id,
+        'business_id': r.businessId,
+        'branch_id': r.branchId.isEmpty ? null : r.branchId,
+        'user_id': r.userId.isEmpty ? null : r.userId,
+        'action_type': r.actionType,
+        'entity_type': r.entityType,
+        'entity_id': (r.entityId?.isEmpty ?? true) ? null : r.entityId,
+        'description': r.description,
+        'metadata': r.metadata,
+        'device_id': r.deviceId,
+        'created_at': r.createdAt.toUtc().toIso8601String(),
+      };
+      try {
+        await _auditLogRemoteDs.upsertLogs([row]);
         await _auditLogsDao.updateSyncStatus(
           id: r.id,
           status: SyncStatus.synced,
         );
+        synced++;
+      } catch (e) {
+        failed++;
+        debugPrint(
+          '[SYNC] AuditLog ${r.id} FAILED '
+          '(business=${r.businessId} action=${r.actionType}): $e',
+        );
+        await _auditLogsDao.updateSyncStatus(
+          id: r.id,
+          status: SyncStatus.failed,
+          error: e.toString(),
+        );
       }
-      debugPrint('[SYNC] Audit logs: pushed ${pending.length}');
-    } catch (e) {
-      debugPrint('[SYNC] Audit logs push failed: $e');
+    }
+
+    if (synced > 0 || failed > 0) {
+      debugPrint('[SYNC] Audit logs: synced $synced, failed $failed');
     }
   }
 
@@ -1221,6 +1304,7 @@ class SyncService {
               authUserId: record.authUserId,
               fullName: record.fullName ?? '',
               roleId: record.roleId,
+              roleName: record.roleName,
               isActive: record.isActive,
             );
             if (record.branchId != null) {

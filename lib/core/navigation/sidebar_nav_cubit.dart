@@ -5,6 +5,7 @@ enum SettingsSubPage {
   receipt,
   businessProfile,
   profile,
+  modules,
 }
 
 class SidebarNavCubit extends Cubit<SettingsSubPage> {

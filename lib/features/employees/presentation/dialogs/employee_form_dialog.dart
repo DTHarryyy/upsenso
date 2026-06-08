@@ -175,6 +175,11 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
+  // Server-side field error shown inline under the email field.
+  String? _serverEmailError;
+  // Generic form-level error shown in a banner above the action buttons.
+  String? _formError;
+
   bool get _isEditing => widget.employee != null;
 
   @override
@@ -186,7 +191,6 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
     final e = widget.employee;
     if (e != null) {
       _nameCtrl.text = e.fullName;
-      // Determine role display from roleName
       final allowed = widget.allowedRoles;
       final derivedRole = EmployeeRoleX.fromRoleName(e.roleName);
       _role = (allowed == null || allowed.contains(derivedRole))
@@ -210,13 +214,14 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
   }
 
   void _submit() {
+    // Clear any previous server errors before re-validating.
+    setState(() {
+      _serverEmailError = null;
+      _formError = null;
+    });
+
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedBranchId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a branch')),
-      );
-      return;
-    }
+
     setState(() => _submitting = true);
 
     if (_isEditing) {
@@ -225,7 +230,6 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
           id: widget.employee!.id,
           fullName: _nameCtrl.text.trim(),
           branchId: _selectedBranchId,
-          // roleId will be wired up when the roles feature provides UUIDs
         ),
       );
     } else {
@@ -235,7 +239,7 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
           fullName: _nameCtrl.text.trim(),
           email: _emailCtrl.text.trim(),
           password: _passwordCtrl.text,
-          // roleId will be wired up when the roles feature provides UUIDs
+          roleName: _role.displayName,
         ),
       );
     }
@@ -245,27 +249,29 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
   Widget build(BuildContext context) {
     return BlocListener<EmployeeBloc, EmployeeState>(
       listenWhen: (prev, curr) =>
-          _submitting && curr is! EmployeeOperationInProgress,
+          _submitting &&
+          (curr is EmployeeOperationSuccess ||
+              curr is EmployeeError ||
+              curr is EmployeeValidationFailure),
       listener: (context, state) {
         if (!mounted) return;
-        if (state is EmployeeLoaded || state is EmployeeOperationSuccess) {
+        if (state is EmployeeOperationSuccess) {
           Navigator.of(context).pop();
         } else if (state is EmployeeValidationFailure) {
-          setState(() => _submitting = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.firstMessage),
-              backgroundColor: Colors.red.shade700,
-            ),
-          );
+          setState(() {
+            _submitting = false;
+            _serverEmailError = state.fieldErrors['email'];
+            final otherErrors = state.fieldErrors.entries
+                .where((e) => e.key != 'email')
+                .map((e) => e.value)
+                .join(' • ');
+            _formError = otherErrors.isNotEmpty ? otherErrors : null;
+          });
         } else if (state is EmployeeError) {
-          setState(() => _submitting = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.red.shade700,
-            ),
-          );
+          setState(() {
+            _submitting = false;
+            _formError = state.message;
+          });
         }
       },
       child: SingleChildScrollView(
@@ -337,12 +343,23 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
                       decoration: appInputDeco(
                         'e.g. maria@business.com',
                         label: 'Email',
+                      ).copyWith(
+                        errorText: _serverEmailError,
                       ),
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
+                      onChanged: (_) {
+                        if (_serverEmailError != null) {
+                          setState(() => _serverEmailError = null);
+                        }
+                      },
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) return 'Required';
-                        if (!v.contains('@')) return 'Enter a valid email';
+                        final emailRegex =
+                            RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+                        if (!emailRegex.hasMatch(v.trim())) {
+                          return 'Enter a valid email address';
+                        }
                         return null;
                       },
                     ),
@@ -434,11 +451,14 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
                       hint: 'Select branch',
                       items: widget.branches
                           .map(
-                            (b) => AppDropdownItem(value: b.id, label: b.name),
+                            (b) =>
+                                AppDropdownItem(value: b.id, label: b.name),
                           )
                           .toList(),
-                      onChanged: (v) => setState(() => _selectedBranchId = v),
-                      validator: (v) => v == null ? 'Required' : null,
+                      onChanged: (v) =>
+                          setState(() => _selectedBranchId = v),
+                      validator: (v) =>
+                          v == null ? 'Please select a branch' : null,
                     ),
                     const SizedBox(height: 12),
                   ],
@@ -446,8 +466,10 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
                     value: _role,
                     items: (widget.allowedRoles ?? EmployeeRole.values)
                         .map(
-                          (r) =>
-                              AppDropdownItem(value: r, label: r.displayName),
+                          (r) => AppDropdownItem(
+                            value: r,
+                            label: r.displayName,
+                          ),
                         )
                         .toList(),
                     onChanged: (v) {
@@ -457,7 +479,16 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
                 ],
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 14),
+
+              // ── Form-level error banner ───────────────────────────────
+              if (_formError != null) ...[
+                _FormErrorBanner(
+                  message: _formError!,
+                  onDismiss: () => setState(() => _formError = null),
+                ),
+                const SizedBox(height: 14),
+              ],
 
               // ── Actions ───────────────────────────────────────────────
               if (widget.isPage)
@@ -466,7 +497,7 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
                   child: AppFilledButton(
                     label: _isEditing ? 'Save Changes' : 'Add Employee',
                     loading: _submitting,
-                    onPressed: _submit,
+                    onPressed: _submitting ? null : _submit,
                     icon: _isEditing ? Icons.check : Icons.person_add,
                   ),
                 )
@@ -475,7 +506,8 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () => Navigator.of(context).pop(),
+                        onPressed:
+                            _submitting ? null : () => Navigator.of(context).pop(),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           side: const BorderSide(color: AppColors.borderSoft),
@@ -498,7 +530,7 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
                       child: AppFilledButton(
                         label: _isEditing ? 'Save Changes' : 'Add Employee',
                         loading: _submitting,
-                        onPressed: _submit,
+                        onPressed: _submitting ? null : _submit,
                         icon: _isEditing ? Icons.check : Icons.person_add,
                       ),
                     ),
@@ -507,6 +539,56 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ── Form-level error banner ───────────────────────────────────────────────────
+
+class _FormErrorBanner extends StatelessWidget {
+  final String message;
+  final VoidCallback onDismiss;
+
+  const _FormErrorBanner({required this.message, required this.onDismiss});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFECACA)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            color: Color(0xFFDC2626),
+            size: 18,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: getOutfitStyle(
+                fontSize: 13,
+                color: const Color(0xFF991B1B),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: onDismiss,
+            child: const Icon(
+              Icons.close,
+              size: 16,
+              color: Color(0xFFDC2626),
+            ),
+          ),
+        ],
       ),
     );
   }

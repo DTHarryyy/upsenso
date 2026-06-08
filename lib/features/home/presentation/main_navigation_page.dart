@@ -489,18 +489,24 @@ class _AppSidebarState extends State<_AppSidebar>
 
   // ── Feature-based visibility helpers — no hardcoded role strings ──────────
   PermissionService get _permService => sl<PermissionService>();
-  bool get _sidebarShowDashboard => true; // all roles see the dashboard
-  bool get _sidebarShowPos => _permService.can(PermissionKeys.navPos);
+  bool get _sidebarShowDashboard => true;
+  bool get _sidebarShowPos =>
+      _permService.can(PermissionKeys.navPos) &&
+      _permService.isModuleEnabled('pos');
   bool get _sidebarShowInventory =>
-      _permService.can(PermissionKeys.navInventory);
-  bool get _sidebarShowProducts =>
-      true; // all roles see products (read-only for cashier)
-  bool get _sidebarShowReports => _permService.can(PermissionKeys.navReports);
+      _permService.can(PermissionKeys.navInventory) &&
+      _permService.isModuleEnabled('inventory');
+  bool get _sidebarShowProducts => true;
+  bool get _sidebarShowReports =>
+      _permService.can(PermissionKeys.navReports) &&
+      _permService.isModuleEnabled('reports');
   bool get _sidebarShowOperations =>
-      _permService.can(PermissionKeys.navExpenses);
+      _permService.can(PermissionKeys.navExpenses) &&
+      _permService.isModuleEnabled('expenses');
   bool get _sidebarShowSettings => _permService.can(PermissionKeys.navSettings);
   bool get _sidebarShowAuditLogs =>
-      _permService.can(PermissionKeys.navAuditLogs);
+      _permService.can(PermissionKeys.navAuditLogs) &&
+      _permService.isModuleEnabled('audit');
   @override
   Widget build(BuildContext context) {
     final w = widget.expanded ? _kSidebarExpanded : _kSidebarCollapsed;
@@ -731,6 +737,10 @@ class _AppSidebarState extends State<_AppSidebar>
                         }
                       },
                       onSubItemTap: _tapSettingsSubItem,
+                      onModulesTap: () => context.push(
+                        AppRoutes.moduleSettings,
+                        extra: widget.businessId ?? '',
+                      ),
                     ),
 
                     const SizedBox(height: 6),
@@ -861,6 +871,7 @@ class _SettingsAccordion extends StatelessWidget {
   final SettingsSubPage activeSubPage;
   final VoidCallback onHeaderTap;
   final ValueChanged<SettingsSubPage> onSubItemTap;
+  final VoidCallback? onModulesTap;
 
   const _SettingsAccordion({
     required this.expanded,
@@ -870,6 +881,7 @@ class _SettingsAccordion extends StatelessWidget {
     required this.activeSubPage,
     required this.onHeaderTap,
     required this.onSubItemTap,
+    this.onModulesTap,
   });
 
   @override
@@ -957,6 +969,74 @@ class _SettingsAccordion extends StatelessWidget {
       ),
     ];
 
+    final showModules =
+        onModulesTap != null &&
+        sl<PermissionService>().can(PermissionKeys.settingsEditBusiness);
+
+    Widget subItemTile({
+      required IconData icon,
+      required String label,
+      required bool isSubActive,
+      required VoidCallback onTap,
+    }) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(8),
+            mouseCursor: SystemMouseCursors.click,
+            splashColor: AppColors.brand.withAlpha(15),
+            child: Container(
+              height: 32,
+              decoration: BoxDecoration(
+                color: isSubActive ? AppColors.brandSoft : Colors.transparent,
+                borderRadius: BorderRadius.circular(7),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Row(
+                children: [
+                  Container(
+                    width: 1.5,
+                    height: 20,
+                    margin: const EdgeInsets.only(right: 10),
+                    decoration: BoxDecoration(
+                      color: isSubActive
+                          ? AppColors.brand
+                          : AppColors.borderSoft,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  Icon(
+                    icon,
+                    size: 16,
+                    color: isSubActive ? AppColors.brand : AppColors.textMuted,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      label,
+                      overflow: TextOverflow.ellipsis,
+                      style: getOutfitStyle(
+                        fontSize: 12.5,
+                        fontWeight: isSubActive
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                        color: isSubActive
+                            ? AppColors.textPrimary
+                            : AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Column(
       children: [
         header,
@@ -964,70 +1044,24 @@ class _SettingsAccordion extends StatelessWidget {
           sizeFactor: expandAnim,
           axisAlignment: -1,
           child: Column(
-            children: subItems.map((item) {
-              final isSubActive = isActive && activeSubPage == item.subPage;
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () => onSubItemTap(item.subPage),
-                    borderRadius: BorderRadius.circular(8),
-                    mouseCursor: SystemMouseCursors.click,
-                    splashColor: AppColors.brand.withAlpha(15),
-                    child: Container(
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: isSubActive
-                            ? AppColors.brandSoft
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(7),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: Row(
-                        children: [
-                          // Indent indicator line
-                          Container(
-                            width: 1.5,
-                            height: 20,
-                            margin: const EdgeInsets.only(right: 10),
-                            decoration: BoxDecoration(
-                              color: isSubActive
-                                  ? AppColors.brand
-                                  : AppColors.borderSoft,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                          Icon(
-                            item.icon,
-                            size: 16,
-                            color: isSubActive
-                                ? AppColors.brand
-                                : AppColors.textMuted,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              item.label,
-                              overflow: TextOverflow.ellipsis,
-                              style: getOutfitStyle(
-                                fontSize: 12.5,
-                                fontWeight: isSubActive
-                                    ? FontWeight.w600
-                                    : FontWeight.w400,
-                                color: isSubActive
-                                    ? AppColors.textPrimary
-                                    : AppColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+            children: [
+              ...subItems.map(
+                (item) => subItemTile(
+                  icon: item.icon,
+                  label: item.label,
+                  isSubActive: isActive && activeSubPage == item.subPage,
+                  onTap: () => onSubItemTap(item.subPage),
                 ),
-              );
-            }).toList(),
+              ),
+              if (showModules)
+                subItemTile(
+                  icon: IconlyLight.setting,
+                  label: 'Module Management',
+                  isSubActive: isActive &&
+                      activeSubPage == SettingsSubPage.modules,
+                  onTap: onModulesTap!,
+                ),
+            ],
           ),
         ),
       ],

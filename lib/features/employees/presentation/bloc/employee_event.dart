@@ -39,6 +39,7 @@ class AddEmployee extends EmployeeEvent {
   final String email;
   final String password;
   final String? roleId;
+  final String? roleName;
 
   const AddEmployee({
     required this.branchId,
@@ -46,10 +47,11 @@ class AddEmployee extends EmployeeEvent {
     required this.email,
     required this.password,
     this.roleId,
+    this.roleName,
   });
 
   @override
-  List<Object?> get props => [fullName, email, branchId, roleId];
+  List<Object?> get props => [fullName, email, branchId, roleId, roleName];
 }
 
 class UpdateEmployee extends EmployeeEvent {

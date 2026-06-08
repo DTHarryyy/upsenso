@@ -12,6 +12,7 @@ abstract class IEmployeesRepository {
     required String email,
     required String password,
     String? roleId,
+    String? roleName,
     bool isActive = true,
   });
 

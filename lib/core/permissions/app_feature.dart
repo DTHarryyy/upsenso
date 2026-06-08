@@ -97,6 +97,39 @@ extension AppFeatureX on AppFeature {
   String get deniedMessage =>
       'You do not have access to: ${displayLabel.toLowerCase()}.';
 
+  /// Maps this feature to the business-module code that gates it.
+  ///
+  /// Returns `null` for features that are not module-gated (dashboards, profile,
+  /// settings) — those are always accessible when the user has the nav permission.
+  String? get moduleCode {
+    switch (this) {
+      case AppFeature.posTerminal:
+        return 'pos';
+      case AppFeature.inventoryManagement:
+      case AppFeature.productsCatalogue:
+        return 'inventory';
+      case AppFeature.expensesModule:
+        return 'expenses';
+      case AppFeature.employeeManagement:
+        return 'employees';
+      case AppFeature.reportsAnalytics:
+        return 'reports';
+      case AppFeature.supplierDirectory:
+        return 'suppliers';
+      case AppFeature.auditLogs:
+        return 'audit';
+      // Not module-gated:
+      case AppFeature.businessSettings:
+      case AppFeature.branchConfiguration:
+      case AppFeature.profileSettings:
+      case AppFeature.dashboardCashier:
+      case AppFeature.dashboardInventory:
+      case AppFeature.dashboardManager:
+      case AppFeature.dashboardOwner:
+        return null;
+    }
+  }
+
   /// Maps this legacy [AppFeature] to the canonical [PermissionKeys] nav key.
   ///
   /// Used by [PermissionService.canAccessFeature] to delegate to the new

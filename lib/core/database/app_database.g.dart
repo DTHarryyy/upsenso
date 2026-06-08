@@ -13380,6 +13380,332 @@ class EmployeePermissionsTableCompanion
   }
 }
 
+class $BusinessModulesTableTable extends BusinessModulesTable
+    with TableInfo<$BusinessModulesTableTable, BusinessModuleRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BusinessModulesTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _moduleCodeMeta = const VerificationMeta(
+    'moduleCode',
+  );
+  @override
+  late final GeneratedColumn<String> moduleCode = GeneratedColumn<String>(
+    'module_code',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _enabledMeta = const VerificationMeta(
+    'enabled',
+  );
+  @override
+  late final GeneratedColumn<bool> enabled = GeneratedColumn<bool>(
+    'enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _syncedAtMeta = const VerificationMeta(
+    'syncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+    'synced_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    businessId,
+    moduleCode,
+    enabled,
+    syncedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'business_modules_local';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BusinessModuleRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('module_code')) {
+      context.handle(
+        _moduleCodeMeta,
+        moduleCode.isAcceptableOrUnknown(data['module_code']!, _moduleCodeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_moduleCodeMeta);
+    }
+    if (data.containsKey('enabled')) {
+      context.handle(
+        _enabledMeta,
+        enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta),
+      );
+    }
+    if (data.containsKey('synced_at')) {
+      context.handle(
+        _syncedAtMeta,
+        syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {businessId, moduleCode};
+  @override
+  BusinessModuleRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BusinessModuleRow(
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      moduleCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}module_code'],
+      )!,
+      enabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}enabled'],
+      )!,
+      syncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}synced_at'],
+      )!,
+    );
+  }
+
+  @override
+  $BusinessModulesTableTable createAlias(String alias) {
+    return $BusinessModulesTableTable(attachedDatabase, alias);
+  }
+}
+
+class BusinessModuleRow extends DataClass
+    implements Insertable<BusinessModuleRow> {
+  final String businessId;
+  final String moduleCode;
+  final bool enabled;
+
+  /// Last time this row was written from Supabase.
+  final DateTime syncedAt;
+  const BusinessModuleRow({
+    required this.businessId,
+    required this.moduleCode,
+    required this.enabled,
+    required this.syncedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['business_id'] = Variable<String>(businessId);
+    map['module_code'] = Variable<String>(moduleCode);
+    map['enabled'] = Variable<bool>(enabled);
+    map['synced_at'] = Variable<DateTime>(syncedAt);
+    return map;
+  }
+
+  BusinessModulesTableCompanion toCompanion(bool nullToAbsent) {
+    return BusinessModulesTableCompanion(
+      businessId: Value(businessId),
+      moduleCode: Value(moduleCode),
+      enabled: Value(enabled),
+      syncedAt: Value(syncedAt),
+    );
+  }
+
+  factory BusinessModuleRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BusinessModuleRow(
+      businessId: serializer.fromJson<String>(json['businessId']),
+      moduleCode: serializer.fromJson<String>(json['moduleCode']),
+      enabled: serializer.fromJson<bool>(json['enabled']),
+      syncedAt: serializer.fromJson<DateTime>(json['syncedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'businessId': serializer.toJson<String>(businessId),
+      'moduleCode': serializer.toJson<String>(moduleCode),
+      'enabled': serializer.toJson<bool>(enabled),
+      'syncedAt': serializer.toJson<DateTime>(syncedAt),
+    };
+  }
+
+  BusinessModuleRow copyWith({
+    String? businessId,
+    String? moduleCode,
+    bool? enabled,
+    DateTime? syncedAt,
+  }) => BusinessModuleRow(
+    businessId: businessId ?? this.businessId,
+    moduleCode: moduleCode ?? this.moduleCode,
+    enabled: enabled ?? this.enabled,
+    syncedAt: syncedAt ?? this.syncedAt,
+  );
+  BusinessModuleRow copyWithCompanion(BusinessModulesTableCompanion data) {
+    return BusinessModuleRow(
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      moduleCode: data.moduleCode.present
+          ? data.moduleCode.value
+          : this.moduleCode,
+      enabled: data.enabled.present ? data.enabled.value : this.enabled,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BusinessModuleRow(')
+          ..write('businessId: $businessId, ')
+          ..write('moduleCode: $moduleCode, ')
+          ..write('enabled: $enabled, ')
+          ..write('syncedAt: $syncedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(businessId, moduleCode, enabled, syncedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BusinessModuleRow &&
+          other.businessId == this.businessId &&
+          other.moduleCode == this.moduleCode &&
+          other.enabled == this.enabled &&
+          other.syncedAt == this.syncedAt);
+}
+
+class BusinessModulesTableCompanion extends UpdateCompanion<BusinessModuleRow> {
+  final Value<String> businessId;
+  final Value<String> moduleCode;
+  final Value<bool> enabled;
+  final Value<DateTime> syncedAt;
+  final Value<int> rowid;
+  const BusinessModulesTableCompanion({
+    this.businessId = const Value.absent(),
+    this.moduleCode = const Value.absent(),
+    this.enabled = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  BusinessModulesTableCompanion.insert({
+    required String businessId,
+    required String moduleCode,
+    this.enabled = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : businessId = Value(businessId),
+       moduleCode = Value(moduleCode);
+  static Insertable<BusinessModuleRow> custom({
+    Expression<String>? businessId,
+    Expression<String>? moduleCode,
+    Expression<bool>? enabled,
+    Expression<DateTime>? syncedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (businessId != null) 'business_id': businessId,
+      if (moduleCode != null) 'module_code': moduleCode,
+      if (enabled != null) 'enabled': enabled,
+      if (syncedAt != null) 'synced_at': syncedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  BusinessModulesTableCompanion copyWith({
+    Value<String>? businessId,
+    Value<String>? moduleCode,
+    Value<bool>? enabled,
+    Value<DateTime>? syncedAt,
+    Value<int>? rowid,
+  }) {
+    return BusinessModulesTableCompanion(
+      businessId: businessId ?? this.businessId,
+      moduleCode: moduleCode ?? this.moduleCode,
+      enabled: enabled ?? this.enabled,
+      syncedAt: syncedAt ?? this.syncedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (moduleCode.present) {
+      map['module_code'] = Variable<String>(moduleCode.value);
+    }
+    if (enabled.present) {
+      map['enabled'] = Variable<bool>(enabled.value);
+    }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BusinessModulesTableCompanion(')
+          ..write('businessId: $businessId, ')
+          ..write('moduleCode: $moduleCode, ')
+          ..write('enabled: $enabled, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -13414,6 +13740,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $EmployeesTableTable employeesTable = $EmployeesTableTable(this);
   late final $EmployeePermissionsTableTable employeePermissionsTable =
       $EmployeePermissionsTableTable(this);
+  late final $BusinessModulesTableTable businessModulesTable =
+      $BusinessModulesTableTable(this);
   late final AuthContextDao authContextDao = AuthContextDao(
     this as AppDatabase,
   );
@@ -13444,6 +13772,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final EmployeesDao employeesDao = EmployeesDao(this as AppDatabase);
   late final EmployeePermissionsDao employeePermissionsDao =
       EmployeePermissionsDao(this as AppDatabase);
+  late final BusinessModulesDao businessModulesDao = BusinessModulesDao(
+    this as AppDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -13465,6 +13796,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     auditLogsTable,
     employeesTable,
     employeePermissionsTable,
+    businessModulesTable,
   ];
 }
 
@@ -19784,6 +20116,207 @@ typedef $$EmployeePermissionsTableTableProcessedTableManager =
       EmployeePermissionsRow,
       PrefetchHooks Function()
     >;
+typedef $$BusinessModulesTableTableCreateCompanionBuilder =
+    BusinessModulesTableCompanion Function({
+      required String businessId,
+      required String moduleCode,
+      Value<bool> enabled,
+      Value<DateTime> syncedAt,
+      Value<int> rowid,
+    });
+typedef $$BusinessModulesTableTableUpdateCompanionBuilder =
+    BusinessModulesTableCompanion Function({
+      Value<String> businessId,
+      Value<String> moduleCode,
+      Value<bool> enabled,
+      Value<DateTime> syncedAt,
+      Value<int> rowid,
+    });
+
+class $$BusinessModulesTableTableFilterComposer
+    extends Composer<_$AppDatabase, $BusinessModulesTableTable> {
+  $$BusinessModulesTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get moduleCode => $composableBuilder(
+    column: $table.moduleCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$BusinessModulesTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $BusinessModulesTableTable> {
+  $$BusinessModulesTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get moduleCode => $composableBuilder(
+    column: $table.moduleCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$BusinessModulesTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BusinessModulesTableTable> {
+  $$BusinessModulesTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get moduleCode => $composableBuilder(
+    column: $table.moduleCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get syncedAt =>
+      $composableBuilder(column: $table.syncedAt, builder: (column) => column);
+}
+
+class $$BusinessModulesTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BusinessModulesTableTable,
+          BusinessModuleRow,
+          $$BusinessModulesTableTableFilterComposer,
+          $$BusinessModulesTableTableOrderingComposer,
+          $$BusinessModulesTableTableAnnotationComposer,
+          $$BusinessModulesTableTableCreateCompanionBuilder,
+          $$BusinessModulesTableTableUpdateCompanionBuilder,
+          (
+            BusinessModuleRow,
+            BaseReferences<
+              _$AppDatabase,
+              $BusinessModulesTableTable,
+              BusinessModuleRow
+            >,
+          ),
+          BusinessModuleRow,
+          PrefetchHooks Function()
+        > {
+  $$BusinessModulesTableTableTableManager(
+    _$AppDatabase db,
+    $BusinessModulesTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BusinessModulesTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BusinessModulesTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$BusinessModulesTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> businessId = const Value.absent(),
+                Value<String> moduleCode = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
+                Value<DateTime> syncedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => BusinessModulesTableCompanion(
+                businessId: businessId,
+                moduleCode: moduleCode,
+                enabled: enabled,
+                syncedAt: syncedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String businessId,
+                required String moduleCode,
+                Value<bool> enabled = const Value.absent(),
+                Value<DateTime> syncedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => BusinessModulesTableCompanion.insert(
+                businessId: businessId,
+                moduleCode: moduleCode,
+                enabled: enabled,
+                syncedAt: syncedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$BusinessModulesTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BusinessModulesTableTable,
+      BusinessModuleRow,
+      $$BusinessModulesTableTableFilterComposer,
+      $$BusinessModulesTableTableOrderingComposer,
+      $$BusinessModulesTableTableAnnotationComposer,
+      $$BusinessModulesTableTableCreateCompanionBuilder,
+      $$BusinessModulesTableTableUpdateCompanionBuilder,
+      (
+        BusinessModuleRow,
+        BaseReferences<
+          _$AppDatabase,
+          $BusinessModulesTableTable,
+          BusinessModuleRow
+        >,
+      ),
+      BusinessModuleRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -19826,4 +20359,6 @@ class $AppDatabaseManager {
         _db,
         _db.employeePermissionsTable,
       );
+  $$BusinessModulesTableTableTableManager get businessModulesTable =>
+      $$BusinessModulesTableTableTableManager(_db, _db.businessModulesTable);
 }
