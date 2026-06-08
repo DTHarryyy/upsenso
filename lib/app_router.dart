@@ -166,6 +166,25 @@ class AppRouter {
         if (requiredKey != null && !sl<PermissionService>().can(requiredKey)) {
           return AppRoutes.dashboard;
         }
+
+        // Module guards — redirect to dashboard when a module is disabled,
+        // even if the user has the role permission for it.
+        const routeModuleGuards = <String, String>{
+          AppRoutes.posTerminal: 'pos',
+          AppRoutes.reports: 'reports',
+          AppRoutes.inventory: 'inventory',
+          AppRoutes.stockLevel: 'inventory',
+          AppRoutes.expenses: 'expenses',
+          AppRoutes.saleshistory: 'expenses',
+          AppRoutes.employees: 'employees',
+          AppRoutes.employeePermissions: 'employees',
+          AppRoutes.auditLogs: 'audit',
+        };
+        final requiredModule = routeModuleGuards[location];
+        if (requiredModule != null &&
+            !sl<PermissionService>().isModuleEnabled(requiredModule)) {
+          return AppRoutes.dashboard;
+        }
       }
 
       return null;

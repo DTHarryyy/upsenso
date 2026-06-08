@@ -24,9 +24,13 @@ class AppBottomNav extends StatelessWidget {
         service.isModuleEnabled('reports');
     final canUseInventory = service.can(PermissionKeys.navInventory) &&
         service.isModuleEnabled('inventory');
+    // hasPosByRole: user's role grants POS access regardless of module toggle.
+    // Used to distinguish "inventory staff" (never has POS) from "owner with
+    // POS module off" — the latter should still get the full nav bar.
+    final hasPosByRole = service.can(PermissionKeys.navPos);
     // Derive nav variant from feature access — no hardcoded role strings.
     final isCashierLike = canUsePOS && !canUseReports && !canUseInventory;
-    final isInventoryLike = canUseInventory && !canUsePOS;
+    final isInventoryLike = canUseInventory && !hasPosByRole;
 
     return Container(
       decoration: BoxDecoration(
@@ -53,7 +57,8 @@ class AppBottomNav extends StatelessWidget {
               if (isInventoryLike) ..._inventoryStaffItems(),
 
               // ── All other roles: full nav bar ─────────────────────────────
-              if (!isCashierLike && !isInventoryLike) ..._fullNavItems(),
+              if (!isCashierLike && !isInventoryLike)
+                ..._fullNavItems(canUsePOS: canUsePOS),
             ],
           ),
         ),
@@ -128,7 +133,7 @@ class AppBottomNav extends StatelessWidget {
     ),
   ];
 
-  List<Widget> _fullNavItems() => [
+  List<Widget> _fullNavItems({required bool canUsePOS}) => [
     _buildNavItem(
       icon: IconlyLight.home,
       activeIcon: IconlyBold.home,
@@ -141,7 +146,7 @@ class AppBottomNav extends StatelessWidget {
       label: 'Products',
       index: 1,
     ),
-    _buildCenterPOSButton(),
+    if (canUsePOS) _buildCenterPOSButton(),
     _buildNavItem(
       icon: IconlyLight.chart,
       activeIcon: IconlyBold.chart,

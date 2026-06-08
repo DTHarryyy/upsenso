@@ -136,9 +136,11 @@ class _MorePageState extends State<MorePage>
           PermissionKeys.navExpenses,
         );
         // Audit logs: owner / super_admin only (branchManager excluded by permission matrix).
-        final canSeeAuditLogs = permService.can(PermissionKeys.navAuditLogs);
+        final canSeeAuditLogs = permService.can(PermissionKeys.navAuditLogs) &&
+            permService.isModuleEnabled('audit');
         // Employee management: branchManager / owner / super_admin.
-        final canSeeEmployees = permService.can(PermissionKeys.navEmployees);
+        final canSeeEmployees = permService.can(PermissionKeys.navEmployees) &&
+            permService.isModuleEnabled('employees');
 
         return SafeArea(
           child: Column(
@@ -175,8 +177,9 @@ class _MorePageState extends State<MorePage>
                         const SizedBox(height: 4),
                       ],
 
-                      // OPERATIONS — hidden for cashier & inventory staff
-                      if (!isRestrictedEmployee) ...[
+                      // OPERATIONS — hidden for cashier/inventory staff and when expenses module is off
+                      if (!isRestrictedEmployee &&
+                          permService.isModuleEnabled('expenses')) ...[
                         _SectionLabel('OPERATIONS'),
                         _DrawerTile(
                           icon: IconlyLight.time_circle,
