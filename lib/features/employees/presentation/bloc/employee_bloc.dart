@@ -104,11 +104,15 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
         roleId: event.roleId,
         roleName: event.roleName,
       );
-      // Always emit success so the form can close regardless of current state.
+      // Use the latest loaded state so stream updates that arrived during the
+      // async add (i.e. the new employee row) are not overwritten by the
+      // stale snapshot captured before the operation started.
+      final latest = _currentLoaded ??
+          current ??
+          const EmployeeLoaded(allEmployees: [], displayEmployees: []);
       emit(EmployeeOperationSuccess(
         message: 'Employee added',
-        loaded: current ??
-            const EmployeeLoaded(allEmployees: [], displayEmployees: []),
+        loaded: latest,
       ));
     } on EmployeeDuplicateException catch (e) {
       emit(EmployeeValidationFailure(fieldErrors: e.fieldErrors, loaded: current));
@@ -132,8 +136,9 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
         branchId: event.branchId,
         isActive: event.isActive,
       );
-      if (current != null) {
-        emit(EmployeeOperationSuccess(message: 'Employee updated', loaded: current));
+      final latest = _currentLoaded ?? current;
+      if (latest != null) {
+        emit(EmployeeOperationSuccess(message: 'Employee updated', loaded: latest));
       }
     } on EmployeeDuplicateException catch (e) {
       emit(EmployeeValidationFailure(fieldErrors: e.fieldErrors, loaded: current));

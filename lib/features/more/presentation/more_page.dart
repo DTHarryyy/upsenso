@@ -222,7 +222,20 @@ class _MorePageState extends State<MorePage>
                         SizeTransition(
                           sizeFactor: _expandAnim,
                           axisAlignment: -1,
-                          child: _SettingsSubItems(onNavigate: _navigate),
+                          child: _SettingsSubItems(
+                            onNavigate: _navigate,
+                            onModulesTap: permService.can(
+                              PermissionKeys.settingsEditBusiness,
+                            )
+                                ? () {
+                                    Navigator.of(context).pop();
+                                    context.push(
+                                      AppRoutes.moduleSettings,
+                                      extra: user?.businessId ?? '',
+                                    );
+                                  }
+                                : null,
+                          ),
                         ),
                       ],
                     ],
@@ -434,8 +447,12 @@ class _SettingsTile extends StatelessWidget {
 
 class _SettingsSubItems extends StatelessWidget {
   final void Function(String route) onNavigate;
+  final VoidCallback? onModulesTap;
 
-  const _SettingsSubItems({required this.onNavigate});
+  const _SettingsSubItems({
+    required this.onNavigate,
+    this.onModulesTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -443,18 +460,24 @@ class _SettingsSubItems extends StatelessWidget {
       (
         icon: IconlyLight.paper,
         label: 'Receipt Settings',
-        route: AppRoutes.receiptSettings,
+        onTap: () => onNavigate(AppRoutes.receiptSettings),
       ),
       (
         icon: IconlyLight.work,
         label: 'Business Profile',
-        route: AppRoutes.businessProfile,
+        onTap: () => onNavigate(AppRoutes.businessProfile),
       ),
       (
         icon: IconlyLight.profile,
         label: 'My Profile',
-        route: AppRoutes.profile,
+        onTap: () => onNavigate(AppRoutes.profile),
       ),
+      if (onModulesTap != null)
+        (
+          icon: IconlyLight.setting,
+          label: 'Module Management',
+          onTap: onModulesTap!,
+        ),
     ];
 
     return Container(
@@ -472,7 +495,7 @@ class _SettingsSubItems extends StatelessWidget {
           return Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: () => onNavigate(item.route),
+              onTap: item.onTap,
               borderRadius: BorderRadius.circular(8),
               splashColor: AppColors.brand.withValues(alpha: 0.08),
               child: Padding(
