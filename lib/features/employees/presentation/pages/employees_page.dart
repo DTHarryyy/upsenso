@@ -248,6 +248,8 @@ class _EmployeesViewState extends State<_EmployeesView> {
                       ? state
                       : state is EmployeeOperationInProgress
                       ? state.previous
+                      : state is EmployeeOperationSuccess
+                      ? state.loaded
                       : state is EmployeeValidationFailure
                       ? state.loaded
                       : null;
