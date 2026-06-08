@@ -38,16 +38,21 @@ jobs:
         run: flutter pub get
 
       - name: Compute version
+        id: version
         run: |
-          BUILD_NUMBER=$(git rev-list --count HEAD)
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //')
+          BUILD_NAME=$(echo "$VERSION" | cut -d'+' -f1)
+          BUILD_NUMBER=$(echo "$VERSION" | cut -d'+' -f2)
+          echo "BUILD_NAME=$BUILD_NAME" >> $GITHUB_ENV
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
-          echo "Build number: $BUILD_NUMBER"
+          echo "build_name=$BUILD_NAME" >> $GITHUB_OUTPUT
+          echo "Version: $BUILD_NAME ($BUILD_NUMBER)"
 
       - name: Build App Bundle
         run: |
           flutter build appbundle --release \
             --dart-define-from-file=flavors/prod.json \
-            --build-name=1.0.$BUILD_NUMBER \
+            --build-name=$BUILD_NAME \
             --build-number=$BUILD_NUMBER \
             --obfuscate \
             --split-debug-info=build/debug-info/
@@ -63,5 +68,6 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_JSON_KEY }}
           packageName: com.ledgidy.pos
           releaseFiles: build/app/outputs/bundle/release/*.aab
-          track: alpha
+          track: production
           status: completed
+          releaseName: ${{ steps.version.outputs.build_name }}
