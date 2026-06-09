@@ -29,8 +29,6 @@ class AuthRepositoryImpl implements AuthRepository {
       } else {
         _cachedUserInMemory = AppUserModel.fromSupabaseUser(liveUser);
       }
-    } else {
-      debugPrint('No live session at startup');
     }
   }
 

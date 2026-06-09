@@ -151,26 +151,36 @@ Future<void> _initSupabase() async {
 ///
 /// Strategy:
 ///   1. Fast path — `currentUser != null` means a non-expired access token is
-///      in memory. Attempt a silent `refreshSession()` to validate the refresh
-///      token; on failure clear the stale local session immediately.
+///      in memory. Only refresh if the token expires within 60 s; otherwise
+///      trust it and skip the network call to avoid burning the refresh token
+///      on web hot-restarts (`refresh_token_already_used`).
 ///   2. Slow path — access token is expired / missing. Wait for the in-flight
 ///      background refresh event. On timeout, force a refresh; sign out
 ///      locally if the refresh token is invalid.
 Future<void> _waitForSessionRecovery() async {
   final auth = Supabase.instance.client.auth;
 
-  // Fast path: a valid (non-expired) access token is already in memory.
-  // Proactively validate the refresh token so we don't boot into an
-  // authenticated state only to be kicked out moments later when the
-  // background auto-refresh fires a "refresh_token_not_found" warning.
+  // Fast path: a non-expired access token is already in memory.
+  // Only proactively refresh when the token is about to expire (< 60 s left).
+  // Refreshing unconditionally on every cold-start burns the refresh token and
+  // triggers "refresh_token_already_used" on the very next load (web).
   if (auth.currentUser != null) {
-    try {
-      await auth.refreshSession();
-    } catch (e) {
-      debugPrint(
-        'Session recovery: refresh token invalid at startup — signing out locally. ($e)',
-      );
-      await auth.signOut(scope: SignOutScope.local);
+    final session = auth.currentSession;
+    final expiresAt = session?.expiresAt; // Unix seconds, nullable
+    final nowSeconds = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final secondsLeft = (expiresAt ?? 0) - nowSeconds;
+
+    if (secondsLeft < 60) {
+      // Token is expired or about to expire — refresh now so the UI never
+      // opens with a stale token that auto-refresh hasn't caught yet.
+      try {
+        await auth.refreshSession();
+      } catch (e) {
+        debugPrint(
+          'Session recovery: refresh token invalid at startup — signing out locally. ($e)',
+        );
+        await auth.signOut(scope: SignOutScope.local);
+      }
     }
     return;
   }
