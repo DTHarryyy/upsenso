@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
+import 'package:pos/core/widgets/app_toast.dart';
 
 class ScanPage extends StatelessWidget {
   const ScanPage({super.key});
@@ -39,12 +40,7 @@ class ScanPage extends StatelessWidget {
     final trimmed = code.trim();
     Navigator.of(context).pop();
     if (trimmed.isEmpty) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Code entered: $trimmed'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    AppToast.show(context, 'Code entered: $trimmed', variant: AppToastVariant.info);
   }
 
   @override
@@ -109,12 +105,7 @@ class ScanPage extends StatelessWidget {
                   height: 48,
                   child: FilledButton.icon(
                     onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('QR Scanner - Coming Soon!'),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
+                      AppToast.show(context, 'QR Scanner — coming soon', variant: AppToastVariant.info);
                     },
                     icon: const Icon(IconlyLight.scan),
                     label: const Text('Start Scanning'),

@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:printing/printing.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/widgets/app_toast.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/settings/domain/receipt_settings.dart';
@@ -777,8 +778,11 @@ class _PrinterSelectorState extends State<_PrinterSelector> {
       final printers = await Printing.listPrinters();
       if (!mounted) return;
       if (printers.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No printers found on this device.')),
+        AppToast.show(
+          context,
+          'No printers found',
+          subtitle: 'No printers were detected on this device.',
+          variant: AppToastVariant.error,
         );
         return;
       }

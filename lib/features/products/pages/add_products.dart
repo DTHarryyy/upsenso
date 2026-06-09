@@ -347,11 +347,11 @@ class _AddProductsViewState extends State<_AddProductsView> {
                           } catch (e) {
                             saving.value = false;
                             if (!sheetCtx.mounted) return;
-                            ScaffoldMessenger.of(sheetCtx).showSnackBar(
-                              SnackBar(
-                                content: Text('Failed to save: $e'),
-                                backgroundColor: AppColors.error,
-                              ),
+                            AppToast.show(
+                              sheetCtx,
+                              'Failed to save',
+                              subtitle: '$e',
+                              variant: AppToastVariant.error,
                             );
                             return;
                           }

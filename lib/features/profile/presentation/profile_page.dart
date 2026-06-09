@@ -7,6 +7,7 @@ import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/widgets/app_field_label.dart';
 import 'package:pos/core/widgets/app_input_decoration.dart';
+import 'package:pos/core/widgets/app_toast.dart';
 import 'package:pos/core/widgets/dashboard_card.dart';
 import 'package:pos/core/widgets/user_avatar.dart';
 import 'package:pos/features/auth/domain/entities/app_user.dart';
@@ -85,28 +86,15 @@ class _ProfileViewState extends State<_ProfileView> {
         _saving = false;
         _dirty = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Profile updated',
-            style: getOutfitStyle(color: Colors.white),
-          ),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      AppToast.show(context, 'Profile updated');
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Failed to update: $e',
-            style: getOutfitStyle(color: Colors.white),
-          ),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
+      AppToast.show(
+        context,
+        'Failed to update',
+        subtitle: '$e',
+        variant: AppToastVariant.error,
       );
     }
   }
@@ -125,15 +113,11 @@ class _ProfileViewState extends State<_ProfileView> {
     final bytes = await picked.readAsBytes();
     if (bytes.length > _maxAvatarBytes) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Image too large. Maximum size is 5 MB.',
-            style: getOutfitStyle(color: Colors.white),
-          ),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
+      AppToast.show(
+        context,
+        'Image too large',
+        subtitle: 'Maximum size is 5 MB.',
+        variant: AppToastVariant.error,
       );
       return;
     }
@@ -146,15 +130,11 @@ class _ProfileViewState extends State<_ProfileView> {
       context.read<AuthBloc>().add(AuthUserContextUpdated(updated));
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Upload failed: $e',
-              style: getOutfitStyle(color: Colors.white),
-            ),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppToast.show(
+          context,
+          'Upload failed',
+          subtitle: '$e',
+          variant: AppToastVariant.error,
         );
       }
     } finally {
@@ -642,28 +622,15 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
       await sl<AuthRepository>().changePassword(_newCtrl.text.trim());
       if (!mounted) return;
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Password updated successfully',
-            style: getOutfitStyle(color: Colors.white),
-          ),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      AppToast.show(context, 'Password updated successfully');
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Failed: $e',
-            style: getOutfitStyle(color: Colors.white),
-          ),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
+      AppToast.show(
+        context,
+        'Failed to update password',
+        subtitle: '$e',
+        variant: AppToastVariant.error,
       );
     }
   }
@@ -913,28 +880,15 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
       await sl<AuthRepository>().changePassword(_newCtrl.text.trim());
       if (!mounted) return;
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Password updated successfully',
-            style: getOutfitStyle(color: Colors.white),
-          ),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      AppToast.show(context, 'Password updated successfully');
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Failed: $e',
-            style: getOutfitStyle(color: Colors.white),
-          ),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
+      AppToast.show(
+        context,
+        'Failed to update password',
+        subtitle: '$e',
+        variant: AppToastVariant.error,
       );
     }
   }

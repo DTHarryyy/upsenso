@@ -6,6 +6,7 @@ import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/widgets/app_date_range_picker.dart';
 import 'package:pos/core/widgets/app_dropdown.dart';
+import 'package:pos/core/widgets/app_toast.dart';
 import 'package:pos/core/widgets/app_field_label.dart';
 import 'package:pos/core/widgets/app_input_decoration.dart';
 import 'package:pos/core/widgets/branch_sale_dialog.dart';
@@ -119,10 +120,12 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
     } catch (e) {
       setState(() => _submitting = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Failed to add expense: $e'),
-          backgroundColor: AppColors.error,
-        ));
+        AppToast.show(
+          context,
+          'Failed to add expense',
+          subtitle: '$e',
+          variant: AppToastVariant.error,
+        );
       }
     }
   }
@@ -380,10 +383,12 @@ class _AddExpenseDialogState extends State<_AddExpenseDialog> {
     } catch (e) {
       setState(() => _submitting = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Failed to add expense: $e'),
-          backgroundColor: AppColors.error,
-        ));
+        AppToast.show(
+          context,
+          'Failed to add expense',
+          subtitle: '$e',
+          variant: AppToastVariant.error,
+        );
       }
     }
   }

@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:iconly/iconly.dart';
+import 'package:pos/core/audit/audit_log_service.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
@@ -8,7 +11,9 @@ import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/permissions/data/permission_remote_ds.dart';
 import 'package:pos/core/widgets/app_sub_page_bar.dart';
+import 'package:pos/core/widgets/app_toast.dart';
 import 'package:pos/core/widgets/user_avatar.dart';
+import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/features/employees/domain/entities/employee.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -410,11 +415,23 @@ class EmployeePermissionsCubit extends Cubit<EmployeePermissionsState> {
     emit(s.copyWith(isSaving: true));
     try {
       final remote = sl<PermissionRemoteDs>();
+      final audit = sl<AuditLogService>();
       final newSaved = Map<String, bool>.of(s.saved);
       for (final entry in s.draft.entries) {
         if (entry.value == null) {
           await remote.removeUserPermissionOverride(employee.id, entry.key);
           newSaved.remove(entry.key);
+          unawaited(
+            audit.log(
+              actionType: AuditLogActionType.permissionOverrideRemoved,
+              entityType: 'employee',
+              entityId: employee.id,
+              entityName: employee.fullName,
+              description:
+                  'Removed permission override for "${entry.key}" on ${employee.fullName} — reverted to role default',
+              metadata: {'permission_code': entry.key},
+            ),
+          );
         } else {
           await remote.setUserPermissionOverride(
             employee.id,
@@ -422,6 +439,20 @@ class EmployeePermissionsCubit extends Cubit<EmployeePermissionsState> {
             entry.value!,
           );
           newSaved[entry.key] = entry.value!;
+          unawaited(
+            audit.log(
+              actionType: AuditLogActionType.permissionOverrideSet,
+              entityType: 'employee',
+              entityId: employee.id,
+              entityName: employee.fullName,
+              description:
+                  '${entry.value! ? 'Granted' : 'Denied'} permission "${entry.key}" for ${employee.fullName}',
+              metadata: {
+                'permission_code': entry.key,
+                'granted': entry.value!,
+              },
+            ),
+          );
         }
       }
       final authUserId = Supabase.instance.client.auth.currentUser?.id;
@@ -514,12 +545,11 @@ class _PermissionsShellState extends State<_PermissionsShell> {
       await context.read<EmployeePermissionsCubit>().saveAll();
     } catch (_) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to save. Please try again.'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
+      AppToast.show(
+        context,
+        'Failed to save',
+        subtitle: 'Please try again.',
+        variant: AppToastVariant.error,
       );
     }
   }
@@ -528,13 +558,7 @@ class _PermissionsShellState extends State<_PermissionsShell> {
   Widget build(BuildContext context) {
     return BlocConsumer<EmployeePermissionsCubit, EmployeePermissionsState>(
       listenWhen: (_, s) => s is EmployeePermissionsLoaded && s.justSaved,
-      listener: (ctx, _) => ScaffoldMessenger.of(ctx).showSnackBar(
-        const SnackBar(
-          content: Text('Access settings saved.'),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-        ),
-      ),
+      listener: (ctx, _) => AppToast.show(ctx, 'Access settings saved.'),
       builder: (context, state) {
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -1184,7 +1208,6 @@ class _PermissionGroupState extends State<_PermissionGroup>
                   (p) => _PermRow(
                     entry: p,
                     value: widget.state.effectiveOverride(p.code),
-                    isDraft: widget.state.draft.containsKey(p.code),
                   ),
                 ),
               ],
@@ -1271,11 +1294,9 @@ class _BulkBtn extends StatelessWidget {
 class _PermRow extends StatelessWidget {
   final _PermEntry entry;
   final bool? value;
-  final bool isDraft;
   const _PermRow({
     required this.entry,
     required this.value,
-    required this.isDraft,
   });
 
   @override
@@ -1291,75 +1312,34 @@ class _PermRow extends StatelessWidget {
             : isBlocked
             ? AppColors.error.withAlpha(10)
             : AppColors.surface,
-        border: const Border(bottom: BorderSide(color: AppColors.borderSoft)),
-      ),
-      child: Stack(
-        children: [
-          // Left accent bar — positioned outside layout flow so label aligns with header
-          Positioned(
-            left: 16,
-            top: 0,
-            bottom: 0,
-            child: Center(
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 120),
-                width: 3,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: isAllowed
-                      ? AppColors.success
-                      : isBlocked
-                      ? AppColors.error
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
+        border: Border(
+          bottom: const BorderSide(color: AppColors.borderSoft),
+          left: BorderSide(
+            color: isAllowed
+                ? AppColors.success
+                : isBlocked
+                ? AppColors.error
+                : Colors.transparent,
+            width: 3,
           ),
-          Padding(
+        ),
+      ),
+      child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Label + description
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          entry.label,
-                          style: getOutfitStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                      if (isDraft) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 5,
-                            vertical: 1,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.warningSoft,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            'edited',
-                            style: getOutfitStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.warning,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
+                  Text(
+                    entry.label,
+                    style: getOutfitStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                   const SizedBox(height: 1),
                   Text(
@@ -1373,7 +1353,6 @@ class _PermRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            // Radio-style 3-state selector
             _RadioSelector(
               value: value,
               onChanged: (v) => context
@@ -1382,8 +1361,6 @@ class _PermRow extends StatelessWidget {
             ),
           ],
         ),
-      ),
-        ],
       ),
     );
   }

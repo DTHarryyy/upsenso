@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/widgets/app_toast.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/settings/presentation/cubit/settings_cubit.dart';
@@ -53,12 +54,10 @@ class _ReceiptSettingsPageState extends State<ReceiptSettingsPage> {
       child: BlocListener<SettingsCubit, SettingsState>(
         listenWhen: (p, c) => c.errorMessage != null,
         listener: (ctx, state) {
-          ScaffoldMessenger.of(ctx).showSnackBar(
-            SnackBar(
-              content: Text(state.errorMessage ?? 'An error occurred'),
-              backgroundColor: AppColors.error,
-              behavior: SnackBarBehavior.floating,
-            ),
+          AppToast.show(
+            ctx,
+            state.errorMessage ?? 'An error occurred',
+            variant: AppToastVariant.error,
           );
           _cubit.dismissError();
         },

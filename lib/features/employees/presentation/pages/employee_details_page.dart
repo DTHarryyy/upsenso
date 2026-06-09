@@ -9,6 +9,7 @@ import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/core/widgets/app_sub_page_bar.dart';
+import 'package:pos/core/widgets/app_toast.dart';
 import 'package:pos/core/widgets/user_avatar.dart';
 import 'package:pos/features/employees/domain/entities/employee.dart';
 import 'package:pos/features/employees/presentation/widgets/employee_role_badge.dart';
@@ -26,8 +27,9 @@ class EmployeeDetailsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final canManagePermissions =
-        sl<PermissionService>().can(PermissionKeys.employeesAssignRole);
+    final canManagePermissions = sl<PermissionService>().can(
+      PermissionKeys.employeesAssignRole,
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -44,19 +46,13 @@ class EmployeeDetailsPage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
-          _EmployeeProfileHeader(
-            employee: employee,
-            branchName: branchName,
-          ),
-          const SizedBox(height: 16),
-          _EmployeeOverviewCard(
-            employee: employee,
-            branchName: branchName,
-          ),
-          const SizedBox(height: 16),
+          _EmployeeProfileHeader(employee: employee, branchName: branchName),
+          const SizedBox(height: 8),
+          _EmployeeOverviewCard(employee: employee, branchName: branchName),
+          const SizedBox(height: 8),
           if (canManagePermissions) ...[
             _PermissionsCard(employee: employee),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
           ],
           _SecurityActivityCard(employee: employee),
           // Space above sticky bottom bar
@@ -97,7 +93,7 @@ class _EmployeeProfileHeader extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.borderSoft),
         boxShadow: const [
           BoxShadow(
@@ -107,15 +103,11 @@ class _EmployeeProfileHeader extends StatelessWidget {
           ),
         ],
       ),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          UserAvatar(
-            avatarUrl: null,
-            name: employee.fullName,
-            radius: 30,
-          ),
+          UserAvatar(avatarUrl: null, name: employee.fullName, radius: 30),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -123,19 +115,11 @@ class _EmployeeProfileHeader extends StatelessWidget {
               children: [
                 Text(
                   employee.fullName,
-                  style: AppTextStyles.title(context).copyWith(
-                    color: AppColors.textPrimary,
-                  ),
+                  style: AppTextStyles.title(
+                    context,
+                  ).copyWith(color: AppColors.textPrimary),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    EmployeeRoleBadge(roleName: employee.roleName),
-                    const SizedBox(width: 6),
-                    EmployeeStatusBadge(isActive: employee.isActive),
-                  ],
                 ),
                 const SizedBox(height: 6),
                 Row(
@@ -157,8 +141,13 @@ class _EmployeeProfileHeader extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    EmployeeRoleBadge(roleName: employee.roleName),
+                    const SizedBox(width: 6),
+                    EmployeeStatusBadge(isActive: employee.isActive),
                   ],
                 ),
+                const SizedBox(height: 6),
               ],
             ),
           ),
@@ -196,11 +185,7 @@ class _EmployeeOverviewCard extends StatelessWidget {
           child: EmployeeRoleBadge(roleName: employee.roleName),
         ),
         _Divider(),
-        _InfoRow(
-          icon: IconlyLight.location,
-          label: 'Branch',
-          value: branch,
-        ),
+        _InfoRow(icon: IconlyLight.location, label: 'Branch', value: branch),
         _Divider(),
         _InfoRow(
           icon: IconlyLight.paper,
@@ -227,8 +212,18 @@ class _EmployeeOverviewCard extends StatelessWidget {
 
   String _formatDate(DateTime dt) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
   }
@@ -246,7 +241,7 @@ class _PermissionsCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.borderSoft),
         boxShadow: const [
           BoxShadow(
@@ -317,9 +312,7 @@ class _ManagePermissionsButton extends StatelessWidget {
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.brand,
           padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         ),
         icon: const Icon(IconlyLight.setting, size: 16, color: Colors.white),
         label: Text(
@@ -390,7 +383,9 @@ class _FraudFlagBadge extends StatelessWidget {
     final isClean = flagCount == 0;
     final bg = isClean ? AppColors.successSoft : AppColors.errorSoft;
     final fg = isClean ? AppColors.success : AppColors.error;
-    final label = isClean ? 'None Detected' : '$flagCount Flag${flagCount > 1 ? 's' : ''}';
+    final label = isClean
+        ? 'None Detected'
+        : '$flagCount Flag${flagCount > 1 ? 's' : ''}';
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -405,7 +400,9 @@ class _FraudFlagBadge extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                isClean ? Icons.check_circle_outline_rounded : Icons.flag_rounded,
+                isClean
+                    ? Icons.check_circle_outline_rounded
+                    : Icons.flag_rounded,
                 size: 12,
                 color: fg,
               ),
@@ -459,11 +456,12 @@ class _BottomActionBar extends StatelessWidget {
             child: OutlinedButton.icon(
               onPressed: () => _onEdit(context),
               style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.brand,
+                backgroundColor: AppColors.brand,
+                foregroundColor: AppColors.textInverse,
                 side: const BorderSide(color: AppColors.brand),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
               icon: const Icon(IconlyLight.edit, size: 16),
@@ -472,7 +470,7 @@ class _BottomActionBar extends StatelessWidget {
                 style: getOutfitStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.brand,
+                  color: AppColors.textInverse,
                 ),
               ),
             ),
@@ -482,11 +480,12 @@ class _BottomActionBar extends StatelessWidget {
             child: OutlinedButton.icon(
               onPressed: () => _confirmDeactivate(context),
               style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.error,
+                foregroundColor: AppColors.textInverse,
+                backgroundColor: AppColors.error,
                 side: const BorderSide(color: AppColors.error),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
               icon: const Icon(IconlyLight.delete, size: 16),
@@ -495,7 +494,7 @@ class _BottomActionBar extends StatelessWidget {
                 style: getOutfitStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.error,
+                  color: AppColors.textInverse,
                 ),
               ),
             ),
@@ -507,8 +506,10 @@ class _BottomActionBar extends StatelessWidget {
 
   void _onEdit(BuildContext context) {
     // Navigate to edit employee page — wired up when edit route is available
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Edit employee — coming soon')),
+    AppToast.show(
+      context,
+      'Edit employee — coming soon',
+      variant: AppToastVariant.info,
     );
   }
 
@@ -521,9 +522,9 @@ class _BottomActionBar extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           '${action[0].toUpperCase()}${action.substring(1)} Employee?',
-          style: AppTextStyles.subtitle(context).copyWith(
-            color: AppColors.textPrimary,
-          ),
+          style: AppTextStyles.subtitle(
+            context,
+          ).copyWith(color: AppColors.textPrimary),
         ),
         content: Text(
           'Are you sure you want to $action ${employee.fullName}?'
@@ -652,7 +653,7 @@ class _InfoCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.borderSoft),
         boxShadow: const [
           BoxShadow(
@@ -713,13 +714,14 @@ class _InfoRow extends StatelessWidget {
     this.child,
     this.valueStyle,
   }) : assert(
-          value != null || child != null,
-          '_InfoRow requires either value or child',
-        );
+         value != null || child != null,
+         '_InfoRow requires either value or child',
+       );
 
   @override
   Widget build(BuildContext context) {
-    final effectiveValueStyle = valueStyle ??
+    final effectiveValueStyle =
+        valueStyle ??
         getOutfitStyle(
           fontSize: 13,
           fontWeight: FontWeight.w500,
@@ -746,7 +748,8 @@ class _InfoRow extends StatelessWidget {
           Expanded(
             child: Align(
               alignment: Alignment.centerRight,
-              child: child ??
+              child:
+                  child ??
                   Text(
                     value!,
                     style: effectiveValueStyle,

@@ -30,6 +30,12 @@ enum AuditLogActionType {
   /// A user attempted an action they are not authorised to perform.
   permissionDenied,
 
+  /// An admin explicitly granted or changed a permission override for an employee.
+  permissionOverrideSet,
+
+  /// An admin removed a permission override, reverting the employee to their role default.
+  permissionOverrideRemoved,
+
   // ── Approval flows ───────────────────────────────────────────────────────
   /// A Branch Manager approved a cashier's refund request.
   refundApprovedByManager,
@@ -92,6 +98,10 @@ extension AuditLogActionTypeX on AuditLogActionType {
         return 'EMPLOYEE_DUPLICATE_DETECTED';
       case AuditLogActionType.permissionDenied:
         return 'PERMISSION_DENIED';
+      case AuditLogActionType.permissionOverrideSet:
+        return 'PERMISSION_OVERRIDE_SET';
+      case AuditLogActionType.permissionOverrideRemoved:
+        return 'PERMISSION_OVERRIDE_REMOVED';
       case AuditLogActionType.refundApprovedByManager:
         return 'REFUND_APPROVED_BY_MANAGER';
       case AuditLogActionType.voidApprovedByManager:
@@ -160,6 +170,10 @@ extension AuditLogActionTypeX on AuditLogActionType {
         return 'Employee Duplicate Detected';
       case AuditLogActionType.permissionDenied:
         return 'Permission Denied';
+      case AuditLogActionType.permissionOverrideSet:
+        return 'Permission Override Set';
+      case AuditLogActionType.permissionOverrideRemoved:
+        return 'Permission Override Removed';
       case AuditLogActionType.refundApprovedByManager:
         return 'Refund Approved by Manager';
       case AuditLogActionType.voidApprovedByManager:

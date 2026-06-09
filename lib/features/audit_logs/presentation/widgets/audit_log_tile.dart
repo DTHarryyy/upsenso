@@ -548,6 +548,9 @@ String _badgeLabelFor(AuditLogActionType type) {
       return 'RESTORE';
     case AuditLogActionType.permissionDenied:
       return 'DENIED';
+    case AuditLogActionType.permissionOverrideSet:
+    case AuditLogActionType.permissionOverrideRemoved:
+      return 'ACCESS';
     case AuditLogActionType.refundApprovedByManager:
     case AuditLogActionType.voidApprovedByManager:
     case AuditLogActionType.stockAdjustmentApproved:
@@ -591,6 +594,10 @@ Color _colorFor(AuditLogActionType type) {
       return AppColors.warning;
     case AuditLogActionType.permissionDenied:
       return AppColors.error;
+    case AuditLogActionType.permissionOverrideSet:
+      return AppColors.warning;
+    case AuditLogActionType.permissionOverrideRemoved:
+      return AppColors.textSecondary;
     case AuditLogActionType.refundApprovedByManager:
     case AuditLogActionType.voidApprovedByManager:
     case AuditLogActionType.stockAdjustmentApproved:
