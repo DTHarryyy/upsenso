@@ -18,6 +18,9 @@ class AuditLogLoading extends AuditLogState {
 
 class AuditLogLoaded extends AuditLogState {
   final List<AuditLog> logs;
+  // Full unfiltered list — used to build entity/action type chip options so
+  // they don't vanish when a filter is active.
+  final List<AuditLog> allLogs;
   final String? branchFilter;
   final String? userFilter;
   final String? actionTypeFilter;
@@ -28,6 +31,7 @@ class AuditLogLoaded extends AuditLogState {
 
   const AuditLogLoaded({
     required this.logs,
+    required this.allLogs,
     this.branchFilter,
     this.userFilter,
     this.actionTypeFilter,
@@ -48,6 +52,7 @@ class AuditLogLoaded extends AuditLogState {
 
   AuditLogLoaded copyWith({
     List<AuditLog>? logs,
+    List<AuditLog>? allLogs,
     Object? branchFilter = _sentinel,
     Object? userFilter = _sentinel,
     Object? actionTypeFilter = _sentinel,
@@ -58,6 +63,7 @@ class AuditLogLoaded extends AuditLogState {
   }) {
     return AuditLogLoaded(
       logs: logs ?? this.logs,
+      allLogs: allLogs ?? this.allLogs,
       branchFilter: branchFilter == _sentinel
           ? this.branchFilter
           : branchFilter as String?,
@@ -79,6 +85,7 @@ class AuditLogLoaded extends AuditLogState {
   @override
   List<Object?> get props => [
     logs,
+    allLogs,
     branchFilter,
     userFilter,
     actionTypeFilter,

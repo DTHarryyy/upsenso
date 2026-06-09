@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/features/audit_logs/domain/entities/audit_log.dart';
 import 'package:pos/features/audit_logs/domain/repositories/i_audit_log_repository.dart';
 import 'package:pos/features/audit_logs/presentation/bloc/audit_log_event.dart';
@@ -134,10 +135,16 @@ class AuditLogBloc extends Bloc<AuditLogEvent, AuditLogState> {
         businessId: businessId,
         branchId: _branchFilter,
         userId: _userFilter,
-        actionType: _actionTypeFilter,
+        // Don't push actionType into the DB query — filter in-memory so
+        // allLogs always has the full set for building chip/dropdown options.
       ),
       onData: (logs) {
         var filtered = _applyDateFilter(logs);
+        if (_actionTypeFilter != null) {
+          filtered = filtered
+              .where((l) => l.actionType.value == _actionTypeFilter)
+              .toList();
+        }
         if (_entityTypeFilter != null) {
           filtered = filtered
               .where(
@@ -149,6 +156,7 @@ class AuditLogBloc extends Bloc<AuditLogEvent, AuditLogState> {
         }
         return AuditLogLoaded(
           logs: filtered,
+          allLogs: logs, // raw stream data — never filtered
           branchFilter: _branchFilter,
           userFilter: _userFilter,
           actionTypeFilter: _actionTypeFilter,
