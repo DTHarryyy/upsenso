@@ -9,7 +9,6 @@ import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/core/widgets/app_sub_page_bar.dart';
-import 'package:pos/core/widgets/app_toast.dart';
 import 'package:pos/core/widgets/user_avatar.dart';
 import 'package:pos/features/employees/domain/entities/employee.dart';
 import 'package:pos/features/employees/presentation/widgets/employee_role_badge.dart';
@@ -55,11 +54,9 @@ class EmployeeDetailsPage extends StatelessWidget {
             const SizedBox(height: 8),
           ],
           _SecurityActivityCard(employee: employee),
-          // Space above sticky bottom bar
-          const SizedBox(height: 80),
+          const SizedBox(height: 16),
         ],
       ),
-      bottomNavigationBar: _BottomActionBar(employee: employee),
     );
   }
 
@@ -188,17 +185,9 @@ class _EmployeeOverviewCard extends StatelessWidget {
         _InfoRow(icon: IconlyLight.location, label: 'Branch', value: branch),
         _Divider(),
         _InfoRow(
-          icon: IconlyLight.paper,
-          label: 'Employee ID',
-          value: employee.id.length > 8
-              ? 'EMP-${employee.id.substring(0, 8).toUpperCase()}'
-              : employee.id,
-          valueStyle: getOutfitStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
-            letterSpacing: 0.5,
-          ),
+          icon: IconlyLight.message,
+          label: 'Email',
+          value: employee.email ?? '—',
         ),
         _Divider(),
         _InfoRow(
@@ -419,143 +408,6 @@ class _FraudFlagBadge extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-// ── Bottom Action Bar ──────────────────────────────────────────────────────
-
-class _BottomActionBar extends StatelessWidget {
-  final Employee employee;
-
-  const _BottomActionBar({required this.employee});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.borderSoft)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A101828),
-            blurRadius: 16,
-            offset: Offset(0, -4),
-          ),
-        ],
-      ),
-      padding: EdgeInsets.fromLTRB(
-        16,
-        12,
-        16,
-        12 + MediaQuery.of(context).padding.bottom,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () => _onEdit(context),
-              style: OutlinedButton.styleFrom(
-                backgroundColor: AppColors.brand,
-                foregroundColor: AppColors.textInverse,
-                side: const BorderSide(color: AppColors.brand),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              icon: const Icon(IconlyLight.edit, size: 16),
-              label: Text(
-                'Edit Employee',
-                style: getOutfitStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textInverse,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () => _confirmDeactivate(context),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.textInverse,
-                backgroundColor: AppColors.error,
-                side: const BorderSide(color: AppColors.error),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              icon: const Icon(IconlyLight.delete, size: 16),
-              label: Text(
-                employee.isActive ? 'Deactivate' : 'Reactivate',
-                style: getOutfitStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textInverse,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _onEdit(BuildContext context) {
-    // Navigate to edit employee page — wired up when edit route is available
-    AppToast.show(
-      context,
-      'Edit employee — coming soon',
-      variant: AppToastVariant.info,
-    );
-  }
-
-  void _confirmDeactivate(BuildContext context) {
-    final action = employee.isActive ? 'deactivate' : 'reactivate';
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          '${action[0].toUpperCase()}${action.substring(1)} Employee?',
-          style: AppTextStyles.subtitle(
-            context,
-          ).copyWith(color: AppColors.textPrimary),
-        ),
-        content: Text(
-          'Are you sure you want to $action ${employee.fullName}?'
-          '${employee.isActive ? ' They will lose access immediately.' : ''}',
-          style: getOutfitStyle(fontSize: 14, color: AppColors.textSecondary),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(
-              'Cancel',
-              style: getOutfitStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textMuted,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(
-              '${action[0].toUpperCase()}${action.substring(1)}',
-              style: getOutfitStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: employee.isActive ? AppColors.error : AppColors.success,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

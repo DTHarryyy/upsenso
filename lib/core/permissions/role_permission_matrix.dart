@@ -21,13 +21,15 @@ class RolePermissionMatrix {
   // ── Role name constants ──────────────────────────────────────────────────
   static const String superAdmin = 'super_admin';
   static const String owner = 'owner';
+  static const String businessOwner = 'business_owner';
   static const String branchManager = 'branch_manager';
   static const String cashier = 'cashier';
   static const String inventoryStaff = 'inventory_staff';
 
   /// Full permission matrix. Immutable at runtime.
   static final Map<String, Set<AppPermission>> _matrix = {
-    // ── Super Admin & Owner — unrestricted ──────────────────────────────────
+    // ── Business Owner / Super Admin — unrestricted ──────────────────────────
+    businessOwner: AppPermission.values.toSet(),
     superAdmin: AppPermission.values.toSet(),
     owner: AppPermission.values.toSet(),
 
@@ -160,6 +162,7 @@ class RolePermissionMatrix {
   // Controls which modules / screens a role is allowed to enter.
 
   static final Map<String, Set<AppFeature>> _featureMatrix = {
+    businessOwner: AppFeature.values.toSet(),
     superAdmin: AppFeature.values.toSet(),
     owner: AppFeature.values.toSet(),
 
@@ -210,6 +213,7 @@ class RolePermissionMatrix {
   // Editing another user's profile always requires AppPermission.editEmployee.
 
   static final Map<String, Set<ProfileField>> _profileFieldMatrix = {
+    businessOwner: ProfileField.values.toSet(),
     superAdmin: ProfileField.values.toSet(),
     owner: ProfileField.values.toSet(),
 
@@ -250,6 +254,7 @@ class RolePermissionMatrix {
   // ── Dashboard scope matrix ────────────────────────────────────────────────
 
   static const Map<String, DashboardScope> _dashboardMatrix = {
+    businessOwner: DashboardScope.owner,
     superAdmin: DashboardScope.owner,
     owner: DashboardScope.owner,
     branchManager: DashboardScope.branchManager,
@@ -271,6 +276,7 @@ class RolePermissionMatrix {
 
   static DataScopeType dataScopeTypeFor(String? roleKey) {
     switch (roleKey) {
+      case businessOwner:
       case superAdmin:
       case owner:
         return DataScopeType.allBranches;

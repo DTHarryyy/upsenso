@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pos/core/const/app_colors.dart';
 
-/// Shimmer skeleton that mirrors the exact layout of [EmployeeCard].
 class EmployeeCardSkeleton extends StatefulWidget {
   const EmployeeCardSkeleton({super.key});
 
@@ -33,7 +32,7 @@ class _EmployeeCardSkeletonState extends State<EmployeeCardSkeleton>
     return AnimatedBuilder(
       animation: _ctrl,
       builder: (_, _) {
-        final shimmerPos = -0.3 + 1.6 * _ctrl.value;
+        final pos = -0.3 + 1.6 * _ctrl.value;
 
         Widget box({double? width, double height = 12, double radius = 6}) {
           return Container(
@@ -50,11 +49,11 @@ class _EmployeeCardSkeletonState extends State<EmployeeCardSkeleton>
                   Color(0xFFE2E8F0),
                 ],
                 stops: [
-                  (shimmerPos - 0.4).clamp(0.0, 1.0),
-                  (shimmerPos - 0.2).clamp(0.0, 1.0),
-                  shimmerPos.clamp(0.0, 1.0),
-                  (shimmerPos + 0.2).clamp(0.0, 1.0),
-                  (shimmerPos + 0.4).clamp(0.0, 1.0),
+                  (pos - 0.4).clamp(0.0, 1.0),
+                  (pos - 0.2).clamp(0.0, 1.0),
+                  pos.clamp(0.0, 1.0),
+                  (pos + 0.2).clamp(0.0, 1.0),
+                  (pos + 0.4).clamp(0.0, 1.0),
                 ],
               ),
             ),
@@ -62,73 +61,82 @@ class _EmployeeCardSkeletonState extends State<EmployeeCardSkeleton>
         }
 
         return Container(
-          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(color: AppColors.borderSoft),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x06101828),
-                blurRadius: 12,
+                color: Color(0x08101828),
+                blurRadius: 10,
                 offset: Offset(0, 2),
               ),
             ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // ── Header row ──────────────────────────────────────────
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Avatar circle
-                  box(width: 44, height: 44, radius: 22),
-                  const SizedBox(width: 12),
+                  // Accent bar
+                  Container(
+                    width: 4,
+                    color: const Color(0xFFE2E8F0),
+                  ),
+
+                  // Body
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Name
-                        box(width: 110, height: 14),
-                        const SizedBox(height: 6),
-                        // Email
-                        box(height: 11),
-                        const SizedBox(height: 10),
-                        // Badges
-                        Row(
-                          children: [
-                            box(width: 88, height: 22, radius: 20),
-                            const SizedBox(width: 6),
-                            box(width: 52, height: 22, radius: 20),
-                          ],
-                        ),
-                      ],
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 14,
+                      ),
+                      child: Row(
+                        children: [
+                          // Avatar + dot
+                          Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              box(width: 44, height: 44, radius: 22),
+                              Positioned(
+                                right: -1,
+                                bottom: -1,
+                                child: box(width: 12, height: 12, radius: 6),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(width: 14),
+
+                          // Text lines
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                box(width: 120, height: 14),
+                                const SizedBox(height: 7),
+                                box(width: 80, height: 11),
+                                const SizedBox(height: 10),
+                                Row(
+                                  children: [
+                                    box(width: 58, height: 20, radius: 6),
+                                    const SizedBox(width: 6),
+                                    box(width: 52, height: 20, radius: 6),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          box(width: 20, height: 20, radius: 4),
+                        ],
+                      ),
                     ),
                   ),
-                  // Menu icon placeholder
-                  box(width: 20, height: 20, radius: 4),
                 ],
               ),
-
-              const SizedBox(height: 14),
-              Container(height: 1, color: AppColors.borderSoft),
-              const SizedBox(height: 10),
-
-              // ── Footer row ──────────────────────────────────────────
-              Row(
-                children: [
-                  box(width: 13, height: 13, radius: 3),
-                  const SizedBox(width: 4),
-                  box(width: 60, height: 11),
-                  const Spacer(),
-                  box(width: 13, height: 13, radius: 3),
-                  const SizedBox(width: 4),
-                  box(width: 60, height: 11),
-                ],
-              ),
-            ],
+            ),
           ),
         );
       },

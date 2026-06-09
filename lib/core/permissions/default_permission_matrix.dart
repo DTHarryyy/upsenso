@@ -11,7 +11,7 @@ import 'permission_keys.dart';
 abstract final class DefaultPermissionMatrix {
   static Map<String, bool> forRole(String? roleKey) {
     return switch (roleKey?.toLowerCase().replaceAll(' ', '_')) {
-      'super_admin' || 'owner' => _adminMatrix(),
+      'super_admin' || 'owner' || 'business_owner' => _adminMatrix(),
       'branch_manager' => _branchManagerMatrix(),
       'cashier' => _cashierMatrix(),
       'inventory_staff' => _inventoryStaffMatrix(),

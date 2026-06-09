@@ -29,6 +29,9 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
     on<ReactivateEmployee>(_onReactivate);
     on<SearchEmployees>(_onSearch);
     on<FilterEmployees>(_onFilter);
+    on<SetRoleFilter>(_onSetRole);
+    on<SetStatusFilter>(_onSetStatus);
+    on<SetBranchFilter>(_onSetBranch);
     on<ClearEmployeeFilters>(_onClearFilters);
   }
 
@@ -53,27 +56,17 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
 
   void _onUpdated(EmployeesUpdated event, Emitter<EmployeeState> emit) {
     final filtered = _filter(event.employees);
-    final current = state;
+    final base = _currentLoaded;
 
-    if (current is EmployeeLoaded) {
+    if (base != null) {
       emit(
-        current.copyWith(
+        base.copyWith(
           allEmployees: event.employees,
           displayEmployees: filtered,
-        ),
-      );
-    } else if (current is EmployeeOperationInProgress) {
-      emit(
-        current.previous.copyWith(
-          allEmployees: event.employees,
-          displayEmployees: filtered,
-        ),
-      );
-    } else if (current is EmployeeOperationSuccess) {
-      emit(
-        current.loaded.copyWith(
-          allEmployees: event.employees,
-          displayEmployees: filtered,
+          searchQuery: _searchQuery,
+          roleFilter: _roleFilter,
+          isActiveFilter: _isActiveFilter,
+          branchFilter: _branchFilter,
         ),
       );
     } else {
@@ -201,6 +194,21 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
     _rebuildDisplay(emit);
   }
 
+  void _onSetRole(SetRoleFilter event, Emitter<EmployeeState> emit) {
+    _roleFilter = event.role;
+    _rebuildDisplay(emit);
+  }
+
+  void _onSetStatus(SetStatusFilter event, Emitter<EmployeeState> emit) {
+    _isActiveFilter = event.isActive;
+    _rebuildDisplay(emit);
+  }
+
+  void _onSetBranch(SetBranchFilter event, Emitter<EmployeeState> emit) {
+    _branchFilter = event.branchId;
+    _rebuildDisplay(emit);
+  }
+
   void _onClearFilters(
     ClearEmployeeFilters event,
     Emitter<EmployeeState> emit,
@@ -218,6 +226,8 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
     final s = state;
     if (s is EmployeeLoaded) return s;
     if (s is EmployeeOperationInProgress) return s.previous;
+    if (s is EmployeeOperationSuccess) return s.loaded;
+    if (s is EmployeeValidationFailure) return s.loaded;
     return null;
   }
 
@@ -239,7 +249,11 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
   List<Employee> _filter(List<Employee> employees) {
     return employees.where((e) {
       final q = _searchQuery.toLowerCase();
-      if (q.isNotEmpty && !e.fullName.toLowerCase().contains(q)) return false;
+      if (q.isNotEmpty) {
+        final matchesName = e.fullName.toLowerCase().contains(q);
+        final matchesEmail = e.email?.toLowerCase().contains(q) ?? false;
+        if (!matchesName && !matchesEmail) return false;
+      }
       if (_roleFilter != null &&
           (e.roleName?.toLowerCase() != _roleFilter!.toLowerCase())) {
         return false;
@@ -247,7 +261,15 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
       if (_isActiveFilter != null && e.isActive != _isActiveFilter) return false;
       if (_branchFilter != null && e.branchId != _branchFilter) return false;
       return true;
-    }).toList();
+    }).toList()
+      ..sort((a, b) {
+        final aDate = a.createdAt;
+        final bDate = b.createdAt;
+        if (aDate == null && bDate == null) return 0;
+        if (aDate == null) return 1;
+        if (bDate == null) return -1;
+        return bDate.compareTo(aDate);
+      });
   }
 
   @override

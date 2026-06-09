@@ -82,6 +82,6 @@ TextTheme getOutfitTextTheme() {
 String? displayRoleName(String? roleName) {
   if (roleName == null) return null;
   final n = roleName.trim().toLowerCase();
-  if (n == 'super admin' || n == 'superadmin') return 'Owner';
+  if (n == 'business owner' || n == 'super admin' || n == 'superadmin') return 'Business Owner';
   return roleName;
 }

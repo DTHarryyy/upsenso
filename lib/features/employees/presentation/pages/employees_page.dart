@@ -14,7 +14,6 @@ import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/ui/widgets/permission_gate.dart';
 import 'package:pos/core/widgets/app_filled_button.dart';
-import 'package:pos/core/widgets/app_sub_page_bar.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/business/domain/entities/branch.dart';
@@ -64,7 +63,6 @@ class _EmployeesViewState extends State<_EmployeesView> {
     final user = authState.user;
     final businessId = user.businessId ?? '';
 
-    // Load branches for form dialogs
     final branchRows = await sl<BranchesDao>().getByBusinessId(businessId);
     if (mounted) {
       setState(() {
@@ -97,19 +95,15 @@ class _EmployeesViewState extends State<_EmployeesView> {
     }
   }
 
-  /// Returns the roles this user is allowed to assign when creating/editing
-  /// an employee. Branch managers may only assign cashier or inventory staff.
   List<EmployeeRole>? _allowedRoles() {
     final branchState = context.read<BranchCubit>().state;
     final roleKey = RolePermissionMatrix.normalise(branchState.roleName);
     if (roleKey == RolePermissionMatrix.branchManager) {
       return const [EmployeeRole.cashier, EmployeeRole.inventoryStaff];
     }
-    return null; // null = no restriction (super admin / owner)
+    return null;
   }
 
-  /// Returns the branch ID to lock the form to, or null if the user can
-  /// freely pick a branch. Branch managers are always locked to their branch.
   String? _lockedBranchId() {
     final branchState = context.read<BranchCubit>().state;
     final roleKey = RolePermissionMatrix.normalise(branchState.roleName);
@@ -207,37 +201,32 @@ class _EmployeesViewState extends State<_EmployeesView> {
 
   @override
   Widget build(BuildContext context) {
+    final canCreate = sl<PermissionService>().can(
+      PermissionKeys.employeesCreate,
+    );
+    final canEdit = sl<PermissionService>().can(PermissionKeys.employeesEdit);
+    final canSuspend = sl<PermissionService>().can(
+      PermissionKeys.employeesSuspend,
+    );
+
     return BlocListener<BranchCubit, BranchState>(
       listener: (ctx, _) => _initialize(),
       child: Scaffold(
         backgroundColor: AppColors.background,
-        appBar: Breakpoints.isPhone(context)
-            ? AppSubPageBar(
-                title: 'Employees',
-                actions: [
-                  PermissionGate(
-                    permissionKey: PermissionKeys.employeesCreate,
-                    child: IconButton(
-                      icon: const Icon(
-                        IconlyLight.plus,
-                        color: AppColors.brand,
-                      ),
-                      onPressed: _showAddDialog,
-                      tooltip: 'Add Employee',
-                    ),
-                  ),
-                ],
-              )
-            : null,
         body: Column(
           children: [
-            const EmployeeFilterBar(),
-            const SizedBox(height: 8),
+            // Custom header with subtitle
+            const _EmployeesHeader(),
+
+            // Search + filter chips
+            EmployeeFilterBar(branches: _branches),
+
+            // Content
             Expanded(
               child: BlocBuilder<EmployeeBloc, EmployeeState>(
                 builder: (context, state) {
                   if (state is EmployeeLoading || state is EmployeeInitial) {
-                    return const _EmployeeSkeletonGrid();
+                    return const _EmployeeSkeletonList();
                   }
                   if (state is EmployeeError) {
                     return _ErrorView(message: state.message);
@@ -255,149 +244,119 @@ class _EmployeesViewState extends State<_EmployeesView> {
 
                   if (loaded == null) return const SizedBox.shrink();
 
-                  return Column(
-                    children: [
-                      _StatsRow(loaded: loaded),
-                      Expanded(
-                        child: loaded.displayEmployees.isEmpty
-                            ? _EmptyState(
-                                hasFilters: loaded.hasActiveFilters,
-                                onAdd:
-                                    sl<PermissionService>().can(
-                                      PermissionKeys.employeesCreate,
-                                    )
-                                    ? _showAddDialog
-                                    : null,
-                              )
-                            : _EmployeeList(
-                                employees: loaded.displayEmployees,
-                                branches: _branches,
-                                onTap: _showDetails,
-                                onEdit:
-                                    sl<PermissionService>().can(
-                                      PermissionKeys.employeesEdit,
-                                    )
-                                    ? _showEditDialog
-                                    : null,
-                                onArchive:
-                                    sl<PermissionService>().can(
-                                      PermissionKeys.employeesEdit,
-                                    )
-                                    ? _confirmArchive
-                                    : null,
-                                onSuspend:
-                                    sl<PermissionService>().can(
-                                      PermissionKeys.employeesSuspend,
-                                    )
-                                    ? (e) => context.read<EmployeeBloc>().add(
-                                        SuspendEmployee(e.id),
-                                      )
-                                    : null,
-                                onReactivate:
-                                    sl<PermissionService>().can(
-                                      PermissionKeys.employeesSuspend,
-                                    )
-                                    ? (e) => context.read<EmployeeBloc>().add(
-                                        ReactivateEmployee(e.id),
-                                      )
-                                    : null,
-                              ),
-                      ),
-                    ],
+                  if (loaded.displayEmployees.isEmpty) {
+                    return _EmptyState(
+                      hasFilters: loaded.hasActiveFilters,
+                      onAdd: canCreate ? _showAddDialog : null,
+                    );
+                  }
+
+                  return _EmployeeList(
+                    employees: loaded.displayEmployees,
+                    branches: _branches,
+                    onTap: _showDetails,
+                    onEdit: canEdit ? _showEditDialog : null,
+                    onArchive: canEdit ? _confirmArchive : null,
+                    onSuspend: canSuspend
+                        ? (e) => context.read<EmployeeBloc>().add(
+                            SuspendEmployee(e.id),
+                          )
+                        : null,
+                    onReactivate: canSuspend
+                        ? (e) => context.read<EmployeeBloc>().add(
+                            ReactivateEmployee(e.id),
+                          )
+                        : null,
                   );
                 },
               ),
             ),
+
+            //  Sticky bottom CTA
+            PermissionGate(
+              permissionKey: PermissionKeys.employeesCreate,
+              child: _StickyAddButton(onPressed: _showAddDialog),
+            ),
           ],
         ),
-        floatingActionButton: PermissionGate(
-          permissionKey: PermissionKeys.employeesCreate,
-          child: FloatingActionButton.extended(
-            onPressed: _showAddDialog,
-            backgroundColor: AppColors.brand,
-            icon: const Icon(Icons.person_add, color: Colors.white),
-            label: Text(
-              'Add Employee',
-              style: getOutfitStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }
 }
 
-// ── Stats Row ──────────────────────────────────────────────────────────────
+// Header
 
-class _StatsRow extends StatelessWidget {
-  final EmployeeLoaded loaded;
-  const _StatsRow({required this.loaded});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: Row(
-        children: [
-          _StatChip(
-            label: 'Active',
-            count: loaded.activeCount,
-            color: AppColors.success,
-          ),
-          const SizedBox(width: 8),
-          _StatChip(
-            label: 'Inactive',
-            count: loaded.inactiveCount,
-            color: AppColors.textMuted,
-          ),
-          const Spacer(),
-          Text(
-            '${loaded.displayEmployees.length} shown',
-            style: getOutfitStyle(fontSize: 12, color: AppColors.textMuted),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatChip extends StatelessWidget {
-  final String label;
-  final int count;
-  final Color color;
-  const _StatChip({
-    required this.label,
-    required this.count,
-    required this.color,
-  });
+class _EmployeesHeader extends StatelessWidget {
+  const _EmployeesHeader();
 
   @override
   Widget build(BuildContext context) {
+    final canPop = Navigator.of(context).canPop();
+    final topPad = MediaQuery.of(context).padding.top;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withAlpha(20),
-        borderRadius: BorderRadius.circular(20),
-      ),
+      color: AppColors.surface,
+      padding: EdgeInsets.fromLTRB(canPop ? 4 : 20, topPad + 8, 16, 16),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 5),
-          Text(
-            '$count $label',
-            style: getOutfitStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: color,
+          if (canPop)
+            IconButton(
+              icon: const Icon(IconlyLight.arrow_left, size: 22),
+              color: AppColors.textPrimary,
+              onPressed: () => Navigator.of(context).pop(),
+              tooltip: 'Back',
+            ),
+          if (canPop) const SizedBox(width: 4),
+          Expanded(
+            child: BlocBuilder<EmployeeBloc, EmployeeState>(
+              buildWhen: (p, c) =>
+                  (p is EmployeeLoaded) != (c is EmployeeLoaded) ||
+                  (p is EmployeeLoaded &&
+                      c is EmployeeLoaded &&
+                      (p.allEmployees.length != c.allEmployees.length ||
+                          p.activeCount != c.activeCount)),
+              builder: (context, state) {
+                final loaded = state is EmployeeLoaded
+                    ? state
+                    : state is EmployeeOperationSuccess
+                    ? state.loaded
+                    : null;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Employees',
+                      style: AppTextStyles.title(context).copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    if (loaded != null)
+                      Text(
+                        '${loaded.allEmployees.length} Total'
+                        ' · ${loaded.activeCount} Active'
+                        ' · ${loaded.inactiveCount} Inactive',
+                        style: getOutfitStyle(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      )
+                    else
+                      Text(
+                        'Manage your team',
+                        style: getOutfitStyle(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
           ),
         ],
@@ -406,7 +365,7 @@ class _StatChip extends StatelessWidget {
   }
 }
 
-// ── Employee List ──────────────────────────────────────────────────────────
+// ── Employee List ───────────────────────────────────────────────────────────
 
 class _EmployeeList extends StatelessWidget {
   final List<Employee> employees;
@@ -429,88 +388,38 @@ class _EmployeeList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Breakpoints.isTablet(context);
-    final padding = EdgeInsets.symmetric(
-      horizontal: Breakpoints.horizontalPadding(context),
-      vertical: 8,
-    );
+    final hPad = Breakpoints.horizontalPadding(context);
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final int columns;
-        if (width >= 1440) {
-          columns = 5;
-        } else if (width >= 1024) {
-          columns = 4;
-        } else if (width >= 800) {
-          columns = 3;
-        } else if (width >= 600) {
-          columns = 2;
-        } else {
-          columns = 1;
-        }
-        const spacing = 12.0;
-        final rowCount = (employees.length / columns).ceil();
+    return ListView.separated(
+      padding: EdgeInsets.fromLTRB(hPad, 8, hPad, 16),
+      itemCount: employees.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      itemBuilder: (context, i) {
+        final employee = employees[i];
+        final branchName = branches
+            .where((b) => b.id == employee.branchId)
+            .map((b) => b.name)
+            .firstOrNull;
 
-        return SingleChildScrollView(
-          padding: padding,
-          child: Column(
-            children: List.generate(rowCount, (rowIndex) {
-              final start = rowIndex * columns;
-              final end = (start + columns).clamp(0, employees.length);
-              final rowItems = employees.sublist(start, end);
-
-              return Padding(
-                padding: EdgeInsets.only(
-                  bottom: rowIndex < rowCount - 1 ? spacing : 0,
-                ),
-                child: IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      for (int i = 0; i < columns; i++) ...[
-                        if (i > 0) const SizedBox(width: spacing),
-                        Expanded(
-                          child: i < rowItems.length
-                              ? _buildCard(rowItems[i])
-                              : const SizedBox(),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              );
-            }),
-          ),
+        return EmployeeCard(
+          employee: employee,
+          branchName: branchName,
+          onTap: () => onTap(employee),
+          onEdit: onEdit != null ? () => onEdit!(employee) : null,
+          onArchive: onArchive != null ? () => onArchive!(employee) : null,
+          onSuspend: onSuspend != null && employee.isActive
+              ? () => onSuspend!(employee)
+              : null,
+          onReactivate: onReactivate != null && !employee.isActive
+              ? () => onReactivate!(employee)
+              : null,
         );
       },
     );
   }
-
-  Widget _buildCard(Employee employee) {
-    final branchName = branches
-        .where((b) => b.id == employee.branchId)
-        .map((b) => b.name)
-        .firstOrNull;
-
-    return EmployeeCard(
-      employee: employee,
-      branchName: branchName,
-      onTap: () => onTap(employee),
-      onEdit: onEdit != null ? () => onEdit!(employee) : null,
-      onArchive: onArchive != null ? () => onArchive!(employee) : null,
-      onSuspend: onSuspend != null && employee.isActive
-          ? () => onSuspend!(employee)
-          : null,
-      onReactivate: onReactivate != null && !employee.isActive
-          ? () => onReactivate!(employee)
-          : null,
-    );
-  }
 }
 
-// ── Empty State ────────────────────────────────────────────────────────────
+// ── Empty State ─────────────────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
   final bool hasFilters;
@@ -522,28 +431,26 @@ class _EmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(40),
+        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 72,
-              height: 72,
+              width: 80,
+              height: 80,
               decoration: BoxDecoration(
                 color: AppColors.brandSoft,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(24),
               ),
               child: const Icon(
                 IconlyLight.profile,
-                size: 32,
+                size: 36,
                 color: AppColors.brand,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             Text(
-              hasFilters
-                  ? 'No employees match your filters'
-                  : 'No employees yet',
+              hasFilters ? 'No results found' : 'No employees yet',
               style: AppTextStyles.subtitle(context).copyWith(
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
@@ -554,20 +461,20 @@ class _EmptyState extends StatelessWidget {
             Text(
               hasFilters
                   ? 'Try adjusting your search or filter criteria.'
-                  : 'Add your first employee to get started.',
+                  : 'Add your first employee to start managing\nstaff access and permissions.',
               style: getOutfitStyle(
                 fontSize: 14,
                 color: AppColors.textSecondary,
+                height: 1.5,
               ),
               textAlign: TextAlign.center,
             ),
             if (!hasFilters && onAdd != null) ...[
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
               SizedBox(
-                width: 180,
+                width: 200,
                 child: AppFilledButton(
-                  label: 'Add Employee',
-                  icon: Icons.person_add,
+                  label: '+ Add Employee',
                   onPressed: onAdd,
                 ),
               ),
@@ -579,7 +486,7 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-// ── Error View ─────────────────────────────────────────────────────────────
+// ── Error View ──────────────────────────────────────────────────────────────
 
 class _ErrorView extends StatelessWidget {
   final String message;
@@ -600,68 +507,39 @@ class _ErrorView extends StatelessWidget {
   }
 }
 
-// ── Skeleton Grid ──────────────────────────────────────────────────────────
+// ── Skeleton List ───────────────────────────────────────────────────────────
 
-class _EmployeeSkeletonGrid extends StatelessWidget {
-  const _EmployeeSkeletonGrid();
+class _EmployeeSkeletonList extends StatelessWidget {
+  const _EmployeeSkeletonList();
 
   @override
   Widget build(BuildContext context) {
-    final padding = EdgeInsets.symmetric(
-      horizontal: Breakpoints.horizontalPadding(context),
-      vertical: 8,
+    final hPad = Breakpoints.horizontalPadding(context);
+
+    return ListView.separated(
+      padding: EdgeInsets.fromLTRB(hPad, 8, hPad, 16),
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: 6,
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      itemBuilder: (_, _) => const EmployeeCardSkeleton(),
     );
+  }
+}
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final int columns;
-        if (width >= 1440) {
-          columns = 5;
-        } else if (width >= 1024) {
-          columns = 4;
-        } else if (width >= 800) {
-          columns = 3;
-        } else if (width >= 600) {
-          columns = 2;
-        } else {
-          columns = 1;
-        }
-        const spacing = 12.0;
-        const itemCount = 8;
-        final rowCount = (itemCount / columns).ceil();
+// ── Sticky Bottom CTA ───────────────────────────────────────────────────────
 
-        return SingleChildScrollView(
-          padding: padding,
-          physics: const NeverScrollableScrollPhysics(),
-          child: Column(
-            children: List.generate(rowCount, (rowIndex) {
-              final start = rowIndex * columns;
-              final end = (start + columns).clamp(0, itemCount);
-              final cellCount = end - start;
+class _StickyAddButton extends StatelessWidget {
+  final VoidCallback onPressed;
+  const _StickyAddButton({required this.onPressed});
 
-              return Padding(
-                padding: EdgeInsets.only(
-                  bottom: rowIndex < rowCount - 1 ? spacing : 0,
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (int i = 0; i < columns; i++) ...[
-                      if (i > 0) const SizedBox(width: spacing),
-                      Expanded(
-                        child: i < cellCount
-                            ? const EmployeeCardSkeleton()
-                            : const SizedBox(),
-                      ),
-                    ],
-                  ],
-                ),
-              );
-            }),
-          ),
-        );
-      },
+  @override
+  Widget build(BuildContext context) {
+    final bottomPad = MediaQuery.of(context).padding.bottom;
+
+    return Container(
+      color: AppColors.surface,
+      padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + bottomPad),
+      child: AppFilledButton(label: '+ Add Employee', onPressed: onPressed),
     );
   }
 }

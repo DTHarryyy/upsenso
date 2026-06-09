@@ -12254,6 +12254,15 @@ class $EmployeesTableTable extends EmployeesTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _emailMeta = const VerificationMeta('email');
+  @override
+  late final GeneratedColumn<String> email = GeneratedColumn<String>(
+    'email',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _fullNameMeta = const VerificationMeta(
     'fullName',
   );
@@ -12363,6 +12372,7 @@ class $EmployeesTableTable extends EmployeesTable
     businessId,
     userId,
     authUserId,
+    email,
     fullName,
     roleId,
     roleName,
@@ -12411,6 +12421,12 @@ class $EmployeesTableTable extends EmployeesTable
           data['auth_user_id']!,
           _authUserIdMeta,
         ),
+      );
+    }
+    if (data.containsKey('email')) {
+      context.handle(
+        _emailMeta,
+        email.isAcceptableOrUnknown(data['email']!, _emailMeta),
       );
     }
     if (data.containsKey('full_name')) {
@@ -12495,6 +12511,10 @@ class $EmployeesTableTable extends EmployeesTable
         DriftSqlType.string,
         data['${effectivePrefix}auth_user_id'],
       ),
+      email: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}email'],
+      ),
       fullName: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}full_name'],
@@ -12545,6 +12565,7 @@ class EmployeeRow extends DataClass implements Insertable<EmployeeRow> {
   final String businessId;
   final String? userId;
   final String? authUserId;
+  final String? email;
   final String? fullName;
   final String? roleId;
 
@@ -12565,6 +12586,7 @@ class EmployeeRow extends DataClass implements Insertable<EmployeeRow> {
     required this.businessId,
     this.userId,
     this.authUserId,
+    this.email,
     this.fullName,
     this.roleId,
     this.roleName,
@@ -12585,6 +12607,9 @@ class EmployeeRow extends DataClass implements Insertable<EmployeeRow> {
     }
     if (!nullToAbsent || authUserId != null) {
       map['auth_user_id'] = Variable<String>(authUserId);
+    }
+    if (!nullToAbsent || email != null) {
+      map['email'] = Variable<String>(email);
     }
     if (!nullToAbsent || fullName != null) {
       map['full_name'] = Variable<String>(fullName);
@@ -12622,6 +12647,9 @@ class EmployeeRow extends DataClass implements Insertable<EmployeeRow> {
       authUserId: authUserId == null && nullToAbsent
           ? const Value.absent()
           : Value(authUserId),
+      email: email == null && nullToAbsent
+          ? const Value.absent()
+          : Value(email),
       fullName: fullName == null && nullToAbsent
           ? const Value.absent()
           : Value(fullName),
@@ -12658,6 +12686,7 @@ class EmployeeRow extends DataClass implements Insertable<EmployeeRow> {
       businessId: serializer.fromJson<String>(json['businessId']),
       userId: serializer.fromJson<String?>(json['userId']),
       authUserId: serializer.fromJson<String?>(json['authUserId']),
+      email: serializer.fromJson<String?>(json['email']),
       fullName: serializer.fromJson<String?>(json['fullName']),
       roleId: serializer.fromJson<String?>(json['roleId']),
       roleName: serializer.fromJson<String?>(json['roleName']),
@@ -12677,6 +12706,7 @@ class EmployeeRow extends DataClass implements Insertable<EmployeeRow> {
       'businessId': serializer.toJson<String>(businessId),
       'userId': serializer.toJson<String?>(userId),
       'authUserId': serializer.toJson<String?>(authUserId),
+      'email': serializer.toJson<String?>(email),
       'fullName': serializer.toJson<String?>(fullName),
       'roleId': serializer.toJson<String?>(roleId),
       'roleName': serializer.toJson<String?>(roleName),
@@ -12694,6 +12724,7 @@ class EmployeeRow extends DataClass implements Insertable<EmployeeRow> {
     String? businessId,
     Value<String?> userId = const Value.absent(),
     Value<String?> authUserId = const Value.absent(),
+    Value<String?> email = const Value.absent(),
     Value<String?> fullName = const Value.absent(),
     Value<String?> roleId = const Value.absent(),
     Value<String?> roleName = const Value.absent(),
@@ -12708,6 +12739,7 @@ class EmployeeRow extends DataClass implements Insertable<EmployeeRow> {
     businessId: businessId ?? this.businessId,
     userId: userId.present ? userId.value : this.userId,
     authUserId: authUserId.present ? authUserId.value : this.authUserId,
+    email: email.present ? email.value : this.email,
     fullName: fullName.present ? fullName.value : this.fullName,
     roleId: roleId.present ? roleId.value : this.roleId,
     roleName: roleName.present ? roleName.value : this.roleName,
@@ -12730,6 +12762,7 @@ class EmployeeRow extends DataClass implements Insertable<EmployeeRow> {
       authUserId: data.authUserId.present
           ? data.authUserId.value
           : this.authUserId,
+      email: data.email.present ? data.email.value : this.email,
       fullName: data.fullName.present ? data.fullName.value : this.fullName,
       roleId: data.roleId.present ? data.roleId.value : this.roleId,
       roleName: data.roleName.present ? data.roleName.value : this.roleName,
@@ -12753,6 +12786,7 @@ class EmployeeRow extends DataClass implements Insertable<EmployeeRow> {
           ..write('businessId: $businessId, ')
           ..write('userId: $userId, ')
           ..write('authUserId: $authUserId, ')
+          ..write('email: $email, ')
           ..write('fullName: $fullName, ')
           ..write('roleId: $roleId, ')
           ..write('roleName: $roleName, ')
@@ -12772,6 +12806,7 @@ class EmployeeRow extends DataClass implements Insertable<EmployeeRow> {
     businessId,
     userId,
     authUserId,
+    email,
     fullName,
     roleId,
     roleName,
@@ -12790,6 +12825,7 @@ class EmployeeRow extends DataClass implements Insertable<EmployeeRow> {
           other.businessId == this.businessId &&
           other.userId == this.userId &&
           other.authUserId == this.authUserId &&
+          other.email == this.email &&
           other.fullName == this.fullName &&
           other.roleId == this.roleId &&
           other.roleName == this.roleName &&
@@ -12806,6 +12842,7 @@ class EmployeesTableCompanion extends UpdateCompanion<EmployeeRow> {
   final Value<String> businessId;
   final Value<String?> userId;
   final Value<String?> authUserId;
+  final Value<String?> email;
   final Value<String?> fullName;
   final Value<String?> roleId;
   final Value<String?> roleName;
@@ -12821,6 +12858,7 @@ class EmployeesTableCompanion extends UpdateCompanion<EmployeeRow> {
     this.businessId = const Value.absent(),
     this.userId = const Value.absent(),
     this.authUserId = const Value.absent(),
+    this.email = const Value.absent(),
     this.fullName = const Value.absent(),
     this.roleId = const Value.absent(),
     this.roleName = const Value.absent(),
@@ -12837,6 +12875,7 @@ class EmployeesTableCompanion extends UpdateCompanion<EmployeeRow> {
     required String businessId,
     this.userId = const Value.absent(),
     this.authUserId = const Value.absent(),
+    this.email = const Value.absent(),
     this.fullName = const Value.absent(),
     this.roleId = const Value.absent(),
     this.roleName = const Value.absent(),
@@ -12854,6 +12893,7 @@ class EmployeesTableCompanion extends UpdateCompanion<EmployeeRow> {
     Expression<String>? businessId,
     Expression<String>? userId,
     Expression<String>? authUserId,
+    Expression<String>? email,
     Expression<String>? fullName,
     Expression<String>? roleId,
     Expression<String>? roleName,
@@ -12870,6 +12910,7 @@ class EmployeesTableCompanion extends UpdateCompanion<EmployeeRow> {
       if (businessId != null) 'business_id': businessId,
       if (userId != null) 'user_id': userId,
       if (authUserId != null) 'auth_user_id': authUserId,
+      if (email != null) 'email': email,
       if (fullName != null) 'full_name': fullName,
       if (roleId != null) 'role_id': roleId,
       if (roleName != null) 'role_name': roleName,
@@ -12888,6 +12929,7 @@ class EmployeesTableCompanion extends UpdateCompanion<EmployeeRow> {
     Value<String>? businessId,
     Value<String?>? userId,
     Value<String?>? authUserId,
+    Value<String?>? email,
     Value<String?>? fullName,
     Value<String?>? roleId,
     Value<String?>? roleName,
@@ -12904,6 +12946,7 @@ class EmployeesTableCompanion extends UpdateCompanion<EmployeeRow> {
       businessId: businessId ?? this.businessId,
       userId: userId ?? this.userId,
       authUserId: authUserId ?? this.authUserId,
+      email: email ?? this.email,
       fullName: fullName ?? this.fullName,
       roleId: roleId ?? this.roleId,
       roleName: roleName ?? this.roleName,
@@ -12931,6 +12974,9 @@ class EmployeesTableCompanion extends UpdateCompanion<EmployeeRow> {
     }
     if (authUserId.present) {
       map['auth_user_id'] = Variable<String>(authUserId.value);
+    }
+    if (email.present) {
+      map['email'] = Variable<String>(email.value);
     }
     if (fullName.present) {
       map['full_name'] = Variable<String>(fullName.value);
@@ -12972,6 +13018,7 @@ class EmployeesTableCompanion extends UpdateCompanion<EmployeeRow> {
           ..write('businessId: $businessId, ')
           ..write('userId: $userId, ')
           ..write('authUserId: $authUserId, ')
+          ..write('email: $email, ')
           ..write('fullName: $fullName, ')
           ..write('roleId: $roleId, ')
           ..write('roleName: $roleName, ')
@@ -19535,6 +19582,7 @@ typedef $$EmployeesTableTableCreateCompanionBuilder =
       required String businessId,
       Value<String?> userId,
       Value<String?> authUserId,
+      Value<String?> email,
       Value<String?> fullName,
       Value<String?> roleId,
       Value<String?> roleName,
@@ -19552,6 +19600,7 @@ typedef $$EmployeesTableTableUpdateCompanionBuilder =
       Value<String> businessId,
       Value<String?> userId,
       Value<String?> authUserId,
+      Value<String?> email,
       Value<String?> fullName,
       Value<String?> roleId,
       Value<String?> roleName,
@@ -19590,6 +19639,11 @@ class $$EmployeesTableTableFilterComposer
 
   ColumnFilters<String> get authUserId => $composableBuilder(
     column: $table.authUserId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get email => $composableBuilder(
+    column: $table.email,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -19668,6 +19722,11 @@ class $$EmployeesTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get fullName => $composableBuilder(
     column: $table.fullName,
     builder: (column) => ColumnOrderings(column),
@@ -19739,6 +19798,9 @@ class $$EmployeesTableTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get email =>
+      $composableBuilder(column: $table.email, builder: (column) => column);
+
   GeneratedColumn<String> get fullName =>
       $composableBuilder(column: $table.fullName, builder: (column) => column);
 
@@ -19808,6 +19870,7 @@ class $$EmployeesTableTableTableManager
                 Value<String> businessId = const Value.absent(),
                 Value<String?> userId = const Value.absent(),
                 Value<String?> authUserId = const Value.absent(),
+                Value<String?> email = const Value.absent(),
                 Value<String?> fullName = const Value.absent(),
                 Value<String?> roleId = const Value.absent(),
                 Value<String?> roleName = const Value.absent(),
@@ -19823,6 +19886,7 @@ class $$EmployeesTableTableTableManager
                 businessId: businessId,
                 userId: userId,
                 authUserId: authUserId,
+                email: email,
                 fullName: fullName,
                 roleId: roleId,
                 roleName: roleName,
@@ -19840,6 +19904,7 @@ class $$EmployeesTableTableTableManager
                 required String businessId,
                 Value<String?> userId = const Value.absent(),
                 Value<String?> authUserId = const Value.absent(),
+                Value<String?> email = const Value.absent(),
                 Value<String?> fullName = const Value.absent(),
                 Value<String?> roleId = const Value.absent(),
                 Value<String?> roleName = const Value.absent(),
@@ -19855,6 +19920,7 @@ class $$EmployeesTableTableTableManager
                 businessId: businessId,
                 userId: userId,
                 authUserId: authUserId,
+                email: email,
                 fullName: fullName,
                 roleId: roleId,
                 roleName: roleName,

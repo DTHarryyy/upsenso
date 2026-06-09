@@ -37,6 +37,16 @@ class EmployeeLoaded extends EmployeeState {
     this.branchFilter,
   });
 
+  @override
+  List<Object?> get props => [
+        allEmployees,
+        displayEmployees,
+        searchQuery,
+        roleFilter,
+        isActiveFilter,
+        branchFilter,
+      ];
+
   int get activeCount => allEmployees.where((e) => e.isActive).length;
   int get inactiveCount => allEmployees.where((e) => !e.isActive).length;
 

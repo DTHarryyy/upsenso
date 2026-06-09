@@ -464,7 +464,7 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
                   ],
                   AppDropdown<EmployeeRole>(
                     value: _role,
-                    items: (widget.allowedRoles ?? EmployeeRole.values)
+                    items: (widget.allowedRoles ?? EmployeeRole.values.where((r) => r != EmployeeRole.owner).toList())
                         .map(
                           (r) => AppDropdownItem(
                             value: r,

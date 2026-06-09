@@ -9,6 +9,7 @@ class EmployeesTable extends Table {
   TextColumn get businessId => text()();
   TextColumn get userId => text().nullable()();
   TextColumn get authUserId => text().nullable()();
+  TextColumn get email => text().nullable()();
   TextColumn get fullName => text().nullable()();
   TextColumn get roleId => text().nullable()();
 

@@ -102,12 +102,8 @@ class SearchEmployees extends EmployeeEvent {
 }
 
 class FilterEmployees extends EmployeeEvent {
-  /// Filter by role name string (e.g. 'Cashier', 'Branch Manager'). Null = all.
   final String? roleFilter;
-
-  /// Filter by active status. Null = all.
   final bool? isActiveFilter;
-
   final String? branchFilter;
 
   const FilterEmployees({
@@ -118,6 +114,27 @@ class FilterEmployees extends EmployeeEvent {
 
   @override
   List<Object?> get props => [roleFilter, isActiveFilter, branchFilter];
+}
+
+class SetRoleFilter extends EmployeeEvent {
+  final String? role;
+  const SetRoleFilter(this.role);
+  @override
+  List<Object?> get props => [role];
+}
+
+class SetStatusFilter extends EmployeeEvent {
+  final bool? isActive;
+  const SetStatusFilter(this.isActive);
+  @override
+  List<Object?> get props => [isActive];
+}
+
+class SetBranchFilter extends EmployeeEvent {
+  final String? branchId;
+  const SetBranchFilter(this.branchId);
+  @override
+  List<Object?> get props => [branchId];
 }
 
 class ClearEmployeeFilters extends EmployeeEvent {

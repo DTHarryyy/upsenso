@@ -252,19 +252,19 @@ class AuthRemoteDs {
         businessId = businessRow['id']?.toString();
       }
 
-      // Final fallback: owner is typically Super Admin for created business.
+      // Final fallback: look up the Business Owner role for this business.
       if (businessId != null) {
-        final superAdminRoleRows = List<Map<String, dynamic>>.from(
+        final ownerRoleRows = List<Map<String, dynamic>>.from(
           await client
               .from('roles')
               .select('id')
               .eq('business_id', businessId)
-              .eq('name', 'Super Admin')
+              .eq('name', 'Business Owner')
               .limit(1),
         );
 
-        if (superAdminRoleRows.isNotEmpty) {
-          roleId = superAdminRoleRows.first['id']?.toString();
+        if (ownerRoleRows.isNotEmpty) {
+          roleId = ownerRoleRows.first['id']?.toString();
         }
       }
 
@@ -310,9 +310,9 @@ class AuthRemoteDs {
       // Note: Super Admin should NOT be assigned to any specific branch
       String? branchId;
       String? branchName;
+      final n = roleName?.trim().toLowerCase();
       final isSuperAdmin =
-          roleName?.trim().toLowerCase() == 'super admin' ||
-          roleName?.trim().toLowerCase() == 'superadmin';
+          n == 'business owner' || n == 'super admin' || n == 'superadmin';
 
       if (businessId != null && !isSuperAdmin) {
         try {

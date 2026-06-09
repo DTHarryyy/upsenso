@@ -3,6 +3,7 @@ class Employee {
   final String businessId;
   final String? userId;
   final String? authUserId;
+  final String? email;
   final String fullName;
   final String? roleId;
   final String? roleName;
@@ -15,6 +16,7 @@ class Employee {
     required this.businessId,
     this.userId,
     this.authUserId,
+    this.email,
     required this.fullName,
     this.roleId,
     this.roleName,
@@ -25,6 +27,7 @@ class Employee {
 
   Employee copyWith({
     String? fullName,
+    String? email,
     String? roleId,
     String? roleName,
     String? branchId,
@@ -35,6 +38,7 @@ class Employee {
       businessId: businessId,
       userId: userId,
       authUserId: authUserId,
+      email: email ?? this.email,
       fullName: fullName ?? this.fullName,
       roleId: roleId ?? this.roleId,
       roleName: roleName ?? this.roleName,
@@ -46,13 +50,13 @@ class Employee {
 }
 
 /// Kept for display/UI purposes only — role identity on the server is a UUID.
-enum EmployeeRole { superAdmin, branchManager, cashier, inventoryStaff }
+enum EmployeeRole { owner, branchManager, cashier, inventoryStaff }
 
 extension EmployeeRoleX on EmployeeRole {
   String get displayName {
     switch (this) {
-      case EmployeeRole.superAdmin:
-        return 'Super Admin';
+      case EmployeeRole.owner:
+        return 'Owner';
       case EmployeeRole.branchManager:
         return 'Branch Manager';
       case EmployeeRole.cashier:
@@ -64,10 +68,11 @@ extension EmployeeRoleX on EmployeeRole {
 
   static EmployeeRole fromRoleName(String? name) {
     switch (name?.toLowerCase().trim()) {
+      case 'business owner':
+      case 'owner':
       case 'super admin':
       case 'superadmin':
-      case 'owner':
-        return EmployeeRole.superAdmin;
+        return EmployeeRole.owner;
       case 'branch manager':
         return EmployeeRole.branchManager;
       case 'cashier':

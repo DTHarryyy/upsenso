@@ -12,20 +12,29 @@ import 'package:pos/core/const/font_utils.dart';
 class AppSearchBar extends StatefulWidget {
   final ValueChanged<String>? onChanged;
   final String hint;
+  final TextEditingController? controller;
 
-  const AppSearchBar({super.key, this.onChanged, this.hint = 'Search...'});
+  const AppSearchBar({
+    super.key,
+    this.onChanged,
+    this.hint = 'Search...',
+    this.controller,
+  });
 
   @override
   State<AppSearchBar> createState() => _AppSearchBarState();
 }
 
 class _AppSearchBarState extends State<AppSearchBar> {
-  final _controller = TextEditingController();
+  late final TextEditingController _controller;
+  late final bool _ownsController;
   bool _hasText = false;
 
   @override
   void initState() {
     super.initState();
+    _ownsController = widget.controller == null;
+    _controller = widget.controller ?? TextEditingController();
     _controller.addListener(() {
       final nonEmpty = _controller.text.isNotEmpty;
       if (nonEmpty != _hasText) setState(() => _hasText = nonEmpty);
@@ -34,7 +43,7 @@ class _AppSearchBarState extends State<AppSearchBar> {
 
   @override
   void dispose() {
-    _controller.dispose();
+    if (_ownsController) _controller.dispose();
     super.dispose();
   }
 
@@ -69,7 +78,7 @@ class _AppSearchBarState extends State<AppSearchBar> {
         suffixIcon: _hasText
             ? IconButton(
                 icon: const Icon(
-                  IconlyLight.close_square,
+                  Icons.close,
                   size: 18,
                   color: AppColors.textMuted,
                 ),

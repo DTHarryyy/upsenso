@@ -91,7 +91,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 31;
+  int get schemaVersion => 32;
 
   @override
   MigrationStrategy get migration {
@@ -372,6 +372,11 @@ class AppDatabase extends _$AppDatabase {
               await customStatement(sql);
             } catch (_) {}
           }
+        }
+        if (from < 32) {
+          try {
+            await customStatement('ALTER TABLE employees ADD COLUMN email TEXT');
+          } catch (_) {}
         }
         if (from < 31) {
           // The original v25 employees table was created with an employee_code
