@@ -267,6 +267,10 @@ class AppRouter {
             AddProductsPage(productToEdit: state.extra as Product?),
       ),
       GoRoute(
+        path: AppRoutes.notifications,
+        builder: (context, _) => const NotificationsPage(),
+      ),
+      GoRoute(
         path: AppRoutes.aiChat,
         builder: (context, _) {
           final authRepo = sl<AuthRepository>();
@@ -369,16 +373,7 @@ class AppRouter {
             ],
           ),
 
-          // ── Branch 8: Notifications ──────────────────────────────────────
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.notifications,
-                builder: (context, _) => const NotificationsPage(),
-              ),
-            ],
-          ),
-          // ── Branch 9: Audit Logs ───────────────────────────────────────────
+          // ── Branch 8: Audit Logs ──────────────────────────────────────────
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -386,7 +381,8 @@ class AppRouter {
                 builder: (context, _) => const AuditLogPage(),
               ),
             ],
-          ), // ── Branch 10: Employees ──────────────────────────────────────────
+          ),
+          // ── Branch 9: Employees ───────────────────────────────────────────
           StatefulShellBranch(
             routes: [
               GoRoute(

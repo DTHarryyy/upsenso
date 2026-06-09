@@ -204,7 +204,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                                       businessName: businessName,
                                       isOnline: isOnline,
                                       pendingSyncCount: pendingSyncCount,
-                                      onNotificationTapped: () => _onNavTap(8),
+                                      onNotificationTapped: () => context.push(AppRoutes.notifications),
                                       showThemeToggle: false,
                                     ),
 
@@ -270,7 +270,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                           businessName: businessName,
                           isOnline: isOnline,
                           pendingSyncCount: pendingSyncCount,
-                          onNotificationTapped: () => _onNavTap(8),
+                          onNotificationTapped: () => context.push(AppRoutes.notifications),
                           onMenuTapped: () =>
                               _scaffoldKey.currentState?.openDrawer(),
                           showThemeToggle: false,
@@ -760,7 +760,7 @@ class _AppSidebarState extends State<_AppSidebar>
                         icon: IconlyLight.shield_done,
                         activeIcon: IconlyBold.shield_done,
                         label: 'Audit Logs',
-                        index: 9,
+                        index: 8,
                         currentIndex: widget.currentIndex,
                         expanded: layoutExpanded,
                         onTap: widget.onNavTap,

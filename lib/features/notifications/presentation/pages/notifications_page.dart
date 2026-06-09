@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/widgets/app_sub_page_bar.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/notifications/domain/repositories/i_notifications_repository.dart';
@@ -11,7 +12,6 @@ import 'package:pos/features/notifications/presentation/widgets/notification_til
 import 'package:pos/features/notifications/presentation/widgets/notifications_empty_state.dart';
 import 'package:pos/features/notifications/presentation/widgets/notifications_error_state.dart';
 import 'package:pos/features/notifications/presentation/widgets/notifications_filter_tabs.dart';
-import 'package:pos/features/notifications/presentation/widgets/notifications_header.dart';
 import 'package:pos/features/notifications/presentation/widgets/notifications_skeleton.dart';
 import 'package:pos/features/notifications/presentation/widgets/notifications_summary_row.dart';
 
@@ -52,24 +52,38 @@ class _NotificationsView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: BlocBuilder<NotificationsCubit, NotificationsState>(
-          builder: (context, state) {
-            return CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(child: NotificationsHeader(state: state)),
-                SliverToBoxAdapter(
-                  child: NotificationsSummaryRow(state: state),
-                ),
-                SliverToBoxAdapter(
-                  child: NotificationsFilterTabs(state: state),
-                ),
-                const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                _buildBody(context, state),
-              ],
-            );
-          },
-        ),
+      appBar: AppSubPageBar(
+        title: 'Notifications',
+        actions: [
+          BlocBuilder<NotificationsCubit, NotificationsState>(
+            builder: (context, state) {
+              final hasUnread =
+                  state is NotificationsLoaded && state.unreadCount > 0;
+              if (!hasUnread) return const SizedBox.shrink();
+              return TextButton(
+                onPressed: () =>
+                    context.read<NotificationsCubit>().markAllAsRead(),
+                child: const Text('Mark all read'),
+              );
+            },
+          ),
+        ],
+      ),
+      body: BlocBuilder<NotificationsCubit, NotificationsState>(
+        builder: (context, state) {
+          return CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: NotificationsSummaryRow(state: state),
+              ),
+              SliverToBoxAdapter(
+                child: NotificationsFilterTabs(state: state),
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+              _buildBody(context, state),
+            ],
+          );
+        },
       ),
     );
   }
