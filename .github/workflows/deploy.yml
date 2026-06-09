@@ -68,6 +68,6 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_JSON_KEY }}
           packageName: com.ledgidy.pos
           releaseFiles: build/app/outputs/bundle/release/*.aab
-          track: production
+          tracks: production
           status: completed
           releaseName: ${{ steps.version.outputs.build_name }}
