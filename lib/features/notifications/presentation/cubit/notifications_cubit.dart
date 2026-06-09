@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:pos/features/notifications/domain/entities/notification_item.dart';
 import 'package:pos/features/notifications/domain/repositories/i_notifications_repository.dart';
 import 'package:pos/features/notifications/presentation/cubit/notifications_state.dart';
@@ -21,8 +22,9 @@ class NotificationsCubit extends Cubit<NotificationsState> {
       final items = await _repository.fetchAll(businessId);
       emit(NotificationsLoaded(allItems: items));
       _subscribeRealtime(businessId);
-    } catch (e) {
-      emit(NotificationsError(e.toString()));
+    } catch (e, st) {
+      debugPrint('[Notifications] Error in load: $e\n$st');
+      emit(NotificationsError(AppErrorMapper.message(e)));
     }
   }
 
