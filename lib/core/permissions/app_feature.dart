@@ -54,6 +54,9 @@ enum AppFeature {
 
   /// Own profile settings page.
   profileSettings,
+
+  /// Sales history / transaction log viewer.
+  salesHistory,
 }
 
 extension AppFeatureX on AppFeature {
@@ -90,6 +93,8 @@ extension AppFeatureX on AppFeature {
         return 'Audit Logs';
       case AppFeature.profileSettings:
         return 'Profile Settings';
+      case AppFeature.salesHistory:
+        return 'Sales History';
     }
   }
 
@@ -122,6 +127,7 @@ extension AppFeatureX on AppFeature {
       case AppFeature.businessSettings:
       case AppFeature.branchConfiguration:
       case AppFeature.profileSettings:
+      case AppFeature.salesHistory:
       case AppFeature.dashboardCashier:
       case AppFeature.dashboardInventory:
       case AppFeature.dashboardManager:
@@ -156,6 +162,8 @@ extension AppFeatureX on AppFeature {
         return 'nav.suppliers';
       case AppFeature.productsCatalogue:
         return 'nav.inventory';
+      case AppFeature.salesHistory:
+        return 'nav.sales_history';
       // Dashboard variants: everyone with a session may see *some* dashboard.
       case AppFeature.dashboardCashier:
       case AppFeature.dashboardInventory:

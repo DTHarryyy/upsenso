@@ -113,16 +113,16 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
       await _remoteDs.assignBranch(employeeId: id, branchId: branchId);
     }
 
-    // Step 3: Derive default permissions for the chosen role.
+    // Step 3: Derive role-default permissions for local cache seeding.
     final permissions = DefaultPermissionMatrix.forRole(roleName);
 
-    // Step 4: Seed permissions in Supabase (best-effort; FK is satisfied since
-    // the employee row was just created above).
-    if (permissions.isNotEmpty) {
+    // Step 4: Trigger server-side permission snapshot for the new employee
+    // (best-effort — the snapshot will be rebuilt on next login if this fails).
+    if (branchId.isNotEmpty) {
       try {
-        await _permissionRemoteDs.savePermissions(id, permissions);
+        await _permissionRemoteDs.computePermissions(id, branchId);
       } catch (e) {
-        debugPrint('[EmployeesRepo] Remote permission seeding failed: $e');
+        debugPrint('[EmployeesRepo] Permission snapshot seeding failed: $e');
       }
     }
 

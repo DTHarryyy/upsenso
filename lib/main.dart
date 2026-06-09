@@ -24,6 +24,14 @@ Future<void> main() async {
   };
 
   PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+    // Suppress the Flutter web engine zero-size canvas assertion that fires
+    // transiently during startup before the browser completes its first layout.
+    // This is a known engine issue (window.dart:99) — not an app bug.
+    if (kIsWeb &&
+        error is AssertionError &&
+        stack.toString().contains('engine/window.dart')) {
+      return true;
+    }
     debugPrint('[Unhandled Error] $error\n$stack');
     return true; // mark as handled so the platform doesn't crash the app
   };

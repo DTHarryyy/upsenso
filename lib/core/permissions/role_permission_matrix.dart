@@ -36,7 +36,7 @@ class RolePermissionMatrix {
       // POS oversight
       AppPermission.viewAllSalesInBranch,
       AppPermission.approveRefund,
-      AppPermission.approveVoidTransaction,
+      AppPermission.approveVoidTransaction, // maps to pos.approve_void
       AppPermission.voidSale,
 
       // Shift management
@@ -172,6 +172,7 @@ class RolePermissionMatrix {
       AppFeature.branchConfiguration,
       AppFeature.productsCatalogue,
       AppFeature.supplierDirectory,
+      AppFeature.salesHistory,
       // auditLogs intentionally excluded: raw audit log access is
       // restricted to owner / super_admin only.
       AppFeature.profileSettings,

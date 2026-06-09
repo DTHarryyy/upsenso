@@ -4,6 +4,7 @@ import 'package:iconly/iconly.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
+import 'package:pos/core/permissions/role_permission_matrix.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/breakpoint.dart';
@@ -100,9 +101,8 @@ class _EmployeesViewState extends State<_EmployeesView> {
   /// an employee. Branch managers may only assign cashier or inventory staff.
   List<EmployeeRole>? _allowedRoles() {
     final branchState = context.read<BranchCubit>().state;
-    final roleKey =
-        branchState.roleName?.trim().toLowerCase().replaceAll(' ', '_') ?? '';
-    if (roleKey == 'branch_manager') {
+    final roleKey = RolePermissionMatrix.normalise(branchState.roleName);
+    if (roleKey == RolePermissionMatrix.branchManager) {
       return const [EmployeeRole.cashier, EmployeeRole.inventoryStaff];
     }
     return null; // null = no restriction (super admin / owner)
@@ -112,9 +112,8 @@ class _EmployeesViewState extends State<_EmployeesView> {
   /// freely pick a branch. Branch managers are always locked to their branch.
   String? _lockedBranchId() {
     final branchState = context.read<BranchCubit>().state;
-    final roleKey =
-        branchState.roleName?.trim().toLowerCase().replaceAll(' ', '_') ?? '';
-    if (roleKey == 'branch_manager') {
+    final roleKey = RolePermissionMatrix.normalise(branchState.roleName);
+    if (roleKey == RolePermissionMatrix.branchManager) {
       return branchState.selectedBranchId;
     }
     return null;

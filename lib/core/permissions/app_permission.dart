@@ -294,8 +294,9 @@ extension AppPermissionX on AppPermission {
         return 'pos.apply_discount';
       case AppPermission.voidSale:
       case AppPermission.deleteSale:
-      case AppPermission.approveVoidTransaction:
         return 'pos.void_sale';
+      case AppPermission.approveVoidTransaction:
+        return 'pos.approve_void';
       case AppPermission.refundSale:
         return 'pos.refund_sale';
       case AppPermission.approveRefund:
@@ -331,7 +332,7 @@ extension AppPermissionX on AppPermission {
         return 'inventory.adjust';
       case AppPermission.transferStockBetweenBranches:
       case AppPermission.approveStockTransfer:
-        return 'data.cross_branch_access';
+        return 'inventory.adjust';
       case AppPermission.createExpense:
         return 'expenses.create';
       case AppPermission.viewExpenses:
@@ -361,7 +362,7 @@ extension AppPermissionX on AppPermission {
       case AppPermission.accessSettings:
         return 'settings.view';
       case AppPermission.deleteAuditLogs:
-        return 'audit_logs.view';
+        return 'audit_logs.delete';
       case AppPermission.crossBranchAccess:
         return 'data.cross_branch_access';
     }

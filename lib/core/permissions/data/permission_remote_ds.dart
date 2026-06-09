@@ -56,19 +56,6 @@ class PermissionRemoteDs {
     };
   }
 
-  /// Saves a modified permissions map back to Supabase.
-  ///
-  /// Requires the caller to have `admin_write_permissions` RLS policy.
-  Future<void> savePermissions(
-    String employeeId,
-    Map<String, bool> permissions,
-  ) async {
-    await _client.from('employee_permissions').upsert({
-      'employee_id': employeeId,
-      'permissions': permissions,
-    }, onConflict: 'employee_id');
-  }
-
   /// Enables or disables a module for [businessId].
   ///
   /// Calls the `set_module_enabled` SECURITY DEFINER RPC which enforces
@@ -126,6 +113,18 @@ class PermissionRemoteDs {
         'p_is_granted': granted,
       },
     );
+  }
+
+  /// Triggers server-side recomputation of the effective_permissions snapshot
+  /// for [employeeId] in [branchId].
+  ///
+  /// Call after creating a new employee so their role-default permissions are
+  /// populated immediately without waiting for the next scheduled sync.
+  Future<void> computePermissions(String employeeId, String branchId) async {
+    await _client.rpc('compute_employee_permissions', params: {
+      'p_employee_id': employeeId,
+      'p_branch_id': branchId,
+    });
   }
 
   /// Removes a business-wide override, reverting the employee to their role default.

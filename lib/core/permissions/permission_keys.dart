@@ -16,6 +16,7 @@ abstract final class PermissionKeys {
   static const String posUse = 'pos.use';
   static const String posApplyDiscount = 'pos.apply_discount';
   static const String posVoidSale = 'pos.void_sale';
+  static const String posApproveVoid = 'pos.approve_void';
   static const String posRefundSale = 'pos.refund_sale';
   static const String posApproveRefund = 'pos.approve_refund';
   static const String posOpenShift = 'pos.open_shift';
@@ -64,6 +65,7 @@ abstract final class PermissionKeys {
 
   // ── Audit Logs ────────────────────────────────────────────────────────────
   static const String auditLogsView = 'audit_logs.view';
+  static const String auditLogsDelete = 'audit_logs.delete';
 
   // ── Suppliers ─────────────────────────────────────────────────────────────
   static const String suppliersView = 'suppliers.view';
@@ -96,6 +98,7 @@ abstract final class PermissionKeys {
     posUse,
     posApplyDiscount,
     posVoidSale,
+    posApproveVoid,
     posRefundSale,
     posApproveRefund,
     posOpenShift,
@@ -130,6 +133,7 @@ abstract final class PermissionKeys {
     settingsEditBusiness,
     settingsEditBranch,
     auditLogsView,
+    auditLogsDelete,
     suppliersView,
     suppliersManage,
     dashboardViewStats,

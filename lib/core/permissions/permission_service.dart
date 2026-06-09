@@ -77,6 +77,9 @@ class PermissionService {
 
   bool get _hasLoadedPermissions => _permissionsMap.isNotEmpty;
 
+  /// The auth user ID currently bound to this service.
+  String? get currentUserId => _userId;
+
   PermissionService({
     required AuthContextDao authContextDao,
     required AuditLogService auditLogService,

@@ -5,6 +5,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/audit/audit_log_service.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/errors/app_error_mapper.dart';
+import 'package:pos/core/permissions/permission_keys.dart';
+import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/features/expenses/domain/repositories/i_expenses_repository.dart';
 import 'package:pos/features/expenses/domain/expense_item.dart';
@@ -16,7 +18,6 @@ class ExpensesCubit extends Cubit<ExpensesState> {
   StreamSubscription<List<ExpenseItem>>? _watcher;
   String? _businessId;
   String? _branchId;
-  String? _roleName;
   String? _userId;
   String? _userName;
 
@@ -29,12 +30,8 @@ class ExpensesCubit extends Cubit<ExpensesState> {
 
   ExpensesCubit(this._repository) : super(const ExpensesInitial());
 
-  bool get canApprove {
-    final normalized = _roleName?.trim().toLowerCase() ?? '';
-    return normalized == 'owner' ||
-        normalized == 'super admin' ||
-        normalized.contains('admin');
-  }
+  bool get canApprove =>
+      sl<PermissionService>().can(PermissionKeys.expensesApprove);
 
   bool get _shouldAutoApprove => canApprove;
 
@@ -47,7 +44,6 @@ class ExpensesCubit extends Cubit<ExpensesState> {
   }) async {
     _businessId = businessId;
     _branchId = branchId;
-    _roleName = roleName;
     _userId = userId;
     _userName = userName;
 

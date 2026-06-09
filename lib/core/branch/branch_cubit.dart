@@ -7,6 +7,8 @@ import 'package:uuid/uuid.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
+import 'package:pos/core/permissions/data_scope.dart';
+import 'package:pos/core/permissions/role_permission_matrix.dart';
 import 'package:pos/core/sync/sync_status.dart';
 import 'package:pos/features/auth/domain/entities/app_user.dart';
 import 'package:pos/features/business/data/datasources/business_remote_ds.dart';
@@ -199,14 +201,12 @@ class BranchCubit extends Cubit<BranchState> {
       final uniqueNames = idsByName.keys.toList();
       uniqueNames.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
 
-      final roleLowerKey =
-          user.roleName?.trim().toLowerCase().replaceAll(' ', '_') ?? '';
+      final roleLowerKey = RolePermissionMatrix.normalise(user.roleName);
       // Roles that are always scoped to a single assigned branch and must
       // never be allowed to switch — regardless of cache or branchId state.
       final isBranchScopedRole =
-          roleLowerKey == 'cashier' ||
-          roleLowerKey == 'inventory_staff' ||
-          roleLowerKey == 'branch_manager';
+          RolePermissionMatrix.dataScopeTypeFor(roleLowerKey) !=
+          DataScopeType.allBranches;
       // Can switch only when the role is NOT branch-scoped AND the user has
       // no explicit branch assignment (canAccessAllBranches already encodes
       // the !hasAssignedBranch logic for non-super-admin users).
