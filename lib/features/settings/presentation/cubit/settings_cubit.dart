@@ -33,20 +33,20 @@ class SettingsCubit extends Cubit<SettingsState> {
         .watch(businessId)
         .listen(
           (settings) {
-            // First time — no row yet: pre-fill with user's business info
-            final effective =
-                settings ??
-                ReceiptSettings(
+            // Always stamp the live auth values so branch/business name stay
+            // current even if the DB row was written under a different branch.
+            final effective = (settings ?? ReceiptSettings(
                   id: businessId,
                   businessId: businessId,
-                  businessName: businessName ?? '',
-                  storeName: branchName ?? '',
-                  ownerName: ownerName ?? '',
-                  email: email ?? '',
                   contactNumber: contactNumber ?? '',
                   address: address ?? '',
                   updatedAt: DateTime.now(),
-                );
+                )).copyWith(
+              businessName: businessName ?? '',
+              storeName: branchName ?? '',
+              ownerName: ownerName ?? '',
+              email: email ?? '',
+            );
             emit(
               state.copyWith(
                 settings: effective,

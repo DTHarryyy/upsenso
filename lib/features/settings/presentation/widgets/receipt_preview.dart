@@ -66,7 +66,7 @@ class _ReceiptBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = settings;
-    final currency = s.currencySymbol;
+    const currency = '₱';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -129,21 +129,6 @@ class _ReceiptBody extends StatelessWidget {
 
         // ── Totals ────────────────────────────────────────────────────
         _totalRow('Subtotal', '${currency}415.00', baseFontSize),
-        if (s.showTaxBreakdown && s.taxPercentage > 0) ...[
-          _totalRow(
-            'VAT (${s.taxPercentage.toStringAsFixed(0)}%)',
-            '$currency${(415 * s.taxPercentage / 100).toStringAsFixed(2)}',
-            baseFontSize,
-            color: Colors.black54,
-          ),
-        ],
-        if (s.serviceChargePercentage > 0)
-          _totalRow(
-            'Service (${s.serviceChargePercentage.toStringAsFixed(0)}%)',
-            '$currency${(415 * s.serviceChargePercentage / 100).toStringAsFixed(2)}',
-            baseFontSize,
-            color: Colors.black54,
-          ),
         _totalRow(
           'TOTAL',
           '${currency}415.00',
@@ -158,30 +143,8 @@ class _ReceiptBody extends StatelessWidget {
           color: AppColors.success,
         ),
 
-        if (s.vatInclusive) ...[
-          const SizedBox(height: 4),
-          _line('(VAT inclusive)', baseFontSize - 1, align,
-              color: Colors.black38),
-        ],
-
         _dottedDivider(),
 
-        // ── QR code placeholder ───────────────────────────────────────
-        if (s.showQrCode) ...[
-          Center(
-            child: Container(
-              width: 60,
-              height: 60,
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.black26),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Icon(IconlyLight.scan,
-                  size: 48, color: Colors.black54),
-            ),
-          ),
-        ],
 
         // ── Footer ────────────────────────────────────────────────────
         if (s.footerText.isNotEmpty) ...[

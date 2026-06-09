@@ -154,10 +154,6 @@ class ReceiptSettingsRepository {
       'auto_print_after_checkout': row.autoPrintAfterCheckout,
       'print_duplicate_copy': row.printDuplicateCopy,
       'thermal_printer_enabled': row.thermalPrinterEnabled,
-      'currency_symbol': row.currencySymbol,
-      'tax_percentage': row.taxPercentage,
-      'service_charge_percentage': row.serviceChargePercentage,
-      'vat_inclusive': row.vatInclusive,
       'updated_at': row.updatedAt.toIso8601String(),
     });
     await _dao.updateSyncStatus(id: row.id, status: SyncStatus.synced);
@@ -196,10 +192,6 @@ class ReceiptSettingsRepository {
     autoPrintAfterCheckout: r.autoPrintAfterCheckout,
     printDuplicateCopy: r.printDuplicateCopy,
     thermalPrinterEnabled: r.thermalPrinterEnabled,
-    currencySymbol: r.currencySymbol,
-    taxPercentage: r.taxPercentage,
-    serviceChargePercentage: r.serviceChargePercentage,
-    vatInclusive: r.vatInclusive,
     updatedAt: r.updatedAt,
   );
 
@@ -239,10 +231,6 @@ class ReceiptSettingsRepository {
       autoPrintAfterCheckout: Value(s.autoPrintAfterCheckout),
       printDuplicateCopy: Value(s.printDuplicateCopy),
       thermalPrinterEnabled: Value(s.thermalPrinterEnabled),
-      currencySymbol: Value(s.currencySymbol),
-      taxPercentage: Value(s.taxPercentage),
-      serviceChargePercentage: Value(s.serviceChargePercentage),
-      vatInclusive: Value(s.vatInclusive),
       updatedAt: Value(now),
       syncStatus: Value(status.toInt()),
       localUpdatedAt: Value(now),

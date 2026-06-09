@@ -1,334 +1,296 @@
-import 'dart:io';
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:iconly/iconly.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as p;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:printing/printing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
+
+import 'package:pos/core/widgets/app_labeled_switch.dart';
+import 'package:pos/core/widgets/app_section_card.dart';
 import 'package:pos/core/widgets/app_toast.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/settings/domain/receipt_settings.dart';
 import 'package:pos/features/settings/presentation/cubit/settings_cubit.dart';
-import 'package:pos/features/settings/presentation/cubit/settings_state.dart';
 import 'package:pos/features/settings/presentation/widgets/receipt_preview.dart';
 import 'package:pos/features/settings/services/receipt_printer_service.dart';
 
-class ReceiptSettingsSection extends StatelessWidget {
-  const ReceiptSettingsSection({super.key});
+// ── Tab 1: Business ───────────────────────────────────────────────────────────
+
+class BusinessTab extends StatelessWidget {
+  final ReceiptSettings settings;
+  const BusinessTab({super.key, required this.settings});
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<SettingsCubit, SettingsState>(
-      builder: (context, state) {
-        if (state.isLoading) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(64),
-              child: CircularProgressIndicator(color: AppColors.brand),
-            ),
-          );
-        }
-
-        final s = state.settings;
-        if (s == null) return const SizedBox.shrink();
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    final s = settings;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        AppSectionCard(
+          icon: IconlyLight.work,
+          title: 'Business Details',
           children: [
-            // ── Preview banner ──────────────────────────────────────────
-            _PreviewBanner(settings: s),
-            const SizedBox(height: 20),
-
-            // ── Business details ────────────────────────────────────────
-            _SettingsCard(
-              icon: IconlyLight.work,
-              title: 'Business Details',
-              children: [
-                _FieldRow(
-                  label: 'Business Name',
-                  value: s.businessName,
-                  hint: 'e.g. Mang Juan Store',
-                  onChanged: (v) =>
-                      _save(context, (x) => x.copyWith(businessName: v)),
-                ),
-                _FieldRow(
-                  label: 'Store / Branch Name',
-                  value: s.storeName,
-                  hint: 'e.g. Main Branch',
-                  onChanged: (v) =>
-                      _save(context, (x) => x.copyWith(storeName: v)),
-                ),
-                _FieldRow(
-                  label: 'Owner Name',
-                  value: s.ownerName,
-                  hint: 'e.g. Juan dela Cruz',
-                  onChanged: (v) =>
-                      _save(context, (x) => x.copyWith(ownerName: v)),
-                ),
-                _FieldRow(
-                  label: 'Business Address',
-                  value: s.address,
-                  hint: '123 Main St, City',
-                  maxLines: 2,
-                  onChanged: (v) =>
-                      _save(context, (x) => x.copyWith(address: v)),
-                ),
-                _FieldRow(
-                  label: 'Contact Number',
-                  value: s.contactNumber,
-                  hint: '+63 912 345 6789',
-                  keyboardType: TextInputType.phone,
-                  onChanged: (v) =>
-                      _save(context, (x) => x.copyWith(contactNumber: v)),
-                ),
-                _FieldRow(
-                  label: 'Email Address',
-                  value: s.email,
-                  hint: 'hello@mybusiness.com',
-                  keyboardType: TextInputType.emailAddress,
-                  onChanged: (v) => _save(context, (x) => x.copyWith(email: v)),
-                ),
-                _FieldRow(
-                  label: 'Website / Social',
-                  value: s.website,
-                  hint: 'www.mybusiness.com',
-                  onChanged: (v) =>
-                      _save(context, (x) => x.copyWith(website: v)),
-                ),
-                _FieldRow(
-                  label: 'TIN Number',
-                  value: s.tinNumber,
-                  hint: '000-000-000-000',
-                  onChanged: (v) =>
-                      _save(context, (x) => x.copyWith(tinNumber: v)),
-                ),
-                _FieldRow(
-                  label: 'Permit / Registration No.',
-                  value: s.permitNumber,
-                  hint: 'e.g. BIR-2024-0001',
-                  onChanged: (v) =>
-                      _save(context, (x) => x.copyWith(permitNumber: v)),
-                ),
-              ],
+            _ReadOnlyRow(label: 'Business Name', value: s.businessName),
+            const _Divider(),
+            _ReadOnlyRow(label: 'Branch', value: s.storeName),
+            const _Divider(),
+            _ReadOnlyRow(label: 'Email', value: s.email),
+            const _Divider(),
+            _EditableRow(
+              label: 'Address',
+              value: s.address,
+              placeholder: 'Add address',
+              hint: '123 Main St, City',
+              maxLines: 2,
+              onChanged: (v) => _save(context, (x) => x.copyWith(address: v)),
             ),
-            const SizedBox(height: 16),
-
-            // ── Logo ────────────────────────────────────────────────────
-            _SettingsCard(
-              icon: IconlyLight.image,
-              title: 'Business Logo',
-              children: [
-                _SwitchRow(
-                  label: 'Show Logo on Receipt',
-                  value: s.showLogo,
-                  onChanged: (v) =>
-                      _save(context, (x) => x.copyWith(showLogo: v)),
-                ),
-                if (s.showLogo) ...[
-                  const SizedBox(height: 12),
-                  _LogoPicker(settings: s),
-                ],
-              ],
+            const _Divider(),
+            _EditableRow(
+              label: 'Contact No.',
+              value: s.contactNumber,
+              placeholder: 'Add contact number',
+              hint: '+63 912 345 6789',
+              keyboardType: TextInputType.phone,
+              onChanged: (v) =>
+                  _save(context, (x) => x.copyWith(contactNumber: v)),
             ),
-            const SizedBox(height: 16),
-
-            // ── Receipt content ─────────────────────────────────────────
-            _SettingsCard(
-              icon: Icons.text_fields_rounded,
-              title: 'Receipt Content',
-              children: [
-                _FieldRow(
-                  label: 'Header Text',
-                  value: s.headerText,
-                  hint: 'Appears at the top of every receipt',
-                  maxLines: 2,
-                  onChanged: (v) =>
-                      _save(context, (x) => x.copyWith(headerText: v)),
-                ),
-                _FieldRow(
-                  label: 'Footer / Thank You Message',
-                  value: s.footerText,
-                  hint: 'Thank you for your purchase!',
-                  maxLines: 2,
-                  onChanged: (v) =>
-                      _save(context, (x) => x.copyWith(footerText: v)),
-                ),
-                _FieldRow(
-                  label: 'Return Policy',
-                  value: s.returnPolicy,
-                  hint: 'No returns after 7 days...',
-                  maxLines: 3,
-                  onChanged: (v) =>
-                      _save(context, (x) => x.copyWith(returnPolicy: v)),
-                ),
-                _FieldRow(
-                  label: 'Custom Notes',
-                  value: s.customNotes,
-                  hint: 'Any additional notes',
-                  maxLines: 2,
-                  onChanged: (v) =>
-                      _save(context, (x) => x.copyWith(customNotes: v)),
-                ),
-              ],
+            const _Divider(),
+            _EditableRow(
+              label: 'Website / Social',
+              value: s.website,
+              placeholder: 'Add website or social',
+              hint: 'www.mybusiness.com',
+              onChanged: (v) => _save(context, (x) => x.copyWith(website: v)),
             ),
-            const SizedBox(height: 16),
-
-            // ── Receipt toggles ─────────────────────────────────────────
-            _SettingsCard(
-              icon: Icons.toggle_on_rounded,
-              title: 'Receipt Visibility',
-              children: [
-                _SwitchRow(
-                  label: 'Show QR Code',
-                  value: s.showQrCode,
-                  onChanged: (v) =>
-                      _save(context, (x) => x.copyWith(showQrCode: v)),
-                ),
-                _SwitchRow(
-                  label: 'Show Tax Breakdown',
-                  value: s.showTaxBreakdown,
-                  onChanged: (v) =>
-                      _save(context, (x) => x.copyWith(showTaxBreakdown: v)),
-                ),
-                _SwitchRow(
-                  label: 'Show Cashier Name',
-                  value: s.showCashierName,
-                  onChanged: (v) =>
-                      _save(context, (x) => x.copyWith(showCashierName: v)),
-                ),
-                _SwitchRow(
-                  label: 'Show Customer Name',
-                  value: s.showCustomerName,
-                  onChanged: (v) =>
-                      _save(context, (x) => x.copyWith(showCustomerName: v)),
-                ),
-                _SwitchRow(
-                  label: 'Show Date & Time',
-                  value: s.showDateTime,
-                  onChanged: (v) =>
-                      _save(context, (x) => x.copyWith(showDateTime: v)),
-                ),
-                _SwitchRow(
-                  label: 'Show Order ID / Invoice No.',
-                  value: s.showOrderId,
-                  onChanged: (v) =>
-                      _save(context, (x) => x.copyWith(showOrderId: v)),
-                ),
-              ],
+            const _Divider(),
+            _EditableRow(
+              label: 'TIN Number',
+              value: s.tinNumber,
+              placeholder: 'Add TIN',
+              hint: '000-000-000-000',
+              onChanged: (v) => _save(context, (x) => x.copyWith(tinNumber: v)),
             ),
-            const SizedBox(height: 16),
-
-            // ── Printing preferences ────────────────────────────────────
-            _SettingsCard(
-              icon: Icons.print_rounded,
-              title: 'Printing Preferences',
-              children: [
-                _DropdownRow<String>(
-                  label: 'Paper Size',
-                  value: s.paperSize,
-                  items: const ['58mm', '80mm'],
-                  onChanged: (v) =>
-                      _save(context, (x) => x.copyWith(paperSize: v)),
-                ),
-                _DropdownRow<String>(
-                  label: 'Font Size',
-                  value: s.fontSize,
-                  items: const ['small', 'medium', 'large'],
-                  labels: const ['Small', 'Medium', 'Large'],
-                  onChanged: (v) =>
-                      _save(context, (x) => x.copyWith(fontSize: v)),
-                ),
-                _DropdownRow<String>(
-                  label: 'Text Alignment',
-                  value: s.textAlignment,
-                  items: const ['left', 'center', 'right'],
-                  labels: const ['Left', 'Center', 'Right'],
-                  onChanged: (v) =>
-                      _save(context, (x) => x.copyWith(textAlignment: v)),
-                ),
-                _SwitchRow(
-                  label: 'Auto Print After Checkout',
-                  value: s.autoPrintAfterCheckout,
-                  onChanged: (v) => _save(
-                    context,
-                    (x) => x.copyWith(autoPrintAfterCheckout: v),
-                  ),
-                ),
-                _SwitchRow(
-                  label: 'Print Duplicate Copy',
-                  value: s.printDuplicateCopy,
-                  onChanged: (v) =>
-                      _save(context, (x) => x.copyWith(printDuplicateCopy: v)),
-                ),
-                _SwitchRow(
-                  label: 'Thermal Printer Support',
-                  subtitle:
-                      'Direct-print to your POS thermal printer (skip dialog)',
-                  value: s.thermalPrinterEnabled,
-                  onChanged: (v) => _save(
-                    context,
-                    (x) => x.copyWith(thermalPrinterEnabled: v),
-                  ),
-                ),
-                if (s.thermalPrinterEnabled) ...[
-                  const SizedBox(height: 8),
-                  _PrinterSelector(enabled: s.thermalPrinterEnabled),
-                ],
-              ],
+            const _Divider(),
+            _EditableRow(
+              label: 'Permit No.',
+              value: s.permitNumber,
+              placeholder: 'Add permit number',
+              hint: 'BIR-2024-0001',
+              onChanged: (v) =>
+                  _save(context, (x) => x.copyWith(permitNumber: v)),
             ),
-            const SizedBox(height: 16),
-
-            // ── Currency & tax ──────────────────────────────────────────
-            _SettingsCard(
-              icon: IconlyBold.wallet,
-              title: 'Currency & Tax',
-              children: [
-                _FieldRow(
-                  label: 'Currency Symbol',
-                  value: s.currencySymbol,
-                  hint: '₱',
-                  onChanged: (v) =>
-                      _save(context, (x) => x.copyWith(currencySymbol: v)),
-                ),
-                _PercentRow(
-                  label: 'Tax Percentage (%)',
-                  value: s.taxPercentage,
-                  onChanged: (v) =>
-                      _save(context, (x) => x.copyWith(taxPercentage: v)),
-                ),
-                _PercentRow(
-                  label: 'Service Charge (%)',
-                  value: s.serviceChargePercentage,
-                  onChanged: (v) => _save(
-                    context,
-                    (x) => x.copyWith(serviceChargePercentage: v),
-                  ),
-                ),
-                _SwitchRow(
-                  label: 'VAT Inclusive',
-                  subtitle: 'Price already includes tax',
-                  value: s.vatInclusive,
-                  onChanged: (v) =>
-                      _save(context, (x) => x.copyWith(vatInclusive: v)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
           ],
-        );
-      },
+        ),
+        const SizedBox(height: 16),
+        const _LogoBanner(),
+        const SizedBox(height: 24),
+      ],
     );
   }
+}
 
-  void _save(
-    BuildContext context,
-    ReceiptSettings Function(ReceiptSettings) patch,
-  ) {
-    context.read<SettingsCubit>().update(patch);
+// ── Tab 2: Receipt ────────────────────────────────────────────────────────────
+
+class ReceiptTab extends StatelessWidget {
+  final ReceiptSettings settings;
+  const ReceiptTab({super.key, required this.settings});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = settings;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        AppSectionCard(
+          icon: Icons.text_fields_rounded,
+          title: 'Receipt Text',
+          children: [
+            _CompactFieldRow(
+              label: 'Header',
+              value: s.headerText,
+              hint: 'Appears at the top of every receipt',
+              onChanged: (v) =>
+                  _save(context, (x) => x.copyWith(headerText: v)),
+            ),
+            const _Divider(),
+            _CompactFieldRow(
+              label: 'Footer',
+              value: s.footerText,
+              hint: 'Thank you for your purchase!',
+              onChanged: (v) =>
+                  _save(context, (x) => x.copyWith(footerText: v)),
+            ),
+            const _Divider(),
+            _CompactFieldRow(
+              label: 'Return Policy',
+              value: s.returnPolicy,
+              hint: 'No returns after 7 days...',
+              onChanged: (v) =>
+                  _save(context, (x) => x.copyWith(returnPolicy: v)),
+            ),
+            const _Divider(),
+            _CompactFieldRow(
+              label: 'Custom Notes',
+              value: s.customNotes,
+              hint: 'Any additional notes',
+              onChanged: (v) =>
+                  _save(context, (x) => x.copyWith(customNotes: v)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        _CollapsibleSectionCard(
+          icon: Icons.toggle_on_rounded,
+          title: 'Show on Receipt',
+          children: [
+            AppLabeledSwitch(
+              label: 'Business Logo',
+              value: s.showLogo,
+              onChanged: (v) => _save(context, (x) => x.copyWith(showLogo: v)),
+            ),
+            const _Divider(),
+            AppLabeledSwitch(
+              label: 'Order ID / Invoice No.',
+              value: s.showOrderId,
+              onChanged: (v) =>
+                  _save(context, (x) => x.copyWith(showOrderId: v)),
+            ),
+            const _Divider(),
+            AppLabeledSwitch(
+              label: 'Date & Time',
+              value: s.showDateTime,
+              onChanged: (v) =>
+                  _save(context, (x) => x.copyWith(showDateTime: v)),
+            ),
+            const _Divider(),
+            AppLabeledSwitch(
+              label: 'Cashier Name',
+              value: s.showCashierName,
+              onChanged: (v) =>
+                  _save(context, (x) => x.copyWith(showCashierName: v)),
+            ),
+            const _Divider(),
+            AppLabeledSwitch(
+              label: 'Customer Name',
+              value: s.showCustomerName,
+              onChanged: (v) =>
+                  _save(context, (x) => x.copyWith(showCustomerName: v)),
+            ),
+            const _Divider(),
+            AppLabeledSwitch(
+              label: 'Tax Breakdown',
+              value: s.showTaxBreakdown,
+              onChanged: (v) =>
+                  _save(context, (x) => x.copyWith(showTaxBreakdown: v)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _PreviewBanner(settings: s),
+        const SizedBox(height: 24),
+      ],
+    );
   }
+}
+
+// ── Tab 3: Printing ───────────────────────────────────────────────────────────
+
+class PrintingTab extends StatelessWidget {
+  final ReceiptSettings settings;
+  const PrintingTab({super.key, required this.settings});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = settings;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        AppSectionCard(
+          icon: Icons.print_rounded,
+          title: 'Paper & Format',
+          children: [
+            _LabeledPicker(label: 'Paper Size'),
+            const SizedBox(height: 8),
+            _SegmentedPicker<String>(
+              items: const ['58mm', '80mm'],
+              labels: const ['58 mm', '80 mm'],
+              value: s.paperSize,
+              onChanged: (v) => _save(context, (x) => x.copyWith(paperSize: v)),
+            ),
+            const SizedBox(height: 16),
+            _LabeledPicker(label: 'Font Size'),
+            const SizedBox(height: 8),
+            _SegmentedPicker<String>(
+              items: const ['small', 'medium', 'large'],
+              labels: const ['Small', 'Medium', 'Large'],
+              value: s.fontSize,
+              onChanged: (v) => _save(context, (x) => x.copyWith(fontSize: v)),
+            ),
+            const SizedBox(height: 16),
+            _LabeledPicker(label: 'Text Alignment'),
+            const SizedBox(height: 8),
+            _SegmentedPicker<String>(
+              items: const ['left', 'center', 'right'],
+              labels: const ['Left', 'Center', 'Right'],
+              value: s.textAlignment,
+              onChanged: (v) =>
+                  _save(context, (x) => x.copyWith(textAlignment: v)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        AppSectionCard(
+          icon: Icons.settings_rounded,
+          title: 'Print Behaviour',
+          children: [
+            AppLabeledSwitch(
+              label: 'Auto Print After Checkout',
+              value: s.autoPrintAfterCheckout,
+              onChanged: (v) =>
+                  _save(context, (x) => x.copyWith(autoPrintAfterCheckout: v)),
+            ),
+            const _Divider(),
+            AppLabeledSwitch(
+              label: 'Print Duplicate Copy',
+              value: s.printDuplicateCopy,
+              onChanged: (v) =>
+                  _save(context, (x) => x.copyWith(printDuplicateCopy: v)),
+            ),
+            const _Divider(),
+            AppLabeledSwitch(
+              label: 'Thermal Printer',
+              subtitle:
+                  'Direct-print to your POS thermal printer (skip dialog)',
+              value: s.thermalPrinterEnabled,
+              onChanged: (v) =>
+                  _save(context, (x) => x.copyWith(thermalPrinterEnabled: v)),
+            ),
+            if (s.thermalPrinterEnabled) ...[
+              const SizedBox(height: 14),
+              _PrinterSelector(enabled: s.thermalPrinterEnabled),
+            ],
+          ],
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+}
+
+// ── Shared save helper ────────────────────────────────────────────────────────
+
+void _save(
+  BuildContext context,
+  ReceiptSettings Function(ReceiptSettings) patch,
+) {
+  context.read<SettingsCubit>().update(patch);
 }
 
 // ── Preview banner ────────────────────────────────────────────────────────────
@@ -337,65 +299,33 @@ class _PreviewBanner extends StatelessWidget {
   final ReceiptSettings settings;
   const _PreviewBanner({required this.settings});
 
+  void _showPreview(BuildContext context) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'receipt-preview',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 220),
+      pageBuilder: (ctx, anim, _) => _ReceiptPreviewOverlay(settings: settings),
+      transitionBuilder: (ctx, anim, _, child) {
+        return FadeTransition(
+          opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
+          child: ScaleTransition(
+            scale: Tween<double>(
+              begin: 0.94,
+              end: 1.0,
+            ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOut)),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => BlocProvider.value(
-          value: context.read<SettingsCubit>(),
-          child: DraggableScrollableSheet(
-            initialChildSize: 0.92,
-            minChildSize: 0.5,
-            maxChildSize: 0.96,
-            builder: (_, ctrl) => Container(
-              decoration: const BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              child: Column(
-                children: [
-                  const SizedBox(height: 12),
-                  Container(
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.borderSoft,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
-                      children: [
-                        Text(
-                          'Receipt Preview',
-                          style: getOutfitStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      controller: ctrl,
-                      padding: const EdgeInsets.all(20),
-                      child: ReceiptPreview(settings: settings),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
+      onTap: () => _showPreview(context),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -452,294 +382,478 @@ class _PreviewBanner extends StatelessWidget {
   }
 }
 
-// ── Logo picker ───────────────────────────────────────────────────────────────
+// ── Receipt preview overlay ───────────────────────────────────────────────────
 
-class _LogoPicker extends StatelessWidget {
+class _ReceiptPreviewOverlay extends StatelessWidget {
   final ReceiptSettings settings;
-  const _LogoPicker({required this.settings});
+  const _ReceiptPreviewOverlay({required this.settings});
 
   @override
   Widget build(BuildContext context) {
-    final hasLogo =
-        settings.logoLocalPath.isNotEmpty || settings.logoUrl.isNotEmpty;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Logo preview
-        if (hasLogo)
-          Container(
-            height: 100,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceAlt,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.borderSoft),
+    return GestureDetector(
+      onTap: () => Navigator.of(context).pop(),
+      behavior: HitTestBehavior.opaque,
+      child: Material(
+        color: Colors.transparent,
+        child: Stack(
+          children: [
+            BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+              child: Container(color: Colors.black.withAlpha(120)),
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: _buildLogoImage(settings),
-            ),
-          ),
-        const SizedBox(height: 10),
-        BlocBuilder<SettingsCubit, SettingsState>(
-          buildWhen: (p, c) => p.isUploadingLogo != c.isUploadingLogo,
-          builder: (ctx, state) {
-            if (state.isUploadingLogo) {
-              return const Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AppColors.brand,
+            SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 32,
+                    horizontal: 24,
                   ),
-                ),
-              );
-            }
-            return SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => _pick(ctx),
-                icon: const Icon(IconlyLight.upload, size: 18),
-                label: Text(hasLogo ? 'Change Logo' : 'Upload Logo'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.brand,
-                  side: const BorderSide(color: AppColors.brand),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          GestureDetector(
+                            onTap: () => Navigator.of(context).pop(),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withAlpha(30),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.close_rounded,
+                                size: 18,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      ReceiptPreview(settings: settings),
+                      const SizedBox(height: 20),
+                      Text(
+                        'Tap anywhere to close',
+                        style: getOutfitStyle(
+                          fontSize: 12,
+                          color: Colors.white.withAlpha(140),
+                        ),
+                      ),
+                    ],
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
               ),
-            );
-          },
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
-
-  Widget _buildLogoImage(ReceiptSettings s) {
-    if (s.logoLocalPath.isNotEmpty && !kIsWeb) {
-      return Image.file(File(s.logoLocalPath), fit: BoxFit.contain);
-    }
-    if (s.logoUrl.isNotEmpty) {
-      return Image.network(s.logoUrl, fit: BoxFit.contain);
-    }
-    return const SizedBox.shrink();
-  }
-
-  Future<void> _pick(BuildContext context) async {
-    final auth = context.read<AuthBloc>().state;
-    if (auth is! AuthAuthenticated) return;
-    final businessId = auth.user.businessId ?? '';
-
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 512,
-      maxHeight: 512,
-      imageQuality: 85,
-    );
-    if (picked == null) return;
-    if (!context.mounted) return;
-
-    // Capture cubit reference before any async gap to avoid BuildContext leak.
-    final cubit = context.read<SettingsCubit>();
-
-    final bytes = await picked.readAsBytes();
-    final ext = picked.name.split('.').last.toLowerCase();
-    final mimeType = _mimeFromExt(ext);
-
-    await cubit.uploadLogo(
-      businessId: businessId,
-      fileName: 'logo_${DateTime.now().millisecondsSinceEpoch}.$ext',
-      bytes: bytes,
-      mimeType: mimeType,
-      localPath: kIsWeb ? null : picked.path,
-    );
-  }
-
-  String _mimeFromExt(String ext) => switch (ext) {
-    'jpg' || 'jpeg' => 'image/jpeg',
-    'png' => 'image/png',
-    'webp' => 'image/webp',
-    _ => 'image/jpeg',
-  };
 }
 
-// ── Shared card wrapper ───────────────────────────────────────────────────────
+// ── Segmented picker (replaces dropdowns for short option sets) ───────────────
 
-class _SettingsCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final List<Widget> children;
+class _SegmentedPicker<T> extends StatelessWidget {
+  final List<T> items;
+  final List<String> labels;
+  final T value;
+  final ValueChanged<T> onChanged;
 
-  const _SettingsCard({
-    required this.icon,
-    required this.title,
-    required this.children,
+  const _SegmentedPicker({
+    required this.items,
+    required this.labels,
+    required this.value,
+    required this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      height: 40,
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        color: AppColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppColors.borderSoft),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(4),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.brandSoft,
-                    borderRadius: BorderRadius.circular(9),
+      child: Row(
+        children: List.generate(items.length, (i) {
+          final isActive = items[i] == value;
+          final isFirst = i == 0;
+          final isLast = i == items.length - 1;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => onChanged(items[i]),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                decoration: BoxDecoration(
+                  color: isActive ? AppColors.brand : Colors.transparent,
+                  borderRadius: BorderRadius.horizontal(
+                    left: isFirst ? const Radius.circular(9) : Radius.zero,
+                    right: isLast ? const Radius.circular(9) : Radius.zero,
                   ),
-                  child: Icon(icon, size: 16, color: AppColors.brand),
                 ),
-                const SizedBox(width: 10),
-                Text(
-                  title,
+                alignment: Alignment.center,
+                child: Text(
+                  labels[i],
                   style: getOutfitStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    fontSize: 13,
+                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                    color: isActive ? Colors.white : AppColors.textSecondary,
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          const Divider(height: 1, color: AppColors.borderSoft),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: children,
-            ),
-          ),
-        ],
+          );
+        }),
       ),
     );
   }
 }
 
-// ── Field row ─────────────────────────────────────────────────────────────────
+// ── Small label above a segmented picker ─────────────────────────────────────
 
-class _FieldRow extends StatefulWidget {
+class _LabeledPicker extends StatelessWidget {
   final String label;
-  final String value;
-  final String hint;
-  final int maxLines;
-  final TextInputType keyboardType;
-  final ValueChanged<String> onChanged;
-
-  const _FieldRow({
-    required this.label,
-    required this.value,
-    this.hint = '',
-    this.maxLines = 1,
-    this.keyboardType = TextInputType.text,
-    required this.onChanged,
-  });
+  const _LabeledPicker({required this.label});
 
   @override
-  State<_FieldRow> createState() => _FieldRowState();
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: getOutfitStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: AppColors.textSecondary,
+      ),
+    );
+  }
 }
 
-class _FieldRowState extends State<_FieldRow> {
-  late final TextEditingController _ctrl;
-  bool _isDirty = false;
+// ── Thin divider between switch rows ─────────────────────────────────────────
+
+class _Divider extends StatelessWidget {
+  const _Divider();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 4),
+      child: Divider(height: 1, color: AppColors.borderSoft),
+    );
+  }
+}
+
+// ── Logo picker ───────────────────────────────────────────────────────────────
+
+// ── Logo banner — one-time dismissible notice with CTA to Business Profile ────
+
+class _LogoBanner extends StatefulWidget {
+  const _LogoBanner();
+
+  @override
+  State<_LogoBanner> createState() => _LogoBannerState();
+}
+
+class _LogoBannerState extends State<_LogoBanner> {
+  bool _hasLogo = false;
+  bool _dismissed = false;
+  bool _uploading = false;
+  String? _businessId;
+
+  static const _prefKey = 'receipt_logo_banner_dismissed';
 
   @override
   void initState() {
     super.initState();
-    _ctrl = TextEditingController(text: widget.value);
+    _load();
   }
 
-  @override
-  void didUpdateWidget(_FieldRow old) {
-    super.didUpdateWidget(old);
-    // Only sync from parent if user isn't actively editing
-    if (!_isDirty && old.value != widget.value) {
-      _ctrl.text = widget.value;
+  Future<void> _load() async {
+    final auth = context.read<AuthBloc>().state;
+    _businessId = auth is AuthAuthenticated ? (auth.user.businessId ?? '') : '';
+    final prefs = await SharedPreferences.getInstance();
+    final logo = prefs.getString('biz_logo_$_businessId') ?? '';
+    final dismissed = prefs.getBool(_prefKey) ?? false;
+    if (mounted) {
+      setState(() {
+        _hasLogo = logo.isNotEmpty;
+        _dismissed = dismissed;
+      });
     }
   }
 
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
+  Future<void> _pickLogo() async {
+    if (_uploading || _businessId == null) return;
+
+    final source = await _showSourceSheet();
+    if (source == null) return;
+
+    if (!kIsWeb && source == ImageSource.camera) {
+      var status = await Permission.camera.status;
+      if (status.isPermanentlyDenied) {
+        if (!mounted) return;
+        final open = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Camera Permission Required'),
+            content: const Text(
+              'Camera access is permanently denied. Enable it in App Settings.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Open Settings'),
+              ),
+            ],
+          ),
+        );
+        if (open != true) return;
+        await openAppSettings();
+        status = await Permission.camera.status;
+      } else if (!status.isGranted) {
+        status = await Permission.camera.request();
+      }
+      if (!status.isGranted) return;
+    }
+
+    final picked = await ImagePicker().pickImage(
+      source: source,
+      maxWidth: 512,
+      imageQuality: 90,
+    );
+    if (picked == null || !mounted) return;
+
+    // Capture before async gap
+    final cubit = context.read<SettingsCubit>();
+
+    setState(() => _uploading = true);
+    try {
+      final bytes = Uint8List.fromList(await picked.readAsBytes());
+      final ext = p.extension(picked.path).toLowerCase();
+      final safeExt = ext.isNotEmpty ? ext : '.jpg';
+      final mimeType = safeExt == '.png'
+          ? 'image/png'
+          : safeExt == '.webp'
+          ? 'image/webp'
+          : 'image/jpeg';
+
+      await cubit.uploadLogo(
+        businessId: _businessId!,
+        fileName: 'logo$safeExt',
+        bytes: bytes,
+        mimeType: mimeType,
+      );
+
+      final prefs = await SharedPreferences.getInstance();
+      if (mounted) {
+        setState(() => _hasLogo = true);
+        await prefs.setString('biz_logo_$_businessId', 'uploaded');
+        if (mounted) {
+          AppToast.show(
+            context,
+            'Logo uploaded successfully',
+            variant: AppToastVariant.success,
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        AppToast.show(
+          context,
+          'Upload failed: $e',
+          variant: AppToastVariant.error,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  Future<ImageSource?> _showSourceSheet() {
+    return showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.borderSoft,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'Upload Business Logo',
+                style: getOutfitStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'Choose a square image for best results.',
+                style: getOutfitStyle(fontSize: 12, color: AppColors.textMuted),
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (!kIsWeb)
+              ListTile(
+                leading: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.brandSoft,
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: const Icon(
+                    IconlyLight.camera,
+                    color: AppColors.brand,
+                    size: 18,
+                  ),
+                ),
+                title: Text(
+                  'Take Photo',
+                  style: getOutfitStyle(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                subtitle: Text(
+                  'Open camera',
+                  style: getOutfitStyle(
+                    fontSize: 12,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+              ),
+            ListTile(
+              leading: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.brandSoft,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: const Icon(
+                  IconlyLight.image,
+                  color: AppColors.brand,
+                  size: 18,
+                ),
+              ),
+              title: Text(
+                'Choose from Gallery',
+                style: getOutfitStyle(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              subtitle: Text(
+                'Browse your photos',
+                style: getOutfitStyle(fontSize: 12, color: AppColors.textMuted),
+              ),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _dismiss() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prefKey, true);
+    if (mounted) setState(() => _dismissed = true);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: Column(
+    if (_hasLogo || _dismissed) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.brandSoft,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.brand.withAlpha(50)),
+      ),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            widget.label,
-            style: getOutfitStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
+          const Icon(IconlyLight.info_circle, size: 17, color: AppColors.brand),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Add your business logo',
+                  style: getOutfitStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.brand,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Your logo will appear on every receipt you print.',
+                  style: getOutfitStyle(
+                    fontSize: 12,
+                    color: AppColors.brand.withAlpha(180),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: _uploading ? null : _pickLogo,
+                  child: _uploading
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.brand,
+                          ),
+                        )
+                      : Text(
+                          'Upload Logo →',
+                          style: getOutfitStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.brand,
+                          ),
+                        ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 6),
-          TextFormField(
-            controller: _ctrl,
-            maxLines: widget.maxLines,
-            keyboardType: widget.keyboardType,
-            style: getOutfitStyle(fontSize: 13.5, color: AppColors.textPrimary),
-            decoration: InputDecoration(
-              hintText: widget.hint,
-              hintStyle: getOutfitStyle(
-                fontSize: 13,
-                color: AppColors.textMuted,
-              ),
-              filled: true,
-              fillColor: AppColors.surfaceAlt,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.borderSoft),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.borderSoft),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(
-                  color: AppColors.brand,
-                  width: 1.5,
-                ),
-              ),
+          GestureDetector(
+            onTap: _dismiss,
+            child: const Icon(
+              Icons.close_rounded,
+              size: 16,
+              color: AppColors.brand,
             ),
-            onChanged: (v) {
-              _isDirty = true;
-              widget.onChanged(v);
-            },
-            onEditingComplete: () => _isDirty = false,
           ),
         ],
       ),
@@ -945,165 +1059,42 @@ class _PrinterSelectorState extends State<_PrinterSelector> {
   }
 }
 
-// ── Switch row ────────────────────────────────────────────────────────────────
+// ── Collapsible section card ──────────────────────────────────────────────────
 
-class _SwitchRow extends StatelessWidget {
-  final String label;
-  final String? subtitle;
-  final bool value;
-  final ValueChanged<bool> onChanged;
+class _CollapsibleSectionCard extends StatefulWidget {
+  final IconData icon;
+  final String title;
+  final List<Widget> children;
 
-  const _SwitchRow({
-    required this.label,
-    this.subtitle,
-    required this.value,
-    required this.onChanged,
+  const _CollapsibleSectionCard({
+    required this.icon,
+    required this.title,
+    required this.children,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: getOutfitStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                if (subtitle != null)
-                  Text(
-                    subtitle!,
-                    style: getOutfitStyle(
-                      fontSize: 11.5,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: AppColors.brand,
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-        ],
-      ),
-    );
-  }
+  State<_CollapsibleSectionCard> createState() =>
+      _CollapsibleSectionCardState();
 }
 
-// ── Dropdown row ──────────────────────────────────────────────────────────────
-
-class _DropdownRow<T> extends StatelessWidget {
-  final String label;
-  final T value;
-  final List<T> items;
-  final List<String>? labels;
-  final ValueChanged<T> onChanged;
-
-  const _DropdownRow({
-    required this.label,
-    required this.value,
-    required this.items,
-    this.labels,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: getOutfitStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceAlt,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.borderSoft),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<T>(
-                value: value,
-                items: items.asMap().entries.map((e) {
-                  final display = labels != null
-                      ? labels![e.key]
-                      : '${e.value}';
-                  return DropdownMenuItem<T>(
-                    value: e.value,
-                    child: Text(
-                      display,
-                      style: getOutfitStyle(
-                        fontSize: 13,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  );
-                }).toList(),
-                onChanged: (v) {
-                  if (v != null) onChanged(v);
-                },
-                style: getOutfitStyle(
-                  fontSize: 13,
-                  color: AppColors.textPrimary,
-                ),
-                dropdownColor: AppColors.surface,
-                borderRadius: BorderRadius.circular(10),
-                isDense: true,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Percentage row ────────────────────────────────────────────────────────────
-
-class _PercentRow extends StatefulWidget {
-  final String label;
-  final double value;
-  final ValueChanged<double> onChanged;
-
-  const _PercentRow({
-    required this.label,
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  State<_PercentRow> createState() => _PercentRowState();
-}
-
-class _PercentRowState extends State<_PercentRow> {
-  late final TextEditingController _ctrl;
+class _CollapsibleSectionCardState extends State<_CollapsibleSectionCard>
+    with SingleTickerProviderStateMixin {
+  bool _expanded = false;
+  late final AnimationController _ctrl;
+  late final Animation<double> _iconTurn;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = TextEditingController(
-      text: widget.value == 0 ? '' : widget.value.toString(),
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+      value: 0.0, // starts collapsed
     );
+    _iconTurn = Tween<double>(
+      begin: 0.0,
+      end: 0.5,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -1112,72 +1103,484 @@ class _PercentRowState extends State<_PercentRow> {
     super.dispose();
   }
 
+  void _toggle() {
+    if (_expanded) {
+      _ctrl.reverse();
+    } else {
+      _ctrl.forward();
+    }
+    setState(() => _expanded = !_expanded);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.borderSoft),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x07101828),
+            blurRadius: 20,
+            offset: Offset(0, 4),
+          ),
+          BoxShadow(
+            color: Color(0x04101828),
+            blurRadius: 6,
+            offset: Offset(0, 1),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: _toggle,
+            behavior: HitTestBehavior.opaque,
+            child: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: AppColors.brand.withAlpha(8),
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Icon(widget.icon, size: 17, color: AppColors.brand),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    widget.title,
+                    style: getOutfitStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                RotationTransition(
+                  turns: _iconTurn,
+                  child: const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 20,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeInOut,
+            child: _expanded
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [const SizedBox(height: 16), ...widget.children],
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Read-only info row ────────────────────────────────────────────────────────
+
+class _ReadOnlyRow extends StatelessWidget {
+  final String label;
+  final String value;
+  const _ReadOnlyRow({required this.label, required this.value});
+
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         children: [
           Expanded(
             child: Text(
-              widget.label,
+              label,
               style: getOutfitStyle(
-                fontSize: 13.5,
+                fontSize: 13,
                 fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary,
+                color: AppColors.textSecondary,
               ),
             ),
           ),
-          SizedBox(
-            width: 90,
-            child: TextFormField(
-              controller: _ctrl,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              textAlign: TextAlign.center,
-              style: getOutfitStyle(
-                fontSize: 13.5,
-                color: AppColors.textPrimary,
-              ),
-              decoration: InputDecoration(
-                suffixText: '%',
-                suffixStyle: getOutfitStyle(
-                  fontSize: 13,
-                  color: AppColors.textMuted,
-                ),
-                filled: true,
-                fillColor: AppColors.surfaceAlt,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 10,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: AppColors.borderSoft),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: AppColors.borderSoft),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(
-                    color: AppColors.brand,
-                    width: 1.5,
-                  ),
-                ),
-              ),
-              onChanged: (v) {
-                final parsed = double.tryParse(v);
-                if (parsed != null && parsed >= 0 && parsed <= 100) {
-                  widget.onChanged(parsed);
-                }
-              },
+          Text(
+            value.isNotEmpty ? value : '—',
+            style: getOutfitStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: value.isNotEmpty
+                  ? AppColors.textPrimary
+                  : AppColors.textMuted,
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+// ── Compact field row (label left, value right, expands on tap) ──────────────
+
+class _CompactFieldRow extends StatefulWidget {
+  final String label;
+  final String value;
+  final String hint;
+  final ValueChanged<String> onChanged;
+
+  const _CompactFieldRow({
+    required this.label,
+    required this.value,
+    required this.hint,
+    required this.onChanged,
+  });
+
+  @override
+  State<_CompactFieldRow> createState() => _CompactFieldRowState();
+}
+
+class _CompactFieldRowState extends State<_CompactFieldRow> {
+  late final TextEditingController _ctrl;
+  late final FocusNode _focus;
+  bool _expanded = false;
+  bool _isDirty = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.value);
+    _focus = FocusNode()..addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    if (!_focus.hasFocus && _expanded) {
+      setState(() => _expanded = false);
+      _isDirty = false;
+    }
+  }
+
+  @override
+  void didUpdateWidget(_CompactFieldRow old) {
+    super.didUpdateWidget(old);
+    if (!_isDirty && old.value != widget.value) _ctrl.text = widget.value;
+  }
+
+  @override
+  void dispose() {
+    _focus.removeListener(_onFocusChange);
+    _ctrl.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  void _open() {
+    setState(() => _expanded = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focus.requestFocus();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEmpty = widget.value.isEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: _open,
+          behavior: HitTestBehavior.opaque,
+          child: SizedBox(
+            width: double.infinity,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 100,
+                    child: Text(
+                      widget.label,
+                      style: getOutfitStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: _expanded
+                            ? AppColors.brand
+                            : AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      isEmpty ? widget.hint : widget.value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: getOutfitStyle(
+                        fontSize: 13,
+                        fontWeight: isEmpty ? FontWeight.w400 : FontWeight.w500,
+                        color: isEmpty
+                            ? AppColors.textMuted
+                            : AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Icon(
+                    IconlyLight.edit,
+                    size: 13,
+                    color: _expanded
+                        ? AppColors.brand
+                        : AppColors.textMuted.withAlpha(180),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeInOut,
+          child: _expanded
+              ? Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: TextField(
+                    controller: _ctrl,
+                    focusNode: _focus,
+                    maxLines: 3,
+                    style: getOutfitStyle(
+                      fontSize: 13.5,
+                      color: AppColors.textPrimary,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: widget.hint,
+                      hintStyle: getOutfitStyle(
+                        fontSize: 13.5,
+                        color: AppColors.textMuted,
+                      ),
+                      filled: true,
+                      fillColor: AppColors.inputFill,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(
+                          color: AppColors.brand,
+                          width: 1.5,
+                        ),
+                      ),
+                      isDense: true,
+                    ),
+                    onChanged: (v) {
+                      _isDirty = true;
+                      widget.onChanged(v);
+                      setState(() {});
+                    },
+                    onEditingComplete: () => _focus.unfocus(),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Editable inline row ───────────────────────────────────────────────────────
+
+class _EditableRow extends StatefulWidget {
+  final String label;
+  final String value;
+  final String placeholder;
+  final String hint;
+  final int maxLines;
+  final TextInputType keyboardType;
+  final ValueChanged<String> onChanged;
+
+  const _EditableRow({
+    required this.label,
+    required this.value,
+    required this.placeholder,
+    this.hint = '',
+    this.maxLines = 1,
+    this.keyboardType = TextInputType.text,
+    required this.onChanged,
+  });
+
+  @override
+  State<_EditableRow> createState() => _EditableRowState();
+}
+
+class _EditableRowState extends State<_EditableRow> {
+  late final TextEditingController _ctrl;
+  late final FocusNode _focus;
+  bool _expanded = false;
+  bool _isDirty = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.value);
+    _focus = FocusNode()..addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    if (!_focus.hasFocus && _expanded) {
+      setState(() => _expanded = false);
+      _isDirty = false;
+    }
+  }
+
+  @override
+  void didUpdateWidget(_EditableRow old) {
+    super.didUpdateWidget(old);
+    if (!_isDirty && old.value != widget.value) {
+      _ctrl.text = widget.value;
+    }
+  }
+
+  @override
+  void dispose() {
+    _focus.removeListener(_onFocusChange);
+    _ctrl.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  void _open() {
+    setState(() => _expanded = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focus.requestFocus();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEmpty = widget.value.isEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Tappable display row ──────────────────────────────────────────
+        GestureDetector(
+          onTap: _open,
+          behavior: HitTestBehavior.opaque,
+          child: SizedBox(
+            width: double.infinity,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 110,
+                    child: Text(
+                      widget.label,
+                      style: getOutfitStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: _expanded
+                            ? AppColors.brand
+                            : AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      isEmpty ? widget.placeholder : widget.value,
+                      style: getOutfitStyle(
+                        fontSize: 13,
+                        fontWeight: isEmpty ? FontWeight.w400 : FontWeight.w600,
+                        color: isEmpty
+                            ? AppColors.textMuted
+                            : AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Icon(
+                    IconlyLight.edit,
+                    size: 13,
+                    color: _expanded
+                        ? AppColors.brand
+                        : AppColors.textMuted.withAlpha(180),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        // ── Input — slides in below when tapped ───────────────────────────
+        AnimatedSize(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeInOut,
+          child: _expanded
+              ? Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: TextField(
+                    controller: _ctrl,
+                    focusNode: _focus,
+                    maxLines: widget.maxLines,
+                    keyboardType: widget.keyboardType,
+                    style: getOutfitStyle(
+                      fontSize: 13.5,
+                      color: AppColors.textPrimary,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: widget.hint,
+                      hintStyle: getOutfitStyle(
+                        fontSize: 13.5,
+                        color: AppColors.textMuted,
+                      ),
+                      filled: true,
+                      fillColor: AppColors.inputFill,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(
+                          color: AppColors.brand,
+                          width: 1.5,
+                        ),
+                      ),
+                      isDense: true,
+                    ),
+                    onChanged: (v) {
+                      _isDirty = true;
+                      widget.onChanged(v);
+                      setState(() {});
+                    },
+                    onEditingComplete: () => _focus.unfocus(),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+      ],
     );
   }
 }

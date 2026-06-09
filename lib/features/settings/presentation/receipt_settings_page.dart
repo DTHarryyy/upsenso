@@ -5,6 +5,7 @@ import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/widgets/app_toast.dart';
+import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/settings/presentation/cubit/settings_cubit.dart';
@@ -18,22 +19,28 @@ class ReceiptSettingsPage extends StatefulWidget {
   State<ReceiptSettingsPage> createState() => _ReceiptSettingsPageState();
 }
 
-class _ReceiptSettingsPageState extends State<ReceiptSettingsPage> {
+class _ReceiptSettingsPageState extends State<ReceiptSettingsPage>
+    with SingleTickerProviderStateMixin {
   late final SettingsCubit _cubit;
+  late final TabController _tabController;
+
+  static const _tabs = ['Business', 'Receipt', 'Printing'];
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: _tabs.length, vsync: this);
     _cubit = SettingsCubit(sl());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final auth = context.read<AuthBloc>().state;
       if (auth is AuthAuthenticated) {
         final user = auth.user;
+        final selectedBranch = context.read<BranchCubit>().state.selectedBranch;
         _cubit.startWatching(
           businessId: user.businessId ?? '',
           businessName: user.businessName,
-          branchName: user.branchName,
+          branchName: selectedBranch,
           ownerName: user.fullName,
           email: user.email,
         );
@@ -43,6 +50,7 @@ class _ReceiptSettingsPageState extends State<ReceiptSettingsPage> {
 
   @override
   void dispose() {
+    _tabController.dispose();
     _cubit.close();
     super.dispose();
   }
@@ -83,10 +91,6 @@ class _ReceiptSettingsPageState extends State<ReceiptSettingsPage> {
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
               ),
-            ),
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(1),
-              child: Container(height: 1, color: AppColors.borderSoft),
             ),
             actions: [
               BlocBuilder<SettingsCubit, SettingsState>(
@@ -135,10 +139,53 @@ class _ReceiptSettingsPageState extends State<ReceiptSettingsPage> {
                 },
               ),
             ],
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(49),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(height: 1, color: AppColors.borderSoft),
+                  TabBar(
+                    controller: _tabController,
+                    tabs: _tabs.map((t) => Tab(text: t)).toList(),
+                    indicatorColor: AppColors.brand,
+                    indicatorWeight: 2.5,
+                    indicatorSize: TabBarIndicatorSize.label,
+                    labelColor: AppColors.brand,
+                    unselectedLabelColor: AppColors.textSecondary,
+                    labelStyle: getOutfitStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    unselectedLabelStyle: getOutfitStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    dividerColor: Colors.transparent,
+                  ),
+                ],
+              ),
+            ),
           ),
-          body: const SingleChildScrollView(
-            padding: EdgeInsets.all(16),
-            child: ReceiptSettingsSection(),
+          body: BlocBuilder<SettingsCubit, SettingsState>(
+            builder: (context, state) {
+              if (state.isLoading) {
+                return const Center(
+                  child: CircularProgressIndicator(color: AppColors.brand),
+                );
+              }
+              final s = state.settings;
+              if (s == null) return const SizedBox.shrink();
+
+              return TabBarView(
+                controller: _tabController,
+                children: [
+                  BusinessTab(settings: s),
+                  ReceiptTab(settings: s),
+                  PrintingTab(settings: s),
+                ],
+              );
+            },
           ),
         ),
       ),

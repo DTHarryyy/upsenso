@@ -177,7 +177,7 @@ class ReceiptPrinterService {
     pw.ImageProvider? logoImage;
     if (settings.showLogo) logoImage = await _loadLogo(settings);
 
-    final currency = settings.currencySymbol;
+    const currency = '₱';
 
     doc.addPage(
       pw.Page(
@@ -294,7 +294,7 @@ class ReceiptPrinterService {
               ),
             if (settings.showTaxBreakdown && taxAmount > 0)
               _totalRow(
-                settings.vatInclusive ? 'VAT (incl.)' : 'VAT',
+                'VAT (incl.)',
                 _fmt(taxAmount, currency),
                 baseFs,
                 fonts,
@@ -324,7 +324,7 @@ class ReceiptPrinterService {
               ),
             ],
 
-            if (settings.vatInclusive && taxAmount > 0) ...[
+            if (taxAmount > 0) ...[
               pw.SizedBox(height: 3),
               _text(
                 '(VAT inclusive)',

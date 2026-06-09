@@ -42,12 +42,6 @@ class ReceiptSettings {
   final bool printDuplicateCopy;
   final bool thermalPrinterEnabled;
 
-  // Currency & tax
-  final String currencySymbol;
-  final double taxPercentage;
-  final double serviceChargePercentage;
-  final bool vatInclusive;
-
   // Timestamps
   final DateTime updatedAt;
 
@@ -82,10 +76,6 @@ class ReceiptSettings {
     this.autoPrintAfterCheckout = false,
     this.printDuplicateCopy = false,
     this.thermalPrinterEnabled = false,
-    this.currencySymbol = '₱',
-    this.taxPercentage = 0.0,
-    this.serviceChargePercentage = 0.0,
-    this.vatInclusive = true,
     required this.updatedAt,
   });
 
@@ -125,10 +115,6 @@ class ReceiptSettings {
     bool? autoPrintAfterCheckout,
     bool? printDuplicateCopy,
     bool? thermalPrinterEnabled,
-    String? currencySymbol,
-    double? taxPercentage,
-    double? serviceChargePercentage,
-    bool? vatInclusive,
   }) =>
       ReceiptSettings(
         id: id,
@@ -163,11 +149,6 @@ class ReceiptSettings {
         printDuplicateCopy: printDuplicateCopy ?? this.printDuplicateCopy,
         thermalPrinterEnabled:
             thermalPrinterEnabled ?? this.thermalPrinterEnabled,
-        currencySymbol: currencySymbol ?? this.currencySymbol,
-        taxPercentage: taxPercentage ?? this.taxPercentage,
-        serviceChargePercentage:
-            serviceChargePercentage ?? this.serviceChargePercentage,
-        vatInclusive: vatInclusive ?? this.vatInclusive,
         updatedAt: DateTime.now(),
       );
 }

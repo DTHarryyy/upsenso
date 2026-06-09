@@ -33,7 +33,7 @@ class AppSectionCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.borderSoft, width: 1),
         boxShadow: const [
           BoxShadow(
