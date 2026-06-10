@@ -173,7 +173,11 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   // ── Update (edit mode) ────────────────────────────────────────────────────
 
   Future<void> update(String productId, ProductFormData data) async {
-    emit(state.copyWith(isSaving: true, clearError: true));
+    if (data.isDraft) {
+      emit(state.copyWith(isSavingDraft: true, clearError: true));
+    } else {
+      emit(state.copyWith(isSaving: true, clearError: true));
+    }
     try {
       final isAdvanced = state.mode == ProductFormMode.advanced;
       final isFraction = data.sellBy == 'fraction';
@@ -196,6 +200,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           tax: Value(tax),
           sellBy: Value(data.sellBy),
           imagePath: Value(data.imagePath),
+          isActive: Value(!data.isDraft),
           syncStatus: const Value(1), // pendingUpdate
         ),
       );
@@ -387,16 +392,60 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         businessId: businessId,
       );
 
-      emit(state.copyWith(isSaving: false, isSuccess: true));
+      emit(state.copyWith(isSaving: false, isSavingDraft: false, isSuccess: true));
     } catch (e) {
-      emit(state.copyWith(isSaving: false, error: AppErrorMapper.message(e)));
+      emit(state.copyWith(isSaving: false, isSavingDraft: false, error: AppErrorMapper.message(e)));
     }
   }
+
+  // ── Draft convenience wrappers ────────────────────────────────────────────
+
+  Future<void> saveDraft(ProductFormData data) =>
+      save(ProductFormData(
+        name: data.name,
+        simplePrice: data.simplePrice,
+        simpleBarcode: data.simpleBarcode,
+        sellingPrice: data.sellingPrice,
+        retailPrice: data.retailPrice,
+        costPrice: data.costPrice,
+        taxPercent: data.taxPercent,
+        stock: data.stock,
+        lowStockAlert: data.lowStockAlert,
+        sellBy: data.sellBy,
+        barcodes: data.barcodes,
+        sku: data.sku,
+        variants: data.variants,
+        imagePath: data.imagePath,
+        isDraft: true,
+      ));
+
+  Future<void> updateDraft(String productId, ProductFormData data) =>
+      update(productId, ProductFormData(
+        name: data.name,
+        simplePrice: data.simplePrice,
+        simpleBarcode: data.simpleBarcode,
+        sellingPrice: data.sellingPrice,
+        retailPrice: data.retailPrice,
+        costPrice: data.costPrice,
+        taxPercent: data.taxPercent,
+        stock: data.stock,
+        lowStockAlert: data.lowStockAlert,
+        sellBy: data.sellBy,
+        barcodes: data.barcodes,
+        sku: data.sku,
+        variants: data.variants,
+        imagePath: data.imagePath,
+        isDraft: true,
+      ));
 
   // ── Save ──────────────────────────────────────────────────────────────────
 
   Future<void> save(ProductFormData data) async {
-    emit(state.copyWith(isSaving: true, clearError: true));
+    if (data.isDraft) {
+      emit(state.copyWith(isSavingDraft: true, clearError: true));
+    } else {
+      emit(state.copyWith(isSaving: true, clearError: true));
+    }
     try {
       final productId = const Uuid().v4();
       final isAdvanced = state.mode == ProductFormMode.advanced;
@@ -431,7 +480,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           tax: Value(tax),
           sellBy: Value(data.sellBy),
           imagePath: Value(data.imagePath),
-          isActive: const Value(true),
+          isActive: Value(!data.isDraft),
         ),
       );
 
@@ -559,6 +608,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           emit(
             state.copyWith(
               isSaving: false,
+              isSavingDraft: false,
               isSuccess: true,
               pendingBranchAssignment: (
                 variants: seeds,
@@ -573,17 +623,21 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       }
 
       sl<AuditLogService>().log(
-        actionType: AuditLogActionType.stockAdded,
+        actionType: data.isDraft
+            ? AuditLogActionType.stockAdded
+            : AuditLogActionType.stockAdded,
         entityType: 'product',
         entityName: data.name.trim(),
-        description: 'Product created: ${data.name.trim()}',
+        description: data.isDraft
+            ? 'Product saved as draft: ${data.name.trim()}'
+            : 'Product created: ${data.name.trim()}',
         metadata: const {},
         businessId: businessId,
       );
 
-      emit(state.copyWith(isSaving: false, isSuccess: true));
+      emit(state.copyWith(isSaving: false, isSavingDraft: false, isSuccess: true));
     } catch (e) {
-      emit(state.copyWith(isSaving: false, error: AppErrorMapper.message(e)));
+      emit(state.copyWith(isSaving: false, isSavingDraft: false, error: AppErrorMapper.message(e)));
     }
   }
 

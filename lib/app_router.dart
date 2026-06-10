@@ -48,6 +48,8 @@ import 'package:pos/features/employees/presentation/pages/employees_page.dart';
 import 'package:pos/features/employees/presentation/pages/employee_permissions_page.dart';
 import 'package:pos/features/settings/presentation/module_settings_page.dart';
 import 'package:pos/features/onboarding/onboarding.dart';
+import 'package:pos/features/pos/presentation/pages/receipt_preview_page.dart';
+import 'package:pos/features/pos/data/models/cart_model.dart' show CartItem;
 
 class _AuthRefreshNotifier extends ChangeNotifier {
   late final StreamSubscription<AuthState> _sub;
@@ -271,6 +273,27 @@ class AppRouter {
         builder: (context, _) => const NotificationsPage(),
       ),
       GoRoute(
+        path: AppRoutes.receiptPreview,
+        builder: (context, state) {
+          final args = state.extra as ReceiptPreviewArgs;
+          return ReceiptPreviewPage(
+            transactionId: args.transactionId,
+            items: args.items,
+            subtotal: args.subtotal,
+            taxAmount: args.taxAmount,
+            discountAmount: args.discountAmount,
+            total: args.total,
+            amountReceived: args.amountReceived,
+            change: args.change,
+            paymentMethod: args.paymentMethod,
+            cashierName: args.cashierName,
+            customerName: args.customerName,
+            dateTime: args.dateTime,
+            businessId: args.businessId,
+          );
+        },
+      ),
+      GoRoute(
         path: AppRoutes.aiChat,
         builder: (context, _) {
           final authRepo = sl<AuthRepository>();
@@ -407,4 +430,36 @@ class AppRouter {
       ),
     ],
   );
+}
+
+class ReceiptPreviewArgs {
+  final String transactionId;
+  final List<CartItem> items;
+  final double subtotal;
+  final double taxAmount;
+  final double discountAmount;
+  final double total;
+  final double amountReceived;
+  final double change;
+  final String paymentMethod;
+  final String cashierName;
+  final String customerName;
+  final DateTime dateTime;
+  final String businessId;
+
+  const ReceiptPreviewArgs({
+    required this.transactionId,
+    required this.items,
+    required this.subtotal,
+    required this.taxAmount,
+    required this.discountAmount,
+    required this.total,
+    required this.amountReceived,
+    required this.change,
+    required this.paymentMethod,
+    required this.cashierName,
+    required this.customerName,
+    required this.dateTime,
+    required this.businessId,
+  });
 }

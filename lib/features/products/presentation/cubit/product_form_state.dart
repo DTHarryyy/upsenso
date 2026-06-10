@@ -12,6 +12,7 @@ class ProductFormState {
   final String? selectedCategoryId;
   final List<CategoriesTableData> categories;
   final bool isSaving;
+  final bool isSavingDraft;
   final bool isUploadingImage;
   final bool isSuccess;
   final String? error;
@@ -35,6 +36,7 @@ class ProductFormState {
     this.selectedCategoryId,
     required this.categories,
     required this.isSaving,
+    required this.isSavingDraft,
     required this.isUploadingImage,
     required this.isSuccess,
     this.error,
@@ -52,6 +54,7 @@ class ProductFormState {
         selectedCategoryId: null,
         categories: [],
         isSaving: false,
+        isSavingDraft: false,
         isUploadingImage: false,
         isSuccess: false,
         error: null,
@@ -71,6 +74,7 @@ class ProductFormState {
     bool clearCategoryId = false,
     List<CategoriesTableData>? categories,
     bool? isSaving,
+    bool? isSavingDraft,
     bool? isUploadingImage,
     bool? isSuccess,
     String? error,
@@ -95,6 +99,7 @@ class ProductFormState {
           : (selectedCategoryId ?? this.selectedCategoryId),
       categories: categories ?? this.categories,
       isSaving: isSaving ?? this.isSaving,
+      isSavingDraft: isSavingDraft ?? this.isSavingDraft,
       isUploadingImage: isUploadingImage ?? this.isUploadingImage,
       isSuccess: isSuccess ?? this.isSuccess,
       error: clearError ? null : (error ?? this.error),
@@ -147,6 +152,9 @@ class ProductFormData {
   final List<VariantFormData> variants;
   final String? imagePath;
 
+  /// When true the product is saved with isActive=false (not visible on POS).
+  final bool isDraft;
+
   const ProductFormData({
     required this.name,
     this.simplePrice,
@@ -162,5 +170,6 @@ class ProductFormData {
     this.sku,
     required this.variants,
     this.imagePath,
+    this.isDraft = false,
   });
 }

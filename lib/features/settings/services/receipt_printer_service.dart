@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -18,6 +19,7 @@ class ReceiptPrinterService {
 
   static const _kPrinterUrl = 'receipt_thermal_printer_url';
   static const _kPrinterName = 'receipt_thermal_printer_name';
+  static const _kCustomPrinters = 'receipt_custom_printers';
 
   /// Persist the user-chosen thermal printer URL + display name.
   static Future<void> savePrinter({
@@ -48,7 +50,79 @@ class ReceiptPrinterService {
     await prefs.remove(_kPrinterName);
   }
 
+  // ── Custom / manually-added printers ──────────────────────────────────
+
+  /// Returns all manually-added printers (name + ip pairs).
+  static Future<List<CustomPrinterEntry>> loadCustomPrinters() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_kCustomPrinters) ?? '[]';
+    final list = (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
+    return list.map(CustomPrinterEntry.fromJson).toList();
+  }
+
+  /// Adds a new custom printer. Duplicate IPs are replaced.
+  static Future<void> addCustomPrinter(CustomPrinterEntry entry) async {
+    final prefs = await SharedPreferences.getInstance();
+    final existing = await loadCustomPrinters();
+    final updated = [
+      ...existing.where((e) => e.ip != entry.ip),
+      entry,
+    ];
+    await prefs.setString(
+      _kCustomPrinters,
+      jsonEncode(updated.map((e) => e.toJson()).toList()),
+    );
+  }
+
+  /// Removes a custom printer by IP address.
+  static Future<void> removeCustomPrinter(String ip) async {
+    final prefs = await SharedPreferences.getInstance();
+    final existing = await loadCustomPrinters();
+    final updated = existing.where((e) => e.ip != ip).toList();
+    await prefs.setString(
+      _kCustomPrinters,
+      jsonEncode(updated.map((e) => e.toJson()).toList()),
+    );
+    // If the removed printer was the selected one, clear selection too.
+    final selectedUrl = await loadPrinterUrl();
+    if (selectedUrl == customPrinterUrl(ip)) await clearPrinter();
+  }
+
+  /// Builds the pseudo-URL used for a custom printer (used to match selection).
+  static String customPrinterUrl(String ip) => 'custom://$ip';
+
   // ── Public API ────────────────────────────────────────────────────────────
+
+  /// Builds and returns the raw PDF bytes for this receipt.
+  Future<Uint8List> buildPdf({
+    required ReceiptSettings settings,
+    required String transactionId,
+    required List<CartItem> items,
+    required double subtotal,
+    required double taxAmount,
+    required double discountAmount,
+    required double total,
+    required double amountReceived,
+    required double change,
+    required String paymentMethod,
+    required String cashierName,
+    required String customerName,
+    required DateTime dateTime,
+  }) => _buildPdf(
+        settings: settings,
+        transactionId: transactionId,
+        items: items,
+        subtotal: subtotal,
+        taxAmount: taxAmount,
+        discountAmount: discountAmount,
+        total: total,
+        amountReceived: amountReceived,
+        change: change,
+        paymentMethod: paymentMethod,
+        cashierName: cashierName,
+        customerName: customerName,
+        dateTime: dateTime,
+      );
 
   Future<void> printReceipt({
     required ReceiptSettings settings,
@@ -539,4 +613,21 @@ class _Fonts {
   final pw.Font regular;
   final pw.Font bold;
   const _Fonts({required this.regular, required this.bold});
+}
+
+// ── Custom printer entry ──────────────────────────────────────────────────────
+
+class CustomPrinterEntry {
+  final String name;
+  final String ip;
+
+  const CustomPrinterEntry({required this.name, required this.ip});
+
+  factory CustomPrinterEntry.fromJson(Map<String, dynamic> json) =>
+      CustomPrinterEntry(
+        name: json['name'] as String,
+        ip: json['ip'] as String,
+      );
+
+  Map<String, dynamic> toJson() => {'name': name, 'ip': ip};
 }

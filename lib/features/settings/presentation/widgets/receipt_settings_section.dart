@@ -11,8 +11,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
 
+import 'package:pos/core/widgets/app_filled_button.dart';
+import 'package:pos/core/widgets/app_input_decoration.dart';
 import 'package:pos/core/widgets/app_labeled_switch.dart';
 import 'package:pos/core/widgets/app_section_card.dart';
+import 'package:pos/core/widgets/app_switch.dart';
 import 'package:pos/core/widgets/app_toast.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
@@ -210,77 +213,305 @@ class PrintingTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = settings;
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
-        AppSectionCard(
-          icon: Icons.print_rounded,
+        // ── Paper & Format ─────────────────────────────────────────────
+        _PrintingCard(
+          icon: Icons.straighten_rounded,
           title: 'Paper & Format',
+          subtitle: 'Set roll width, font size, and alignment',
           children: [
-            _LabeledPicker(label: 'Paper Size'),
-            const SizedBox(height: 8),
-            _SegmentedPicker<String>(
-              items: const ['58mm', '80mm'],
-              labels: const ['58 mm', '80 mm'],
-              value: s.paperSize,
-              onChanged: (v) => _save(context, (x) => x.copyWith(paperSize: v)),
+            _PickerRow(
+              label: 'Paper Size',
+              child: _SegmentedPicker<String>(
+                items: const ['58mm', '80mm'],
+                labels: const ['58 mm', '80 mm'],
+                value: s.paperSize,
+                onChanged: (v) =>
+                    _save(context, (x) => x.copyWith(paperSize: v)),
+              ),
             ),
-            const SizedBox(height: 16),
-            _LabeledPicker(label: 'Font Size'),
-            const SizedBox(height: 8),
-            _SegmentedPicker<String>(
-              items: const ['small', 'medium', 'large'],
-              labels: const ['Small', 'Medium', 'Large'],
-              value: s.fontSize,
-              onChanged: (v) => _save(context, (x) => x.copyWith(fontSize: v)),
+            const SizedBox(height: 12),
+            _PickerRow(
+              label: 'Font Size',
+              child: _SegmentedPicker<String>(
+                items: const ['small', 'medium', 'large'],
+                labels: const ['Small', 'Medium', 'Large'],
+                value: s.fontSize,
+                onChanged: (v) =>
+                    _save(context, (x) => x.copyWith(fontSize: v)),
+              ),
             ),
-            const SizedBox(height: 16),
-            _LabeledPicker(label: 'Text Alignment'),
-            const SizedBox(height: 8),
-            _SegmentedPicker<String>(
-              items: const ['left', 'center', 'right'],
-              labels: const ['Left', 'Center', 'Right'],
-              value: s.textAlignment,
-              onChanged: (v) =>
-                  _save(context, (x) => x.copyWith(textAlignment: v)),
+            const SizedBox(height: 12),
+            _PickerRow(
+              label: 'Text Alignment',
+              child: _SegmentedPicker<String>(
+                items: const ['left', 'center', 'right'],
+                labels: const ['Left', 'Center', 'Right'],
+                value: s.textAlignment,
+                onChanged: (v) =>
+                    _save(context, (x) => x.copyWith(textAlignment: v)),
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 16),
-        AppSectionCard(
-          icon: Icons.settings_rounded,
+
+        const SizedBox(height: 12),
+
+        // ── Print Behaviour ────────────────────────────────────────────
+        _PrintingCard(
+          icon: Icons.tune_rounded,
           title: 'Print Behaviour',
+          subtitle: 'Control how and when receipts print',
           children: [
-            AppLabeledSwitch(
+            _BehaviourRow(
+              icon: Icons.bolt_rounded,
+              iconColor: AppColors.warning,
+              iconBg: AppColors.warningSoft,
               label: 'Auto Print After Checkout',
+              subtitle: 'Prints receipt automatically when sale completes',
               value: s.autoPrintAfterCheckout,
               onChanged: (v) =>
                   _save(context, (x) => x.copyWith(autoPrintAfterCheckout: v)),
             ),
-            const _Divider(),
-            AppLabeledSwitch(
+            const _ThinDivider(),
+            _BehaviourRow(
+              icon: Icons.copy_rounded,
+              iconColor: AppColors.info,
+              iconBg: AppColors.infoSoft,
               label: 'Print Duplicate Copy',
+              subtitle: 'Prints a second copy for the customer',
               value: s.printDuplicateCopy,
               onChanged: (v) =>
                   _save(context, (x) => x.copyWith(printDuplicateCopy: v)),
             ),
-            const _Divider(),
-            AppLabeledSwitch(
-              label: 'Thermal Printer',
-              subtitle:
-                  'Direct-print to your POS thermal printer (skip dialog)',
-              value: s.thermalPrinterEnabled,
-              onChanged: (v) =>
-                  _save(context, (x) => x.copyWith(thermalPrinterEnabled: v)),
-            ),
+          ],
+        ),
+
+        const SizedBox(height: 12),
+
+        // ── Thermal Printer ────────────────────────────────────────────
+        _PrintingCard(
+          icon: Icons.print_rounded,
+          title: 'Thermal Printer',
+          subtitle: 'Direct-print without a system dialog',
+          trailing: AppSwitch(
+            value: s.thermalPrinterEnabled,
+            onChanged: (v) =>
+                _save(context, (x) => x.copyWith(thermalPrinterEnabled: v)),
+          ),
+          children: [
             if (s.thermalPrinterEnabled) ...[
-              const SizedBox(height: 14),
+              const SizedBox(height: 4),
               _PrinterSelector(enabled: s.thermalPrinterEnabled),
             ],
           ],
         ),
+
         const SizedBox(height: 24),
       ],
     );
+  }
+}
+
+// ── Premium printing card ─────────────────────────────────────────────────────
+
+class _PrintingCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final List<Widget> children;
+  final Widget? trailing;
+
+  const _PrintingCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.children,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderSoft),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x06101828),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.brandSoft,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, size: 18, color: AppColors.brand),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: getOutfitStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      Text(
+                        subtitle,
+                        style: getOutfitStyle(
+                          fontSize: 11.5,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                ?trailing,
+              ],
+            ),
+          ),
+          if (children.isNotEmpty) ...[
+            Divider(
+              color: AppColors.borderSoft,
+              height: 1,
+              indent: 16,
+              endIndent: 16,
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: children,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ── Picker row with inline label ──────────────────────────────────────────────
+
+class _PickerRow extends StatelessWidget {
+  final String label;
+  final Widget child;
+  const _PickerRow({required this.label, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: getOutfitStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
+            letterSpacing: 0.1,
+          ),
+        ),
+        const SizedBox(height: 7),
+        child,
+      ],
+    );
+  }
+}
+
+// ── Behaviour row with icon ───────────────────────────────────────────────────
+
+class _BehaviourRow extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBg;
+  final String label;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _BehaviourRow({
+    required this.icon,
+    required this.iconColor,
+    required this.iconBg,
+    required this.label,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 16, color: iconColor),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: getOutfitStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: getOutfitStyle(
+                    fontSize: 11.5,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          AppSwitch(value: value, onChanged: onChanged),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Thin divider between behaviour rows ──────────────────────────────────────
+
+class _ThinDivider extends StatelessWidget {
+  const _ThinDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Divider(color: AppColors.borderSoft, height: 16);
   }
 }
 
@@ -507,25 +738,6 @@ class _SegmentedPicker<T> extends StatelessWidget {
             ),
           );
         }),
-      ),
-    );
-  }
-}
-
-// ── Small label above a segmented picker ─────────────────────────────────────
-
-class _LabeledPicker extends StatelessWidget {
-  final String label;
-  const _LabeledPicker({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: getOutfitStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        color: AppColors.textSecondary,
       ),
     );
   }
@@ -873,7 +1085,7 @@ class _PrinterSelector extends StatefulWidget {
 
 class _PrinterSelectorState extends State<_PrinterSelector> {
   String _printerName = '';
-  bool _loading = false;
+  String _printerUrl = '';
 
   @override
   void initState() {
@@ -883,177 +1095,1051 @@ class _PrinterSelectorState extends State<_PrinterSelector> {
 
   Future<void> _loadSaved() async {
     final name = await ReceiptPrinterService.loadPrinterName();
-    if (mounted) setState(() => _printerName = name);
+    final url = await ReceiptPrinterService.loadPrinterUrl();
+    if (mounted) {
+      setState(() {
+        _printerName = name;
+        _printerUrl = url;
+      });
+    }
   }
 
-  Future<void> _pickPrinter() async {
-    setState(() => _loading = true);
-    try {
-      final printers = await Printing.listPrinters();
-      if (!mounted) return;
-      if (printers.isEmpty) {
-        AppToast.show(
-          context,
-          'No printers found',
-          subtitle: 'No printers were detected on this device.',
-          variant: AppToastVariant.error,
-        );
-        return;
-      }
-      final chosen = await showDialog<Printer>(
-        context: context,
-        builder: (_) => SimpleDialog(
-          backgroundColor: AppColors.surface,
-          title: Text(
-            'Select Thermal Printer',
-            style: getOutfitStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+  Future<void> _openDialog() async {
+    await showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withAlpha(100),
+      builder: (_) => const _PrinterDialog(),
+    );
+    await _loadSaved();
+  }
+
+  Future<void> _clearPrinter() async {
+    await ReceiptPrinterService.clearPrinter();
+    if (mounted) {
+      setState(() {
+        _printerName = '';
+        _printerUrl = '';
+      });
+      AppToast.show(
+        context,
+        'Printer disconnected',
+        variant: AppToastVariant.info,
+      );
+    }
+  }
+
+  IconData _iconForUrl(String url) {
+    if (url.contains('usb')) return Icons.usb_rounded;
+    if (url.contains('bluetooth')) return Icons.bluetooth_rounded;
+    return Icons.wifi_rounded;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_printerName.isEmpty) {
+      return _buildEmpty();
+    }
+    return _buildActive();
+  }
+
+  Widget _buildEmpty() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Status row
+        Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(
+                color: AppColors.textMuted,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'No printer connected',
+              style: getOutfitStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // CTA button full width
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _openDialog,
+            icon: const Icon(Icons.add_rounded, size: 16),
+            label: Text(
+              'Connect a Printer',
+              style: getOutfitStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.brand,
+              side: const BorderSide(color: AppColors.brand),
+              padding: const EdgeInsets.symmetric(vertical: 11),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
           ),
-          children: printers
-              .map(
-                (p) => SimpleDialogOption(
-                  onPressed: () => Navigator.of(context).pop(p),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActive() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Connected status chip
+        Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(
+                color: AppColors.success,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Connected',
+              style: getOutfitStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.success,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        // Printer info row
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.brandSoft,
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Icon(
+                _iconForUrl(_printerUrl),
+                size: 17,
+                color: AppColors.brand,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _printerName,
+                    style: getOutfitStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  Text(
+                    _printerUrl.startsWith('custom://')
+                        ? _printerUrl.replaceFirst('custom://', '')
+                        : 'System printer',
+                    style: getOutfitStyle(
+                      fontSize: 11.5,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Change button
+            GestureDetector(
+              onTap: _openDialog,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.brandSoft,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Change',
+                  style: getOutfitStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.brand,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Disconnect button
+            GestureDetector(
+              onTap: _clearPrinter,
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.errorSoft,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.close_rounded,
+                  size: 15,
+                  color: AppColors.error,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+// ── Printer setup dialog (bottom sheet) ──────────────────────────────────────
+
+class _PrinterDialog extends StatefulWidget {
+  const _PrinterDialog();
+
+  @override
+  State<_PrinterDialog> createState() => _PrinterDialogState();
+}
+
+class _PrinterDialogState extends State<_PrinterDialog> {
+  int _tabIndex = 0;
+  bool _scanning = false;
+  bool _scanDone = false;
+  List<Printer> _scanResults = [];
+  List<CustomPrinterEntry> _customPrinters = [];
+  String _activePrinterUrl = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+    _startScan();
+  }
+
+  Future<void> _loadData() async {
+    final custom = await ReceiptPrinterService.loadCustomPrinters();
+    final url = await ReceiptPrinterService.loadPrinterUrl();
+    if (mounted) {
+      setState(() {
+        _customPrinters = custom;
+        _activePrinterUrl = url;
+      });
+    }
+  }
+
+  Future<void> _startScan() async {
+    setState(() {
+      _scanning = true;
+      _scanDone = false;
+      _scanResults = [];
+    });
+    try {
+      final printers = await Printing.listPrinters();
+      if (mounted) {
+        setState(() => _scanResults = printers);
+      }
+    } catch (_) {
+      // scan failure is non-fatal — show empty state
+    } finally {
+      if (mounted) {
+        setState(() {
+          _scanning = false;
+          _scanDone = true;
+        });
+      }
+    }
+  }
+
+  // ── Connect actions ──────────────────────────────────────────────────
+
+  Future<void> _selectScanned(Printer printer) async {
+    final previousName = await ReceiptPrinterService.loadPrinterName();
+    await ReceiptPrinterService.savePrinter(
+      url: printer.url,
+      name: printer.name,
+    );
+    if (!mounted) return;
+    final isSwitch = previousName.isNotEmpty && previousName != printer.name;
+    AppToast.show(
+      context,
+      isSwitch ? 'Switched to ${printer.name}' : 'Connected',
+      subtitle: isSwitch ? null : printer.name,
+      variant: isSwitch ? AppToastVariant.info : AppToastVariant.success,
+    );
+    Navigator.of(context).pop();
+  }
+
+  Future<void> _selectCustom(CustomPrinterEntry entry) async {
+    final previousName = await ReceiptPrinterService.loadPrinterName();
+    await ReceiptPrinterService.savePrinter(
+      url: ReceiptPrinterService.customPrinterUrl(entry.ip),
+      name: entry.name,
+    );
+    if (!mounted) return;
+    final isSwitch = previousName.isNotEmpty && previousName != entry.name;
+    AppToast.show(
+      context,
+      isSwitch ? 'Switched to ${entry.name}' : 'Connected',
+      subtitle: isSwitch ? null : entry.name,
+      variant: isSwitch ? AppToastVariant.info : AppToastVariant.success,
+    );
+    Navigator.of(context).pop();
+  }
+
+  Future<void> _deleteCustom(CustomPrinterEntry entry) async {
+    await ReceiptPrinterService.removeCustomPrinter(entry.ip);
+    final updated = await ReceiptPrinterService.loadCustomPrinters();
+    final activeUrl = await ReceiptPrinterService.loadPrinterUrl();
+    if (mounted) {
+      setState(() {
+        _customPrinters = updated;
+        _activePrinterUrl = activeUrl;
+      });
+      AppToast.show(
+        context,
+        'Printer removed',
+        variant: AppToastVariant.info,
+      );
+    }
+  }
+
+  Future<void> _saveManual(String name, String ip) async {
+    final existing = await ReceiptPrinterService.loadCustomPrinters();
+    if (existing.any((e) => e.ip == ip)) {
+      if (mounted) {
+        AppToast.show(
+          context,
+          'Already saved',
+          subtitle: 'A printer at $ip is already in your list.',
+          variant: AppToastVariant.info,
+        );
+        Navigator.of(context).pop();
+      }
+      return;
+    }
+    final entry = CustomPrinterEntry(name: name, ip: ip);
+    await ReceiptPrinterService.addCustomPrinter(entry);
+    await ReceiptPrinterService.savePrinter(
+      url: ReceiptPrinterService.customPrinterUrl(ip),
+      name: name,
+    );
+    if (mounted) {
+      AppToast.show(
+        context,
+        'Printer added',
+        subtitle: '$name is ready to use.',
+        variant: AppToastVariant.success,
+      );
+      Navigator.of(context).pop();
+    }
+  }
+
+  // ── Build ────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    final screenH = MediaQuery.of(context).size.height;
+    final screenW = MediaQuery.of(context).size.width;
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: screenW > 600 ? 80 : 24,
+        vertical: 40,
+      ),
+      child: Container(
+        constraints: BoxConstraints(maxWidth: 480, maxHeight: screenH * 0.78),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x22101828),
+              blurRadius: 40,
+              offset: Offset(0, 16),
+            ),
+            BoxShadow(
+              color: Color(0x0A101828),
+              blurRadius: 8,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Header ───────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 16, 0),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(9),
+                    decoration: BoxDecoration(
+                      color: AppColors.brandSoft,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.print_rounded,
+                      size: 20,
+                      color: AppColors.brand,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(
-                          Icons.print_rounded,
-                          size: 20,
-                          color: AppColors.textSecondary,
+                        Text(
+                          'Printer Setup',
+                          style: getOutfitStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            p.name,
-                            style: getOutfitStyle(
-                              fontSize: 13,
-                              color: AppColors.textPrimary,
-                            ),
+                        Text(
+                          'Find or add a thermal printer',
+                          style: getOutfitStyle(
+                            fontSize: 12,
+                            color: AppColors.textMuted,
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
-              )
-              .toList(),
-        ),
-      );
-      if (chosen != null) {
-        await ReceiptPrinterService.savePrinter(
-          url: chosen.url,
-          name: chosen.name,
-        );
-        if (mounted) setState(() => _printerName = chosen.name);
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      size: 20,
+                      color: AppColors.textMuted,
+                    ),
+                    splashRadius: 18,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
+                  ),
+                ],
+              ),
+            ),
 
-  Future<void> _clearPrinter() async {
-    await ReceiptPrinterService.clearPrinter();
-    if (mounted) setState(() => _printerName = '');
+            const SizedBox(height: 14),
+
+            // ── Tab bar ──────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                height: 38,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceAlt,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.borderSoft),
+                ),
+                child: Row(
+                  children: [
+                    _TabChip(
+                      label: 'Search',
+                      active: _tabIndex == 0,
+                      onTap: () => setState(() => _tabIndex = 0),
+                    ),
+                    _TabChip(
+                      label: 'Add Manually',
+                      active: _tabIndex == 1,
+                      onTap: () => setState(() => _tabIndex = 1),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+            const Divider(color: AppColors.borderSoft, height: 1),
+
+            // ── Tab body ─────────────────────────────────────────────
+            Flexible(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                child: _tabIndex == 0
+                    ? _PrinterSearchTab(
+                        key: const ValueKey('search'),
+                        scanning: _scanning,
+                        scanDone: _scanDone,
+                        results: _scanResults,
+                        customPrinters: _customPrinters,
+                        activePrinterUrl: _activePrinterUrl,
+                        onSelectScanned: _selectScanned,
+                        onSelectCustom: _selectCustom,
+                        onDeleteCustom: _deleteCustom,
+                        onRetry: _startScan,
+                      )
+                    : _PrinterManualTab(
+                        key: const ValueKey('manual'),
+                        onSave: _saveManual,
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Tab chip ──────────────────────────────────────────────────────────────────
+
+class _TabChip extends StatelessWidget {
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+
+  const _TabChip({
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          margin: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: active ? AppColors.brand : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: getOutfitStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: active ? Colors.white : AppColors.textSecondary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Search tab ────────────────────────────────────────────────────────────────
+
+class _PrinterSearchTab extends StatelessWidget {
+  final bool scanning;
+  final bool scanDone;
+  final List<Printer> results;
+  final List<CustomPrinterEntry> customPrinters;
+  final String activePrinterUrl;
+  final Future<void> Function(Printer) onSelectScanned;
+  final Future<void> Function(CustomPrinterEntry) onSelectCustom;
+  final Future<void> Function(CustomPrinterEntry) onDeleteCustom;
+  final VoidCallback onRetry;
+
+  const _PrinterSearchTab({
+    super.key,
+    required this.scanning,
+    required this.scanDone,
+    required this.results,
+    required this.customPrinters,
+    required this.activePrinterUrl,
+    required this.onSelectScanned,
+    required this.onSelectCustom,
+    required this.onDeleteCustom,
+    required this.onRetry,
+  });
+
+  static IconData _iconForUrl(String url) {
+    if (url.contains('usb')) return Icons.usb_rounded;
+    if (url.contains('bluetooth')) return Icons.bluetooth_rounded;
+    return Icons.wifi_rounded;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderSoft),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.print_rounded,
-                size: 16,
+    if (scanning) {
+      return const Padding(
+        padding: EdgeInsets.all(40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(
+                color: AppColors.brand,
+                strokeWidth: 2.5,
+              ),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Searching for printers…',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13.5,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final hasContent = results.isNotEmpty || customPrinters.isNotEmpty;
+
+    if (scanDone && !hasContent) {
+      return Padding(
+        padding: const EdgeInsets.all(36),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.print_disabled_rounded,
+              size: 42,
+              color: AppColors.textMuted,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No printers detected',
+              style: getOutfitStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
                 color: AppColors.textSecondary,
               ),
-              const SizedBox(width: 6),
-              Text(
-                'Configured Printer',
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Make sure your printer is on and\nconnected to the same network.',
+              textAlign: TextAlign.center,
+              style: getOutfitStyle(fontSize: 12, color: AppColors.textMuted),
+            ),
+            const SizedBox(height: 20),
+            OutlinedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded, size: 16),
+              label: Text(
+                'Try Again',
                 style: getOutfitStyle(
-                  fontSize: 12.5,
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            _printerName.isEmpty ? 'No printer selected' : _printerName,
-            style: getOutfitStyle(
-              fontSize: 13,
-              fontWeight: _printerName.isEmpty
-                  ? FontWeight.w400
-                  : FontWeight.w600,
-              color: _printerName.isEmpty
-                  ? AppColors.textMuted
-                  : AppColors.textPrimary,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.brand,
+                side: const BorderSide(color: AppColors.brand),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView(
+      shrinkWrap: true,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      children: [
+        if (customPrinters.isNotEmpty) ...[
+          _SectionLabel('Saved Printers'),
+          ...customPrinters.map(
+            (e) => _SavedPrinterTile(
+              entry: e,
+              isActive:
+                  activePrinterUrl == ReceiptPrinterService.customPrinterUrl(e.ip),
+              onSelect: () => onSelectCustom(e),
+              onDelete: () => onDeleteCustom(e),
             ),
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _loading ? null : _pickPrinter,
-                  icon: _loading
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.brand,
-                          ),
-                        )
-                      : const Icon(IconlyLight.search, size: 16),
-                  label: Text(
-                    _printerName.isEmpty ? 'Select Printer' : 'Change Printer',
-                    style: getOutfitStyle(fontSize: 12.5),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.brand,
-                    side: const BorderSide(color: AppColors.brand),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-              ),
-              if (_printerName.isNotEmpty) ...[
-                const SizedBox(width: 8),
-                OutlinedButton(
-                  onPressed: _loading ? null : _clearPrinter,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.error,
-                    side: const BorderSide(color: AppColors.error),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 10,
-                      horizontal: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Icon(IconlyLight.delete, size: 16),
-                ),
-              ],
-            ],
+        ],
+        if (customPrinters.isNotEmpty && results.isNotEmpty)
+          const SizedBox(height: 8),
+        if (results.isNotEmpty) ...[
+          _SectionLabel('Found on Network'),
+          ...results.map(
+            (p) => _ScannedPrinterTile(
+              printer: p,
+              isActive: activePrinterUrl == p.url,
+              onSelect: () => onSelectScanned(p),
+              iconData: _iconForUrl(p.url),
+            ),
           ),
         ],
+      ],
+    );
+  }
+}
+
+// ── Section label ─────────────────────────────────────────────────────────────
+
+class _SectionLabel extends StatelessWidget {
+  final String label;
+  const _SectionLabel(this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 6, top: 2),
+      child: Text(
+        label.toUpperCase(),
+        style: getOutfitStyle(
+          fontSize: 10.5,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textMuted,
+          letterSpacing: 0.6,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Scanned printer tile ──────────────────────────────────────────────────────
+
+class _ScannedPrinterTile extends StatelessWidget {
+  final Printer printer;
+  final bool isActive;
+  final VoidCallback onSelect;
+  final IconData iconData;
+
+  const _ScannedPrinterTile({
+    required this.printer,
+    required this.isActive,
+    required this.onSelect,
+    required this.iconData,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onSelect,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.brandSoft : AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isActive
+                ? AppColors.brand.withAlpha(80)
+                : AppColors.borderSoft,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: isActive ? AppColors.brand.withAlpha(25) : AppColors.surfaceAlt,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                iconData,
+                size: 16,
+                color: isActive ? AppColors.brand : AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    printer.name,
+                    style: getOutfitStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      color: isActive ? AppColors.brand : AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  _PrinterTypeBadge(printer.url),
+                ],
+              ),
+            ),
+            if (isActive)
+              const Icon(
+                Icons.check_circle_rounded,
+                size: 18,
+                color: AppColors.success,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Saved (manual) printer tile ───────────────────────────────────────────────
+
+class _SavedPrinterTile extends StatelessWidget {
+  final CustomPrinterEntry entry;
+  final bool isActive;
+  final VoidCallback onSelect;
+  final VoidCallback onDelete;
+
+  const _SavedPrinterTile({
+    required this.entry,
+    required this.isActive,
+    required this.onSelect,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onSelect,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.brandSoft : AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isActive
+                ? AppColors.brand.withAlpha(80)
+                : AppColors.borderSoft,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: isActive ? AppColors.brand.withAlpha(25) : AppColors.surfaceAlt,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.wifi_rounded,
+                size: 16,
+                color: isActive ? AppColors.brand : AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    entry.name,
+                    style: getOutfitStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      color: isActive ? AppColors.brand : AppColors.textPrimary,
+                    ),
+                  ),
+                  Text(
+                    entry.ip,
+                    style: getOutfitStyle(
+                      fontSize: 11.5,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isActive)
+              const Icon(
+                Icons.check_circle_rounded,
+                size: 18,
+                color: AppColors.success,
+              )
+            else
+              GestureDetector(
+                onTap: onDelete,
+                child: const Icon(
+                  IconlyLight.delete,
+                  size: 17,
+                  color: AppColors.textMuted,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Printer type badge ────────────────────────────────────────────────────────
+
+class _PrinterTypeBadge extends StatelessWidget {
+  final String url;
+  const _PrinterTypeBadge(this.url);
+
+  ({String label, Color color}) get _meta {
+    if (url.contains('usb')) {
+      return (label: 'USB', color: AppColors.textSecondary);
+    }
+    if (url.contains('bluetooth')) {
+      return (label: 'Bluetooth', color: AppColors.brand);
+    }
+    if (url.startsWith('custom://')) {
+      return (label: 'Wi-Fi', color: AppColors.info);
+    }
+    return (label: 'Network', color: AppColors.info);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final m = _meta;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: m.color.withAlpha(30),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        m.label,
+        style: getOutfitStyle(
+          fontSize: 10.5,
+          fontWeight: FontWeight.w600,
+          color: m.color,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Manual tab ────────────────────────────────────────────────────────────────
+
+class _PrinterManualTab extends StatefulWidget {
+  final Future<void> Function(String name, String ip) onSave;
+
+  const _PrinterManualTab({super.key, required this.onSave});
+
+  @override
+  State<_PrinterManualTab> createState() => _PrinterManualTabState();
+}
+
+class _PrinterManualTabState extends State<_PrinterManualTab> {
+  final _nameCtrl = TextEditingController();
+  final _ipCtrl = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _ipCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _saving = true);
+    try {
+      await widget.onSave(_nameCtrl.text.trim(), _ipCtrl.text.trim());
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Printer Name',
+              style: getOutfitStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            TextFormField(
+              controller: _nameCtrl,
+              textCapitalization: TextCapitalization.words,
+              style: getOutfitStyle(
+                fontSize: 13.5,
+                color: AppColors.textPrimary,
+              ),
+              decoration: appInputDeco(
+                'e.g. Counter Printer',
+                fillColor: AppColors.surfaceAlt,
+                radius: 10,
+              ),
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Enter a printer name' : null,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'IP Address',
+              style: getOutfitStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            TextFormField(
+              controller: _ipCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              style: getOutfitStyle(
+                fontSize: 13.5,
+                color: AppColors.textPrimary,
+              ),
+              decoration: appInputDeco(
+                'e.g. 192.168.1.100',
+                fillColor: AppColors.surfaceAlt,
+                radius: 10,
+              ),
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'Enter an IP address';
+                if (!RegExp(r'^(\d{1,3}\.){3}\d{1,3}$').hasMatch(v.trim())) {
+                  return 'Enter a valid IP (e.g. 192.168.1.100)';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Find the IP in your printer\'s settings or printed label.',
+              style: getOutfitStyle(fontSize: 11.5, color: AppColors.textMuted),
+            ),
+            const SizedBox(height: 20),
+            AppFilledButton(
+              label: 'Add Printer',
+              icon: Icons.add_rounded,
+              loading: _saving,
+              onPressed: _submit,
+            ),
+            const SizedBox(height: 4),
+          ],
+        ),
       ),
     );
   }

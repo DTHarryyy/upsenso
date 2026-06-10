@@ -37,6 +37,9 @@ class AppRoutes {
   static const String receiptSettings = '/settings/receipt';
   static const String moduleSettings = '/settings/modules';
 
+  // Receipt preview (post-checkout)
+  static const String receiptPreview = '/pos/receipt-preview';
+
   // Notifications
   static const String notifications = '/notifications';
 

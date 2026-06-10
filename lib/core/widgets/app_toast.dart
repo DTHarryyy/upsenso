@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
 
-enum AppToastVariant { success, info, error }
+enum AppToastVariant { success, info, warning, error }
 
 class _ToastEntry {
   final OverlayEntry entry;
@@ -200,6 +200,12 @@ class _ToastCard extends StatelessWidget {
           icon: AppColors.info,
           iconBg: AppColors.infoSoft,
           iconData: Icons.info_rounded,
+        );
+      case AppToastVariant.warning:
+        return (
+          icon: AppColors.warning,
+          iconBg: AppColors.warningSoft,
+          iconData: Icons.warning_amber_rounded,
         );
       case AppToastVariant.error:
         return (
