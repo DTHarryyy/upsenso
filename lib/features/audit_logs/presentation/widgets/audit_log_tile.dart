@@ -515,11 +515,17 @@ String _badgeLabelFor(AuditLogActionType type) {
     case AuditLogActionType.refundCreated:
     case AuditLogActionType.expenseCreated:
     case AuditLogActionType.stockAdded:
+    case AuditLogActionType.draftCreated:
       return 'CREATE';
     case AuditLogActionType.stockUpdated:
     case AuditLogActionType.stockTransferred:
     case AuditLogActionType.discountApplied:
+    case AuditLogActionType.draftResumed:
       return 'UPDATE';
+    case AuditLogActionType.draftConverted:
+      return 'COMPLETE';
+    case AuditLogActionType.draftDiscarded:
+      return 'DISCARD';
     case AuditLogActionType.stockAdjusted:
       return 'ADJUST';
     case AuditLogActionType.saleVoided:
@@ -565,7 +571,13 @@ Color _colorFor(AuditLogActionType type) {
     case AuditLogActionType.stockAdded:
     case AuditLogActionType.expenseApproved:
     case AuditLogActionType.syncCompleted:
+    case AuditLogActionType.draftConverted:
       return AppColors.success;
+    case AuditLogActionType.draftCreated:
+    case AuditLogActionType.draftResumed:
+      return AppColors.brand;
+    case AuditLogActionType.draftDiscarded:
+      return AppColors.warning;
     case AuditLogActionType.saleVoided:
     case AuditLogActionType.expenseRejected:
     case AuditLogActionType.syncFailed:

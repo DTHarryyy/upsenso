@@ -28,6 +28,7 @@ abstract final class DefaultPermissionMatrix {
   static Map<String, bool> _branchManagerMatrix() => {
     PermissionKeys.posUse: true,
     PermissionKeys.posApplyDiscount: true,
+    PermissionKeys.posHoldSale: true,
     PermissionKeys.posVoidSale: true,
     PermissionKeys.posApproveVoid: true,
     PermissionKeys.posRefundSale: true,
@@ -79,6 +80,7 @@ abstract final class DefaultPermissionMatrix {
     PermissionKeys.navSettings: true,
     PermissionKeys.navAuditLogs: false,
     PermissionKeys.navSalesHistory: true,
+    PermissionKeys.navHeldSales: true,
     PermissionKeys.navSuppliers: true,
     PermissionKeys.dataCrossBranchAccess: false,
   };
@@ -87,6 +89,7 @@ abstract final class DefaultPermissionMatrix {
   static Map<String, bool> _cashierMatrix() => {
     PermissionKeys.posUse: true,
     PermissionKeys.posApplyDiscount: true,
+    PermissionKeys.posHoldSale: true,
     PermissionKeys.posVoidSale: false,
     PermissionKeys.posApproveVoid: false,
     PermissionKeys.posRefundSale: true,
@@ -138,6 +141,7 @@ abstract final class DefaultPermissionMatrix {
     PermissionKeys.navSettings: false,
     PermissionKeys.navAuditLogs: false,
     PermissionKeys.navSalesHistory: false,
+    PermissionKeys.navHeldSales: true,
     PermissionKeys.navSuppliers: false,
     PermissionKeys.dataCrossBranchAccess: false,
   };
@@ -146,6 +150,7 @@ abstract final class DefaultPermissionMatrix {
   static Map<String, bool> _inventoryStaffMatrix() => {
     PermissionKeys.posUse: false,
     PermissionKeys.posApplyDiscount: false,
+    PermissionKeys.posHoldSale: false,
     PermissionKeys.posVoidSale: false,
     PermissionKeys.posApproveVoid: false,
     PermissionKeys.posRefundSale: false,
@@ -197,6 +202,7 @@ abstract final class DefaultPermissionMatrix {
     PermissionKeys.navSettings: false,
     PermissionKeys.navAuditLogs: false,
     PermissionKeys.navSalesHistory: false,
+    PermissionKeys.navHeldSales: false,
     PermissionKeys.navSuppliers: true,
     PermissionKeys.dataCrossBranchAccess: false,
   };

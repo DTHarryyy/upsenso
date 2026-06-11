@@ -15,6 +15,7 @@ abstract final class PermissionKeys {
   // ── POS / Checkout ────────────────────────────────────────────────────────
   static const String posUse = 'pos.use';
   static const String posApplyDiscount = 'pos.apply_discount';
+  static const String posHoldSale = 'pos.hold_sale';
   static const String posVoidSale = 'pos.void_sale';
   static const String posApproveVoid = 'pos.approve_void';
   static const String posRefundSale = 'pos.refund_sale';
@@ -88,6 +89,7 @@ abstract final class PermissionKeys {
   static const String navSettings = 'nav.settings';
   static const String navAuditLogs = 'nav.audit_logs';
   static const String navSalesHistory = 'nav.sales_history';
+  static const String navHeldSales = 'nav.held_sales';
   static const String navSuppliers = 'nav.suppliers';
 
   // ── Data scoping ──────────────────────────────────────────────────────────
@@ -97,6 +99,7 @@ abstract final class PermissionKeys {
   static const List<String> all = [
     posUse,
     posApplyDiscount,
+    posHoldSale,
     posVoidSale,
     posApproveVoid,
     posRefundSale,
@@ -148,6 +151,7 @@ abstract final class PermissionKeys {
     navSettings,
     navAuditLogs,
     navSalesHistory,
+    navHeldSales,
     navSuppliers,
     dataCrossBranchAccess,
   ];

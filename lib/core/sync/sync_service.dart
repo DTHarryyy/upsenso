@@ -13,6 +13,7 @@ import 'package:pos/core/database/daos/products_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
 import 'package:pos/core/database/daos/stock_ledger_dao.dart';
 import 'package:pos/core/database/daos/transactions_dao.dart';
+import 'package:pos/core/database/daos/draft_sales_dao.dart';
 import 'package:pos/core/database/daos/audit_logs_dao.dart';
 import 'package:pos/core/database/daos/employees_dao.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
@@ -39,6 +40,7 @@ class SyncService {
   final ProductVariantsDao _productVariantsDao;
   final StockLedgerDao _stockLedgerDao;
   final TransactionsDao _transactionsDao;
+  final DraftSalesDao _draftSalesDao;
   final BusinessRemoteDs _businessRemoteDs;
   final ExpensesRemoteDs _expensesRemoteDs;
   final ProductsRemoteDs _productsRemoteDs;
@@ -70,6 +72,7 @@ class SyncService {
     required ProductVariantsDao productVariantsDao,
     required StockLedgerDao stockLedgerDao,
     required TransactionsDao transactionsDao,
+    required DraftSalesDao draftSalesDao,
     required BusinessRemoteDs businessRemoteDs,
     required ExpensesRemoteDs expensesRemoteDs,
     required ProductsRemoteDs productsRemoteDs,
@@ -90,6 +93,7 @@ class SyncService {
        _productVariantsDao = productVariantsDao,
        _stockLedgerDao = stockLedgerDao,
        _transactionsDao = transactionsDao,
+       _draftSalesDao = draftSalesDao,
        _businessRemoteDs = businessRemoteDs,
        _expensesRemoteDs = expensesRemoteDs,
        _productsRemoteDs = productsRemoteDs,
@@ -148,6 +152,7 @@ class SyncService {
     await _stockLedgerDao.clearAll();
     await _expensesDao.clearAll();
     await _transactionsDao.clearAll();
+    await _draftSalesDao.clearAll();
     await _productVariantsDao.clearAll();
     await _productsDao.clearAll();
     await _categoriesDao.clearAll();

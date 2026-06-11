@@ -29,6 +29,32 @@ class CartService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Replaces the entire cart with [items] and restores a discount snapshot.
+  /// Used when resuming a held sale. The [items] are copied so the caller's
+  /// list can't mutate cart state afterwards.
+  void loadFrom(
+    List<CartItem> items, {
+    DiscountType? discountType,
+    double discountValue = 0,
+  }) {
+    _items
+      ..clear()
+      ..addAll(
+        items.map(
+          (i) => CartItem(
+            variantId: i.variantId,
+            name: i.name,
+            variant: i.variant,
+            unitPrice: i.unitPrice,
+            taxRate: i.taxRate,
+          )..qty = i.qty,
+        ),
+      );
+    _discountType = discountType;
+    _discountValue = discountType == null ? 0 : discountValue;
+    notifyListeners();
+  }
+
   void clearDiscount() {
     _discountType = null;
     _discountValue = 0;

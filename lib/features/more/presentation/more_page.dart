@@ -14,6 +14,7 @@ import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/expenses/presentation/expenses_page.dart';
 import 'package:pos/features/sales/presentation/sales_history.dart';
+import 'package:pos/features/drafts/presentation/held_sales_page.dart';
 import 'package:pos/features/audit_logs/presentation/pages/audit_log_page.dart';
 import 'package:pos/features/employees/presentation/pages/employees_page.dart';
 
@@ -141,6 +142,9 @@ class _MorePageState extends State<MorePage>
         // Employee management: branchManager / owner / super_admin.
         final canSeeEmployees = permService.can(PermissionKeys.navEmployees) &&
             permService.isModuleEnabled('employees');
+        // Held sales: anyone who can hold a sale (incl. cashiers), POS module on.
+        final canSeeHeldSales = permService.can(PermissionKeys.navHeldSales) &&
+            permService.isModuleEnabled('pos');
 
         return SafeArea(
           child: Column(
@@ -171,6 +175,19 @@ class _MorePageState extends State<MorePage>
                           icon: IconlyLight.profile,
                           label: 'My Profile',
                           onTap: () => _navigate(AppRoutes.profile),
+                        ),
+                        const SizedBox(height: 4),
+                        _Divider(),
+                        const SizedBox(height: 4),
+                      ],
+
+                      // SALES — held sales (visible to cashiers too)
+                      if (canSeeHeldSales) ...[
+                        _SectionLabel('SALES'),
+                        _DrawerTile(
+                          icon: IconlyLight.bookmark,
+                          label: 'Held Sales',
+                          onTap: () => _pushFullPage(const HeldSalesPage()),
                         ),
                         const SizedBox(height: 4),
                         _Divider(),

@@ -12,6 +12,8 @@ import 'package:pos/core/database/tables/products_table.dart';
 import 'package:pos/core/database/tables/product_variants_table.dart';
 import 'package:pos/core/database/tables/transactions_table.dart';
 import 'package:pos/core/database/tables/transaction_items_table.dart';
+import 'package:pos/core/database/tables/draft_sales_table.dart';
+import 'package:pos/core/database/tables/draft_sale_items_table.dart';
 import 'package:pos/core/database/tables/inventory_levels_table.dart';
 import 'package:pos/core/database/tables/receipt_settings_table.dart';
 import 'package:pos/core/database/tables/stock_ledger_table.dart';
@@ -32,6 +34,7 @@ import 'package:pos/core/database/daos/expenses_dao.dart';
 import 'package:pos/core/database/daos/products_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
 import 'package:pos/core/database/daos/transactions_dao.dart';
+import 'package:pos/core/database/daos/draft_sales_dao.dart';
 import 'package:pos/core/database/daos/inventory_levels_dao.dart';
 import 'package:pos/core/database/daos/receipt_settings_dao.dart';
 import 'package:pos/core/database/daos/stock_ledger_dao.dart';
@@ -50,6 +53,8 @@ part 'app_database.g.dart';
     ProductVariantsTable,
     TransactionsTable,
     TransactionItemsTable,
+    DraftSalesTable,
+    DraftSaleItemsTable,
     InventoryLevelsTable,
     StockLedgerTable,
     ReceiptSettingsTable,
@@ -68,6 +73,7 @@ part 'app_database.g.dart';
     ProductsDao,
     ProductVariantsDao,
     TransactionsDao,
+    DraftSalesDao,
     InventoryLevelsDao,
     StockLedgerDao,
     ReceiptSettingsDao,
@@ -80,6 +86,9 @@ part 'app_database.g.dart';
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(db_connect.openDatabaseConnection());
 
+  /// Test-only constructor that accepts an explicit (e.g. in-memory) executor.
+  AppDatabase.forTesting(super.executor);
+
   /// Wait for the database connection to be ready (especially important on web with WASM).
   /// Returns immediately on native platforms. On web, waits for WASM to initialize.
   Future<void> ensureReady() async {
@@ -91,7 +100,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 32;
+  int get schemaVersion => 33;
 
   @override
   MigrationStrategy get migration {
@@ -406,6 +415,20 @@ class AppDatabase extends _$AppDatabase {
             FROM employees_old
           ''');
           await customStatement('DROP TABLE employees_old');
+        }
+        if (from < 33) {
+          // Held / suspended sales (local-only). Purely additive — rollback is
+          // simply dropping these two tables.
+          await m.createTable(draftSalesTable);
+          await m.createTable(draftSaleItemsTable);
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_draft_sales_status '
+            'ON draft_sales(status)',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_draft_sale_items_draft '
+            'ON draft_sale_items(draft_id)',
+          );
         }
       },
     );

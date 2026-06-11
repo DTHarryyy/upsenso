@@ -5,6 +5,10 @@ enum AuditLogActionType {
   saleVoided,
   refundCreated,
   discountApplied,
+  draftCreated,
+  draftResumed,
+  draftDiscarded,
+  draftConverted,
 
   // ── Inventory ────────────────────────────────────────────────────────────
   stockAdded,
@@ -68,6 +72,14 @@ extension AuditLogActionTypeX on AuditLogActionType {
         return 'REFUND_CREATED';
       case AuditLogActionType.discountApplied:
         return 'DISCOUNT_APPLIED';
+      case AuditLogActionType.draftCreated:
+        return 'DRAFT_CREATED';
+      case AuditLogActionType.draftResumed:
+        return 'DRAFT_RESUMED';
+      case AuditLogActionType.draftDiscarded:
+        return 'DRAFT_DISCARDED';
+      case AuditLogActionType.draftConverted:
+        return 'DRAFT_CONVERTED';
       case AuditLogActionType.stockAdded:
         return 'STOCK_ADDED';
       case AuditLogActionType.stockUpdated:
@@ -140,6 +152,14 @@ extension AuditLogActionTypeX on AuditLogActionType {
         return 'Refund Created';
       case AuditLogActionType.discountApplied:
         return 'Discount Applied';
+      case AuditLogActionType.draftCreated:
+        return 'Held Sale Created';
+      case AuditLogActionType.draftResumed:
+        return 'Held Sale Resumed';
+      case AuditLogActionType.draftDiscarded:
+        return 'Held Sale Discarded';
+      case AuditLogActionType.draftConverted:
+        return 'Held Sale Completed';
       case AuditLogActionType.stockAdded:
         return 'Stock Added';
       case AuditLogActionType.stockUpdated:

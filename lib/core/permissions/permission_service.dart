@@ -108,11 +108,19 @@ class PermissionService {
   /// Check a permission by its dot-notation key.
   ///
   /// Resolution order:
-  ///  1. [_permissionsMap] (loaded from Supabase / Drift)
-  ///  2. [DefaultPermissionMatrix] (role-derived, offline fallback)
+  ///  1. [_permissionsMap] (loaded from Supabase / Drift) — explicit grant/deny
+  ///  2. [DefaultPermissionMatrix] (role-derived) — for keys ABSENT from the
+  ///     loaded map. This makes newly-added permission keys forward-compatible:
+  ///     a user whose stored matrix predates a key still resolves it from their
+  ///     role default instead of being silently denied. An explicit `false`
+  ///     stored in the map is preserved (it's present, not absent).
   ///  3. `false`
   bool can(String key) {
-    if (_hasLoadedPermissions) return _permissionsMap[key] ?? false;
+    if (_hasLoadedPermissions) {
+      return _permissionsMap[key] ??
+          DefaultPermissionMatrix.forRole(_roleKey)[key] ??
+          false;
+    }
     return DefaultPermissionMatrix.forRole(_roleKey)[key] ?? false;
   }
 

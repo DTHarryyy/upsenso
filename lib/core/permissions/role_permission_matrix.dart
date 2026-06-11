@@ -37,6 +37,7 @@ class RolePermissionMatrix {
     branchManager: {
       // POS oversight
       AppPermission.viewAllSalesInBranch,
+      AppPermission.holdSale,
       AppPermission.approveRefund,
       AppPermission.approveVoidTransaction, // maps to pos.approve_void
       AppPermission.voidSale,
@@ -96,6 +97,7 @@ class RolePermissionMatrix {
       AppPermission.createSale,
       AppPermission.processPayment,
       AppPermission.applyDiscount,
+      AppPermission.holdSale,
       AppPermission.printReceipt,
       AppPermission.viewOwnShiftSales,
 

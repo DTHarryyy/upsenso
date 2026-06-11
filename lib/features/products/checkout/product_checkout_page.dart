@@ -24,6 +24,7 @@ import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/pos/data/models/cart_model.dart';
 import 'package:pos/core/audit/audit_log_service.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
+import 'package:pos/features/drafts/domain/repositories/i_draft_sales_repository.dart';
 import 'package:pos/features/pos/presentation/pages/checkout_success_page.dart';
 import 'package:pos/features/pos/presentation/widgets/denom_chip.dart';
 import 'package:pos/features/products/checkout/product_cart_page.dart';
@@ -36,6 +37,10 @@ class ProductCheckoutPage extends StatefulWidget {
   final double discountAmount;
   final VoidCallback onPaymentConfirmed;
 
+  /// When set, this checkout is finishing a held / suspended sale. On success
+  /// the draft is marked converted and soft-deleted.
+  final String? sourceDraftId;
+
   const ProductCheckoutPage({
     super.key,
     required this.items,
@@ -44,6 +49,7 @@ class ProductCheckoutPage extends StatefulWidget {
     required this.total,
     this.discountAmount = 0,
     required this.onPaymentConfirmed,
+    this.sourceDraftId,
   });
 
   @override
@@ -201,6 +207,26 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
         businessId: authState.user.businessId ?? '',
         branchId: branchId,
       );
+
+      // Finishing a held sale: convert + soft-delete the draft so it leaves the
+      // Held Sales list and exactly one completed transaction remains.
+      final draftId = widget.sourceDraftId;
+      if (draftId != null) {
+        await sl<IDraftSalesRepository>().markConverted(draftId);
+        unawaited(
+          sl<AuditLogService>().log(
+            actionType: AuditLogActionType.draftConverted,
+            entityType: 'draft_sale',
+            entityId: draftId,
+            description:
+                'Held sale completed — ${AppFormatters.currency(widget.total)}',
+            metadata: {'transaction_id': txId, 'total': widget.total},
+            businessId: authState.user.businessId,
+            branchId: branchId,
+            userId: cashierId,
+          ),
+        );
+      }
 
       widget.onPaymentConfirmed();
       if (!mounted) return;
