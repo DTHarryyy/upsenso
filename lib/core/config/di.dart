@@ -15,6 +15,7 @@ import 'package:pos/core/database/daos/categories_dao.dart';
 import 'package:pos/core/database/daos/products_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
 import 'package:pos/core/database/daos/transactions_dao.dart';
+import 'package:pos/core/database/daos/draft_sales_dao.dart';
 import 'package:pos/core/theme/theme_controller.dart';
 import 'package:pos/core/services/cart_service.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
@@ -57,6 +58,8 @@ import 'package:pos/features/expenses/data/expenses_repository.dart';
 import 'package:pos/features/inventory/data/inventory_repository.dart';
 import 'package:pos/features/reports/data/reports_repository.dart';
 import 'package:pos/features/sales/data/sales_repository.dart';
+import 'package:pos/features/drafts/data/draft_sales_repository.dart';
+import 'package:pos/features/drafts/domain/repositories/i_draft_sales_repository.dart';
 import 'package:pos/core/database/daos/expenses_dao.dart';
 import 'package:pos/core/database/daos/inventory_levels_dao.dart';
 import 'package:pos/core/database/daos/receipt_settings_dao.dart';
@@ -136,6 +139,9 @@ Future<void> initDI() async {
   );
   sl.registerLazySingleton<TransactionsDao>(
     () => TransactionsDao(sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<DraftSalesDao>(
+    () => DraftSalesDao(sl<AppDatabase>()),
   );
   sl.registerLazySingleton<InventoryLevelsDao>(
     () => InventoryLevelsDao(sl<AppDatabase>()),
@@ -271,6 +277,7 @@ Future<void> initDI() async {
       productVariantsDao: sl<ProductVariantsDao>(),
       stockLedgerDao: sl<StockLedgerDao>(),
       transactionsDao: sl<TransactionsDao>(),
+      draftSalesDao: sl<DraftSalesDao>(),
       businessRemoteDs: sl<BusinessRemoteDs>(),
       expensesRemoteDs: sl<ExpensesRemoteDs>(),
       productsRemoteDs: sl<ProductsRemoteDs>(),
@@ -374,6 +381,10 @@ Future<void> initDI() async {
 
   sl.registerLazySingleton<ISalesRepository>(
     () => SalesRepository(sl<TransactionsDao>(), sl<EmployeesDao>()),
+  );
+
+  sl.registerLazySingleton<IDraftSalesRepository>(
+    () => DraftSalesRepository(sl<DraftSalesDao>()),
   );
 
   sl.registerLazySingleton<IDashboardRepository>(

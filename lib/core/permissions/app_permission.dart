@@ -24,6 +24,9 @@ enum AppPermission {
   /// Apply a discount to a cart item or whole order.
   applyDiscount,
 
+  /// Hold (suspend) the current sale and resume it later.
+  holdSale,
+
   /// Print or re-print a receipt.
   printReceipt,
 
@@ -181,6 +184,8 @@ extension AppPermissionX on AppPermission {
         return 'Process Payment';
       case AppPermission.applyDiscount:
         return 'Apply Discount';
+      case AppPermission.holdSale:
+        return 'Hold Sale';
       case AppPermission.printReceipt:
         return 'Print Receipt';
       case AppPermission.viewOwnShiftSales:
@@ -292,6 +297,8 @@ extension AppPermissionX on AppPermission {
         return 'pos.use';
       case AppPermission.applyDiscount:
         return 'pos.apply_discount';
+      case AppPermission.holdSale:
+        return 'pos.hold_sale';
       case AppPermission.voidSale:
       case AppPermission.deleteSale:
         return 'pos.void_sale';

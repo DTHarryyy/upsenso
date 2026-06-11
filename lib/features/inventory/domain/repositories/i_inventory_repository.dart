@@ -21,4 +21,13 @@ abstract class IInventoryRepository {
     required String businessId,
     required String? branchId,
   });
+
+  /// Returns the subset of [items] whose tracked stock is below the requested
+  /// quantity (e.g. a held sale where stock sold out while parked). Untracked
+  /// variants are ignored. Empty list = everything is in stock.
+  Future<List<({String variantId, double available, double requested})>>
+  checkStockAvailability({
+    required List<({String variantId, double qty})> items,
+    required String? branchId,
+  });
 }

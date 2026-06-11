@@ -20,6 +20,9 @@ import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:pos/features/drafts/domain/repositories/i_draft_sales_repository.dart';
+import 'package:pos/features/drafts/presentation/held_sales_page.dart';
+import 'package:pos/features/drafts/presentation/hold_sale_action.dart';
 import 'package:pos/features/pos/data/models/cart_model.dart';
 import 'package:pos/features/pos/presentation/widgets/discount_sheet.dart';
 import 'package:pos/features/products/checkout/product_checkout_page.dart';
@@ -43,6 +46,9 @@ class _PosTerminalPageState extends State<PosTerminalPage>
 
   final _resolveBarcode = sl<ResolveBarcodeUseCase>();
   final _cartService = sl<CartService>();
+  final _draftsRepo = sl<IDraftSalesRepository>();
+
+  bool get _canHold => canHoldSale();
 
   bool _permissionDenied = false;
   bool _torchEnabled = false;
@@ -213,6 +219,12 @@ class _PosTerminalPageState extends State<PosTerminalPage>
 
   void _showDiscountSheet() {
     showDiscountSheet(context, _cartService, _subtotal);
+  }
+
+  void _openHeldSales() {
+    Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute(builder: (_) => const HeldSalesPage()),
+    );
   }
 
   void _increment(int i) {
@@ -690,6 +702,7 @@ class _PosTerminalPageState extends State<PosTerminalPage>
             ),
           ),
           const Spacer(),
+          if (_canHold) _buildHeldSalesButton(),
           if (_cartService.isNotEmpty)
             IconButton(
               icon: const Icon(
@@ -702,6 +715,56 @@ class _PosTerminalPageState extends State<PosTerminalPage>
             ),
         ],
       ),
+    );
+  }
+
+  // Held-sales entry point with a live count badge.
+  Widget _buildHeldSalesButton() {
+    return StreamBuilder<int>(
+      stream: _draftsRepo.watchOpenDraftCount(),
+      initialData: 0,
+      builder: (context, snapshot) {
+        final count = snapshot.data ?? 0;
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            IconButton(
+              icon: const Icon(
+                IconlyLight.bookmark,
+                size: 20,
+                color: AppColors.textMuted,
+              ),
+              onPressed: _openHeldSales,
+              tooltip: 'Held sales',
+            ),
+            if (count > 0)
+              Positioned(
+                right: 4,
+                top: 4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.brand,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  constraints: const BoxConstraints(minWidth: 16),
+                  child: Text(
+                    '$count',
+                    textAlign: TextAlign.center,
+                    style: getOutfitStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 
@@ -812,11 +875,35 @@ class _PosTerminalPageState extends State<PosTerminalPage>
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-          child: AppFilledButton(
-            label: _cartService.isEmpty
-                ? 'Checkout'
-                : 'Checkout · ${AppFormatters.currency(_grandTotal)}',
-            onPressed: _cartService.isEmpty ? null : _checkout,
+          child: Row(
+            children: [
+              if (_canHold) ...[
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _cartService.isEmpty
+                        ? null
+                        : () => holdCurrentCart(context),
+                    icon: const Icon(IconlyLight.bookmark, size: 18),
+                    label: const Text('Hold'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.brand,
+                      side: const BorderSide(color: AppColors.brand),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                flex: 2,
+                child: AppFilledButton(
+                  label: _cartService.isEmpty
+                      ? 'Checkout'
+                      : 'Checkout · ${AppFormatters.currency(_grandTotal)}',
+                  onPressed: _cartService.isEmpty ? null : _checkout,
+                ),
+              ),
+            ],
           ),
         ),
       ],

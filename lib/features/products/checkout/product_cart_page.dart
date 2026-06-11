@@ -7,6 +7,7 @@ import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/services/cart_service.dart';
 import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/core/widgets/widgets.dart';
+import 'package:pos/features/drafts/presentation/hold_sale_action.dart';
 import 'package:pos/features/pos/data/models/cart_model.dart';
 import 'package:pos/features/pos/presentation/widgets/discount_sheet.dart';
 import 'package:pos/features/products/checkout/product_checkout_page.dart';
@@ -552,7 +553,36 @@ class _CartFooter extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          AppFilledButton(label: 'Proceed to Checkout', onPressed: onCheckout),
+          if (canHoldSale())
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => holdCurrentCart(context),
+                    icon: const Icon(IconlyLight.bookmark, size: 18),
+                    label: const Text('Hold'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.brand,
+                      side: const BorderSide(color: AppColors.brand),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: AppFilledButton(
+                    label: 'Proceed to Checkout',
+                    onPressed: onCheckout,
+                  ),
+                ),
+              ],
+            )
+          else
+            AppFilledButton(
+              label: 'Proceed to Checkout',
+              onPressed: onCheckout,
+            ),
           const SizedBox(height: 8),
         ],
       ),

@@ -66,6 +66,11 @@ const _kGroups = <_PermGroup>[
         'Apply percentage or fixed discounts at checkout',
       ),
       _PermEntry(
+        'pos.hold_sale',
+        'Hold Sales',
+        'Suspend a sale to resume later and open the Held Sales screen',
+      ),
+      _PermEntry(
         'pos.void_sale',
         'Void a Sale',
         'Cancel a completed transaction',

@@ -7835,6 +7835,1759 @@ class TransactionItemsTableCompanion
   }
 }
 
+class $DraftSalesTableTable extends DraftSalesTable
+    with TableInfo<$DraftSalesTableTable, DraftSalesTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DraftSalesTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _cashierIdMeta = const VerificationMeta(
+    'cashierId',
+  );
+  @override
+  late final GeneratedColumn<String> cashierId = GeneratedColumn<String>(
+    'cashier_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _labelMeta = const VerificationMeta('label');
+  @override
+  late final GeneratedColumn<String> label = GeneratedColumn<String>(
+    'label',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _customerNameMeta = const VerificationMeta(
+    'customerName',
+  );
+  @override
+  late final GeneratedColumn<String> customerName = GeneratedColumn<String>(
+    'customer_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _subtotalMeta = const VerificationMeta(
+    'subtotal',
+  );
+  @override
+  late final GeneratedColumn<double> subtotal = GeneratedColumn<double>(
+    'subtotal',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _taxAmountMeta = const VerificationMeta(
+    'taxAmount',
+  );
+  @override
+  late final GeneratedColumn<double> taxAmount = GeneratedColumn<double>(
+    'tax_amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _discountAmountMeta = const VerificationMeta(
+    'discountAmount',
+  );
+  @override
+  late final GeneratedColumn<double> discountAmount = GeneratedColumn<double>(
+    'discount_amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0.0),
+  );
+  static const VerificationMeta _totalAmountMeta = const VerificationMeta(
+    'totalAmount',
+  );
+  @override
+  late final GeneratedColumn<double> totalAmount = GeneratedColumn<double>(
+    'total_amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _itemCountMeta = const VerificationMeta(
+    'itemCount',
+  );
+  @override
+  late final GeneratedColumn<int> itemCount = GeneratedColumn<int>(
+    'item_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _discountTypeMeta = const VerificationMeta(
+    'discountType',
+  );
+  @override
+  late final GeneratedColumn<String> discountType = GeneratedColumn<String>(
+    'discount_type',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _discountValueMeta = const VerificationMeta(
+    'discountValue',
+  );
+  @override
+  late final GeneratedColumn<double> discountValue = GeneratedColumn<double>(
+    'discount_value',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('open'),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+    'syncStatus',
+  );
+  @override
+  late final GeneratedColumn<int> syncStatus = GeneratedColumn<int>(
+    'sync_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastSyncAttemptMeta = const VerificationMeta(
+    'lastSyncAttempt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastSyncAttempt =
+      GeneratedColumn<DateTime>(
+        'last_sync_attempt',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _syncErrorMeta = const VerificationMeta(
+    'syncError',
+  );
+  @override
+  late final GeneratedColumn<String> syncError = GeneratedColumn<String>(
+    'sync_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    businessId,
+    branchId,
+    cashierId,
+    label,
+    customerName,
+    subtotal,
+    taxAmount,
+    discountAmount,
+    totalAmount,
+    itemCount,
+    discountType,
+    discountValue,
+    status,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    syncStatus,
+    lastSyncAttempt,
+    syncError,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'draft_sales';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DraftSalesTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    }
+    if (data.containsKey('cashier_id')) {
+      context.handle(
+        _cashierIdMeta,
+        cashierId.isAcceptableOrUnknown(data['cashier_id']!, _cashierIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cashierIdMeta);
+    }
+    if (data.containsKey('label')) {
+      context.handle(
+        _labelMeta,
+        label.isAcceptableOrUnknown(data['label']!, _labelMeta),
+      );
+    }
+    if (data.containsKey('customer_name')) {
+      context.handle(
+        _customerNameMeta,
+        customerName.isAcceptableOrUnknown(
+          data['customer_name']!,
+          _customerNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('subtotal')) {
+      context.handle(
+        _subtotalMeta,
+        subtotal.isAcceptableOrUnknown(data['subtotal']!, _subtotalMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_subtotalMeta);
+    }
+    if (data.containsKey('tax_amount')) {
+      context.handle(
+        _taxAmountMeta,
+        taxAmount.isAcceptableOrUnknown(data['tax_amount']!, _taxAmountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_taxAmountMeta);
+    }
+    if (data.containsKey('discount_amount')) {
+      context.handle(
+        _discountAmountMeta,
+        discountAmount.isAcceptableOrUnknown(
+          data['discount_amount']!,
+          _discountAmountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('total_amount')) {
+      context.handle(
+        _totalAmountMeta,
+        totalAmount.isAcceptableOrUnknown(
+          data['total_amount']!,
+          _totalAmountMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_totalAmountMeta);
+    }
+    if (data.containsKey('item_count')) {
+      context.handle(
+        _itemCountMeta,
+        itemCount.isAcceptableOrUnknown(data['item_count']!, _itemCountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_itemCountMeta);
+    }
+    if (data.containsKey('discount_type')) {
+      context.handle(
+        _discountTypeMeta,
+        discountType.isAcceptableOrUnknown(
+          data['discount_type']!,
+          _discountTypeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('discount_value')) {
+      context.handle(
+        _discountValueMeta,
+        discountValue.isAcceptableOrUnknown(
+          data['discount_value']!,
+          _discountValueMeta,
+        ),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('sync_status')) {
+      context.handle(
+        _syncStatusMeta,
+        syncStatus.isAcceptableOrUnknown(data['sync_status']!, _syncStatusMeta),
+      );
+    }
+    if (data.containsKey('last_sync_attempt')) {
+      context.handle(
+        _lastSyncAttemptMeta,
+        lastSyncAttempt.isAcceptableOrUnknown(
+          data['last_sync_attempt']!,
+          _lastSyncAttemptMeta,
+        ),
+      );
+    }
+    if (data.containsKey('sync_error')) {
+      context.handle(
+        _syncErrorMeta,
+        syncError.isAcceptableOrUnknown(data['sync_error']!, _syncErrorMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DraftSalesTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DraftSalesTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      ),
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      ),
+      cashierId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cashier_id'],
+      )!,
+      label: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}label'],
+      ),
+      customerName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}customer_name'],
+      ),
+      subtotal: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}subtotal'],
+      )!,
+      taxAmount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}tax_amount'],
+      )!,
+      discountAmount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}discount_amount'],
+      )!,
+      totalAmount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}total_amount'],
+      )!,
+      itemCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}item_count'],
+      )!,
+      discountType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}discount_type'],
+      ),
+      discountValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}discount_value'],
+      ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      syncStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sync_status'],
+      )!,
+      lastSyncAttempt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_sync_attempt'],
+      ),
+      syncError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_error'],
+      ),
+    );
+  }
+
+  @override
+  $DraftSalesTableTable createAlias(String alias) {
+    return $DraftSalesTableTable(attachedDatabase, alias);
+  }
+}
+
+class DraftSalesTableData extends DataClass
+    implements Insertable<DraftSalesTableData> {
+  final String id;
+  final String? businessId;
+  final String? branchId;
+  final String cashierId;
+
+  /// Optional human label e.g. "Table 5", "Mrs. Cruz".
+  final String? label;
+  final String? customerName;
+  final double subtotal;
+  final double taxAmount;
+  final double discountAmount;
+  final double totalAmount;
+  final int itemCount;
+
+  /// 'percentage' | 'fixed' | null
+  final String? discountType;
+  final double? discountValue;
+
+  /// open | converted | voided
+  final String status;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  /// Soft delete — set when converted or discarded.
+  final DateTime? deletedAt;
+  final int syncStatus;
+  final DateTime? lastSyncAttempt;
+  final String? syncError;
+  const DraftSalesTableData({
+    required this.id,
+    this.businessId,
+    this.branchId,
+    required this.cashierId,
+    this.label,
+    this.customerName,
+    required this.subtotal,
+    required this.taxAmount,
+    required this.discountAmount,
+    required this.totalAmount,
+    required this.itemCount,
+    this.discountType,
+    this.discountValue,
+    required this.status,
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+    required this.syncStatus,
+    this.lastSyncAttempt,
+    this.syncError,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    if (!nullToAbsent || businessId != null) {
+      map['business_id'] = Variable<String>(businessId);
+    }
+    if (!nullToAbsent || branchId != null) {
+      map['branch_id'] = Variable<String>(branchId);
+    }
+    map['cashier_id'] = Variable<String>(cashierId);
+    if (!nullToAbsent || label != null) {
+      map['label'] = Variable<String>(label);
+    }
+    if (!nullToAbsent || customerName != null) {
+      map['customer_name'] = Variable<String>(customerName);
+    }
+    map['subtotal'] = Variable<double>(subtotal);
+    map['tax_amount'] = Variable<double>(taxAmount);
+    map['discount_amount'] = Variable<double>(discountAmount);
+    map['total_amount'] = Variable<double>(totalAmount);
+    map['item_count'] = Variable<int>(itemCount);
+    if (!nullToAbsent || discountType != null) {
+      map['discount_type'] = Variable<String>(discountType);
+    }
+    if (!nullToAbsent || discountValue != null) {
+      map['discount_value'] = Variable<double>(discountValue);
+    }
+    map['status'] = Variable<String>(status);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    map['sync_status'] = Variable<int>(syncStatus);
+    if (!nullToAbsent || lastSyncAttempt != null) {
+      map['last_sync_attempt'] = Variable<DateTime>(lastSyncAttempt);
+    }
+    if (!nullToAbsent || syncError != null) {
+      map['sync_error'] = Variable<String>(syncError);
+    }
+    return map;
+  }
+
+  DraftSalesTableCompanion toCompanion(bool nullToAbsent) {
+    return DraftSalesTableCompanion(
+      id: Value(id),
+      businessId: businessId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(businessId),
+      branchId: branchId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(branchId),
+      cashierId: Value(cashierId),
+      label: label == null && nullToAbsent
+          ? const Value.absent()
+          : Value(label),
+      customerName: customerName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(customerName),
+      subtotal: Value(subtotal),
+      taxAmount: Value(taxAmount),
+      discountAmount: Value(discountAmount),
+      totalAmount: Value(totalAmount),
+      itemCount: Value(itemCount),
+      discountType: discountType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(discountType),
+      discountValue: discountValue == null && nullToAbsent
+          ? const Value.absent()
+          : Value(discountValue),
+      status: Value(status),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      syncStatus: Value(syncStatus),
+      lastSyncAttempt: lastSyncAttempt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSyncAttempt),
+      syncError: syncError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncError),
+    );
+  }
+
+  factory DraftSalesTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DraftSalesTableData(
+      id: serializer.fromJson<String>(json['id']),
+      businessId: serializer.fromJson<String?>(json['businessId']),
+      branchId: serializer.fromJson<String?>(json['branchId']),
+      cashierId: serializer.fromJson<String>(json['cashierId']),
+      label: serializer.fromJson<String?>(json['label']),
+      customerName: serializer.fromJson<String?>(json['customerName']),
+      subtotal: serializer.fromJson<double>(json['subtotal']),
+      taxAmount: serializer.fromJson<double>(json['taxAmount']),
+      discountAmount: serializer.fromJson<double>(json['discountAmount']),
+      totalAmount: serializer.fromJson<double>(json['totalAmount']),
+      itemCount: serializer.fromJson<int>(json['itemCount']),
+      discountType: serializer.fromJson<String?>(json['discountType']),
+      discountValue: serializer.fromJson<double?>(json['discountValue']),
+      status: serializer.fromJson<String>(json['status']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      syncStatus: serializer.fromJson<int>(json['syncStatus']),
+      lastSyncAttempt: serializer.fromJson<DateTime?>(json['lastSyncAttempt']),
+      syncError: serializer.fromJson<String?>(json['syncError']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'businessId': serializer.toJson<String?>(businessId),
+      'branchId': serializer.toJson<String?>(branchId),
+      'cashierId': serializer.toJson<String>(cashierId),
+      'label': serializer.toJson<String?>(label),
+      'customerName': serializer.toJson<String?>(customerName),
+      'subtotal': serializer.toJson<double>(subtotal),
+      'taxAmount': serializer.toJson<double>(taxAmount),
+      'discountAmount': serializer.toJson<double>(discountAmount),
+      'totalAmount': serializer.toJson<double>(totalAmount),
+      'itemCount': serializer.toJson<int>(itemCount),
+      'discountType': serializer.toJson<String?>(discountType),
+      'discountValue': serializer.toJson<double?>(discountValue),
+      'status': serializer.toJson<String>(status),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'syncStatus': serializer.toJson<int>(syncStatus),
+      'lastSyncAttempt': serializer.toJson<DateTime?>(lastSyncAttempt),
+      'syncError': serializer.toJson<String?>(syncError),
+    };
+  }
+
+  DraftSalesTableData copyWith({
+    String? id,
+    Value<String?> businessId = const Value.absent(),
+    Value<String?> branchId = const Value.absent(),
+    String? cashierId,
+    Value<String?> label = const Value.absent(),
+    Value<String?> customerName = const Value.absent(),
+    double? subtotal,
+    double? taxAmount,
+    double? discountAmount,
+    double? totalAmount,
+    int? itemCount,
+    Value<String?> discountType = const Value.absent(),
+    Value<double?> discountValue = const Value.absent(),
+    String? status,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+    int? syncStatus,
+    Value<DateTime?> lastSyncAttempt = const Value.absent(),
+    Value<String?> syncError = const Value.absent(),
+  }) => DraftSalesTableData(
+    id: id ?? this.id,
+    businessId: businessId.present ? businessId.value : this.businessId,
+    branchId: branchId.present ? branchId.value : this.branchId,
+    cashierId: cashierId ?? this.cashierId,
+    label: label.present ? label.value : this.label,
+    customerName: customerName.present ? customerName.value : this.customerName,
+    subtotal: subtotal ?? this.subtotal,
+    taxAmount: taxAmount ?? this.taxAmount,
+    discountAmount: discountAmount ?? this.discountAmount,
+    totalAmount: totalAmount ?? this.totalAmount,
+    itemCount: itemCount ?? this.itemCount,
+    discountType: discountType.present ? discountType.value : this.discountType,
+    discountValue: discountValue.present
+        ? discountValue.value
+        : this.discountValue,
+    status: status ?? this.status,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    syncStatus: syncStatus ?? this.syncStatus,
+    lastSyncAttempt: lastSyncAttempt.present
+        ? lastSyncAttempt.value
+        : this.lastSyncAttempt,
+    syncError: syncError.present ? syncError.value : this.syncError,
+  );
+  DraftSalesTableData copyWithCompanion(DraftSalesTableCompanion data) {
+    return DraftSalesTableData(
+      id: data.id.present ? data.id.value : this.id,
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      cashierId: data.cashierId.present ? data.cashierId.value : this.cashierId,
+      label: data.label.present ? data.label.value : this.label,
+      customerName: data.customerName.present
+          ? data.customerName.value
+          : this.customerName,
+      subtotal: data.subtotal.present ? data.subtotal.value : this.subtotal,
+      taxAmount: data.taxAmount.present ? data.taxAmount.value : this.taxAmount,
+      discountAmount: data.discountAmount.present
+          ? data.discountAmount.value
+          : this.discountAmount,
+      totalAmount: data.totalAmount.present
+          ? data.totalAmount.value
+          : this.totalAmount,
+      itemCount: data.itemCount.present ? data.itemCount.value : this.itemCount,
+      discountType: data.discountType.present
+          ? data.discountType.value
+          : this.discountType,
+      discountValue: data.discountValue.present
+          ? data.discountValue.value
+          : this.discountValue,
+      status: data.status.present ? data.status.value : this.status,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      syncStatus: data.syncStatus.present
+          ? data.syncStatus.value
+          : this.syncStatus,
+      lastSyncAttempt: data.lastSyncAttempt.present
+          ? data.lastSyncAttempt.value
+          : this.lastSyncAttempt,
+      syncError: data.syncError.present ? data.syncError.value : this.syncError,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DraftSalesTableData(')
+          ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
+          ..write('branchId: $branchId, ')
+          ..write('cashierId: $cashierId, ')
+          ..write('label: $label, ')
+          ..write('customerName: $customerName, ')
+          ..write('subtotal: $subtotal, ')
+          ..write('taxAmount: $taxAmount, ')
+          ..write('discountAmount: $discountAmount, ')
+          ..write('totalAmount: $totalAmount, ')
+          ..write('itemCount: $itemCount, ')
+          ..write('discountType: $discountType, ')
+          ..write('discountValue: $discountValue, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncAttempt: $lastSyncAttempt, ')
+          ..write('syncError: $syncError')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    businessId,
+    branchId,
+    cashierId,
+    label,
+    customerName,
+    subtotal,
+    taxAmount,
+    discountAmount,
+    totalAmount,
+    itemCount,
+    discountType,
+    discountValue,
+    status,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    syncStatus,
+    lastSyncAttempt,
+    syncError,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DraftSalesTableData &&
+          other.id == this.id &&
+          other.businessId == this.businessId &&
+          other.branchId == this.branchId &&
+          other.cashierId == this.cashierId &&
+          other.label == this.label &&
+          other.customerName == this.customerName &&
+          other.subtotal == this.subtotal &&
+          other.taxAmount == this.taxAmount &&
+          other.discountAmount == this.discountAmount &&
+          other.totalAmount == this.totalAmount &&
+          other.itemCount == this.itemCount &&
+          other.discountType == this.discountType &&
+          other.discountValue == this.discountValue &&
+          other.status == this.status &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt &&
+          other.syncStatus == this.syncStatus &&
+          other.lastSyncAttempt == this.lastSyncAttempt &&
+          other.syncError == this.syncError);
+}
+
+class DraftSalesTableCompanion extends UpdateCompanion<DraftSalesTableData> {
+  final Value<String> id;
+  final Value<String?> businessId;
+  final Value<String?> branchId;
+  final Value<String> cashierId;
+  final Value<String?> label;
+  final Value<String?> customerName;
+  final Value<double> subtotal;
+  final Value<double> taxAmount;
+  final Value<double> discountAmount;
+  final Value<double> totalAmount;
+  final Value<int> itemCount;
+  final Value<String?> discountType;
+  final Value<double?> discountValue;
+  final Value<String> status;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<int> syncStatus;
+  final Value<DateTime?> lastSyncAttempt;
+  final Value<String?> syncError;
+  final Value<int> rowid;
+  const DraftSalesTableCompanion({
+    this.id = const Value.absent(),
+    this.businessId = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.cashierId = const Value.absent(),
+    this.label = const Value.absent(),
+    this.customerName = const Value.absent(),
+    this.subtotal = const Value.absent(),
+    this.taxAmount = const Value.absent(),
+    this.discountAmount = const Value.absent(),
+    this.totalAmount = const Value.absent(),
+    this.itemCount = const Value.absent(),
+    this.discountType = const Value.absent(),
+    this.discountValue = const Value.absent(),
+    this.status = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.lastSyncAttempt = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DraftSalesTableCompanion.insert({
+    required String id,
+    this.businessId = const Value.absent(),
+    this.branchId = const Value.absent(),
+    required String cashierId,
+    this.label = const Value.absent(),
+    this.customerName = const Value.absent(),
+    required double subtotal,
+    required double taxAmount,
+    this.discountAmount = const Value.absent(),
+    required double totalAmount,
+    required int itemCount,
+    this.discountType = const Value.absent(),
+    this.discountValue = const Value.absent(),
+    this.status = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.lastSyncAttempt = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       cashierId = Value(cashierId),
+       subtotal = Value(subtotal),
+       taxAmount = Value(taxAmount),
+       totalAmount = Value(totalAmount),
+       itemCount = Value(itemCount);
+  static Insertable<DraftSalesTableData> custom({
+    Expression<String>? id,
+    Expression<String>? businessId,
+    Expression<String>? branchId,
+    Expression<String>? cashierId,
+    Expression<String>? label,
+    Expression<String>? customerName,
+    Expression<double>? subtotal,
+    Expression<double>? taxAmount,
+    Expression<double>? discountAmount,
+    Expression<double>? totalAmount,
+    Expression<int>? itemCount,
+    Expression<String>? discountType,
+    Expression<double>? discountValue,
+    Expression<String>? status,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? syncStatus,
+    Expression<DateTime>? lastSyncAttempt,
+    Expression<String>? syncError,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (businessId != null) 'business_id': businessId,
+      if (branchId != null) 'branch_id': branchId,
+      if (cashierId != null) 'cashier_id': cashierId,
+      if (label != null) 'label': label,
+      if (customerName != null) 'customer_name': customerName,
+      if (subtotal != null) 'subtotal': subtotal,
+      if (taxAmount != null) 'tax_amount': taxAmount,
+      if (discountAmount != null) 'discount_amount': discountAmount,
+      if (totalAmount != null) 'total_amount': totalAmount,
+      if (itemCount != null) 'item_count': itemCount,
+      if (discountType != null) 'discount_type': discountType,
+      if (discountValue != null) 'discount_value': discountValue,
+      if (status != null) 'status': status,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (lastSyncAttempt != null) 'last_sync_attempt': lastSyncAttempt,
+      if (syncError != null) 'sync_error': syncError,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DraftSalesTableCompanion copyWith({
+    Value<String>? id,
+    Value<String?>? businessId,
+    Value<String?>? branchId,
+    Value<String>? cashierId,
+    Value<String?>? label,
+    Value<String?>? customerName,
+    Value<double>? subtotal,
+    Value<double>? taxAmount,
+    Value<double>? discountAmount,
+    Value<double>? totalAmount,
+    Value<int>? itemCount,
+    Value<String?>? discountType,
+    Value<double?>? discountValue,
+    Value<String>? status,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<int>? syncStatus,
+    Value<DateTime?>? lastSyncAttempt,
+    Value<String?>? syncError,
+    Value<int>? rowid,
+  }) {
+    return DraftSalesTableCompanion(
+      id: id ?? this.id,
+      businessId: businessId ?? this.businessId,
+      branchId: branchId ?? this.branchId,
+      cashierId: cashierId ?? this.cashierId,
+      label: label ?? this.label,
+      customerName: customerName ?? this.customerName,
+      subtotal: subtotal ?? this.subtotal,
+      taxAmount: taxAmount ?? this.taxAmount,
+      discountAmount: discountAmount ?? this.discountAmount,
+      totalAmount: totalAmount ?? this.totalAmount,
+      itemCount: itemCount ?? this.itemCount,
+      discountType: discountType ?? this.discountType,
+      discountValue: discountValue ?? this.discountValue,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      syncStatus: syncStatus ?? this.syncStatus,
+      lastSyncAttempt: lastSyncAttempt ?? this.lastSyncAttempt,
+      syncError: syncError ?? this.syncError,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
+    }
+    if (cashierId.present) {
+      map['cashier_id'] = Variable<String>(cashierId.value);
+    }
+    if (label.present) {
+      map['label'] = Variable<String>(label.value);
+    }
+    if (customerName.present) {
+      map['customer_name'] = Variable<String>(customerName.value);
+    }
+    if (subtotal.present) {
+      map['subtotal'] = Variable<double>(subtotal.value);
+    }
+    if (taxAmount.present) {
+      map['tax_amount'] = Variable<double>(taxAmount.value);
+    }
+    if (discountAmount.present) {
+      map['discount_amount'] = Variable<double>(discountAmount.value);
+    }
+    if (totalAmount.present) {
+      map['total_amount'] = Variable<double>(totalAmount.value);
+    }
+    if (itemCount.present) {
+      map['item_count'] = Variable<int>(itemCount.value);
+    }
+    if (discountType.present) {
+      map['discount_type'] = Variable<String>(discountType.value);
+    }
+    if (discountValue.present) {
+      map['discount_value'] = Variable<double>(discountValue.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<int>(syncStatus.value);
+    }
+    if (lastSyncAttempt.present) {
+      map['last_sync_attempt'] = Variable<DateTime>(lastSyncAttempt.value);
+    }
+    if (syncError.present) {
+      map['sync_error'] = Variable<String>(syncError.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DraftSalesTableCompanion(')
+          ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
+          ..write('branchId: $branchId, ')
+          ..write('cashierId: $cashierId, ')
+          ..write('label: $label, ')
+          ..write('customerName: $customerName, ')
+          ..write('subtotal: $subtotal, ')
+          ..write('taxAmount: $taxAmount, ')
+          ..write('discountAmount: $discountAmount, ')
+          ..write('totalAmount: $totalAmount, ')
+          ..write('itemCount: $itemCount, ')
+          ..write('discountType: $discountType, ')
+          ..write('discountValue: $discountValue, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncAttempt: $lastSyncAttempt, ')
+          ..write('syncError: $syncError, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DraftSaleItemsTableTable extends DraftSaleItemsTable
+    with TableInfo<$DraftSaleItemsTableTable, DraftSaleItemsTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DraftSaleItemsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _draftIdMeta = const VerificationMeta(
+    'draftId',
+  );
+  @override
+  late final GeneratedColumn<String> draftId = GeneratedColumn<String>(
+    'draft_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _variantIdMeta = const VerificationMeta(
+    'variantId',
+  );
+  @override
+  late final GeneratedColumn<String> variantId = GeneratedColumn<String>(
+    'variant_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _productNameMeta = const VerificationMeta(
+    'productName',
+  );
+  @override
+  late final GeneratedColumn<String> productName = GeneratedColumn<String>(
+    'product_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _variantNameMeta = const VerificationMeta(
+    'variantName',
+  );
+  @override
+  late final GeneratedColumn<String> variantName = GeneratedColumn<String>(
+    'variant_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _unitPriceMeta = const VerificationMeta(
+    'unitPrice',
+  );
+  @override
+  late final GeneratedColumn<double> unitPrice = GeneratedColumn<double>(
+    'unit_price',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _taxRateMeta = const VerificationMeta(
+    'taxRate',
+  );
+  @override
+  late final GeneratedColumn<double> taxRate = GeneratedColumn<double>(
+    'tax_rate',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _qtyMeta = const VerificationMeta('qty');
+  @override
+  late final GeneratedColumn<double> qty = GeneratedColumn<double>(
+    'qty',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lineTotalMeta = const VerificationMeta(
+    'lineTotal',
+  );
+  @override
+  late final GeneratedColumn<double> lineTotal = GeneratedColumn<double>(
+    'line_total',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lineTaxMeta = const VerificationMeta(
+    'lineTax',
+  );
+  @override
+  late final GeneratedColumn<double> lineTax = GeneratedColumn<double>(
+    'line_tax',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    draftId,
+    variantId,
+    productName,
+    variantName,
+    unitPrice,
+    taxRate,
+    qty,
+    lineTotal,
+    lineTax,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'draft_sale_items';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DraftSaleItemsTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('draft_id')) {
+      context.handle(
+        _draftIdMeta,
+        draftId.isAcceptableOrUnknown(data['draft_id']!, _draftIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_draftIdMeta);
+    }
+    if (data.containsKey('variant_id')) {
+      context.handle(
+        _variantIdMeta,
+        variantId.isAcceptableOrUnknown(data['variant_id']!, _variantIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_variantIdMeta);
+    }
+    if (data.containsKey('product_name')) {
+      context.handle(
+        _productNameMeta,
+        productName.isAcceptableOrUnknown(
+          data['product_name']!,
+          _productNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_productNameMeta);
+    }
+    if (data.containsKey('variant_name')) {
+      context.handle(
+        _variantNameMeta,
+        variantName.isAcceptableOrUnknown(
+          data['variant_name']!,
+          _variantNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_variantNameMeta);
+    }
+    if (data.containsKey('unit_price')) {
+      context.handle(
+        _unitPriceMeta,
+        unitPrice.isAcceptableOrUnknown(data['unit_price']!, _unitPriceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_unitPriceMeta);
+    }
+    if (data.containsKey('tax_rate')) {
+      context.handle(
+        _taxRateMeta,
+        taxRate.isAcceptableOrUnknown(data['tax_rate']!, _taxRateMeta),
+      );
+    }
+    if (data.containsKey('qty')) {
+      context.handle(
+        _qtyMeta,
+        qty.isAcceptableOrUnknown(data['qty']!, _qtyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_qtyMeta);
+    }
+    if (data.containsKey('line_total')) {
+      context.handle(
+        _lineTotalMeta,
+        lineTotal.isAcceptableOrUnknown(data['line_total']!, _lineTotalMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_lineTotalMeta);
+    }
+    if (data.containsKey('line_tax')) {
+      context.handle(
+        _lineTaxMeta,
+        lineTax.isAcceptableOrUnknown(data['line_tax']!, _lineTaxMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_lineTaxMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DraftSaleItemsTableData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DraftSaleItemsTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      draftId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}draft_id'],
+      )!,
+      variantId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}variant_id'],
+      )!,
+      productName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}product_name'],
+      )!,
+      variantName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}variant_name'],
+      )!,
+      unitPrice: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}unit_price'],
+      )!,
+      taxRate: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}tax_rate'],
+      ),
+      qty: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}qty'],
+      )!,
+      lineTotal: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}line_total'],
+      )!,
+      lineTax: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}line_tax'],
+      )!,
+    );
+  }
+
+  @override
+  $DraftSaleItemsTableTable createAlias(String alias) {
+    return $DraftSaleItemsTableTable(attachedDatabase, alias);
+  }
+}
+
+class DraftSaleItemsTableData extends DataClass
+    implements Insertable<DraftSaleItemsTableData> {
+  final String id;
+  final String draftId;
+  final String variantId;
+  final String productName;
+  final String variantName;
+  final double unitPrice;
+  final double? taxRate;
+  final double qty;
+  final double lineTotal;
+  final double lineTax;
+  const DraftSaleItemsTableData({
+    required this.id,
+    required this.draftId,
+    required this.variantId,
+    required this.productName,
+    required this.variantName,
+    required this.unitPrice,
+    this.taxRate,
+    required this.qty,
+    required this.lineTotal,
+    required this.lineTax,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['draft_id'] = Variable<String>(draftId);
+    map['variant_id'] = Variable<String>(variantId);
+    map['product_name'] = Variable<String>(productName);
+    map['variant_name'] = Variable<String>(variantName);
+    map['unit_price'] = Variable<double>(unitPrice);
+    if (!nullToAbsent || taxRate != null) {
+      map['tax_rate'] = Variable<double>(taxRate);
+    }
+    map['qty'] = Variable<double>(qty);
+    map['line_total'] = Variable<double>(lineTotal);
+    map['line_tax'] = Variable<double>(lineTax);
+    return map;
+  }
+
+  DraftSaleItemsTableCompanion toCompanion(bool nullToAbsent) {
+    return DraftSaleItemsTableCompanion(
+      id: Value(id),
+      draftId: Value(draftId),
+      variantId: Value(variantId),
+      productName: Value(productName),
+      variantName: Value(variantName),
+      unitPrice: Value(unitPrice),
+      taxRate: taxRate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(taxRate),
+      qty: Value(qty),
+      lineTotal: Value(lineTotal),
+      lineTax: Value(lineTax),
+    );
+  }
+
+  factory DraftSaleItemsTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DraftSaleItemsTableData(
+      id: serializer.fromJson<String>(json['id']),
+      draftId: serializer.fromJson<String>(json['draftId']),
+      variantId: serializer.fromJson<String>(json['variantId']),
+      productName: serializer.fromJson<String>(json['productName']),
+      variantName: serializer.fromJson<String>(json['variantName']),
+      unitPrice: serializer.fromJson<double>(json['unitPrice']),
+      taxRate: serializer.fromJson<double?>(json['taxRate']),
+      qty: serializer.fromJson<double>(json['qty']),
+      lineTotal: serializer.fromJson<double>(json['lineTotal']),
+      lineTax: serializer.fromJson<double>(json['lineTax']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'draftId': serializer.toJson<String>(draftId),
+      'variantId': serializer.toJson<String>(variantId),
+      'productName': serializer.toJson<String>(productName),
+      'variantName': serializer.toJson<String>(variantName),
+      'unitPrice': serializer.toJson<double>(unitPrice),
+      'taxRate': serializer.toJson<double?>(taxRate),
+      'qty': serializer.toJson<double>(qty),
+      'lineTotal': serializer.toJson<double>(lineTotal),
+      'lineTax': serializer.toJson<double>(lineTax),
+    };
+  }
+
+  DraftSaleItemsTableData copyWith({
+    String? id,
+    String? draftId,
+    String? variantId,
+    String? productName,
+    String? variantName,
+    double? unitPrice,
+    Value<double?> taxRate = const Value.absent(),
+    double? qty,
+    double? lineTotal,
+    double? lineTax,
+  }) => DraftSaleItemsTableData(
+    id: id ?? this.id,
+    draftId: draftId ?? this.draftId,
+    variantId: variantId ?? this.variantId,
+    productName: productName ?? this.productName,
+    variantName: variantName ?? this.variantName,
+    unitPrice: unitPrice ?? this.unitPrice,
+    taxRate: taxRate.present ? taxRate.value : this.taxRate,
+    qty: qty ?? this.qty,
+    lineTotal: lineTotal ?? this.lineTotal,
+    lineTax: lineTax ?? this.lineTax,
+  );
+  DraftSaleItemsTableData copyWithCompanion(DraftSaleItemsTableCompanion data) {
+    return DraftSaleItemsTableData(
+      id: data.id.present ? data.id.value : this.id,
+      draftId: data.draftId.present ? data.draftId.value : this.draftId,
+      variantId: data.variantId.present ? data.variantId.value : this.variantId,
+      productName: data.productName.present
+          ? data.productName.value
+          : this.productName,
+      variantName: data.variantName.present
+          ? data.variantName.value
+          : this.variantName,
+      unitPrice: data.unitPrice.present ? data.unitPrice.value : this.unitPrice,
+      taxRate: data.taxRate.present ? data.taxRate.value : this.taxRate,
+      qty: data.qty.present ? data.qty.value : this.qty,
+      lineTotal: data.lineTotal.present ? data.lineTotal.value : this.lineTotal,
+      lineTax: data.lineTax.present ? data.lineTax.value : this.lineTax,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DraftSaleItemsTableData(')
+          ..write('id: $id, ')
+          ..write('draftId: $draftId, ')
+          ..write('variantId: $variantId, ')
+          ..write('productName: $productName, ')
+          ..write('variantName: $variantName, ')
+          ..write('unitPrice: $unitPrice, ')
+          ..write('taxRate: $taxRate, ')
+          ..write('qty: $qty, ')
+          ..write('lineTotal: $lineTotal, ')
+          ..write('lineTax: $lineTax')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    draftId,
+    variantId,
+    productName,
+    variantName,
+    unitPrice,
+    taxRate,
+    qty,
+    lineTotal,
+    lineTax,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DraftSaleItemsTableData &&
+          other.id == this.id &&
+          other.draftId == this.draftId &&
+          other.variantId == this.variantId &&
+          other.productName == this.productName &&
+          other.variantName == this.variantName &&
+          other.unitPrice == this.unitPrice &&
+          other.taxRate == this.taxRate &&
+          other.qty == this.qty &&
+          other.lineTotal == this.lineTotal &&
+          other.lineTax == this.lineTax);
+}
+
+class DraftSaleItemsTableCompanion
+    extends UpdateCompanion<DraftSaleItemsTableData> {
+  final Value<String> id;
+  final Value<String> draftId;
+  final Value<String> variantId;
+  final Value<String> productName;
+  final Value<String> variantName;
+  final Value<double> unitPrice;
+  final Value<double?> taxRate;
+  final Value<double> qty;
+  final Value<double> lineTotal;
+  final Value<double> lineTax;
+  final Value<int> rowid;
+  const DraftSaleItemsTableCompanion({
+    this.id = const Value.absent(),
+    this.draftId = const Value.absent(),
+    this.variantId = const Value.absent(),
+    this.productName = const Value.absent(),
+    this.variantName = const Value.absent(),
+    this.unitPrice = const Value.absent(),
+    this.taxRate = const Value.absent(),
+    this.qty = const Value.absent(),
+    this.lineTotal = const Value.absent(),
+    this.lineTax = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DraftSaleItemsTableCompanion.insert({
+    required String id,
+    required String draftId,
+    required String variantId,
+    required String productName,
+    required String variantName,
+    required double unitPrice,
+    this.taxRate = const Value.absent(),
+    required double qty,
+    required double lineTotal,
+    required double lineTax,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       draftId = Value(draftId),
+       variantId = Value(variantId),
+       productName = Value(productName),
+       variantName = Value(variantName),
+       unitPrice = Value(unitPrice),
+       qty = Value(qty),
+       lineTotal = Value(lineTotal),
+       lineTax = Value(lineTax);
+  static Insertable<DraftSaleItemsTableData> custom({
+    Expression<String>? id,
+    Expression<String>? draftId,
+    Expression<String>? variantId,
+    Expression<String>? productName,
+    Expression<String>? variantName,
+    Expression<double>? unitPrice,
+    Expression<double>? taxRate,
+    Expression<double>? qty,
+    Expression<double>? lineTotal,
+    Expression<double>? lineTax,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (draftId != null) 'draft_id': draftId,
+      if (variantId != null) 'variant_id': variantId,
+      if (productName != null) 'product_name': productName,
+      if (variantName != null) 'variant_name': variantName,
+      if (unitPrice != null) 'unit_price': unitPrice,
+      if (taxRate != null) 'tax_rate': taxRate,
+      if (qty != null) 'qty': qty,
+      if (lineTotal != null) 'line_total': lineTotal,
+      if (lineTax != null) 'line_tax': lineTax,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DraftSaleItemsTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? draftId,
+    Value<String>? variantId,
+    Value<String>? productName,
+    Value<String>? variantName,
+    Value<double>? unitPrice,
+    Value<double?>? taxRate,
+    Value<double>? qty,
+    Value<double>? lineTotal,
+    Value<double>? lineTax,
+    Value<int>? rowid,
+  }) {
+    return DraftSaleItemsTableCompanion(
+      id: id ?? this.id,
+      draftId: draftId ?? this.draftId,
+      variantId: variantId ?? this.variantId,
+      productName: productName ?? this.productName,
+      variantName: variantName ?? this.variantName,
+      unitPrice: unitPrice ?? this.unitPrice,
+      taxRate: taxRate ?? this.taxRate,
+      qty: qty ?? this.qty,
+      lineTotal: lineTotal ?? this.lineTotal,
+      lineTax: lineTax ?? this.lineTax,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (draftId.present) {
+      map['draft_id'] = Variable<String>(draftId.value);
+    }
+    if (variantId.present) {
+      map['variant_id'] = Variable<String>(variantId.value);
+    }
+    if (productName.present) {
+      map['product_name'] = Variable<String>(productName.value);
+    }
+    if (variantName.present) {
+      map['variant_name'] = Variable<String>(variantName.value);
+    }
+    if (unitPrice.present) {
+      map['unit_price'] = Variable<double>(unitPrice.value);
+    }
+    if (taxRate.present) {
+      map['tax_rate'] = Variable<double>(taxRate.value);
+    }
+    if (qty.present) {
+      map['qty'] = Variable<double>(qty.value);
+    }
+    if (lineTotal.present) {
+      map['line_total'] = Variable<double>(lineTotal.value);
+    }
+    if (lineTax.present) {
+      map['line_tax'] = Variable<double>(lineTax.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DraftSaleItemsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('draftId: $draftId, ')
+          ..write('variantId: $variantId, ')
+          ..write('productName: $productName, ')
+          ..write('variantName: $variantName, ')
+          ..write('unitPrice: $unitPrice, ')
+          ..write('taxRate: $taxRate, ')
+          ..write('qty: $qty, ')
+          ..write('lineTotal: $lineTotal, ')
+          ..write('lineTax: $lineTax, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $InventoryLevelsTableTable extends InventoryLevelsTable
     with TableInfo<$InventoryLevelsTableTable, InventoryLevelsTableData> {
   @override
@@ -13776,6 +15529,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $TransactionsTableTable(this);
   late final $TransactionItemsTableTable transactionItemsTable =
       $TransactionItemsTableTable(this);
+  late final $DraftSalesTableTable draftSalesTable = $DraftSalesTableTable(
+    this,
+  );
+  late final $DraftSaleItemsTableTable draftSaleItemsTable =
+      $DraftSaleItemsTableTable(this);
   late final $InventoryLevelsTableTable inventoryLevelsTable =
       $InventoryLevelsTableTable(this);
   late final $StockLedgerTableTable stockLedgerTable = $StockLedgerTableTable(
@@ -13806,6 +15564,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final TransactionsDao transactionsDao = TransactionsDao(
     this as AppDatabase,
   );
+  late final DraftSalesDao draftSalesDao = DraftSalesDao(this as AppDatabase);
   late final InventoryLevelsDao inventoryLevelsDao = InventoryLevelsDao(
     this as AppDatabase,
   );
@@ -13837,6 +15596,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     productVariantsTable,
     transactionsTable,
     transactionItemsTable,
+    draftSalesTable,
+    draftSaleItemsTable,
     inventoryLevelsTable,
     stockLedgerTable,
     receiptSettingsTable,
@@ -17584,6 +19345,832 @@ typedef $$TransactionItemsTableTableProcessedTableManager =
       TransactionItemsTableData,
       PrefetchHooks Function()
     >;
+typedef $$DraftSalesTableTableCreateCompanionBuilder =
+    DraftSalesTableCompanion Function({
+      required String id,
+      Value<String?> businessId,
+      Value<String?> branchId,
+      required String cashierId,
+      Value<String?> label,
+      Value<String?> customerName,
+      required double subtotal,
+      required double taxAmount,
+      Value<double> discountAmount,
+      required double totalAmount,
+      required int itemCount,
+      Value<String?> discountType,
+      Value<double?> discountValue,
+      Value<String> status,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> syncStatus,
+      Value<DateTime?> lastSyncAttempt,
+      Value<String?> syncError,
+      Value<int> rowid,
+    });
+typedef $$DraftSalesTableTableUpdateCompanionBuilder =
+    DraftSalesTableCompanion Function({
+      Value<String> id,
+      Value<String?> businessId,
+      Value<String?> branchId,
+      Value<String> cashierId,
+      Value<String?> label,
+      Value<String?> customerName,
+      Value<double> subtotal,
+      Value<double> taxAmount,
+      Value<double> discountAmount,
+      Value<double> totalAmount,
+      Value<int> itemCount,
+      Value<String?> discountType,
+      Value<double?> discountValue,
+      Value<String> status,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> syncStatus,
+      Value<DateTime?> lastSyncAttempt,
+      Value<String?> syncError,
+      Value<int> rowid,
+    });
+
+class $$DraftSalesTableTableFilterComposer
+    extends Composer<_$AppDatabase, $DraftSalesTableTable> {
+  $$DraftSalesTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cashierId => $composableBuilder(
+    column: $table.cashierId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get customerName => $composableBuilder(
+    column: $table.customerName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get subtotal => $composableBuilder(
+    column: $table.subtotal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get taxAmount => $composableBuilder(
+    column: $table.taxAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get discountAmount => $composableBuilder(
+    column: $table.discountAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get totalAmount => $composableBuilder(
+    column: $table.totalAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get itemCount => $composableBuilder(
+    column: $table.itemCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get discountType => $composableBuilder(
+    column: $table.discountType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get discountValue => $composableBuilder(
+    column: $table.discountValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DraftSalesTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $DraftSalesTableTable> {
+  $$DraftSalesTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cashierId => $composableBuilder(
+    column: $table.cashierId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get customerName => $composableBuilder(
+    column: $table.customerName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get subtotal => $composableBuilder(
+    column: $table.subtotal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get taxAmount => $composableBuilder(
+    column: $table.taxAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get discountAmount => $composableBuilder(
+    column: $table.discountAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get totalAmount => $composableBuilder(
+    column: $table.totalAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get itemCount => $composableBuilder(
+    column: $table.itemCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get discountType => $composableBuilder(
+    column: $table.discountType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get discountValue => $composableBuilder(
+    column: $table.discountValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DraftSalesTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DraftSalesTableTable> {
+  $$DraftSalesTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
+
+  GeneratedColumn<String> get cashierId =>
+      $composableBuilder(column: $table.cashierId, builder: (column) => column);
+
+  GeneratedColumn<String> get label =>
+      $composableBuilder(column: $table.label, builder: (column) => column);
+
+  GeneratedColumn<String> get customerName => $composableBuilder(
+    column: $table.customerName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get subtotal =>
+      $composableBuilder(column: $table.subtotal, builder: (column) => column);
+
+  GeneratedColumn<double> get taxAmount =>
+      $composableBuilder(column: $table.taxAmount, builder: (column) => column);
+
+  GeneratedColumn<double> get discountAmount => $composableBuilder(
+    column: $table.discountAmount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get totalAmount => $composableBuilder(
+    column: $table.totalAmount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get itemCount =>
+      $composableBuilder(column: $table.itemCount, builder: (column) => column);
+
+  GeneratedColumn<String> get discountType => $composableBuilder(
+    column: $table.discountType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get discountValue => $composableBuilder(
+    column: $table.discountValue,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get syncError =>
+      $composableBuilder(column: $table.syncError, builder: (column) => column);
+}
+
+class $$DraftSalesTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DraftSalesTableTable,
+          DraftSalesTableData,
+          $$DraftSalesTableTableFilterComposer,
+          $$DraftSalesTableTableOrderingComposer,
+          $$DraftSalesTableTableAnnotationComposer,
+          $$DraftSalesTableTableCreateCompanionBuilder,
+          $$DraftSalesTableTableUpdateCompanionBuilder,
+          (
+            DraftSalesTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $DraftSalesTableTable,
+              DraftSalesTableData
+            >,
+          ),
+          DraftSalesTableData,
+          PrefetchHooks Function()
+        > {
+  $$DraftSalesTableTableTableManager(
+    _$AppDatabase db,
+    $DraftSalesTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DraftSalesTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DraftSalesTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DraftSalesTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String?> businessId = const Value.absent(),
+                Value<String?> branchId = const Value.absent(),
+                Value<String> cashierId = const Value.absent(),
+                Value<String?> label = const Value.absent(),
+                Value<String?> customerName = const Value.absent(),
+                Value<double> subtotal = const Value.absent(),
+                Value<double> taxAmount = const Value.absent(),
+                Value<double> discountAmount = const Value.absent(),
+                Value<double> totalAmount = const Value.absent(),
+                Value<int> itemCount = const Value.absent(),
+                Value<String?> discountType = const Value.absent(),
+                Value<double?> discountValue = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> syncStatus = const Value.absent(),
+                Value<DateTime?> lastSyncAttempt = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DraftSalesTableCompanion(
+                id: id,
+                businessId: businessId,
+                branchId: branchId,
+                cashierId: cashierId,
+                label: label,
+                customerName: customerName,
+                subtotal: subtotal,
+                taxAmount: taxAmount,
+                discountAmount: discountAmount,
+                totalAmount: totalAmount,
+                itemCount: itemCount,
+                discountType: discountType,
+                discountValue: discountValue,
+                status: status,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                syncStatus: syncStatus,
+                lastSyncAttempt: lastSyncAttempt,
+                syncError: syncError,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<String?> businessId = const Value.absent(),
+                Value<String?> branchId = const Value.absent(),
+                required String cashierId,
+                Value<String?> label = const Value.absent(),
+                Value<String?> customerName = const Value.absent(),
+                required double subtotal,
+                required double taxAmount,
+                Value<double> discountAmount = const Value.absent(),
+                required double totalAmount,
+                required int itemCount,
+                Value<String?> discountType = const Value.absent(),
+                Value<double?> discountValue = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> syncStatus = const Value.absent(),
+                Value<DateTime?> lastSyncAttempt = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DraftSalesTableCompanion.insert(
+                id: id,
+                businessId: businessId,
+                branchId: branchId,
+                cashierId: cashierId,
+                label: label,
+                customerName: customerName,
+                subtotal: subtotal,
+                taxAmount: taxAmount,
+                discountAmount: discountAmount,
+                totalAmount: totalAmount,
+                itemCount: itemCount,
+                discountType: discountType,
+                discountValue: discountValue,
+                status: status,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                syncStatus: syncStatus,
+                lastSyncAttempt: lastSyncAttempt,
+                syncError: syncError,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DraftSalesTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DraftSalesTableTable,
+      DraftSalesTableData,
+      $$DraftSalesTableTableFilterComposer,
+      $$DraftSalesTableTableOrderingComposer,
+      $$DraftSalesTableTableAnnotationComposer,
+      $$DraftSalesTableTableCreateCompanionBuilder,
+      $$DraftSalesTableTableUpdateCompanionBuilder,
+      (
+        DraftSalesTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $DraftSalesTableTable,
+          DraftSalesTableData
+        >,
+      ),
+      DraftSalesTableData,
+      PrefetchHooks Function()
+    >;
+typedef $$DraftSaleItemsTableTableCreateCompanionBuilder =
+    DraftSaleItemsTableCompanion Function({
+      required String id,
+      required String draftId,
+      required String variantId,
+      required String productName,
+      required String variantName,
+      required double unitPrice,
+      Value<double?> taxRate,
+      required double qty,
+      required double lineTotal,
+      required double lineTax,
+      Value<int> rowid,
+    });
+typedef $$DraftSaleItemsTableTableUpdateCompanionBuilder =
+    DraftSaleItemsTableCompanion Function({
+      Value<String> id,
+      Value<String> draftId,
+      Value<String> variantId,
+      Value<String> productName,
+      Value<String> variantName,
+      Value<double> unitPrice,
+      Value<double?> taxRate,
+      Value<double> qty,
+      Value<double> lineTotal,
+      Value<double> lineTax,
+      Value<int> rowid,
+    });
+
+class $$DraftSaleItemsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $DraftSaleItemsTableTable> {
+  $$DraftSaleItemsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get draftId => $composableBuilder(
+    column: $table.draftId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get variantId => $composableBuilder(
+    column: $table.variantId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get productName => $composableBuilder(
+    column: $table.productName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get variantName => $composableBuilder(
+    column: $table.variantName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get unitPrice => $composableBuilder(
+    column: $table.unitPrice,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get taxRate => $composableBuilder(
+    column: $table.taxRate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get qty => $composableBuilder(
+    column: $table.qty,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get lineTotal => $composableBuilder(
+    column: $table.lineTotal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get lineTax => $composableBuilder(
+    column: $table.lineTax,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DraftSaleItemsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $DraftSaleItemsTableTable> {
+  $$DraftSaleItemsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get draftId => $composableBuilder(
+    column: $table.draftId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get variantId => $composableBuilder(
+    column: $table.variantId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get productName => $composableBuilder(
+    column: $table.productName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get variantName => $composableBuilder(
+    column: $table.variantName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get unitPrice => $composableBuilder(
+    column: $table.unitPrice,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get taxRate => $composableBuilder(
+    column: $table.taxRate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get qty => $composableBuilder(
+    column: $table.qty,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get lineTotal => $composableBuilder(
+    column: $table.lineTotal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get lineTax => $composableBuilder(
+    column: $table.lineTax,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DraftSaleItemsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DraftSaleItemsTableTable> {
+  $$DraftSaleItemsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get draftId =>
+      $composableBuilder(column: $table.draftId, builder: (column) => column);
+
+  GeneratedColumn<String> get variantId =>
+      $composableBuilder(column: $table.variantId, builder: (column) => column);
+
+  GeneratedColumn<String> get productName => $composableBuilder(
+    column: $table.productName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get variantName => $composableBuilder(
+    column: $table.variantName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get unitPrice =>
+      $composableBuilder(column: $table.unitPrice, builder: (column) => column);
+
+  GeneratedColumn<double> get taxRate =>
+      $composableBuilder(column: $table.taxRate, builder: (column) => column);
+
+  GeneratedColumn<double> get qty =>
+      $composableBuilder(column: $table.qty, builder: (column) => column);
+
+  GeneratedColumn<double> get lineTotal =>
+      $composableBuilder(column: $table.lineTotal, builder: (column) => column);
+
+  GeneratedColumn<double> get lineTax =>
+      $composableBuilder(column: $table.lineTax, builder: (column) => column);
+}
+
+class $$DraftSaleItemsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DraftSaleItemsTableTable,
+          DraftSaleItemsTableData,
+          $$DraftSaleItemsTableTableFilterComposer,
+          $$DraftSaleItemsTableTableOrderingComposer,
+          $$DraftSaleItemsTableTableAnnotationComposer,
+          $$DraftSaleItemsTableTableCreateCompanionBuilder,
+          $$DraftSaleItemsTableTableUpdateCompanionBuilder,
+          (
+            DraftSaleItemsTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $DraftSaleItemsTableTable,
+              DraftSaleItemsTableData
+            >,
+          ),
+          DraftSaleItemsTableData,
+          PrefetchHooks Function()
+        > {
+  $$DraftSaleItemsTableTableTableManager(
+    _$AppDatabase db,
+    $DraftSaleItemsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DraftSaleItemsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DraftSaleItemsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$DraftSaleItemsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> draftId = const Value.absent(),
+                Value<String> variantId = const Value.absent(),
+                Value<String> productName = const Value.absent(),
+                Value<String> variantName = const Value.absent(),
+                Value<double> unitPrice = const Value.absent(),
+                Value<double?> taxRate = const Value.absent(),
+                Value<double> qty = const Value.absent(),
+                Value<double> lineTotal = const Value.absent(),
+                Value<double> lineTax = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DraftSaleItemsTableCompanion(
+                id: id,
+                draftId: draftId,
+                variantId: variantId,
+                productName: productName,
+                variantName: variantName,
+                unitPrice: unitPrice,
+                taxRate: taxRate,
+                qty: qty,
+                lineTotal: lineTotal,
+                lineTax: lineTax,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String draftId,
+                required String variantId,
+                required String productName,
+                required String variantName,
+                required double unitPrice,
+                Value<double?> taxRate = const Value.absent(),
+                required double qty,
+                required double lineTotal,
+                required double lineTax,
+                Value<int> rowid = const Value.absent(),
+              }) => DraftSaleItemsTableCompanion.insert(
+                id: id,
+                draftId: draftId,
+                variantId: variantId,
+                productName: productName,
+                variantName: variantName,
+                unitPrice: unitPrice,
+                taxRate: taxRate,
+                qty: qty,
+                lineTotal: lineTotal,
+                lineTax: lineTax,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DraftSaleItemsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DraftSaleItemsTableTable,
+      DraftSaleItemsTableData,
+      $$DraftSaleItemsTableTableFilterComposer,
+      $$DraftSaleItemsTableTableOrderingComposer,
+      $$DraftSaleItemsTableTableAnnotationComposer,
+      $$DraftSaleItemsTableTableCreateCompanionBuilder,
+      $$DraftSaleItemsTableTableUpdateCompanionBuilder,
+      (
+        DraftSaleItemsTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $DraftSaleItemsTableTable,
+          DraftSaleItemsTableData
+        >,
+      ),
+      DraftSaleItemsTableData,
+      PrefetchHooks Function()
+    >;
 typedef $$InventoryLevelsTableTableCreateCompanionBuilder =
     InventoryLevelsTableCompanion Function({
       required String id,
@@ -20410,6 +22997,10 @@ class $AppDatabaseManager {
       $$TransactionsTableTableTableManager(_db, _db.transactionsTable);
   $$TransactionItemsTableTableTableManager get transactionItemsTable =>
       $$TransactionItemsTableTableTableManager(_db, _db.transactionItemsTable);
+  $$DraftSalesTableTableTableManager get draftSalesTable =>
+      $$DraftSalesTableTableTableManager(_db, _db.draftSalesTable);
+  $$DraftSaleItemsTableTableTableManager get draftSaleItemsTable =>
+      $$DraftSaleItemsTableTableTableManager(_db, _db.draftSaleItemsTable);
   $$InventoryLevelsTableTableTableManager get inventoryLevelsTable =>
       $$InventoryLevelsTableTableTableManager(_db, _db.inventoryLevelsTable);
   $$StockLedgerTableTableTableManager get stockLedgerTable =>

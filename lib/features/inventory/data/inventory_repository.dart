@@ -235,6 +235,39 @@ class InventoryRepository implements IInventoryRepository {
     });
   }
 
+  @override
+  Future<List<({String variantId, double available, double requested})>>
+  checkStockAvailability({
+    required List<({String variantId, double qty})> items,
+    required String? branchId,
+  }) async {
+    final shortages =
+        <({String variantId, double available, double requested})>[];
+    for (final item in items) {
+      if (item.qty <= 0) continue;
+      final variant = await _variantsDao.getById(item.variantId);
+      if (variant == null || !variant.trackStock) continue;
+
+      final double available;
+      if (branchId != null) {
+        final level = await _levelsDao.getLevel(item.variantId, branchId);
+        available =
+            level?.quantityDecimal ?? (level?.quantity.toDouble() ?? 0.0);
+      } else {
+        available = variant.stockDecimal ?? variant.stock.toDouble();
+      }
+
+      if (available < item.qty) {
+        shortages.add((
+          variantId: item.variantId,
+          available: available,
+          requested: item.qty,
+        ));
+      }
+    }
+    return shortages;
+  }
+
   /// Called at checkout to record each sold item in the ledger, deduct it
   /// from [inventory_levels], and decrement [product_variants.stock].
   ///
