@@ -47,11 +47,9 @@ class BarcodeToggleFieldState extends State<BarcodeToggleField> {
                 style: getOutfitStyle(
                     color: AppColors.textMuted, fontSize: 11)),
             const Spacer(),
-            Switch.adaptive(
+            AppSwitch(
               value: _enabled,
               onChanged: (v) => setState(() => _enabled = v),
-              activeThumbColor: AppColors.brand,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
           ],
         ),

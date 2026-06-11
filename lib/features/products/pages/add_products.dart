@@ -1350,6 +1350,32 @@ class _AddProductsViewState extends State<_AddProductsView> {
     return AppSectionCard(
       title: 'Variants',
       icon: Icons.tune_rounded,
+      trailing: GestureDetector(
+        onTap: () => cubit.setTrackInventory(!state.trackInventory),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Track stock',
+              style: getOutfitStyle(
+                color: state.trackInventory
+                    ? AppColors.brand
+                    : AppColors.textMuted,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Checkbox(
+              value: state.trackInventory,
+              onChanged: (v) => cubit.setTrackInventory(v ?? false),
+              activeColor: AppColors.brand,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+              side: BorderSide(color: AppColors.borderSoft, width: 1.5),
+            ),
+          ],
+        ),
+      ),
       children: [
         if (widget.initialBarcode?.isNotEmpty == true) ...[
           _buildInfoBanner(
@@ -1362,21 +1388,6 @@ class _AddProductsViewState extends State<_AddProductsView> {
           ),
           const SizedBox(height: 12),
         ],
-        _buildInfoBanner(
-          'Give each option a name and price. Optionally add a barcode.',
-          icon: Icons.lightbulb_outline_rounded,
-          color: AppColors.textSecondary,
-          background: AppColors.surfaceAlt,
-        ),
-        const SizedBox(height: 12),
-        SwitchRow(
-          icon: Icons.inventory_2_outlined,
-          label: 'Track stock',
-          subtitle: 'Adds a stock field to every option below',
-          value: state.trackInventory,
-          onChanged: cubit.setTrackInventory,
-        ),
-        const SizedBox(height: 12),
         ..._variants.asMap().entries.map((entry) {
           final i = entry.key;
           final v = entry.value;
