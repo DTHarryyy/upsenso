@@ -292,6 +292,7 @@ class AppRouter {
             customerName: args.customerName,
             dateTime: args.dateTime,
             businessId: args.businessId,
+            branchName: args.branchName,
           );
         },
       ),
@@ -448,6 +449,7 @@ class ReceiptPreviewArgs {
   final String customerName;
   final DateTime dateTime;
   final String businessId;
+  final String? branchName;
 
   const ReceiptPreviewArgs({
     required this.transactionId,
@@ -463,5 +465,6 @@ class ReceiptPreviewArgs {
     required this.customerName,
     required this.dateTime,
     required this.businessId,
+    this.branchName,
   });
 }
