@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:io';
 import 'dart:ui' show ImageFilter;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -6,6 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:printing/printing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pos/core/const/app_colors.dart';
@@ -1108,7 +1111,7 @@ class _PrinterSelectorState extends State<_PrinterSelector> {
     await showDialog<void>(
       context: context,
       barrierColor: Colors.black.withAlpha(100),
-      builder: (_) => const _PrinterDialog(),
+      builder: (_) => const PrinterSetupDialog(),
     );
     await _loadSaved();
   }
@@ -1129,8 +1132,8 @@ class _PrinterSelectorState extends State<_PrinterSelector> {
   }
 
   IconData _iconForUrl(String url) {
+    if (url.startsWith('bt://') || url.contains('bluetooth')) return Icons.bluetooth_rounded;
     if (url.contains('usb')) return Icons.usb_rounded;
-    if (url.contains('bluetooth')) return Icons.bluetooth_rounded;
     return Icons.wifi_rounded;
   }
 
@@ -1252,9 +1255,11 @@ class _PrinterSelectorState extends State<_PrinterSelector> {
                     ),
                   ),
                   Text(
-                    _printerUrl.startsWith('custom://')
-                        ? _printerUrl.replaceFirst('custom://', '')
-                        : 'System printer',
+                    _printerUrl.startsWith('bt://')
+                        ? 'BT · ${_printerUrl.replaceFirst('bt://', '')}'
+                        : _printerUrl.startsWith('custom://')
+                            ? _printerUrl.replaceFirst('custom://', '')
+                            : 'System printer',
                     style: getOutfitStyle(
                       fontSize: 11.5,
                       color: AppColors.textMuted,
@@ -1309,20 +1314,22 @@ class _PrinterSelectorState extends State<_PrinterSelector> {
   }
 }
 
-// ── Printer setup dialog (bottom sheet) ──────────────────────────────────────
+// ── Printer setup dialog ──────────────────────────────────────────────────────
+// Public so it can be shown from any page (e.g. receipt preview "no printer" guard).
 
-class _PrinterDialog extends StatefulWidget {
-  const _PrinterDialog();
+class PrinterSetupDialog extends StatefulWidget {
+  const PrinterSetupDialog({super.key});
 
   @override
-  State<_PrinterDialog> createState() => _PrinterDialogState();
+  State<PrinterSetupDialog> createState() => _PrinterSetupDialogState();
 }
 
-class _PrinterDialogState extends State<_PrinterDialog> {
+class _PrinterSetupDialogState extends State<PrinterSetupDialog> {
   int _tabIndex = 0;
   bool _scanning = false;
   bool _scanDone = false;
   List<Printer> _scanResults = [];
+  List<BluetoothInfo> _btResults = [];
   List<CustomPrinterEntry> _customPrinters = [];
   String _activePrinterUrl = '';
 
@@ -1345,26 +1352,43 @@ class _PrinterDialogState extends State<_PrinterDialog> {
   }
 
   Future<void> _startScan() async {
-    setState(() {
-      _scanning = true;
-      _scanDone = false;
-      _scanResults = [];
-    });
+    if (mounted) {
+      setState(() {
+        _scanning = true;
+        _scanDone = false;
+        _scanResults = [];
+        _btResults = [];
+      });
+    }
+
+    // System / OS printers — fast, fires in background
+    Printing.listPrinters().then((printers) {
+      if (mounted) setState(() => _scanResults = printers);
+    }).catchError((_) {});
+
+    // Request Bluetooth permissions
     try {
-      final printers = await Printing.listPrinters();
-      if (mounted) {
-        setState(() => _scanResults = printers);
+      if (!kIsWeb && Platform.isAndroid) {
+        await [
+          Permission.bluetoothConnect,
+          Permission.bluetoothScan,
+        ].request();
+      } else if (!kIsWeb && Platform.isIOS) {
+        await Permission.bluetooth.request();
       }
-    } catch (_) {
-      // scan failure is non-fatal — show empty state
-    } finally {
-      if (mounted) {
-        setState(() {
-          _scanning = false;
-          _scanDone = true;
-        });
+    } catch (_) {}
+
+    // List paired BT devices (only paired devices are visible without active scan)
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+      try {
+        final paired = await PrintBluetoothThermal.pairedBluetooths;
+        if (mounted) setState(() => _btResults = List.from(paired));
+      } catch (e, st) {
+        debugPrint('[PrinterScan] BT error: $e\n$st');
       }
     }
+
+    if (mounted) setState(() { _scanning = false; _scanDone = true; });
   }
 
   // ── Connect actions ──────────────────────────────────────────────────
@@ -1381,6 +1405,24 @@ class _PrinterDialogState extends State<_PrinterDialog> {
       context,
       isSwitch ? 'Switched to ${printer.name}' : 'Connected',
       subtitle: isSwitch ? null : printer.name,
+      variant: isSwitch ? AppToastVariant.info : AppToastVariant.success,
+    );
+    Navigator.of(context).pop();
+  }
+
+  Future<void> _selectBluetooth(BluetoothInfo bt) async {
+    final displayName = bt.name.isNotEmpty ? bt.name : 'Bluetooth Printer';
+    final previousName = await ReceiptPrinterService.loadPrinterName();
+    await ReceiptPrinterService.savePrinter(
+      url: 'bt://${bt.macAdress}',
+      name: displayName,
+    );
+    if (!mounted) return;
+    final isSwitch = previousName.isNotEmpty && previousName != displayName;
+    AppToast.show(
+      context,
+      isSwitch ? 'Switched to $displayName' : 'Connected',
+      subtitle: isSwitch ? null : displayName,
       variant: isSwitch ? AppToastVariant.info : AppToastVariant.success,
     );
     Navigator.of(context).pop();
@@ -1586,9 +1628,11 @@ class _PrinterDialogState extends State<_PrinterDialog> {
                         scanning: _scanning,
                         scanDone: _scanDone,
                         results: _scanResults,
+                        btResults: _btResults,
                         customPrinters: _customPrinters,
                         activePrinterUrl: _activePrinterUrl,
                         onSelectScanned: _selectScanned,
+                        onSelectBluetooth: _selectBluetooth,
                         onSelectCustom: _selectCustom,
                         onDeleteCustom: _deleteCustom,
                         onRetry: _startScan,
@@ -1652,9 +1696,11 @@ class _PrinterSearchTab extends StatelessWidget {
   final bool scanning;
   final bool scanDone;
   final List<Printer> results;
+  final List<BluetoothInfo> btResults;
   final List<CustomPrinterEntry> customPrinters;
   final String activePrinterUrl;
   final Future<void> Function(Printer) onSelectScanned;
+  final Future<void> Function(BluetoothInfo) onSelectBluetooth;
   final Future<void> Function(CustomPrinterEntry) onSelectCustom;
   final Future<void> Function(CustomPrinterEntry) onDeleteCustom;
   final VoidCallback onRetry;
@@ -1664,17 +1710,19 @@ class _PrinterSearchTab extends StatelessWidget {
     required this.scanning,
     required this.scanDone,
     required this.results,
+    required this.btResults,
     required this.customPrinters,
     required this.activePrinterUrl,
     required this.onSelectScanned,
+    required this.onSelectBluetooth,
     required this.onSelectCustom,
     required this.onDeleteCustom,
     required this.onRetry,
   });
 
   static IconData _iconForUrl(String url) {
+    if (url.startsWith('bt://') || url.contains('bluetooth')) return Icons.bluetooth_rounded;
     if (url.contains('usb')) return Icons.usb_rounded;
-    if (url.contains('bluetooth')) return Icons.bluetooth_rounded;
     return Icons.wifi_rounded;
   }
 
@@ -1707,7 +1755,8 @@ class _PrinterSearchTab extends StatelessWidget {
       );
     }
 
-    final hasContent = results.isNotEmpty || customPrinters.isNotEmpty;
+    final hasContent =
+        results.isNotEmpty || btResults.isNotEmpty || customPrinters.isNotEmpty;
 
     if (scanDone && !hasContent) {
       return Padding(
@@ -1731,7 +1780,7 @@ class _PrinterSearchTab extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Make sure your printer is on and\nconnected to the same network.',
+              'Make sure your printer is on.\nFor Bluetooth, pair it in system settings first.',
               textAlign: TextAlign.center,
               style: getOutfitStyle(fontSize: 12, color: AppColors.textMuted),
             ),
@@ -1779,9 +1828,20 @@ class _PrinterSearchTab extends StatelessWidget {
             ),
           ),
         ],
-        if (customPrinters.isNotEmpty && results.isNotEmpty)
-          const SizedBox(height: 8),
+        if (btResults.isNotEmpty) ...[
+          if (customPrinters.isNotEmpty) const SizedBox(height: 8),
+          _SectionLabel('Bluetooth Printers'),
+          ...btResults.map(
+            (bt) => _BtPrinterTile(
+              bt: bt,
+              isActive: activePrinterUrl == 'bt://${bt.macAdress}',
+              onSelect: () => onSelectBluetooth(bt),
+            ),
+          ),
+        ],
         if (results.isNotEmpty) ...[
+          if (customPrinters.isNotEmpty || btResults.isNotEmpty)
+            const SizedBox(height: 8),
           _SectionLabel('Found on Network'),
           ...results.map(
             (p) => _ScannedPrinterTile(
@@ -1793,6 +1853,101 @@ class _PrinterSearchTab extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+// ── Bluetooth printer tile ────────────────────────────────────────────────────
+
+class _BtPrinterTile extends StatelessWidget {
+  final BluetoothInfo bt;
+  final bool isActive;
+  final VoidCallback onSelect;
+
+  const _BtPrinterTile({
+    required this.bt,
+    required this.isActive,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final name = bt.name.isNotEmpty ? bt.name : 'Bluetooth Printer';
+    return GestureDetector(
+      onTap: onSelect,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.brandSoft : AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isActive
+                ? AppColors.brand.withAlpha(80)
+                : AppColors.borderSoft,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: isActive
+                    ? AppColors.brand.withAlpha(25)
+                    : AppColors.surfaceAlt,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.bluetooth_rounded,
+                size: 16,
+                color: isActive ? AppColors.brand : AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: getOutfitStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      color: isActive ? AppColors.brand : AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.brand.withAlpha(30),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'Bluetooth · ${bt.macAdress}',
+                      style: getOutfitStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.brand,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isActive)
+              const Icon(
+                Icons.check_circle_rounded,
+                size: 18,
+                color: AppColors.success,
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1995,11 +2150,11 @@ class _PrinterTypeBadge extends StatelessWidget {
   const _PrinterTypeBadge(this.url);
 
   ({String label, Color color}) get _meta {
+    if (url.startsWith('bt://') || url.contains('bluetooth')) {
+      return (label: 'Bluetooth', color: AppColors.brand);
+    }
     if (url.contains('usb')) {
       return (label: 'USB', color: AppColors.textSecondary);
-    }
-    if (url.contains('bluetooth')) {
-      return (label: 'Bluetooth', color: AppColors.brand);
     }
     if (url.startsWith('custom://')) {
       return (label: 'Wi-Fi', color: AppColors.info);

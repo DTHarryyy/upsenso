@@ -8,11 +8,11 @@ import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/core/ui/status/status_snack.dart';
 import 'package:pos/core/ui/status/status_type.dart';
-import 'package:pos/core/widgets/app_toast.dart';
 import 'package:pos/features/pos/data/models/cart_model.dart';
 import 'package:pos/features/settings/data/receipt_settings_repository.dart';
 import 'package:pos/features/settings/domain/receipt_settings.dart';
 import 'package:pos/features/settings/presentation/widgets/receipt_preview.dart';
+import 'package:pos/features/settings/presentation/widgets/receipt_settings_section.dart';
 import 'package:pos/features/settings/services/receipt_printer_service.dart';
 
 class ReceiptPreviewPage extends StatefulWidget {
@@ -29,6 +29,7 @@ class ReceiptPreviewPage extends StatefulWidget {
   final String customerName;
   final DateTime dateTime;
   final String businessId;
+  final String? branchName;
 
   const ReceiptPreviewPage({
     super.key,
@@ -45,6 +46,7 @@ class ReceiptPreviewPage extends StatefulWidget {
     required this.customerName,
     required this.dateTime,
     required this.businessId,
+    this.branchName,
   });
 
   @override
@@ -79,7 +81,12 @@ class _ReceiptPreviewPageState extends State<ReceiptPreviewPage>
 
   Future<void> _loadSettings() async {
     try {
-      final s = await sl<ReceiptSettingsRepository>().get(widget.businessId);
+      var s = await sl<ReceiptSettingsRepository>().get(widget.businessId);
+      // Override storeName with the actual sale branch so the receipt
+      // always shows where the sale happened, not the static setting.
+      if (s != null && widget.branchName != null && widget.branchName!.isNotEmpty) {
+        s = s.copyWith(storeName: widget.branchName);
+      }
       if (mounted) {
         setState(() {
           _settings = s;
@@ -105,22 +112,18 @@ class _ReceiptPreviewPageState extends State<ReceiptPreviewPage>
     }
 
     if (action == _ReceiptAction.print && s.thermalPrinterEnabled) {
-      final printerUrl = await ReceiptPrinterService.loadPrinterUrl();
+      var printerUrl = await ReceiptPrinterService.loadPrinterUrl();
       if (printerUrl.isEmpty && mounted) {
-        AppToast.show(
-          context,
-          'No printer connected',
-          subtitle: 'Thermal printing is on but no printer is set up.',
-          variant: AppToastVariant.warning,
-          duration: const Duration(seconds: 5),
-          actions: [
-            AppToastAction(
-              label: 'Set Up Printer',
-              onTap: () => context.push(AppRoutes.receiptSettings),
-            ),
-          ],
+        // Show the printer setup dialog in-place — no navigation needed.
+        // After the user connects a printer and closes the dialog, fall through
+        // and print immediately if one was saved.
+        await showDialog<void>(
+          context: context,
+          barrierColor: Colors.black.withAlpha(100),
+          builder: (_) => const PrinterSetupDialog(),
         );
-        return;
+        printerUrl = await ReceiptPrinterService.loadPrinterUrl();
+        if (printerUrl.isEmpty) return; // user closed without connecting
       }
     }
 

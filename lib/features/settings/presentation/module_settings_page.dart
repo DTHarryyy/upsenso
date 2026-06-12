@@ -59,9 +59,9 @@ const _kModules = <_ModuleInfo>[
     icon: IconlyLight.chart,
   ),
   _ModuleInfo(
-    code: 'suppliers',
-    label: 'Supplier Directory',
-    description: 'Supplier contacts and purchase records',
+    code: 'procurement',
+    label: 'Procurement',
+    description: 'Suppliers, purchase orders and goods receiving',
     icon: IconlyLight.work,
   ),
   _ModuleInfo(

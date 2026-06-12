@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:printing/printing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pos/features/pos/data/models/cart_model.dart';
@@ -167,6 +168,13 @@ class ReceiptPrinterService {
     if (settings.thermalPrinterEnabled) {
       final printerUrl = await loadPrinterUrl();
       if (printerUrl.isNotEmpty) {
+        // Bluetooth ESC/POS path
+        if (printerUrl.startsWith('bt://')) {
+          final mac = printerUrl.replaceFirst('bt://', '');
+          await _printViaBluetooth(mac: mac, pdfBytes: bytes, settings: settings);
+          return;
+        }
+        // System printer path
         final printers = await Printing.listPrinters();
         final Printer? printer = printers
             .where((p) => p.url == printerUrl)
@@ -200,6 +208,120 @@ class ReceiptPrinterService {
     }
   }
 
+  // ── Bluetooth ESC/POS printing ────────────────────────────────────────────
+
+  Future<void> _printViaBluetooth({
+    required String mac,
+    required Uint8List pdfBytes,
+    required ReceiptSettings settings,
+  }) async {
+    if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) return;
+
+    final connected = await PrintBluetoothThermal.connect(macPrinterAddress: mac);
+    if (!connected) {
+      throw Exception(
+        '[ReceiptPrinterService] Could not connect to BT printer at $mac',
+      );
+    }
+    // Standard printable dot-widths for 203-DPI thermal heads.
+    // PDF rasters at ~464/638px wide; sending that raw shifts and blurs the
+    // image because the print head is narrower — must scale to exact dot count.
+    final targetWidth = settings.paperSize == '58mm' ? 384 : 576;
+
+    try {
+      // Use fewer feed lines before the cut on the first copy so the gap
+      // between original and duplicate isn't too wide.
+      final firstFeed = settings.printDuplicateCopy ? 2 : 6;
+      await for (final raster in Printing.raster(pdfBytes, dpi: 203)) {
+        final escPos = _rasterToEscPos(raster, targetWidth: targetWidth, feedLines: firstFeed);
+        final ok = await PrintBluetoothThermal.writeBytes(escPos);
+        if (!ok) debugPrint('[ReceiptPrinterService] BT write failed');
+      }
+      if (settings.printDuplicateCopy) {
+        await for (final raster in Printing.raster(pdfBytes, dpi: 203)) {
+          await PrintBluetoothThermal.writeBytes(
+            _rasterToEscPos(raster, targetWidth: targetWidth),
+          );
+        }
+      }
+    } finally {
+      await PrintBluetoothThermal.disconnect;
+    }
+  }
+
+  // Converts a PDF raster page to ESC/POS GS v 0 raster-image bytes.
+  // Scales to targetWidth dots so the image matches the print head exactly —
+  // sending a wider image causes the printer to clip/compress, causing blur.
+  List<int> _rasterToEscPos(PdfRaster raster, {required int targetWidth, int feedLines = 6}) {
+    final result = <int>[];
+    result.addAll([0x1B, 0x40]);       // ESC @ — initialise printer
+    result.addAll([0x1B, 0x33, 0x00]); // ESC 3 0 — zero line spacing
+
+    final srcW = raster.width;
+    final srcH = raster.height;
+    final dstW = targetWidth;
+    final dstH = (srcH * dstW / srcW).round();
+    final bytesPerRow = (dstW + 7) ~/ 8;
+
+    // GS v 0 — raster bit image, normal density
+    result.addAll([
+      0x1D, 0x76, 0x30, 0x00,
+      bytesPerRow & 0xFF, (bytesPerRow >> 8) & 0xFF,
+      dstH & 0xFF, (dstH >> 8) & 0xFF,
+    ]);
+
+    final src = raster.pixels; // RGBA, 4 bytes per pixel
+
+    for (var y = 0; y < dstH; y++) {
+      for (var bx = 0; bx < bytesPerRow; bx++) {
+        var byte = 0;
+        for (var bit = 0; bit < 8; bit++) {
+          final x = bx * 8 + bit;
+          if (x < dstW) {
+            final lum = _sampleLum(src, srcW, srcH, x, y, dstW, dstH);
+            if (lum < 128) byte |= (0x80 >> bit);
+          }
+        }
+        result.add(byte);
+      }
+    }
+
+    result.addAll(List.filled(feedLines, 0x0A)); // feed N lines before cut
+    result.addAll([0x1D, 0x56, 0x41, 0x05]);   // GS V A 5 — partial cut + feed
+    return result;
+  }
+
+  // Bilinear-sampled luminance, alpha-composited onto white.
+  // Bilinear interpolation avoids the jagged edges that nearest-neighbour
+  // produces when downscaling ~464→384 or ~638→576 pixels.
+  double _sampleLum(
+    List<int> src, int srcW, int srcH,
+    int dstX, int dstY, int dstW, int dstH,
+  ) {
+    final sx = dstX * (srcW - 1) / (dstW - 1);
+    final sy = dstY * (srcH - 1) / (dstH - 1);
+    final x0 = sx.floor().clamp(0, srcW - 1);
+    final x1 = sx.ceil().clamp(0, srcW - 1);
+    final y0 = sy.floor().clamp(0, srcH - 1);
+    final y1 = sy.ceil().clamp(0, srcH - 1);
+    final fx = sx - x0;
+    final fy = sy - y0;
+
+    double pixLum(int px, int py) {
+      final i = (py * srcW + px) * 4;
+      final a = src[i + 3] / 255.0;
+      final r = src[i] * a + 255.0 * (1.0 - a);
+      final g = src[i + 1] * a + 255.0 * (1.0 - a);
+      final b = src[i + 2] * a + 255.0 * (1.0 - a);
+      return 0.299 * r + 0.587 * g + 0.114 * b;
+    }
+
+    return pixLum(x0, y0) * (1 - fx) * (1 - fy)
+         + pixLum(x1, y0) * fx * (1 - fy)
+         + pixLum(x0, y1) * (1 - fx) * fy
+         + pixLum(x1, y1) * fx * fy;
+  }
+
   // ── PDF builder ───────────────────────────────────────────────────────────
 
   Future<Uint8List> _buildPdf({
@@ -228,12 +350,18 @@ class ReceiptPrinterService {
         ? PdfPageFormat(
             58 * PdfPageFormat.mm,
             double.infinity,
-            marginAll: 3 * PdfPageFormat.mm,
+            marginLeft: 1.5 * PdfPageFormat.mm,
+            marginRight: 1.5 * PdfPageFormat.mm,
+            marginTop: 3 * PdfPageFormat.mm,
+            marginBottom: 3 * PdfPageFormat.mm,
           )
         : PdfPageFormat(
             80 * PdfPageFormat.mm,
             double.infinity,
-            marginAll: 4 * PdfPageFormat.mm,
+            marginLeft: 1.5 * PdfPageFormat.mm,
+            marginRight: 1.5 * PdfPageFormat.mm,
+            marginTop: 4 * PdfPageFormat.mm,
+            marginBottom: 4 * PdfPageFormat.mm,
           );
 
     final baseFs = switch (settings.fontSize) {
@@ -272,7 +400,6 @@ class ReceiptPrinterService {
                 baseFs - 0.5,
                 fonts,
                 align: align,
-                color: PdfColors.grey600,
               ),
               pw.SizedBox(height: 3),
             ],
@@ -294,7 +421,6 @@ class ReceiptPrinterService {
                 baseFs - 0.5,
                 fonts,
                 align: align,
-                color: PdfColors.grey600,
               ),
             if (settings.contactNumber.isNotEmpty)
               _text(
@@ -302,7 +428,6 @@ class ReceiptPrinterService {
                 baseFs - 0.5,
                 fonts,
                 align: align,
-                color: PdfColors.grey600,
               ),
             if (settings.email.isNotEmpty)
               _text(
@@ -310,7 +435,6 @@ class ReceiptPrinterService {
                 baseFs - 0.5,
                 fonts,
                 align: align,
-                color: PdfColors.grey600,
               ),
             if (settings.website.isNotEmpty)
               _text(
@@ -318,7 +442,6 @@ class ReceiptPrinterService {
                 baseFs - 0.5,
                 fonts,
                 align: align,
-                color: PdfColors.grey600,
               ),
             if (settings.tinNumber.isNotEmpty)
               _text(
@@ -326,7 +449,6 @@ class ReceiptPrinterService {
                 baseFs - 0.5,
                 fonts,
                 align: align,
-                color: PdfColors.grey600,
               ),
 
             _divider(fonts, baseFs),
@@ -345,8 +467,12 @@ class ReceiptPrinterService {
               _metaRow('Date:', _fmtDate(dateTime), baseFs, fonts),
             if (settings.showCashierName && cashierName.isNotEmpty)
               _metaRow('Cashier:', cashierName, baseFs, fonts),
-            if (settings.showCustomerName && customerName.isNotEmpty)
-              _metaRow('Customer:', customerName, baseFs, fonts),
+            _metaRow(
+              'Customer:',
+              customerName.isNotEmpty ? customerName : 'Walk-in Customer',
+              baseFs,
+              fonts,
+            ),
             _metaRow('Payment:', _fmtPayment(paymentMethod), baseFs, fonts),
 
             _divider(fonts, baseFs),
@@ -364,7 +490,6 @@ class ReceiptPrinterService {
                 '- ${_fmt(discountAmount, currency)}',
                 baseFs,
                 fonts,
-                color: PdfColors.red700,
               ),
             if (settings.showTaxBreakdown && taxAmount > 0)
               _totalRow(
@@ -372,7 +497,6 @@ class ReceiptPrinterService {
                 _fmt(taxAmount, currency),
                 baseFs,
                 fonts,
-                color: PdfColors.grey600,
               ),
             _totalRow(
               'TOTAL',
@@ -393,7 +517,6 @@ class ReceiptPrinterService {
                 _fmt(change, currency),
                 baseFs,
                 fonts,
-                color: PdfColors.green700,
                 bold: true,
               ),
             ],
@@ -405,7 +528,6 @@ class ReceiptPrinterService {
                 baseFs - 1.5,
                 fonts,
                 align: pw.TextAlign.center,
-                color: PdfColors.grey500,
               ),
             ],
 
@@ -429,7 +551,6 @@ class ReceiptPrinterService {
                 baseFs - 1,
                 fonts,
                 align: pw.TextAlign.center,
-                color: PdfColors.grey600,
               ),
             ],
             if (settings.customNotes.isNotEmpty) ...[
@@ -439,7 +560,6 @@ class ReceiptPrinterService {
                 baseFs - 1,
                 fonts,
                 align: pw.TextAlign.center,
-                color: PdfColors.grey600,
               ),
             ],
             if (settings.showQrCode) ...[
@@ -460,9 +580,9 @@ class ReceiptPrinterService {
               baseFs - 1,
               fonts,
               align: pw.TextAlign.center,
-              color: PdfColors.grey400,
             ),
-            pw.SizedBox(height: 8),
+            // Extra space so the user can tear the receipt cleanly
+            pw.SizedBox(height: 24),
           ],
         ),
       ),
@@ -511,12 +631,12 @@ class ReceiptPrinterService {
   // repeated string exceeds the printable width and wraps onto extra lines.
   pw.Widget _divider(_Fonts fonts, double baseFs) => pw.Padding(
     padding: const pw.EdgeInsets.symmetric(vertical: 4),
-    child: pw.Divider(color: PdfColors.grey400, thickness: 0.5),
+    child: pw.Divider(color: PdfColors.grey700, thickness: 0.5),
   );
 
   pw.Widget _solidDivider() => pw.Padding(
     padding: const pw.EdgeInsets.symmetric(vertical: 4),
-    child: pw.Divider(color: PdfColors.grey700, thickness: 0.8),
+    child: pw.Divider(color: PdfColors.black, thickness: 0.8),
   );
 
   pw.Widget _metaRow(String label, String value, double fs, _Fonts fonts) =>
@@ -524,7 +644,7 @@ class ReceiptPrinterService {
         padding: const pw.EdgeInsets.only(bottom: 1.5),
         child: pw.Row(
           children: [
-            _text(label, fs - 1, fonts, color: PdfColors.grey600),
+            _text(label, fs - 1, fonts),
             pw.SizedBox(width: 4),
             pw.Expanded(
               child: pw.Text(

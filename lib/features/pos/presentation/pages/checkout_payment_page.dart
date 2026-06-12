@@ -94,9 +94,10 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
     if (authState is! AuthAuthenticated) return;
 
     final branchCubit = context.read<BranchCubit>();
-    String? branchId =
-        branchCubit.getSelectedBranchIdForFiltering() ??
-        authState.user.branchId;
+    String? branchId = branchCubit.getSelectedBranchIdForFiltering() ?? authState.user.branchId;
+    String? branchName = branchCubit.getSelectedBranchIdForFiltering() != null
+        ? branchCubit.state.selectedBranch
+        : authState.user.branchName;
 
     // When no branch is resolved, prompt the cashier to pick one.
     if (branchId == null) {
@@ -104,6 +105,7 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
         final selection = await showBranchSaleDialog(context);
         if (selection == null || !mounted) return;
         branchId = selection.id;
+        branchName = selection.name;
       } else {
         if (mounted) {
           StatusSnack.show(
@@ -188,6 +190,7 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
             itemCount: widget.items.length,
             dateTime: DateTime.now(),
             businessId: authState.user.businessId ?? '',
+            branchName: branchName,
           ),
           transitionsBuilder: (_, animation, _, child) {
             final slide =

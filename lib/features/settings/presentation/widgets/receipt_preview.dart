@@ -301,9 +301,26 @@ class _ReceiptBody extends StatelessWidget {
           const SizedBox(height: 4),
           _line(s.customNotes, baseFontSize - 1, align, color: Colors.black38),
         ],
+        if (s.showQrCode) ...[
+          const SizedBox(height: 10),
+          Center(
+            child: SizedBox(
+              width: 64,
+              height: 64,
+              child: CustomPaint(painter: _QrPainter()),
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
         const SizedBox(height: 10),
         _line('* * *', baseFontSize, TextAlign.center, color: Colors.black26),
-        const SizedBox(height: 4),
+        // Tear-off gap so the preview matches the extra feed lines on the printer
+        const SizedBox(height: 20),
+        CustomPaint(
+          size: const Size(double.infinity, 1),
+          painter: _TearLinePainter(),
+        ),
+        const SizedBox(height: 8),
       ],
     );
   }
@@ -483,6 +500,86 @@ class _ReceiptBody extends StatelessWidget {
         'maya' => 'Maya',
         _ => method,
       };
+}
+
+// ── QR code visual placeholder ────────────────────────────────────────────────
+
+class _QrPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..style = PaintingStyle.fill;
+    final cell = size.width / 21;
+
+    // White background
+    paint.color = Colors.white;
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), paint);
+
+    // Draws one QR finder pattern (7×7) at grid position (gc, gr)
+    void finder(int gc, int gr) {
+      for (var r = 0; r < 7; r++) {
+        for (var c = 0; c < 7; c++) {
+          final onRing = r == 0 || r == 6 || c == 0 || c == 6;
+          final onCore = r >= 2 && r <= 4 && c >= 2 && c <= 4;
+          paint.color = (onRing || onCore) ? Colors.black87 : Colors.white;
+          canvas.drawRect(
+            Rect.fromLTWH((gc + c) * cell, (gr + r) * cell, cell, cell),
+            paint,
+          );
+        }
+      }
+    }
+
+    finder(0, 0);   // top-left
+    finder(14, 0);  // top-right
+    finder(0, 14);  // bottom-left
+
+    // Timing strips (row 6 and col 6, cols/rows 8–12)
+    paint.color = Colors.black87;
+    for (var i = 8; i <= 12; i += 2) {
+      canvas.drawRect(Rect.fromLTWH(i * cell, 6 * cell, cell, cell), paint);
+      canvas.drawRect(Rect.fromLTWH(6 * cell, i * cell, cell, cell), paint);
+    }
+
+    // Sparse data modules to fill the centre area
+    const dots = [
+      [9, 9], [9, 11], [9, 13], [10, 8], [10, 10], [10, 12], [10, 14],
+      [11, 9], [11, 11], [11, 13], [12, 8], [12, 10], [12, 12],
+      [13, 9], [13, 11], [8, 9], [8, 11], [8, 13],
+      [9, 16], [9, 18], [10, 17], [10, 19], [11, 16], [11, 18],
+      [12, 17], [12, 19], [13, 16], [16, 9], [16, 11],
+      [17, 8], [17, 10], [18, 9], [18, 11], [19, 8], [19, 10],
+    ];
+    for (final d in dots) {
+      canvas.drawRect(
+        Rect.fromLTWH(d[0] * cell, d[1] * cell, cell, cell),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ── Tear-off line painter ─────────────────────────────────────────────────────
+
+class _TearLinePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.black12
+      ..strokeWidth = 1.0;
+    const dashW = 6.0;
+    const gapW = 5.0;
+    var x = 0.0;
+    while (x < size.width) {
+      canvas.drawLine(Offset(x, 0), Offset(x + dashW, 0), paint);
+      x += dashW + gapW;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // ── Dashed divider painter ────────────────────────────────────────────────────

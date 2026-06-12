@@ -154,6 +154,10 @@ class ReceiptSettingsRepository {
       'auto_print_after_checkout': row.autoPrintAfterCheckout,
       'print_duplicate_copy': row.printDuplicateCopy,
       'thermal_printer_enabled': row.thermalPrinterEnabled,
+      'currency_symbol': row.currencySymbol,
+      'tax_percentage': row.taxPercentage,
+      'service_charge_percentage': row.serviceChargePercentage,
+      'vat_inclusive': row.vatInclusive,
       'updated_at': row.updatedAt.toIso8601String(),
     });
     await _dao.updateSyncStatus(id: row.id, status: SyncStatus.synced);

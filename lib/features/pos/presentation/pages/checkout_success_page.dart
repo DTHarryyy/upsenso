@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lottie/lottie.dart';
 import 'package:pos/app_router.dart';
+import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/breakpoint.dart';
@@ -10,8 +11,10 @@ import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/pos/data/models/cart_model.dart';
+import 'package:pos/features/settings/data/receipt_settings_repository.dart';
+import 'package:pos/features/settings/services/receipt_printer_service.dart';
 
-class CheckoutSuccessPage extends StatelessWidget {
+class CheckoutSuccessPage extends StatefulWidget {
   final String transactionId;
   final List<CartItem> items;
   final double subtotal;
@@ -26,6 +29,7 @@ class CheckoutSuccessPage extends StatelessWidget {
   final int itemCount;
   final DateTime dateTime;
   final String businessId;
+  final String? branchName;
 
   const CheckoutSuccessPage({
     super.key,
@@ -43,30 +47,90 @@ class CheckoutSuccessPage extends StatelessWidget {
     required this.itemCount,
     required this.dateTime,
     required this.businessId,
+    this.branchName,
   });
+
+  @override
+  State<CheckoutSuccessPage> createState() => _CheckoutSuccessPageState();
+}
+
+class _CheckoutSuccessPageState extends State<CheckoutSuccessPage> {
+  bool _autoPrinting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _triggerAutoPrint();
+  }
+
+  Future<void> _triggerAutoPrint() async {
+    try {
+      var settings =
+          await sl<ReceiptSettingsRepository>().get(widget.businessId);
+      if (!mounted || settings == null) return;
+      if (widget.branchName != null && widget.branchName!.isNotEmpty) {
+        settings = settings.copyWith(storeName: widget.branchName);
+      }
+      if (!settings.autoPrintAfterCheckout) return;
+      // Only auto-print to thermal — never pop the OS dialog automatically.
+      if (!settings.thermalPrinterEnabled) return;
+      final printerUrl = await ReceiptPrinterService.loadPrinterUrl();
+      if (printerUrl.isEmpty) return;
+
+      if (mounted) setState(() => _autoPrinting = true);
+      await const ReceiptPrinterService().printReceipt(
+        settings: settings,
+        transactionId: widget.transactionId,
+        items: widget.items,
+        subtotal: widget.subtotal,
+        taxAmount: widget.taxAmount,
+        discountAmount: widget.discountAmount,
+        total: widget.total,
+        amountReceived: widget.amountReceived,
+        change: widget.change,
+        paymentMethod: widget.paymentMethod,
+        cashierName: widget.cashierName,
+        customerName: widget.customerName,
+        dateTime: widget.dateTime,
+      );
+    } catch (e, st) {
+      debugPrint('[CheckoutSuccessPage] Auto-print error: $e\n$st');
+      if (mounted) {
+        AppToast.show(
+          context,
+          'Auto-print failed',
+          subtitle: 'Tap "Print Receipt" to try manually.',
+          variant: AppToastVariant.warning,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _autoPrinting = false);
+    }
+  }
 
   void _openPreview(BuildContext context) {
     context.push(
       AppRoutes.receiptPreview,
       extra: ReceiptPreviewArgs(
-        transactionId: transactionId,
-        items: items,
-        subtotal: subtotal,
-        taxAmount: taxAmount,
-        discountAmount: discountAmount,
-        total: total,
-        amountReceived: amountReceived,
-        change: change,
-        paymentMethod: paymentMethod,
-        cashierName: cashierName,
-        customerName: customerName,
-        dateTime: dateTime,
-        businessId: businessId,
+        transactionId: widget.transactionId,
+        items: widget.items,
+        subtotal: widget.subtotal,
+        taxAmount: widget.taxAmount,
+        discountAmount: widget.discountAmount,
+        total: widget.total,
+        amountReceived: widget.amountReceived,
+        change: widget.change,
+        paymentMethod: widget.paymentMethod,
+        cashierName: widget.cashierName,
+        customerName: widget.customerName,
+        dateTime: widget.dateTime,
+        businessId: widget.businessId,
+        branchName: widget.branchName,
       ),
     );
   }
 
-  bool get _isCash => paymentMethod == 'cash';
+  bool get _isCash => widget.paymentMethod == 'cash';
 
   @override
   Widget build(BuildContext context) {
@@ -90,10 +154,10 @@ class CheckoutSuccessPage extends StatelessWidget {
             context,
           ).copyWith(fontWeight: FontWeight.w700, color: AppColors.textPrimary),
         ),
-        if (customerName.isNotEmpty) ...[
+        if (widget.customerName.isNotEmpty) ...[
           const SizedBox(height: 4),
           Text(
-            customerName,
+            widget.customerName,
             style: AppTextStyles.body(
               context,
             ).copyWith(color: AppColors.textMuted),
@@ -101,7 +165,7 @@ class CheckoutSuccessPage extends StatelessWidget {
         ],
         const SizedBox(height: 6),
         Text(
-          AppFormatters.currency(total),
+          AppFormatters.currency(widget.total),
           style: getOutfitStyle(
             color: AppColors.brand,
             fontWeight: FontWeight.w700,
@@ -110,7 +174,7 @@ class CheckoutSuccessPage extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          '$itemCount ${itemCount == 1 ? 'item' : 'items'}',
+          '${widget.itemCount} ${widget.itemCount == 1 ? 'item' : 'items'}',
           style: AppTextStyles.body(
             context,
           ).copyWith(color: AppColors.textMuted),
@@ -131,13 +195,13 @@ class CheckoutSuccessPage extends StatelessWidget {
                 children: [
                   _ChangeRow(
                     label: 'Received',
-                    value: AppFormatters.currency(amountReceived),
+                    value: AppFormatters.currency(widget.amountReceived),
                     valueColor: AppColors.textPrimary,
                   ),
                   const Divider(height: 16, color: AppColors.borderSoft),
                   _ChangeRow(
                     label: 'Change',
-                    value: AppFormatters.currency(change),
+                    value: AppFormatters.currency(widget.change),
                     valueColor: AppColors.success,
                     bold: true,
                   ),
@@ -159,9 +223,18 @@ class CheckoutSuccessPage extends StatelessWidget {
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: () => _openPreview(context),
-                  icon: const Icon(Icons.print_rounded, size: 18),
+                  icon: _autoPrinting
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.brand,
+                          ),
+                        )
+                      : const Icon(Icons.print_rounded, size: 18),
                   label: Text(
-                    'Print Receipt',
+                    _autoPrinting ? 'Printing…' : 'Print Receipt',
                     style: getOutfitStyle(
                       color: AppColors.brand,
                       fontWeight: FontWeight.w700,
