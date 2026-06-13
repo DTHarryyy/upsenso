@@ -62,7 +62,7 @@ class AuditLogService {
       // Prefer explicitly supplied name, then fall back to auth context full name.
       final resolvedUserName = userName ?? ctx?.fullName;
       // Use branch name from context; fall back to 'All Branches' when the
-      // resolved user has no assigned branch (Super Admin / all-branch access).
+      // resolved user has no assigned branch (Business Owner / all-branch access).
       final resolvedBranchName = ctx?.branchName?.trim().isNotEmpty == true
           ? ctx!.branchName
           : (resolvedBranchId.isEmpty ? 'All Branches' : null);

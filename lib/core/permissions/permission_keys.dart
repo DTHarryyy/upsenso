@@ -72,6 +72,18 @@ abstract final class PermissionKeys {
   static const String suppliersView = 'suppliers.view';
   static const String suppliersManage = 'suppliers.manage';
 
+  // ── Ingredients / Recipes ─────────────────────────────────────────────────
+  static const String ingredientsView = 'ingredients.view';
+  static const String ingredientsManage = 'ingredients.manage';
+  static const String recipesManage = 'recipes.manage';
+
+  // ── Procurement ───────────────────────────────────────────────────────────
+  static const String procurementView = 'procurement.view';
+  static const String procurementCreatePo = 'procurement.create_po';
+  static const String procurementApprovePo = 'procurement.approve_po';
+  static const String procurementReceive = 'procurement.receive';
+  static const String procurementManage = 'procurement.manage';
+
   // ── Dashboard widgets ─────────────────────────────────────────────────────
   static const String dashboardViewStats = 'dashboard.view_stats';
   static const String dashboardViewBranchComparison =
@@ -91,6 +103,8 @@ abstract final class PermissionKeys {
   static const String navSalesHistory = 'nav.sales_history';
   static const String navHeldSales = 'nav.held_sales';
   static const String navSuppliers = 'nav.suppliers';
+  static const String navProcurement = 'nav.procurement';
+  static const String navRecipes = 'nav.recipes';
 
   // ── Data scoping ──────────────────────────────────────────────────────────
   static const String dataCrossBranchAccess = 'data.cross_branch_access';
@@ -153,6 +167,16 @@ abstract final class PermissionKeys {
     navSalesHistory,
     navHeldSales,
     navSuppliers,
+    navProcurement,
+    navRecipes,
+    ingredientsView,
+    ingredientsManage,
+    recipesManage,
+    procurementView,
+    procurementCreatePo,
+    procurementApprovePo,
+    procurementReceive,
+    procurementManage,
     dataCrossBranchAccess,
   ];
 }

@@ -74,14 +74,18 @@ TextTheme getOutfitTextTheme() {
   );
 }
 
-/// Maps internal role names to user-facing display labels.
-///
-/// `'Super Admin'` → `'Owner'` (internal name not exposed to users)
-/// All other names pass through unchanged.
+/// Maps internal role name variants to the canonical user-facing label.
 /// Returns `null` when [roleName] is null.
 String? displayRoleName(String? roleName) {
   if (roleName == null) return null;
   final n = roleName.trim().toLowerCase();
-  if (n == 'business owner' || n == 'super admin' || n == 'superadmin') return 'Business Owner';
+  if (n == 'business owner' ||
+      n == 'business_owner' ||
+      n == 'owner' ||
+      n == 'super admin' ||
+      n == 'superadmin' ||
+      n == 'super_admin') {
+    return 'Business Owner';
+  }
   return roleName;
 }

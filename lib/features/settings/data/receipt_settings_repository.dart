@@ -158,7 +158,7 @@ class ReceiptSettingsRepository {
       'tax_percentage': row.taxPercentage,
       'service_charge_percentage': row.serviceChargePercentage,
       'vat_inclusive': row.vatInclusive,
-      'updated_at': row.updatedAt.toIso8601String(),
+      'updated_at': row.updatedAt.toUtc().toIso8601String(),
     });
     await _dao.updateSyncStatus(id: row.id, status: SyncStatus.synced);
   }

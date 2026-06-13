@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-enum StockStatus { inStock, warning, lowStock, notTracked }
+enum StockStatus { inStock, warning, lowStock, notTracked, recipe, service }
 
 class BranchInfo extends Equatable {
   final String id;
@@ -33,6 +33,9 @@ class InventoryItem extends Equatable {
   /// meaningless and the item should be displayed as "Not Tracked".
   final bool trackStock;
 
+  /// 'product_stock' | 'recipe' | 'service'
+  final String trackingMethod;
+
   const InventoryItem({
     required this.variantId,
     required this.productId,
@@ -43,9 +46,15 @@ class InventoryItem extends Equatable {
     required this.totalStock,
     required this.reorderLevel,
     this.trackStock = true,
+    this.trackingMethod = 'product_stock',
   });
 
+  bool get isRecipe => trackingMethod == 'recipe';
+  bool get isService => trackingMethod == 'service';
+
   StockStatus get status {
+    if (isService) return StockStatus.service;
+    if (isRecipe) return StockStatus.recipe;
     if (!trackStock) return StockStatus.notTracked;
     if (reorderLevel <= 0) {
       return totalStock <= 0 ? StockStatus.lowStock : StockStatus.inStock;
@@ -56,7 +65,7 @@ class InventoryItem extends Equatable {
   }
 
   @override
-  List<Object?> get props => [variantId, stockByBranch, totalStock, trackStock];
+  List<Object?> get props => [variantId, stockByBranch, totalStock, trackStock, trackingMethod];
 }
 
 class InventoryData extends Equatable {
@@ -68,12 +77,16 @@ class InventoryData extends Equatable {
   static const empty = InventoryData(items: [], branches: []);
 
   int get totalProducts => items.length;
-  int get trackedCount => items.where((i) => i.trackStock).length;
-  int get notTrackedCount => items.where((i) => !i.trackStock).length;
+  int get trackedCount =>
+      items.where((i) => i.status == StockStatus.inStock || i.status == StockStatus.warning || i.status == StockStatus.lowStock).length;
+  int get notTrackedCount =>
+      items.where((i) => i.status == StockStatus.notTracked).length;
+  int get recipeCount => items.where((i) => i.isRecipe).length;
+  int get serviceCount => items.where((i) => i.isService).length;
   int get lowStockCount =>
-      items.where((i) => i.trackStock && i.status == StockStatus.lowStock).length;
+      items.where((i) => i.status == StockStatus.lowStock).length;
   int get warningCount =>
-      items.where((i) => i.trackStock && i.status == StockStatus.warning).length;
+      items.where((i) => i.status == StockStatus.warning).length;
 
   @override
   List<Object?> get props => [items, branches];

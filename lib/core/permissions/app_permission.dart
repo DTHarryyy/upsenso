@@ -160,6 +160,32 @@ enum AppPermission {
   /// View the supplier directory.
   viewSupplierList,
 
+  // ── Procurement ───────────────────────────────────────────────────────────
+  /// View purchase orders and procurement history.
+  viewProcurement,
+
+  /// Create a new purchase order.
+  createPurchaseOrder,
+
+  /// Approve a purchase order (separate from creation — separation of duties).
+  approvePurchaseOrder,
+
+  /// Receive goods against an approved purchase order.
+  receiveGoodsAgainstPo,
+
+  /// Full procurement management (edit/cancel POs, manage suppliers).
+  manageProcurement,
+
+  // ── Recipes / Ingredients ─────────────────────────────────────────────────
+  /// View the ingredient directory and recipes (read-only).
+  viewIngredients,
+
+  /// Create / edit / delete ingredients (stock items consumed by recipes).
+  manageIngredients,
+
+  /// Configure recipes (bill of materials) on recipe-based products.
+  manageRecipes,
+
   // ── System / Admin ────────────────────────────────────────────────────────
   /// Manage role definitions and permission matrices.
   manageRoles,
@@ -170,7 +196,7 @@ enum AppPermission {
   /// Delete or purge audit log entries.
   deleteAuditLogs,
 
-  /// Access data across multiple branches (Super Admin only).
+  /// Access data across multiple branches (Business Owner only).
   crossBranchAccess,
 }
 
@@ -270,6 +296,22 @@ extension AppPermissionX on AppPermission {
         return 'Suspend Employee';
       case AppPermission.viewSupplierList:
         return 'View Supplier List';
+      case AppPermission.viewProcurement:
+        return 'View Procurement';
+      case AppPermission.createPurchaseOrder:
+        return 'Create Purchase Order';
+      case AppPermission.approvePurchaseOrder:
+        return 'Approve Purchase Order';
+      case AppPermission.receiveGoodsAgainstPo:
+        return 'Receive Goods';
+      case AppPermission.manageProcurement:
+        return 'Manage Procurement';
+      case AppPermission.viewIngredients:
+        return 'View Ingredients';
+      case AppPermission.manageIngredients:
+        return 'Manage Ingredients';
+      case AppPermission.manageRecipes:
+        return 'Manage Recipes';
       case AppPermission.manageRoles:
         return 'Manage Roles';
       case AppPermission.accessSettings:
@@ -366,6 +408,22 @@ extension AppPermissionX on AppPermission {
         return 'employees.suspend';
       case AppPermission.viewSupplierList:
         return 'suppliers.view';
+      case AppPermission.viewProcurement:
+        return 'procurement.view';
+      case AppPermission.createPurchaseOrder:
+        return 'procurement.create_po';
+      case AppPermission.approvePurchaseOrder:
+        return 'procurement.approve_po';
+      case AppPermission.receiveGoodsAgainstPo:
+        return 'procurement.receive';
+      case AppPermission.manageProcurement:
+        return 'procurement.manage';
+      case AppPermission.viewIngredients:
+        return 'ingredients.view';
+      case AppPermission.manageIngredients:
+        return 'ingredients.manage';
+      case AppPermission.manageRecipes:
+        return 'recipes.manage';
       case AppPermission.accessSettings:
         return 'settings.view';
       case AppPermission.deleteAuditLogs:

@@ -70,10 +70,11 @@ class PermissionService {
   /// Empty map = not yet loaded; fall back to [DefaultPermissionMatrix].
   Map<String, bool> _permissionsMap = {};
 
-  /// Module codes that are currently enabled for the business.
+  /// Per-module enabled state for the current business.
   ///
   /// `null` = not loaded yet (treat all modules as enabled until first sync).
-  Set<String>? _enabledModules;
+  /// Missing key = module never configured → defaults to enabled.
+  Map<String, bool>? _moduleStates;
 
   bool get _hasLoadedPermissions => _permissionsMap.isNotEmpty;
 
@@ -180,30 +181,33 @@ class PermissionService {
   /// Clear the in-memory permission map.  Call on sign-out.
   void clearPermissions() {
     _permissionsMap = {};
-    _enabledModules = null;
+    _moduleStates = null;
   }
 
   // ── Module gate ───────────────────────────────────────────────────────────
 
   /// Returns `true` if [moduleCode] is enabled for the current business.
   ///
-  /// When [_enabledModules] is null (not yet loaded) this returns `true` so
+  /// When [_moduleStates] is null (not yet loaded) this returns `true` so
   /// that a slow first sync doesn't block the UI.
+  /// When loaded, a module code absent from the map is treated as enabled —
+  /// new modules added to the app before Supabase is configured stay visible.
   bool isModuleEnabled(String moduleCode) {
-    if (_enabledModules == null) return true;
-    return _enabledModules!.contains(moduleCode);
+    if (_moduleStates == null) return true;
+    return _moduleStates![moduleCode] ?? true;
   }
 
-  /// Load the enabled module set from the local Drift cache for [businessId].
+  /// Load module states from the local Drift cache for [businessId].
   ///
-  /// An empty cache (no rows) keeps [_enabledModules] null so all modules
+  /// An empty cache (no rows) keeps [_moduleStates] null so all modules
   /// appear enabled until the first remote sync populates the table.
   Future<void> loadEnabledModules(String businessId) async {
-    final codes = await _businessModulesDao.getEnabledModuleCodes(businessId);
-    if (codes.isNotEmpty) {
-      _enabledModules = codes;
+    final rows = await _businessModulesDao.getAll(businessId);
+    if (rows.isNotEmpty) {
+      _moduleStates = {for (final r in rows) r.moduleCode: r.enabled};
+      final enabledCount = rows.where((r) => r.enabled).length;
       debugPrint(
-        '[PermissionService] modules loaded from cache (${codes.length} enabled)',
+        '[PermissionService] modules loaded from cache ($enabledCount/${rows.length} enabled)',
       );
     }
   }
@@ -216,13 +220,11 @@ class PermissionService {
       final modules = await _permissionRemoteDs.fetchEnabledModules(businessId);
       if (modules.isNotEmpty) {
         await _businessModulesDao.saveModules(businessId, modules);
-        _enabledModules = modules.entries
-            .where((e) => e.value)
-            .map((e) => e.key)
-            .toSet();
+        _moduleStates = Map.unmodifiable(modules);
+        final enabledCount = modules.values.where((v) => v).length;
         debugPrint(
           '[PermissionService] modules synced from Supabase '
-          '(${_enabledModules!.length} enabled)',
+          '($enabledCount/${modules.length} enabled)',
         );
       }
     } catch (e) {
@@ -456,6 +458,6 @@ class PermissionService {
     _userId = userId;
     // Clear maps so load* methods re-read for the new user/business.
     _permissionsMap = {};
-    _enabledModules = null;
+    _moduleStates = null;
   }
 }

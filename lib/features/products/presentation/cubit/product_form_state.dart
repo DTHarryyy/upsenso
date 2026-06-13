@@ -2,11 +2,65 @@ import 'package:pos/core/database/app_database.dart';
 
 enum ProductFormMode { simple, advanced }
 
+/// How inventory is tracked when a product is sold.
+enum TrackingMethod {
+  /// Deduct from the product's own stock (existing behavior).
+  productStock,
+
+  /// Deduct from ingredient variants according to a recipe / BOM.
+  recipe,
+
+  /// No inventory impact (e.g. delivery fee, installation service).
+  service,
+}
+
+extension TrackingMethodX on TrackingMethod {
+  String get code => switch (this) {
+        TrackingMethod.productStock => 'product_stock',
+        TrackingMethod.recipe => 'recipe',
+        TrackingMethod.service => 'service',
+      };
+
+  static TrackingMethod fromCode(String code) => switch (code) {
+        'recipe' => TrackingMethod.recipe,
+        'service' => TrackingMethod.service,
+        _ => TrackingMethod.productStock,
+      };
+}
+
+/// A single line in the recipe builder form.
+class RecipeLineFormEntry {
+  final String ingredientVariantId;
+  final String ingredientName;
+  final double quantity;
+  final String? unit;
+  final double? costPrice; // cost per stock unit — used for live margin readout
+
+  const RecipeLineFormEntry({
+    required this.ingredientVariantId,
+    required this.ingredientName,
+    required this.quantity,
+    this.unit,
+    this.costPrice,
+  });
+
+  RecipeLineFormEntry copyWith({double? quantity}) => RecipeLineFormEntry(
+        ingredientVariantId: ingredientVariantId,
+        ingredientName: ingredientName,
+        quantity: quantity ?? this.quantity,
+        unit: unit,
+        costPrice: costPrice,
+      );
+}
+
 class ProductFormState {
   final ProductFormMode mode;
   final bool hasVariants;
+  final TrackingMethod trackingMethod;
   final bool trackInventory;
   final bool trackExpiry;
+  /// No-variants recipe: the single product's ingredient list.
+  final List<RecipeLineFormEntry> recipeLines;
   final DateTime? expiryDate;
   final bool moreOptionsExpanded;
   final String? selectedCategoryId;
@@ -29,8 +83,10 @@ class ProductFormState {
   const ProductFormState({
     required this.mode,
     required this.hasVariants,
+    required this.trackingMethod,
     required this.trackInventory,
     required this.trackExpiry,
+    required this.recipeLines,
     this.expiryDate,
     required this.moreOptionsExpanded,
     this.selectedCategoryId,
@@ -47,8 +103,10 @@ class ProductFormState {
   factory ProductFormState.initial() => const ProductFormState(
         mode: ProductFormMode.simple,
         hasVariants: false,
+        trackingMethod: TrackingMethod.productStock,
         trackInventory: false,
         trackExpiry: false,
+        recipeLines: [],
         expiryDate: null,
         moreOptionsExpanded: false,
         selectedCategoryId: null,
@@ -65,8 +123,10 @@ class ProductFormState {
   ProductFormState copyWith({
     ProductFormMode? mode,
     bool? hasVariants,
+    TrackingMethod? trackingMethod,
     bool? trackInventory,
     bool? trackExpiry,
+    List<RecipeLineFormEntry>? recipeLines,
     DateTime? expiryDate,
     bool clearExpiryDate = false,
     bool? moreOptionsExpanded,
@@ -90,8 +150,10 @@ class ProductFormState {
     return ProductFormState(
       mode: mode ?? this.mode,
       hasVariants: hasVariants ?? this.hasVariants,
+      trackingMethod: trackingMethod ?? this.trackingMethod,
       trackInventory: trackInventory ?? this.trackInventory,
       trackExpiry: trackExpiry ?? this.trackExpiry,
+      recipeLines: recipeLines ?? this.recipeLines,
       expiryDate: clearExpiryDate ? null : (expiryDate ?? this.expiryDate),
       moreOptionsExpanded: moreOptionsExpanded ?? this.moreOptionsExpanded,
       selectedCategoryId: clearCategoryId
@@ -120,6 +182,7 @@ class VariantFormData {
   final String? stock;
   final String? lowStockAlert;
   final String? barcode;
+  final List<RecipeLineFormEntry> recipeLines;
 
   const VariantFormData({
     required this.name,
@@ -128,6 +191,7 @@ class VariantFormData {
     this.stock,
     this.lowStockAlert,
     this.barcode,
+    this.recipeLines = const [],
   });
 }
 
@@ -151,6 +215,8 @@ class ProductFormData {
   final String? sku;
   final List<VariantFormData> variants;
   final String? imagePath;
+  final TrackingMethod trackingMethod;
+  final List<RecipeLineFormEntry> recipeLines;
 
   /// When true the product is saved with isActive=false (not visible on POS).
   final bool isDraft;
@@ -170,6 +236,8 @@ class ProductFormData {
     this.sku,
     required this.variants,
     this.imagePath,
+    this.trackingMethod = TrackingMethod.productStock,
+    this.recipeLines = const [],
     this.isDraft = false,
   });
 }

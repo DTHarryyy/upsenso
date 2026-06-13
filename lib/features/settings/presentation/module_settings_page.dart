@@ -65,6 +65,18 @@ const _kModules = <_ModuleInfo>[
     icon: IconlyLight.work,
   ),
   _ModuleInfo(
+    code: 'ingredients',
+    label: 'Ingredients',
+    description: 'Ingredient stock items consumed by recipe-based products',
+    icon: IconlyLight.category,
+  ),
+  _ModuleInfo(
+    code: 'recipes',
+    label: 'Recipes',
+    description: 'Bill-of-materials configuration on recipe-based products',
+    icon: IconlyLight.discovery,
+  ),
+  _ModuleInfo(
     code: 'audit',
     label: 'Audit Logs',
     description: 'Activity tracking and security audit trail',

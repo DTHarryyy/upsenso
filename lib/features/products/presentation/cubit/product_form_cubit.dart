@@ -11,6 +11,7 @@ import 'package:pos/core/database/daos/categories_dao.dart';
 import 'package:pos/core/database/daos/inventory_levels_dao.dart';
 import 'package:pos/core/database/daos/products_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
+import 'package:pos/core/database/daos/recipe_lines_dao.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pos/core/services/image_service.dart';
 import 'product_form_state.dart';
@@ -30,6 +31,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   final _categoriesDao = sl<CategoriesDao>();
   final _productsDao = sl<ProductsDao>();
   final _productVariantsDao = sl<ProductVariantsDao>();
+  final _recipeLinesDao = sl<RecipeLinesDao>();
   final _imageService = sl<ImageService>();
   final _levelsDao = sl<InventoryLevelsDao>();
 
@@ -50,6 +52,42 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   }
 
   void setHasVariants(bool value) => emit(state.copyWith(hasVariants: value));
+
+  void setTrackingMethod(TrackingMethod method) {
+    emit(state.copyWith(
+      trackingMethod: method,
+      // Switching off recipe clears the recipe list and re-enables stock.
+      recipeLines: method == TrackingMethod.recipe ? state.recipeLines : [],
+      trackInventory: method == TrackingMethod.recipe ? false : state.trackInventory,
+    ));
+  }
+
+  // ── No-variants recipe lines ──────────────────────────────────────────────
+
+  void setRecipeLines(List<RecipeLineFormEntry> lines) =>
+      emit(state.copyWith(recipeLines: lines));
+
+  void addRecipeLine(RecipeLineFormEntry entry) {
+    final updated = [...state.recipeLines, entry];
+    emit(state.copyWith(recipeLines: updated));
+  }
+
+  void removeRecipeLine(String ingredientVariantId) {
+    final updated = state.recipeLines
+        .where((l) => l.ingredientVariantId != ingredientVariantId)
+        .toList();
+    emit(state.copyWith(recipeLines: updated));
+  }
+
+  void updateRecipeLineQty(String ingredientVariantId, double qty) {
+    final updated = state.recipeLines.map((l) {
+      return l.ingredientVariantId == ingredientVariantId
+          ? l.copyWith(quantity: qty)
+          : l;
+    }).toList();
+    emit(state.copyWith(recipeLines: updated));
+  }
+
 
   void setTrackInventory(bool value) =>
       emit(state.copyWith(trackInventory: value));
@@ -117,17 +155,62 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
   /// Initialise cubit state from an existing product (called when editing).
   void initEditState(Product product) {
+    final method = TrackingMethodX.fromCode(product.trackingMethod);
     emit(
       state.copyWith(
         mode: product.hasVariants
             ? ProductFormMode.advanced
             : ProductFormMode.simple,
         hasVariants: product.hasVariants,
+        trackingMethod: method,
         selectedCategoryId: product.categoryId,
         imagePath: product.imagePath,
         trackInventory: false, // updated after loading variants
       ),
     );
+  }
+
+  /// Load recipe lines for a no-variants product (Default variant → cubit state).
+  Future<void> loadRecipeLinesForProduct(String productId) async {
+    final variants = await _productVariantsDao.getByProductId(productId);
+    final defaultVariant = variants.firstWhere(
+      (v) => v.name == 'Default',
+      orElse: () => variants.first,
+    );
+    final rows = await _recipeLinesDao.getByVariantId(defaultVariant.id);
+    final entries = rows
+        .map(
+          (r) => RecipeLineFormEntry(
+            ingredientVariantId: r.ingredientVariantId,
+            ingredientName: r.ingredientName,
+            quantity: r.quantity,
+            unit: r.unit,
+          ),
+        )
+        .toList();
+    emit(state.copyWith(recipeLines: entries));
+  }
+
+  /// Load recipe lines for each active variant (edit mode, variant products).
+  /// Returns variantId → lines so the caller can populate VariantForm holders.
+  Future<Map<String, List<RecipeLineFormEntry>>> loadVariantRecipeLines(
+    List<String> variantIds,
+  ) async {
+    final result = <String, List<RecipeLineFormEntry>>{};
+    for (final id in variantIds) {
+      final rows = await _recipeLinesDao.getByVariantId(id);
+      if (rows.isNotEmpty) {
+        result[id] = rows
+            .map((r) => RecipeLineFormEntry(
+                  ingredientVariantId: r.ingredientVariantId,
+                  ingredientName: r.ingredientName,
+                  quantity: r.quantity,
+                  unit: r.unit,
+                ))
+            .toList();
+      }
+    }
+    return result;
   }
 
   /// Load the variants for a product (used to pre-fill the edit form).
@@ -201,6 +284,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           sellBy: Value(data.sellBy),
           imagePath: Value(data.imagePath),
           isActive: Value(!data.isDraft),
+          trackingMethod: Value(data.trackingMethod.code),
           syncStatus: const Value(1), // pendingUpdate
         ),
       );
@@ -383,6 +467,23 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         }
       }
 
+      // Re-link recipe lines after re-insertion.
+      if (data.trackingMethod == TrackingMethod.recipe) {
+        if (hasVariants) {
+          for (int i = 0; i < seeds.length && i < data.variants.length; i++) {
+            final lines = data.variants[i].recipeLines;
+            if (lines.isNotEmpty) {
+              await _saveRecipeLines(seeds[i].variantId, lines);
+            }
+          }
+        } else {
+          final newDefaultId = variantNameToNewId['Default'];
+          if (newDefaultId != null && data.recipeLines.isNotEmpty) {
+            await _saveRecipeLines(newDefaultId, data.recipeLines);
+          }
+        }
+      }
+
       sl<AuditLogService>().log(
         actionType: AuditLogActionType.stockUpdated,
         entityType: 'product',
@@ -416,6 +517,8 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         sku: data.sku,
         variants: data.variants,
         imagePath: data.imagePath,
+        trackingMethod: data.trackingMethod,
+        recipeLines: data.recipeLines,
         isDraft: true,
       ));
 
@@ -435,6 +538,8 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         sku: data.sku,
         variants: data.variants,
         imagePath: data.imagePath,
+        trackingMethod: data.trackingMethod,
+        recipeLines: data.recipeLines,
         isDraft: true,
       ));
 
@@ -481,6 +586,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           sellBy: Value(data.sellBy),
           imagePath: Value(data.imagePath),
           isActive: Value(!data.isDraft),
+          trackingMethod: Value(data.trackingMethod.code),
         ),
       );
 
@@ -622,6 +728,21 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         await _seedInventoryLevels(seeds, isFraction);
       }
 
+      // Save recipe lines per variant (variants mode) or for the single
+      // Default variant (no-variants mode).
+      if (data.trackingMethod == TrackingMethod.recipe) {
+        if (hasVariants) {
+          for (int i = 0; i < seeds.length && i < data.variants.length; i++) {
+            final lines = data.variants[i].recipeLines;
+            if (lines.isNotEmpty) {
+              await _saveRecipeLines(seeds[i].variantId, lines);
+            }
+          }
+        } else if (data.recipeLines.isNotEmpty && seeds.isNotEmpty) {
+          await _saveRecipeLines(seeds.first.variantId, data.recipeLines);
+        }
+      }
+
       sl<AuditLogService>().log(
         actionType: data.isDraft
             ? AuditLogActionType.stockAdded
@@ -679,5 +800,27 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       );
     }
     emit(state.copyWith(clearPendingBranchAssignment: true));
+  }
+
+  // ── Recipe lines ──────────────────────────────────────────────────────────
+
+  Future<void> _saveRecipeLines(
+    String variantId,
+    List<RecipeLineFormEntry> lines,
+  ) {
+    final companions = lines
+        .map(
+          (l) => RecipeLinesTableCompanion.insert(
+            id: const Uuid().v4(),
+            businessId: businessId,
+            productVariantId: variantId,
+            ingredientVariantId: l.ingredientVariantId,
+            ingredientName: l.ingredientName,
+            quantity: Value(l.quantity),
+            unit: Value(l.unit),
+          ),
+        )
+        .toList();
+    return _recipeLinesDao.replaceForVariant(variantId, companions);
   }
 }

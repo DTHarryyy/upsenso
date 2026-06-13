@@ -34,7 +34,7 @@ class AuditLog {
   String? get userName => metadata['_user_name'] as String?;
 
   /// Human-readable name of the branch where the action occurred.
-  /// 'All Branches' for Super Admins with no assigned branch.
+  /// 'All Branches' for Business Owner with no assigned branch.
   /// Sourced from metadata['_branch_name'] when available.
   String? get branchName => metadata['_branch_name'] as String?;
 

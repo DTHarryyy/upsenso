@@ -7,6 +7,7 @@ import 'package:pos/core/audit/audit_log_service.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/permissions/default_permission_matrix.dart';
 import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/permissions/data/permission_remote_ds.dart';
@@ -296,6 +297,60 @@ const _kGroups = <_PermGroup>[
       ),
     ],
   ),
+  _PermGroup(
+    label: 'Procurement',
+    description: 'Purchase orders, receiving and supplier management',
+    icon: IconlyLight.work,
+    permissions: [
+      _PermEntry(
+        'procurement.view',
+        'View Procurement',
+        'Browse purchase orders and supplier records',
+      ),
+      _PermEntry(
+        'procurement.create_po',
+        'Create Purchase Orders',
+        'Draft and submit new purchase orders',
+      ),
+      _PermEntry(
+        'procurement.approve_po',
+        'Approve Purchase Orders',
+        'Approve or reject pending purchase orders',
+      ),
+      _PermEntry(
+        'procurement.receive',
+        'Receive Goods',
+        'Record incoming stock against a purchase order',
+      ),
+      _PermEntry(
+        'procurement.manage',
+        'Manage Procurement',
+        'Full control — edit, delete, and configure procurement settings',
+      ),
+    ],
+  ),
+  _PermGroup(
+    label: 'Ingredients & Recipes',
+    description: 'Ingredient stock items and recipe bill-of-materials',
+    icon: IconlyLight.category,
+    permissions: [
+      _PermEntry(
+        'ingredients.view',
+        'View Ingredients',
+        'Browse the ingredient stock directory',
+      ),
+      _PermEntry(
+        'ingredients.manage',
+        'Manage Ingredients',
+        'Add, edit, and remove ingredient stock items',
+      ),
+      _PermEntry(
+        'recipes.manage',
+        'Manage Recipes',
+        'Configure bill-of-materials on recipe-based products',
+      ),
+    ],
+  ),
 ];
 
 // ── Cubit state ───────────────────────────────────────────────────────────────
@@ -314,15 +369,21 @@ class EmployeePermissionsLoaded extends EmployeePermissionsState {
 
   /// null = role default (no explicit override)
   final Map<String, bool?> draft;
+
+  /// What the employee's role grants by default (from [DefaultPermissionMatrix]).
+  final Map<String, bool> roleDefaults;
+
   final bool isSaving;
   final bool justSaved;
 
   EmployeePermissionsLoaded({
     required this.saved,
     Map<String, bool?>? draft,
+    Map<String, bool>? roleDefaults,
     this.isSaving = false,
     this.justSaved = false,
-  }) : draft = draft ?? {};
+  }) : draft = draft ?? {},
+       roleDefaults = roleDefaults ?? {};
 
   bool? effectiveOverride(String code) {
     if (draft.containsKey(code)) return draft[code];
@@ -340,11 +401,13 @@ class EmployeePermissionsLoaded extends EmployeePermissionsState {
   EmployeePermissionsLoaded copyWith({
     Map<String, bool>? saved,
     Map<String, bool?>? draft,
+    Map<String, bool>? roleDefaults,
     bool? isSaving,
     bool? justSaved,
   }) => EmployeePermissionsLoaded(
     saved: saved ?? this.saved,
     draft: draft ?? this.draft,
+    roleDefaults: roleDefaults ?? this.roleDefaults,
     isSaving: isSaving ?? this.isSaving,
     justSaved: justSaved ?? false,
   );
@@ -361,7 +424,8 @@ class EmployeePermissionsCubit extends Cubit<EmployeePermissionsState> {
     try {
       final overrides = await sl<PermissionRemoteDs>()
           .fetchUserPermissionOverrides(employee.id);
-      emit(EmployeePermissionsLoaded(saved: overrides));
+      final defaults = DefaultPermissionMatrix.forRole(employee.roleName);
+      emit(EmployeePermissionsLoaded(saved: overrides, roleDefaults: defaults));
     } catch (e, st) {
       debugPrint('[EmployeePermissions] Error in load: $e\n$st');
       emit(EmployeePermissionsError('Failed to load access settings.'));
@@ -452,10 +516,7 @@ class EmployeePermissionsCubit extends Cubit<EmployeePermissionsState> {
               entityName: employee.fullName,
               description:
                   '${entry.value! ? 'Granted' : 'Denied'} permission "${entry.key}" for ${employee.fullName}',
-              metadata: {
-                'permission_code': entry.key,
-                'granted': entry.value!,
-              },
+              metadata: {'permission_code': entry.key, 'granted': entry.value!},
             ),
           );
         }
@@ -464,7 +525,13 @@ class EmployeePermissionsCubit extends Cubit<EmployeePermissionsState> {
       if (authUserId != null) {
         await sl<PermissionService>().syncPermissions(authUserId);
       }
-      emit(EmployeePermissionsLoaded(saved: newSaved, justSaved: true));
+      emit(
+        EmployeePermissionsLoaded(
+          saved: newSaved,
+          roleDefaults: s.roleDefaults,
+          justSaved: true,
+        ),
+      );
     } catch (e, st) {
       debugPrint('[EmployeePermissions] Error in saveAll: $e\n$st');
       final current = state;
@@ -1130,93 +1197,97 @@ class _PermissionGroupState extends State<_PermissionGroup>
             child: FadeTransition(
               opacity: _fadeCurve,
               child: Column(
-              children: [
-                // Bulk action bar
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Apply to all:',
-                        style: getOutfitStyle(
-                          fontSize: 11,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      _BulkBtn(
-                        label: 'Allow All',
-                        icon: Icons.check_rounded,
-                        color: AppColors.success,
-                        bg: AppColors.successSoft,
-                        onTap: () => context
-                            .read<EmployeePermissionsCubit>()
-                            .stageGroupBulk(_codes, true),
-                      ),
-                      const SizedBox(width: 6),
-                      _BulkBtn(
-                        label: 'Block All',
-                        icon: Icons.block_rounded,
-                        color: AppColors.error,
-                        bg: AppColors.errorSoft,
-                        onTap: () => context
-                            .read<EmployeePermissionsCubit>()
-                            .stageGroupBulk(_codes, false),
-                      ),
-                      const SizedBox(width: 6),
-                      _BulkBtn(
-                        label: 'Reset',
-                        icon: Icons.refresh_rounded,
-                        color: AppColors.textSecondary,
-                        bg: AppColors.surface,
-                        onTap: () => context
-                            .read<EmployeePermissionsCubit>()
-                            .stageGroupReset(_codes),
-                      ),
-                    ],
-                  ),
-                ),
-                // Column headers
-                Container(
-                  color: AppColors.surfaceAlt,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Permission',
+                children: [
+                  // Bulk action bar
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Apply to all:',
                           style: getOutfitStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
                             color: AppColors.textMuted,
                           ),
                         ),
-                      ),
-                      SizedBox(
-                        width: 210,
-                        child: Text(
-                          'Access Level',
-                          style: getOutfitStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textMuted,
+                        const SizedBox(width: 8),
+                        _BulkBtn(
+                          label: 'Allow All',
+                          icon: Icons.check_rounded,
+                          color: AppColors.success,
+                          bg: AppColors.successSoft,
+                          onTap: () => context
+                              .read<EmployeePermissionsCubit>()
+                              .stageGroupBulk(_codes, true),
+                        ),
+                        const SizedBox(width: 6),
+                        _BulkBtn(
+                          label: 'Block All',
+                          icon: Icons.block_rounded,
+                          color: AppColors.error,
+                          bg: AppColors.errorSoft,
+                          onTap: () => context
+                              .read<EmployeePermissionsCubit>()
+                              .stageGroupBulk(_codes, false),
+                        ),
+                        const SizedBox(width: 6),
+                        _BulkBtn(
+                          label: 'Reset',
+                          icon: Icons.refresh_rounded,
+                          color: AppColors.textSecondary,
+                          bg: AppColors.surface,
+                          onTap: () => context
+                              .read<EmployeePermissionsCubit>()
+                              .stageGroupReset(_codes),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Column headers
+                  Container(
+                    color: AppColors.surfaceAlt,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Permission',
+                            style: getOutfitStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textMuted,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                        SizedBox(
+                          width: 210,
+                          child: Text(
+                            'Access Level',
+                            style: getOutfitStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const Divider(height: 1, color: AppColors.borderSoft),
-                // Permission rows
-                ...widget.group.permissions.map(
-                  (p) => _PermRow(
-                    entry: p,
-                    value: widget.state.effectiveOverride(p.code),
+                  const Divider(height: 1, color: AppColors.borderSoft),
+                  // Permission rows
+                  ...widget.group.permissions.map(
+                    (p) => _PermRow(
+                      entry: p,
+                      value: widget.state.effectiveOverride(p.code),
+                      roleDefault: widget.state.roleDefaults[p.code],
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
             ),
           ),
         ],
@@ -1299,10 +1370,8 @@ class _BulkBtn extends StatelessWidget {
 class _PermRow extends StatelessWidget {
   final _PermEntry entry;
   final bool? value;
-  const _PermRow({
-    required this.entry,
-    required this.value,
-  });
+  final bool? roleDefault;
+  const _PermRow({required this.entry, required this.value, this.roleDefault});
 
   @override
   Widget build(BuildContext context) {
@@ -1354,6 +1423,33 @@ class _PermRow extends StatelessWidget {
                       color: AppColors.textMuted,
                     ),
                   ),
+                  // Show what this role grants by default when no override is set
+                  if (value == null && roleDefault != null) ...[
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Icon(
+                          roleDefault!
+                              ? Icons.check_circle_outline_rounded
+                              : Icons.cancel_outlined,
+                          size: 10,
+                          color: roleDefault!
+                              ? AppColors.success
+                              : AppColors.textMuted,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          'Role default: ${roleDefault! ? 'Allowed' : 'Blocked'}',
+                          style: getOutfitStyle(
+                            fontSize: 10,
+                            color: roleDefault!
+                                ? AppColors.success
+                                : AppColors.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

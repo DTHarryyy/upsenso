@@ -32,6 +32,28 @@ class ProductsDao extends DatabaseAccessor<AppDatabase>
         .watch();
   }
 
+  /// Sellable-only queries — excludes ingredients (type='ingredient').
+  /// Use these everywhere the POS / catalog needs products to sell.
+  Future<List<ProductsTableData>> getSellableByBusinessId(String businessId) {
+    return (select(productsTable)
+          ..where(
+            (t) =>
+                t.businessId.equals(businessId) & t.type.equals('product'),
+          )
+          ..orderBy([(t) => OrderingTerm.asc(t.name)]))
+        .get();
+  }
+
+  Stream<List<ProductsTableData>> watchSellableByBusinessId(String businessId) {
+    return (select(productsTable)
+          ..where(
+            (t) =>
+                t.businessId.equals(businessId) & t.type.equals('product'),
+          )
+          ..orderBy([(t) => OrderingTerm.asc(t.name)]))
+        .watch();
+  }
+
   /// Get products filtered by category.
   Future<List<ProductsTableData>> getByCategoryId(String categoryId) {
     return (select(productsTable)
@@ -95,6 +117,9 @@ class ProductsDao extends DatabaseAccessor<AppDatabase>
         tax: Value((row['tax'] as num?)?.toDouble()),
         sellBy: Value((row['sell_by'] as String?) ?? 'unit'),
         hasVariants: Value((row['has_variants'] as bool?) ?? false),
+        type: Value((row['type'] as String?) ?? 'product'),
+        trackingMethod:
+            Value((row['tracking_method'] as String?) ?? 'product_stock'),
         isActive: Value((row['is_active'] as bool?) ?? true),
         syncStatus: const Value(3), // synced
         lastSyncAttempt: Value(DateTime.now()),
@@ -135,6 +160,7 @@ class ProductsDao extends DatabaseAccessor<AppDatabase>
       barcode: data.barcode,
       hasVariants: data.hasVariants,
       isActive: data.isActive,
+      trackingMethod: data.trackingMethod,
     );
   }
 }

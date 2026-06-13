@@ -19,6 +19,8 @@ class ProductsRemoteDs {
     required bool hasVariants,
     required bool isActive,
     String? imagePath,
+    String type = 'product',
+    String trackingMethod = 'product_stock',
   }) async {
     await client.from('products').upsert({
       'id': id,
@@ -32,6 +34,8 @@ class ProductsRemoteDs {
       'has_variants': hasVariants,
       'is_active': isActive,
       'image_path': imagePath,
+      'type': type,
+      'tracking_method': trackingMethod,
     });
   }
 
@@ -47,6 +51,8 @@ class ProductsRemoteDs {
     required bool hasVariants,
     required bool isActive,
     String? imagePath,
+    String type = 'product',
+    String trackingMethod = 'product_stock',
   }) async {
     await client
         .from('products')
@@ -60,6 +66,8 @@ class ProductsRemoteDs {
           'has_variants': hasVariants,
           'is_active': isActive,
           'image_path': imagePath,
+          'type': type,
+          'tracking_method': trackingMethod,
         })
         .eq('id', id);
   }
@@ -79,6 +87,28 @@ class ProductsRemoteDs {
         .eq('business_id', businessId)
         .order('name');
     return List<Map<String, dynamic>>.from(response);
+  }
+
+  // ── RECIPE LINES ──────────────────────────────────────────────────────────────
+
+  /// Fetch a business's recipe lines (bill-of-materials) for pull sync.
+  Future<List<Map<String, dynamic>>> getRecipeLinesByBusiness(
+    String businessId,
+  ) async {
+    final response = await client
+        .from('recipe_lines')
+        .select()
+        .eq('business_id', businessId)
+        .eq('is_deleted', false);
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  Future<void> upsertRecipeLine(Map<String, dynamic> row) async {
+    await client.from('recipe_lines').upsert(row);
+  }
+
+  Future<void> deleteRecipeLine(String id) async {
+    await client.from('recipe_lines').delete().eq('id', id);
   }
 
   // ── PRODUCT VARIANTS ────────────────────────────────────────────────────────
@@ -239,7 +269,7 @@ class ProductsRemoteDs {
       'quantity_after': quantityAfter,
       'reason': reason,
       'note': note,
-      'created_at': createdAt.toIso8601String(),
+      'created_at': createdAt.toUtc().toIso8601String(),
     });
   }
 

@@ -275,6 +275,37 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  /// Update cost_price using moving-weighted-average result from a goods receipt.
+  /// Called by ProcurementRepository; kept here so core owns the write path.
+  Future<void> updateCostPrice(String variantId, double costPrice) {
+    return (update(productVariantsTable)
+          ..where((t) => t.id.equals(variantId)))
+        .write(
+          ProductVariantsTableCompanion(
+            costPrice: Value(costPrice),
+            syncStatus: const Value(1),
+            localUpdatedAt: Value(DateTime.now()),
+          ),
+        );
+  }
+
+  Future<void> updateUnitAndAlert(
+    String variantId, {
+    required String? unit,
+    required int? lowStockAlert,
+  }) {
+    return (update(productVariantsTable)
+          ..where((t) => t.id.equals(variantId)))
+        .write(
+          ProductVariantsTableCompanion(
+            unit: Value(unit),
+            lowStockAlert: Value(lowStockAlert),
+            syncStatus: const Value(1),
+            localUpdatedAt: Value(DateTime.now()),
+          ),
+        );
+  }
+
   /// Update the global stock total for a variant to [stock].
   /// Used after editing to keep product_variants.stock in sync with
   /// the authoritative sum from inventory_levels.

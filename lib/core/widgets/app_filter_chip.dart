@@ -25,9 +25,7 @@ class AppFilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activeColor = selectedColor ?? AppColors.brand;
-    final activeBg = isSelected
-        ? activeColor
-        : AppColors.surface;
+    final activeBg = isSelected ? activeColor : AppColors.surface;
 
     return GestureDetector(
       onTap: onTap,
@@ -53,28 +51,21 @@ class AppFilterChip extends StatelessWidget {
               style: getOutfitStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: isSelected ? AppColors.textInverse : AppColors.textSecondary,
+                color: isSelected
+                    ? AppColors.textInverse
+                    : AppColors.textSecondary,
               ),
             ),
             if (badgeCount != null && badgeCount! > 0) ...[
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                decoration: BoxDecoration(
+              const SizedBox(width: 8),
+              Text(
+                '$badgeCount',
+                style: getOutfitStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
                   color: isSelected
-                      ? activeColor.withValues(alpha: 0.18)
-                      : (badgeColor ?? AppColors.warningSoft),
-                  borderRadius: BorderRadius.circular(100),
-                ),
-                child: Text(
-                  '$badgeCount',
-                  style: getOutfitStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: isSelected
-                        ? activeColor
-                        : (badgeTextColor ?? AppColors.warning),
-                  ),
+                      ? AppColors.textInverse
+                      : (badgeTextColor ?? activeColor),
                 ),
               ),
             ],

@@ -28,10 +28,10 @@ class RolePermissionMatrix {
 
   /// Full permission matrix. Immutable at runtime.
   static final Map<String, Set<AppPermission>> _matrix = {
-    // ── Business Owner / Super Admin — unrestricted ──────────────────────────
+    // ── Business Owner — unrestricted ────────────────────────────────────────
     businessOwner: AppPermission.values.toSet(),
-    superAdmin: AppPermission.values.toSet(),
-    owner: AppPermission.values.toSet(),
+    superAdmin: AppPermission.values.toSet(), // alias kept for old DB data
+    owner: AppPermission.values.toSet(),      // alias kept for old DB data
 
     // ── Branch Manager — operational control over ONE branch ────────────────
     branchManager: {
@@ -87,6 +87,18 @@ class RolePermissionMatrix {
       // Suppliers
       AppPermission.viewSupplierList,
 
+      // Procurement — managers can create, approve, and receive
+      AppPermission.viewProcurement,
+      AppPermission.createPurchaseOrder,
+      AppPermission.approvePurchaseOrder,
+      AppPermission.receiveGoodsAgainstPo,
+      AppPermission.manageProcurement,
+
+      // Ingredients & recipes
+      AppPermission.viewIngredients,
+      AppPermission.manageIngredients,
+      AppPermission.manageRecipes,
+
       // Settings (branch-level)
       AppPermission.accessSettings,
     },
@@ -127,6 +139,16 @@ class RolePermissionMatrix {
 
       // Suppliers (read-only)
       AppPermission.viewSupplierList,
+
+      // Procurement — inventory staff can view and physically receive goods
+      // but cannot approve POs (separation of duties)
+      AppPermission.viewProcurement,
+      AppPermission.receiveGoodsAgainstPo,
+
+      // Ingredients & recipes — inventory staff manage both stock items and recipes.
+      AppPermission.viewIngredients,
+      AppPermission.manageIngredients,
+      AppPermission.manageRecipes,
 
       // Limited reports
       AppPermission.viewInventoryReports,
@@ -177,9 +199,12 @@ class RolePermissionMatrix {
       AppFeature.branchConfiguration,
       AppFeature.productsCatalogue,
       AppFeature.supplierDirectory,
+      AppFeature.procurement,
+      AppFeature.ingredientsManagement,
+      AppFeature.recipeManagement,
       AppFeature.salesHistory,
       // auditLogs intentionally excluded: raw audit log access is
-      // restricted to owner / super_admin only.
+      // restricted to Business Owner only.
       AppFeature.profileSettings,
       AppFeature.dashboardManager,
     },
@@ -195,6 +220,9 @@ class RolePermissionMatrix {
       AppFeature.inventoryManagement,
       AppFeature.productsCatalogue,
       AppFeature.supplierDirectory,
+      AppFeature.procurement,
+      AppFeature.ingredientsManagement,
+      AppFeature.recipeManagement,
       AppFeature.profileSettings,
       AppFeature.dashboardInventory,
     },

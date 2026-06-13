@@ -136,15 +136,19 @@ class _MorePageState extends State<MorePage>
         final isRestrictedEmployee = !permService.can(
           PermissionKeys.navExpenses,
         );
-        // Audit logs: owner / super_admin only (branchManager excluded by permission matrix).
+        // Audit logs: Business Owner only (branchManager excluded by permission matrix).
         final canSeeAuditLogs = permService.can(PermissionKeys.navAuditLogs) &&
             permService.isModuleEnabled('audit');
-        // Employee management: branchManager / owner / super_admin.
+        // Employee management: branchManager / Business Owner.
         final canSeeEmployees = permService.can(PermissionKeys.navEmployees) &&
             permService.isModuleEnabled('employees');
         // Held sales: anyone who can hold a sale (incl. cashiers), POS module on.
         final canSeeHeldSales = permService.can(PermissionKeys.navHeldSales) &&
             permService.isModuleEnabled('pos');
+        // Procurement: permission + module gate.
+        final canSeeProcurement =
+            permService.can(PermissionKeys.navProcurement) &&
+                permService.isModuleEnabled('procurement');
 
         return SafeArea(
           child: Column(
@@ -227,6 +231,38 @@ class _MorePageState extends State<MorePage>
                             label: 'Audit Logs',
                             onTap: () => _pushFullPage(const AuditLogPage()),
                           ),
+                        const SizedBox(height: 4),
+                        _Divider(),
+                        const SizedBox(height: 4),
+                      ],
+
+                      // INGREDIENTS — own module gate, independent from recipes
+                      if (permService.can(PermissionKeys.navRecipes) &&
+                          permService.isModuleEnabled('ingredients')) ...[
+                        _SectionLabel('INGREDIENTS'),
+                        _DrawerTile(
+                          icon: IconlyLight.category,
+                          label: 'Ingredients',
+                          onTap: () => _navigate(AppRoutes.ingredients),
+                        ),
+                        const SizedBox(height: 4),
+                        _Divider(),
+                        const SizedBox(height: 4),
+                      ],
+
+                      // PROCUREMENT — purchase orders + suppliers
+                      if (canSeeProcurement) ...[
+                        _SectionLabel('PROCUREMENT'),
+                        _DrawerTile(
+                          icon: IconlyLight.bag_2,
+                          label: 'Purchase Orders',
+                          onTap: () => _navigate(AppRoutes.purchaseOrders),
+                        ),
+                        _DrawerTile(
+                          icon: IconlyLight.work,
+                          label: 'Suppliers',
+                          onTap: () => _navigate(AppRoutes.suppliers),
+                        ),
                         const SizedBox(height: 4),
                         _Divider(),
                         const SizedBox(height: 4),

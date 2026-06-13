@@ -11,7 +11,7 @@ class BranchState extends Equatable {
   /// List of available branches for the user
   final List<String> availableBranches;
 
-  /// Whether the user can switch branches (Super Admin only)
+  /// Whether the user can switch branches (Business Owner only)
   final bool canSwitchBranches;
 
   /// Whether we're loading branches

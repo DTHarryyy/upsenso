@@ -27,6 +27,11 @@ import 'package:pos/features/pos/data/datasources/transactions_remote_ds.dart';
 import 'package:pos/features/settings/data/receipt_settings_repository.dart';
 import 'package:pos/features/audit_logs/data/datasources/audit_log_remote_ds.dart';
 import 'package:pos/features/employees/data/datasources/employees_remote_ds.dart';
+import 'package:pos/core/database/daos/purchase_order_lines_dao.dart';
+import 'package:pos/core/database/daos/purchase_orders_dao.dart';
+import 'package:pos/core/database/daos/recipe_lines_dao.dart';
+import 'package:pos/core/database/daos/suppliers_dao.dart';
+import 'package:pos/features/procurement/data/datasources/procurement_remote_ds.dart';
 
 /// Service to handle synchronization between local Drift DB and Supabase
 class SyncService {
@@ -51,6 +56,11 @@ class SyncService {
   final AuditLogRemoteDs _auditLogRemoteDs;
   final EmployeesDao _employeesDao;
   final EmployeesRemoteDs _employeesRemoteDs;
+  final SuppliersDao _suppliersDao;
+  final PurchaseOrdersDao _purchaseOrdersDao;
+  final PurchaseOrderLinesDao _purchaseOrderLinesDao;
+  final ProcurementRemoteDs _procurementRemoteDs;
+  final RecipeLinesDao _recipeLinesDao;
 
   StreamSubscription<bool>? _connectivitySubscription;
   Timer? _retryTimer;
@@ -83,6 +93,11 @@ class SyncService {
     required AuditLogRemoteDs auditLogRemoteDs,
     required EmployeesDao employeesDao,
     required EmployeesRemoteDs employeesRemoteDs,
+    required SuppliersDao suppliersDao,
+    required PurchaseOrdersDao purchaseOrdersDao,
+    required PurchaseOrderLinesDao purchaseOrderLinesDao,
+    required ProcurementRemoteDs procurementRemoteDs,
+    required RecipeLinesDao recipeLinesDao,
   }) : _authContextDao = authContextDao,
        _branchesDao = branchesDao,
        _businessesDao = businessesDao,
@@ -103,7 +118,12 @@ class SyncService {
        _auditLogsDao = auditLogsDao,
        _auditLogRemoteDs = auditLogRemoteDs,
        _employeesDao = employeesDao,
-       _employeesRemoteDs = employeesRemoteDs;
+       _employeesRemoteDs = employeesRemoteDs,
+       _suppliersDao = suppliersDao,
+       _purchaseOrdersDao = purchaseOrdersDao,
+       _purchaseOrderLinesDao = purchaseOrderLinesDao,
+       _procurementRemoteDs = procurementRemoteDs,
+       _recipeLinesDao = recipeLinesDao;
 
   /// Returns [provided] if non-null, otherwise reads businessId from the
   /// locally cached auth context. This allows connectivity-triggered syncs
@@ -161,6 +181,10 @@ class SyncService {
     await _receiptSettingsRepo.clearAll();
     await _auditLogsDao.clearAll();
     await _employeesDao.clearAll();
+    await _suppliersDao.clearAll();
+    await _purchaseOrderLinesDao.clearAll();
+    await _purchaseOrdersDao.clearAll();
+    await _recipeLinesDao.clearAll();
     await _authContextDao.clearAll();
   }
 
@@ -178,13 +202,17 @@ class SyncService {
         led = 0,
         rcpt = 0,
         audit = 0,
-        emp = 0;
+        emp = 0,
+        sup = 0,
+        po = 0,
+        pol = 0,
+        rcp = 0;
     final controller = StreamController<int>.broadcast();
 
     void emit() {
       if (!controller.isClosed) {
         controller.add(
-          cat + prod + vars + orders + exp + inv + led + rcpt + audit + emp,
+          cat + prod + vars + orders + exp + inv + led + rcpt + audit + emp + sup + po + pol + rcp,
         );
       }
     }
@@ -230,6 +258,22 @@ class SyncService {
       emp = n;
       emit();
     });
+    final s11 = _suppliersDao.watchPendingSyncCount().listen((n) {
+      sup = n;
+      emit();
+    });
+    final s12 = _purchaseOrdersDao.watchPendingSyncCount().listen((n) {
+      po = n;
+      emit();
+    });
+    final s13 = _purchaseOrderLinesDao.watchPendingSyncCount().listen((n) {
+      pol = n;
+      emit();
+    });
+    final s14 = _recipeLinesDao.watchPendingSyncCount().listen((n) {
+      rcp = n;
+      emit();
+    });
 
     controller.onCancel = () {
       s1.cancel();
@@ -242,6 +286,10 @@ class SyncService {
       s8.cancel();
       s9.cancel();
       s10.cancel();
+      s11.cancel();
+      s12.cancel();
+      s13.cancel();
+      s14.cancel();
       controller.close();
     };
 
@@ -287,6 +335,10 @@ class SyncService {
       await _syncReceiptSettings(); // fire-and-forget style; errors logged internally
       await _syncAuditLogs(); // fire-and-forget style; errors logged internally
       final employeeResult = await _syncEmployees();
+      final supplierResult = await _syncSuppliers();
+      final poResult = await _syncPurchaseOrders();
+      final polResult = await _syncPurchaseOrderLines();
+      final recipeResult = await _syncRecipeLines();
 
       final int totalSynced =
           branchResult.syncedCount +
@@ -298,7 +350,11 @@ class SyncService {
           expenseResult.syncedCount +
           inventoryResult.syncedCount +
           ledgerResult.syncedCount +
-          employeeResult.syncedCount;
+          employeeResult.syncedCount +
+          supplierResult.syncedCount +
+          poResult.syncedCount +
+          polResult.syncedCount +
+          recipeResult.syncedCount;
       final int totalFailed =
           branchResult.failedCount +
           businessResult.failedCount +
@@ -309,7 +365,11 @@ class SyncService {
           expenseResult.failedCount +
           inventoryResult.failedCount +
           ledgerResult.failedCount +
-          employeeResult.failedCount;
+          employeeResult.failedCount +
+          supplierResult.failedCount +
+          poResult.failedCount +
+          polResult.failedCount +
+          recipeResult.failedCount;
 
       // pull kapag may businessId (either provided or from auth context)
       final effectiveBusinessId = await _resolveBusinessId(businessId);
@@ -331,9 +391,13 @@ class SyncService {
             inventoryResult.success &&
             ledgerResult.success &&
             employeeResult.success &&
+            supplierResult.success &&
+            poResult.success &&
+            polResult.success &&
+            recipeResult.success &&
             pullResult.success,
         message:
-            '${businessResult.message}; ${categoryResult.message}; ${productResult.message}; ${variantResult.message}; ${expenseResult.message}; ${inventoryResult.message}; ${ledgerResult.message}; ${employeeResult.message}; ${pullResult.message}',
+            '${businessResult.message}; ${categoryResult.message}; ${productResult.message}; ${variantResult.message}; ${expenseResult.message}; ${inventoryResult.message}; ${ledgerResult.message}; ${employeeResult.message}; ${supplierResult.message}; ${poResult.message}; ${polResult.message}; ${recipeResult.message}; ${pullResult.message}',
         syncedCount: totalSynced + pullResult.syncedCount,
         failedCount: totalFailed + pullResult.failedCount,
         errors: [
@@ -345,6 +409,10 @@ class SyncService {
           ...inventoryResult.errors,
           ...ledgerResult.errors,
           ...employeeResult.errors,
+          ...supplierResult.errors,
+          ...poResult.errors,
+          ...polResult.errors,
+          ...recipeResult.errors,
           ...pullResult.errors,
         ],
       );
@@ -518,6 +586,8 @@ class SyncService {
               sellBy: record.sellBy,
               hasVariants: record.hasVariants,
               isActive: record.isActive,
+              type: record.type,
+              trackingMethod: record.trackingMethod,
             );
             await _productsDao.updateSyncStatus(
               id: record.id,
@@ -536,6 +606,8 @@ class SyncService {
               sellBy: record.sellBy,
               hasVariants: record.hasVariants,
               isActive: record.isActive,
+              type: record.type,
+              trackingMethod: record.trackingMethod,
             );
             await _productsDao.updateSyncStatus(
               id: record.id,
@@ -1225,6 +1297,58 @@ class SyncService {
       errors.add('Pull employees: ${e.toString()}');
     }
 
+    try {
+      final suppliers = await _procurementRemoteDs.getSuppliersByBusiness(
+        businessId,
+      );
+      for (final row in suppliers) {
+        await _suppliersDao.upsertFromServer(row);
+        pulled++;
+      }
+    } catch (e) {
+      failed++;
+      errors.add('Pull suppliers: ${e.toString()}');
+    }
+
+    try {
+      final pos = await _procurementRemoteDs.getPurchaseOrdersByBusiness(
+        businessId,
+      );
+      for (final row in pos) {
+        await _purchaseOrdersDao.upsertFromServer(row);
+        pulled++;
+      }
+    } catch (e) {
+      failed++;
+      errors.add('Pull purchase orders: ${e.toString()}');
+    }
+
+    try {
+      final lines = await _procurementRemoteDs.getPurchaseOrderLinesByBusiness(
+        businessId,
+      );
+      for (final row in lines) {
+        await _purchaseOrderLinesDao.upsertFromServer(row);
+        pulled++;
+      }
+    } catch (e) {
+      failed++;
+      errors.add('Pull PO lines: ${e.toString()}');
+    }
+
+    try {
+      final recipeLines = await _productsRemoteDs.getRecipeLinesByBusiness(
+        businessId,
+      );
+      for (final row in recipeLines) {
+        await _recipeLinesDao.upsertFromServer(row);
+        pulled++;
+      }
+    } catch (e) {
+      failed++;
+      errors.add('Pull recipe lines: ${e.toString()}');
+    }
+
     return SyncResult(
       success: failed == 0,
       message: 'Pull: $pulled records, $failed errors',
@@ -1363,6 +1487,264 @@ class SyncService {
       final business = BusinessModel.fromJson(serverData);
       await _businessesDao.upsertFromServer(business);
     }
+  }
+
+  Future<SyncResult> _syncSuppliers() async {
+    final pending = await _suppliersDao.getPendingSync();
+    int synced = 0;
+    int failed = 0;
+    final errors = <String>[];
+
+    for (final record in pending) {
+      final status = SyncStatusExtension.fromInt(record.syncStatus);
+      try {
+        switch (status) {
+          case SyncStatus.pendingUpload:
+          case SyncStatus.pendingUpdate:
+          case SyncStatus.failed:
+            await _procurementRemoteDs.upsertSupplier({
+              'id': record.id,
+              'business_id': record.businessId,
+              'name': record.name,
+              'contact_name': record.contactName,
+              'phone': record.phone,
+              'email': record.email,
+              'address': record.address,
+              'tax_id': record.taxId,
+              'notes': record.notes,
+              'is_active': record.isActive,
+              'is_deleted': record.isDeleted,
+              'deleted_at': record.deletedAt?.toUtc().toIso8601String(),
+              'created_at': record.createdAt.toUtc().toIso8601String(),
+              'updated_at': record.localUpdatedAt.toUtc().toIso8601String(),
+            });
+            await _suppliersDao.updateSyncStatus(
+              id: record.id,
+              status: SyncStatus.synced,
+            );
+            synced++;
+
+          case SyncStatus.pendingDelete:
+            await _procurementRemoteDs.deleteSupplier(record.id);
+            await _suppliersDao.hardDelete(record.id);
+            synced++;
+
+          case SyncStatus.synced:
+            break;
+        }
+      } catch (e) {
+        failed++;
+        debugPrint('[SYNC] Supplier ${record.name} FAILED: $e');
+        errors.add('Supplier ${record.name}: ${e.toString()}');
+        await _suppliersDao.updateSyncStatus(
+          id: record.id,
+          status: SyncStatus.failed,
+          error: e.toString(),
+        );
+      }
+    }
+
+    return SyncResult(
+      success: failed == 0,
+      message: 'Suppliers: $synced synced, $failed failed',
+      syncedCount: synced,
+      failedCount: failed,
+      errors: errors,
+    );
+  }
+
+  Future<SyncResult> _syncPurchaseOrders() async {
+    final pending = await _purchaseOrdersDao.getPendingSync();
+    int synced = 0;
+    int failed = 0;
+    final errors = <String>[];
+
+    for (final record in pending) {
+      final status = SyncStatusExtension.fromInt(record.syncStatus);
+      try {
+        switch (status) {
+          case SyncStatus.pendingUpload:
+          case SyncStatus.pendingUpdate:
+          case SyncStatus.failed:
+            await _procurementRemoteDs.upsertPurchaseOrder({
+              'id': record.id,
+              'business_id': record.businessId,
+              'branch_id': record.branchId,
+              'supplier_id': record.supplierId,
+              'supplier_name': record.supplierName,
+              'status': record.status,
+              'po_number': record.poNumber,
+              'notes': record.notes,
+              'expected_delivery': record.expectedDelivery?.toUtc().toIso8601String(),
+              'total_amount': record.totalAmount,
+              'created_by_id': record.createdById,
+              'created_by_name': record.createdByName,
+              'submitted_at': record.submittedAt?.toUtc().toIso8601String(),
+              'approved_at': record.approvedAt?.toUtc().toIso8601String(),
+              'approved_by_id': record.approvedById,
+              'approved_by_name': record.approvedByName,
+              'is_deleted': record.isDeleted,
+              'deleted_at': record.deletedAt?.toUtc().toIso8601String(),
+              'created_at': record.createdAt.toUtc().toIso8601String(),
+              'updated_at': record.localUpdatedAt.toUtc().toIso8601String(),
+            });
+            await _purchaseOrdersDao.updateSyncStatus(
+              id: record.id,
+              status: SyncStatus.synced,
+            );
+            synced++;
+
+          case SyncStatus.pendingDelete:
+            await _procurementRemoteDs.deletePurchaseOrder(record.id);
+            await _purchaseOrdersDao.hardDelete(record.id);
+            synced++;
+
+          case SyncStatus.synced:
+            break;
+        }
+      } catch (e) {
+        failed++;
+        debugPrint('[SYNC] PurchaseOrder ${record.poNumber} FAILED: $e');
+        errors.add('PO ${record.poNumber}: ${e.toString()}');
+        await _purchaseOrdersDao.updateSyncStatus(
+          id: record.id,
+          status: SyncStatus.failed,
+          error: e.toString(),
+        );
+      }
+    }
+
+    return SyncResult(
+      success: failed == 0,
+      message: 'Purchase orders: $synced synced, $failed failed',
+      syncedCount: synced,
+      failedCount: failed,
+      errors: errors,
+    );
+  }
+
+  Future<SyncResult> _syncPurchaseOrderLines() async {
+    final pending = await _purchaseOrderLinesDao.getPendingSync();
+    int synced = 0;
+    int failed = 0;
+    final errors = <String>[];
+
+    for (final record in pending) {
+      final status = SyncStatusExtension.fromInt(record.syncStatus);
+      try {
+        switch (status) {
+          case SyncStatus.pendingUpload:
+          case SyncStatus.pendingUpdate:
+          case SyncStatus.failed:
+            await _procurementRemoteDs.upsertPurchaseOrderLine({
+              'id': record.id,
+              'purchase_order_id': record.purchaseOrderId,
+              'business_id': record.businessId,
+              'product_id': record.productId,
+              'variant_id': record.variantId,
+              'product_name': record.productName,
+              'variant_name': record.variantName,
+              'sku': record.sku,
+              'quantity_ordered': record.quantityOrdered,
+              'quantity_received': record.quantityReceived,
+              'unit_cost': record.unitCost,
+              'is_deleted': record.isDeleted,
+              'created_at': record.createdAt.toUtc().toIso8601String(),
+              'updated_at': record.localUpdatedAt.toUtc().toIso8601String(),
+            });
+            await _purchaseOrderLinesDao.updateSyncStatus(
+              id: record.id,
+              status: SyncStatus.synced,
+            );
+            synced++;
+
+          case SyncStatus.pendingDelete:
+            await _procurementRemoteDs.deletePurchaseOrderLine(record.id);
+            await _purchaseOrderLinesDao.hardDelete(record.id);
+            synced++;
+
+          case SyncStatus.synced:
+            break;
+        }
+      } catch (e) {
+        failed++;
+        debugPrint('[SYNC] PurchaseOrderLine ${record.id} FAILED: $e');
+        errors.add('PO line ${record.id}: ${e.toString()}');
+        await _purchaseOrderLinesDao.updateSyncStatus(
+          id: record.id,
+          status: SyncStatus.failed,
+          error: e.toString(),
+        );
+      }
+    }
+
+    return SyncResult(
+      success: failed == 0,
+      message: 'PO lines: $synced synced, $failed failed',
+      syncedCount: synced,
+      failedCount: failed,
+      errors: errors,
+    );
+  }
+
+  Future<SyncResult> _syncRecipeLines() async {
+    final pending = await _recipeLinesDao.getPendingSync();
+    int synced = 0;
+    int failed = 0;
+    final errors = <String>[];
+
+    for (final record in pending) {
+      final status = SyncStatusExtension.fromInt(record.syncStatus);
+      try {
+        switch (status) {
+          case SyncStatus.pendingUpload:
+          case SyncStatus.pendingUpdate:
+          case SyncStatus.failed:
+            await _productsRemoteDs.upsertRecipeLine({
+              'id': record.id,
+              'business_id': record.businessId,
+              'product_variant_id': record.productVariantId,
+              'ingredient_variant_id': record.ingredientVariantId,
+              'ingredient_name': record.ingredientName,
+              'quantity': record.quantity,
+              'unit': record.unit,
+              'is_deleted': record.isDeleted,
+              'created_at': record.createdAt.toUtc().toIso8601String(),
+              'updated_at': record.localUpdatedAt.toUtc().toIso8601String(),
+            });
+            await _recipeLinesDao.updateSyncStatus(
+              id: record.id,
+              status: SyncStatus.synced,
+            );
+            synced++;
+
+          case SyncStatus.pendingDelete:
+            await _productsRemoteDs.deleteRecipeLine(record.id);
+            await _recipeLinesDao.hardDelete(record.id);
+            synced++;
+
+          case SyncStatus.synced:
+            break;
+        }
+      } catch (e) {
+        failed++;
+        debugPrint('[SYNC] RecipeLine ${record.id} FAILED: $e');
+        errors.add('Recipe line ${record.id}: ${e.toString()}');
+        await _recipeLinesDao.updateSyncStatus(
+          id: record.id,
+          status: SyncStatus.failed,
+          error: e.toString(),
+        );
+      }
+    }
+
+    return SyncResult(
+      success: failed == 0,
+      message: 'Recipe lines: $synced synced, $failed failed',
+      syncedCount: synced,
+      failedCount: failed,
+      errors: errors,
+    );
   }
 
   /// Returns true when [syncStatus] represents a locally pending change that

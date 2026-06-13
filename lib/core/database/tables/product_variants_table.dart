@@ -21,6 +21,11 @@ class ProductVariantsTable extends Table {
   IntColumn get stock => integer().withDefault(const Constant(0))();
   TextColumn get sku => text().nullable()();
   TextColumn get barcode => text().nullable()();
+
+  /// Unit of measure for stock quantities (g, kg, ml, L, pcs). Null = 'pcs'.
+  /// Used by ingredients and recipe lines; harmless for normal stock products.
+  TextColumn get unit => text().nullable()();
+
   RealColumn get stockDecimal => real().nullable()(); // used when sellBy == 'fraction'
   /// Optional threshold below which a low-stock alert should be triggered.
   IntColumn get lowStockAlert => integer().nullable()();

@@ -1246,7 +1246,7 @@ class _ProfileNavTile extends StatelessWidget {
 }
 
 /// A sidebar nav tile that navigates to the Employees management page.
-/// Shown only to owner / super_admin in the ADMIN section.
+/// Shown only to Business Owner in the ADMIN section.
 class _EmployeesNavTile extends StatelessWidget {
   final bool expanded;
   final String currentLocation;

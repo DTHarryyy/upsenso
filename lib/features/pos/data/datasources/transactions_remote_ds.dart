@@ -25,7 +25,7 @@ class TransactionsRemoteDs {
       'tax_amount': taxAmount,
       'status': 'completed',
       'payment_method': paymentMethod,
-      'created_at': createdAt.toIso8601String(),
+      'created_at': createdAt.toUtc().toIso8601String(),
     });
   }
 

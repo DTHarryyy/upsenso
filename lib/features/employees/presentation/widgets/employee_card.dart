@@ -442,7 +442,7 @@ class _ActionSheet extends StatelessWidget {
                           ),
                           if (employee.roleName != null)
                             Text(
-                              employee.roleName!,
+                              displayRoleName(employee.roleName) ?? '',
                               style: getOutfitStyle(
                                 fontSize: 12,
                                 color: AppColors.textMuted,
