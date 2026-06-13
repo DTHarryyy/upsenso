@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:iconly/iconly.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pos/core/audit/audit_log_service.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/database/daos/business_modules_dao.dart';
+import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/core/permissions/data/permission_remote_ds.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/widgets/app_sub_page_bar.dart';
@@ -153,6 +155,27 @@ class ModuleSettingsCubit extends Cubit<ModuleSettingsState> {
       );
       await sl<BusinessModulesDao>().saveModules(businessId, {code: enabled});
       await sl<PermissionService>().syncModules(businessId);
+
+      final label = _kModules
+          .firstWhere(
+            (m) => m.code == code,
+            orElse: () => _ModuleInfo(
+              code: code,
+              label: code,
+              description: '',
+              icon: IconlyLight.category,
+            ),
+          )
+          .label;
+      sl<AuditLogService>().log(
+        actionType: AuditLogActionType.businessModuleChanged,
+        entityType: 'module',
+        entityId: code,
+        entityName: label,
+        description: '$label module ${enabled ? 'enabled' : 'disabled'}',
+        metadata: {'module': code, 'enabled': enabled},
+        businessId: businessId,
+      );
     } catch (e) {
       debugPrint('[ModuleSettings] toggle "$code" → $enabled FAILED: $e');
       final s = state;

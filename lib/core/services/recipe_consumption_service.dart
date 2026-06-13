@@ -50,8 +50,7 @@ class RecipeConsumptionService {
       await _ledgerDao.db.transaction(() async {
         final levelBefore =
             await _levelsDao.getLevel(line.ingredientVariantId, branchId);
-        final double qtyBefore =
-            levelBefore?.quantityDecimal ?? (levelBefore?.quantity.toDouble() ?? 0.0);
+        final double qtyBefore = levelBefore?.effectiveQuantity ?? 0.0;
         final double qtyAfter = (qtyBefore - needed).clamp(0.0, 999999.0);
 
         await _ledgerDao.insertEntry(
@@ -100,8 +99,7 @@ class RecipeConsumptionService {
       if (line.quantity <= 0) continue;
       final level =
           await _levelsDao.getLevel(line.ingredientVariantId, branchId);
-      final available =
-          level?.quantityDecimal ?? (level?.quantity.toDouble() ?? 0.0);
+      final available = level?.effectiveQuantity ?? 0.0;
       final units = available / line.quantity;
       if (minUnits == null || units < minUnits) minUnits = units;
     }

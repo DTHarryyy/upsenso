@@ -4,9 +4,11 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
+import 'package:pos/core/audit/audit_log_service.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
+import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/core/permissions/data_scope.dart';
 import 'package:pos/core/permissions/role_permission_matrix.dart';
 import 'package:pos/core/sync/sync_status.dart';
@@ -485,6 +487,15 @@ class BranchCubit extends Cubit<BranchState> {
         .map((entry) => _BranchOption(name: entry.key, id: entry.value))
         .toList(growable: false);
     await _saveCachedBranchOptions(businessId, cacheableOptions);
+
+    sl<AuditLogService>().log(
+      actionType: AuditLogActionType.branchCreated,
+      entityType: 'branch',
+      entityId: id,
+      entityName: branch.name,
+      description: 'Branch ${branch.name} created',
+      businessId: businessId,
+    );
 
     return id;
   }

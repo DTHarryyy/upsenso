@@ -250,6 +250,15 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     );
     await _loadCategories();
     emit(state.copyWith(selectedCategoryId: newId));
+
+    sl<AuditLogService>().log(
+      actionType: AuditLogActionType.categoryCreated,
+      entityType: 'category',
+      entityId: newId,
+      entityName: name,
+      description: 'Category $name created',
+      businessId: businessId,
+    );
     return newId;
   }
 
@@ -485,7 +494,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       }
 
       sl<AuditLogService>().log(
-        actionType: AuditLogActionType.stockUpdated,
+        actionType: AuditLogActionType.productUpdated,
         entityType: 'product',
         entityName: data.name.trim(),
         description: 'Product updated: ${data.name.trim()}',
@@ -744,15 +753,13 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       }
 
       sl<AuditLogService>().log(
-        actionType: data.isDraft
-            ? AuditLogActionType.stockAdded
-            : AuditLogActionType.stockAdded,
+        actionType: AuditLogActionType.productCreated,
         entityType: 'product',
         entityName: data.name.trim(),
         description: data.isDraft
             ? 'Product saved as draft: ${data.name.trim()}'
             : 'Product created: ${data.name.trim()}',
-        metadata: const {},
+        metadata: {'is_draft': data.isDraft},
         businessId: businessId,
       );
 

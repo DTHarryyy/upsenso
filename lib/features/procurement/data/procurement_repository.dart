@@ -2,6 +2,9 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:pos/core/audit/audit_log_service.dart';
+import 'package:pos/core/config/di.dart';
+import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/inventory_levels_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
@@ -79,9 +82,10 @@ class ProcurementRepository implements IProcurementRepository {
     String? notes,
   }) async {
     try {
+      final id = _uuid.v4();
       await _suppliersDao.insert(
         SuppliersTableCompanion.insert(
-          id: _uuid.v4(),
+          id: id,
           businessId: businessId,
           name: name,
           contactName: Value(contactName),
@@ -92,6 +96,14 @@ class ProcurementRepository implements IProcurementRepository {
           notes: Value(notes),
           syncStatus: Value(SyncStatus.pendingUpload.toInt()),
         ),
+      );
+      sl<AuditLogService>().log(
+        actionType: AuditLogActionType.supplierCreated,
+        entityType: 'supplier',
+        entityId: id,
+        entityName: name,
+        description: 'Supplier $name created',
+        businessId: businessId,
       );
     } catch (e, st) {
       debugPrint('[Procurement] Error in createSupplier: $e\n$st');
@@ -127,6 +139,13 @@ class ProcurementRepository implements IProcurementRepository {
           localUpdatedAt: Value(DateTime.now()),
         ),
       );
+      sl<AuditLogService>().log(
+        actionType: AuditLogActionType.supplierUpdated,
+        entityType: 'supplier',
+        entityId: id,
+        entityName: name,
+        description: 'Supplier $name updated',
+      );
     } catch (e, st) {
       debugPrint('[Procurement] Error in updateSupplier: $e\n$st');
       rethrow;
@@ -136,7 +155,15 @@ class ProcurementRepository implements IProcurementRepository {
   @override
   Future<void> deleteSupplier(String id) async {
     try {
+      final existing = await _suppliersDao.getById(id);
       await _suppliersDao.softDelete(id);
+      sl<AuditLogService>().log(
+        actionType: AuditLogActionType.supplierDeleted,
+        entityType: 'supplier',
+        entityId: id,
+        entityName: existing?.name,
+        description: 'Supplier ${existing?.name ?? id} deleted',
+      );
     } catch (e, st) {
       debugPrint('[Procurement] Error in deleteSupplier: $e\n$st');
       rethrow;
@@ -226,6 +253,21 @@ class ProcurementRepository implements IProcurementRepository {
         lines.map((l) => _lineCompanion(id, businessId, l)).toList(),
       );
 
+      sl<AuditLogService>().log(
+        actionType: AuditLogActionType.purchaseOrderCreated,
+        entityType: 'purchase_order',
+        entityId: id,
+        entityName: poNumber,
+        description: 'Purchase order $poNumber created',
+        metadata: {
+          'supplier': supplierName,
+          'lines': lines.length,
+          'total': total,
+        },
+        businessId: businessId,
+        branchId: branchId,
+      );
+
       return id;
     } catch (e, st) {
       debugPrint('[Procurement] Error in createPurchaseOrder: $e\n$st');
@@ -270,6 +312,14 @@ class ProcurementRepository implements IProcurementRepository {
           lines.map((l) => _lineCompanion(id, po.businessId, l)).toList(),
         );
       }
+
+      sl<AuditLogService>().log(
+        actionType: AuditLogActionType.purchaseOrderUpdated,
+        entityType: 'purchase_order',
+        entityId: id,
+        entityName: po.poNumber,
+        description: 'Purchase order ${po.poNumber} updated',
+      );
     } catch (e, st) {
       debugPrint('[Procurement] Error in updatePurchaseOrder: $e\n$st');
       rethrow;
@@ -291,6 +341,13 @@ class ProcurementRepository implements IProcurementRepository {
           syncStatus: Value(SyncStatus.pendingUpdate.toInt()),
           localUpdatedAt: Value(DateTime.now()),
         ),
+      );
+      sl<AuditLogService>().log(
+        actionType: AuditLogActionType.purchaseOrderSubmitted,
+        entityType: 'purchase_order',
+        entityId: id,
+        entityName: po.poNumber,
+        description: 'Purchase order ${po.poNumber} submitted for approval',
       );
     } catch (e, st) {
       debugPrint('[Procurement] Error in submitPurchaseOrder: $e\n$st');
@@ -319,6 +376,14 @@ class ProcurementRepository implements IProcurementRepository {
           syncStatus: Value(SyncStatus.pendingUpdate.toInt()),
           localUpdatedAt: Value(DateTime.now()),
         ),
+      );
+      sl<AuditLogService>().log(
+        actionType: AuditLogActionType.purchaseOrderApproved,
+        entityType: 'purchase_order',
+        entityId: id,
+        entityName: po.poNumber,
+        description: 'Purchase order ${po.poNumber} approved by $approvedByName',
+        metadata: {'approved_by': approvedByName},
       );
     } catch (e, st) {
       debugPrint('[Procurement] Error in approvePurchaseOrder: $e\n$st');
@@ -392,17 +457,29 @@ class ProcurementRepository implements IProcurementRepository {
       final allReceived = allLines.every(
         (l) => l.quantityReceived >= l.quantityOrdered,
       );
+      final newStatus =
+          allReceived ? PoStatus.received.value : PoStatus.partiallyReceived.value;
       await _purchaseOrdersDao.updatePo(
         poId,
         PurchaseOrdersTableCompanion(
-          status: Value(
-            allReceived
-                ? PoStatus.received.value
-                : PoStatus.partiallyReceived.value,
-          ),
+          status: Value(newStatus),
           syncStatus: Value(SyncStatus.pendingUpdate.toInt()),
           localUpdatedAt: Value(DateTime.now()),
         ),
+      );
+
+      final unitsReceived =
+          lines.fold(0.0, (s, l) => s + (l.quantityToReceive > 0 ? l.quantityToReceive : 0));
+      sl<AuditLogService>().log(
+        actionType: AuditLogActionType.purchaseOrderReceived,
+        entityType: 'purchase_order',
+        entityId: poId,
+        entityName: po.poNumber,
+        description: allReceived
+            ? 'Purchase order ${po.poNumber} fully received'
+            : 'Purchase order ${po.poNumber} partially received',
+        metadata: {'units_received': unitsReceived, 'status': newStatus},
+        branchId: branchId,
       );
     } catch (e, st) {
       debugPrint('[Procurement] Error in receiveGoods: $e\n$st');
@@ -429,6 +506,13 @@ class ProcurementRepository implements IProcurementRepository {
           syncStatus: Value(SyncStatus.pendingUpdate.toInt()),
           localUpdatedAt: Value(DateTime.now()),
         ),
+      );
+      sl<AuditLogService>().log(
+        actionType: AuditLogActionType.purchaseOrderCancelled,
+        entityType: 'purchase_order',
+        entityId: id,
+        entityName: po.poNumber,
+        description: 'Purchase order ${po.poNumber} cancelled',
       );
     } catch (e, st) {
       debugPrint('[Procurement] Error in cancelPurchaseOrder: $e\n$st');

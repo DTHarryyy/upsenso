@@ -224,7 +224,8 @@ class ProductsRemoteDs {
         'branch_id': branchId,
         'business_id': businessId,
         'quantity': quantity,
-        'quantity_decimal': quantityDecimal ?? 0.0,
+        // null for unit products — 0.0 would mask the integer quantity on other devices.
+        'quantity_decimal': quantityDecimal,
         'low_stock_alert_override': lowStockAlertOverride,
       },
       onConflict: 'product_variant_id,branch_id',

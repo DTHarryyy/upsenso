@@ -30,6 +30,31 @@ enum AuditLogActionType {
   employeeRestored,
   employeeDuplicateDetected,
 
+  // ── Catalog ────────────────────────────────────────────────────────────────
+  productCreated,
+  productUpdated,
+  categoryCreated,
+  branchCreated,
+
+  // ── Ingredients ──────────────────────────────────────────────────────────
+  ingredientCreated,
+  ingredientUpdated,
+  ingredientDeleted,
+
+  // ── Procurement ────────────────────────────────────────────────────────────
+  supplierCreated,
+  supplierUpdated,
+  supplierDeleted,
+  purchaseOrderCreated,
+  purchaseOrderUpdated,
+  purchaseOrderSubmitted,
+  purchaseOrderApproved,
+  purchaseOrderReceived,
+  purchaseOrderCancelled,
+
+  // ── Settings ─────────────────────────────────────────────────────────────
+  businessModuleChanged,
+
   // ── Permissions ──────────────────────────────────────────────────────────
   /// A user attempted an action they are not authorised to perform.
   permissionDenied,
@@ -108,6 +133,40 @@ extension AuditLogActionTypeX on AuditLogActionType {
         return 'EMPLOYEE_RESTORED';
       case AuditLogActionType.employeeDuplicateDetected:
         return 'EMPLOYEE_DUPLICATE_DETECTED';
+      case AuditLogActionType.productCreated:
+        return 'PRODUCT_CREATED';
+      case AuditLogActionType.productUpdated:
+        return 'PRODUCT_UPDATED';
+      case AuditLogActionType.categoryCreated:
+        return 'CATEGORY_CREATED';
+      case AuditLogActionType.branchCreated:
+        return 'BRANCH_CREATED';
+      case AuditLogActionType.ingredientCreated:
+        return 'INGREDIENT_CREATED';
+      case AuditLogActionType.ingredientUpdated:
+        return 'INGREDIENT_UPDATED';
+      case AuditLogActionType.ingredientDeleted:
+        return 'INGREDIENT_DELETED';
+      case AuditLogActionType.supplierCreated:
+        return 'SUPPLIER_CREATED';
+      case AuditLogActionType.supplierUpdated:
+        return 'SUPPLIER_UPDATED';
+      case AuditLogActionType.supplierDeleted:
+        return 'SUPPLIER_DELETED';
+      case AuditLogActionType.purchaseOrderCreated:
+        return 'PURCHASE_ORDER_CREATED';
+      case AuditLogActionType.purchaseOrderUpdated:
+        return 'PURCHASE_ORDER_UPDATED';
+      case AuditLogActionType.purchaseOrderSubmitted:
+        return 'PURCHASE_ORDER_SUBMITTED';
+      case AuditLogActionType.purchaseOrderApproved:
+        return 'PURCHASE_ORDER_APPROVED';
+      case AuditLogActionType.purchaseOrderReceived:
+        return 'PURCHASE_ORDER_RECEIVED';
+      case AuditLogActionType.purchaseOrderCancelled:
+        return 'PURCHASE_ORDER_CANCELLED';
+      case AuditLogActionType.businessModuleChanged:
+        return 'BUSINESS_MODULE_CHANGED';
       case AuditLogActionType.permissionDenied:
         return 'PERMISSION_DENIED';
       case AuditLogActionType.permissionOverrideSet:
@@ -188,6 +247,40 @@ extension AuditLogActionTypeX on AuditLogActionType {
         return 'Employee Restored';
       case AuditLogActionType.employeeDuplicateDetected:
         return 'Employee Duplicate Detected';
+      case AuditLogActionType.productCreated:
+        return 'Product Created';
+      case AuditLogActionType.productUpdated:
+        return 'Product Updated';
+      case AuditLogActionType.categoryCreated:
+        return 'Category Created';
+      case AuditLogActionType.branchCreated:
+        return 'Branch Created';
+      case AuditLogActionType.ingredientCreated:
+        return 'Ingredient Created';
+      case AuditLogActionType.ingredientUpdated:
+        return 'Ingredient Updated';
+      case AuditLogActionType.ingredientDeleted:
+        return 'Ingredient Deleted';
+      case AuditLogActionType.supplierCreated:
+        return 'Supplier Created';
+      case AuditLogActionType.supplierUpdated:
+        return 'Supplier Updated';
+      case AuditLogActionType.supplierDeleted:
+        return 'Supplier Deleted';
+      case AuditLogActionType.purchaseOrderCreated:
+        return 'Purchase Order Created';
+      case AuditLogActionType.purchaseOrderUpdated:
+        return 'Purchase Order Updated';
+      case AuditLogActionType.purchaseOrderSubmitted:
+        return 'Purchase Order Submitted';
+      case AuditLogActionType.purchaseOrderApproved:
+        return 'Purchase Order Approved';
+      case AuditLogActionType.purchaseOrderReceived:
+        return 'Purchase Order Received';
+      case AuditLogActionType.purchaseOrderCancelled:
+        return 'Purchase Order Cancelled';
+      case AuditLogActionType.businessModuleChanged:
+        return 'Module Setting Changed';
       case AuditLogActionType.permissionDenied:
         return 'Permission Denied';
       case AuditLogActionType.permissionOverrideSet:

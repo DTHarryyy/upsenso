@@ -516,12 +516,32 @@ String _badgeLabelFor(AuditLogActionType type) {
     case AuditLogActionType.expenseCreated:
     case AuditLogActionType.stockAdded:
     case AuditLogActionType.draftCreated:
+    case AuditLogActionType.productCreated:
+    case AuditLogActionType.categoryCreated:
+    case AuditLogActionType.branchCreated:
+    case AuditLogActionType.ingredientCreated:
+    case AuditLogActionType.supplierCreated:
+    case AuditLogActionType.purchaseOrderCreated:
       return 'CREATE';
     case AuditLogActionType.stockUpdated:
     case AuditLogActionType.stockTransferred:
     case AuditLogActionType.discountApplied:
     case AuditLogActionType.draftResumed:
+    case AuditLogActionType.productUpdated:
+    case AuditLogActionType.ingredientUpdated:
+    case AuditLogActionType.supplierUpdated:
+    case AuditLogActionType.purchaseOrderUpdated:
+    case AuditLogActionType.businessModuleChanged:
       return 'UPDATE';
+    case AuditLogActionType.supplierDeleted:
+    case AuditLogActionType.ingredientDeleted:
+      return 'DELETE';
+    case AuditLogActionType.purchaseOrderSubmitted:
+      return 'SUBMIT';
+    case AuditLogActionType.purchaseOrderReceived:
+      return 'RECEIVE';
+    case AuditLogActionType.purchaseOrderCancelled:
+      return 'CANCEL';
     case AuditLogActionType.draftConverted:
       return 'COMPLETE';
     case AuditLogActionType.draftDiscarded:
@@ -561,6 +581,7 @@ String _badgeLabelFor(AuditLogActionType type) {
     case AuditLogActionType.voidApprovedByManager:
     case AuditLogActionType.stockAdjustmentApproved:
     case AuditLogActionType.stockTransferApproved:
+    case AuditLogActionType.purchaseOrderApproved:
       return 'APPROVE';
   }
 }
@@ -604,6 +625,27 @@ Color _colorFor(AuditLogActionType type) {
     case AuditLogActionType.employeeArchived:
     case AuditLogActionType.employeeDuplicateDetected:
       return AppColors.warning;
+    case AuditLogActionType.productCreated:
+    case AuditLogActionType.productUpdated:
+    case AuditLogActionType.categoryCreated:
+    case AuditLogActionType.branchCreated:
+    case AuditLogActionType.ingredientCreated:
+    case AuditLogActionType.ingredientUpdated:
+    case AuditLogActionType.supplierCreated:
+    case AuditLogActionType.supplierUpdated:
+    case AuditLogActionType.purchaseOrderCreated:
+    case AuditLogActionType.purchaseOrderUpdated:
+    case AuditLogActionType.purchaseOrderSubmitted:
+    case AuditLogActionType.businessModuleChanged:
+      return AppColors.brand;
+    case AuditLogActionType.purchaseOrderApproved:
+    case AuditLogActionType.purchaseOrderReceived:
+      return AppColors.success;
+    case AuditLogActionType.purchaseOrderCancelled:
+      return AppColors.warning;
+    case AuditLogActionType.supplierDeleted:
+    case AuditLogActionType.ingredientDeleted:
+      return AppColors.error;
     case AuditLogActionType.permissionDenied:
       return AppColors.error;
     case AuditLogActionType.permissionOverrideSet:

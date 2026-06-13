@@ -226,8 +226,7 @@ class InventoryRepository implements IInventoryRepository {
       final double available;
       if (branchId != null) {
         final level = await _levelsDao.getLevel(item.variantId, branchId);
-        available =
-            level?.quantityDecimal ?? (level?.quantity.toDouble() ?? 0.0);
+        available = level?.effectiveQuantity ?? 0.0;
       } else {
         available = variant.stockDecimal ?? variant.stock.toDouble();
       }

@@ -118,7 +118,6 @@ class StockMovementService {
       );
 
   double _effectiveQty(InventoryLevelsTableData? level) {
-    if (level == null) return 0.0;
-    return level.quantityDecimal ?? level.quantity.toDouble();
+    return level?.effectiveQuantity ?? 0.0;
   }
 }

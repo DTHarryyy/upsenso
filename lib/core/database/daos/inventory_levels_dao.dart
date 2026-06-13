@@ -5,6 +5,14 @@ import 'package:pos/core/sync/sync_status.dart';
 
 part 'inventory_levels_dao.g.dart';
 
+extension InventoryLevelQuantity on InventoryLevelsTableData {
+  // A 0 decimal means "unset" — never let it mask the integer quantity.
+  double get effectiveQuantity =>
+      (quantityDecimal != null && quantityDecimal != 0)
+          ? quantityDecimal!
+          : quantity.toDouble();
+}
+
 @DriftAccessor(tables: [InventoryLevelsTable])
 class InventoryLevelsDao extends DatabaseAccessor<AppDatabase>
     with _$InventoryLevelsDaoMixin {
@@ -163,7 +171,10 @@ class InventoryLevelsDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<void> upsertFromServer(Map<String, dynamic> row) async {
-    final variantId = row['variant_id'] as String;
+    // The app writes the variant uuid into product_variant_id and leaves the
+    // legacy text variant_id null — prefer it, or every pull crashes on null.
+    final variantId =
+        (row['product_variant_id'] ?? row['variant_id']) as String;
     final branchId = row['branch_id'] as String;
     final id = makeId(variantId, branchId);
 
@@ -178,6 +189,10 @@ class InventoryLevelsDao extends DatabaseAccessor<AppDatabase>
       return;
     }
 
+    // 0 means "no decimal" — legacy unit rows pushed 0.0; keep it from masking quantity.
+    final rawDecimal = (row['quantity_decimal'] as num?)?.toDouble();
+    final decimal = (rawDecimal == null || rawDecimal == 0) ? null : rawDecimal;
+
     await into(inventoryLevelsTable).insertOnConflictUpdate(
       InventoryLevelsTableCompanion.insert(
         id: id,
@@ -185,7 +200,7 @@ class InventoryLevelsDao extends DatabaseAccessor<AppDatabase>
         branchId: branchId,
         businessId: row['business_id'] as String,
         quantity: Value((row['quantity'] as int?) ?? 0),
-        quantityDecimal: Value((row['quantity_decimal'] as num?)?.toDouble()),
+        quantityDecimal: Value(decimal),
         lowStockAlertOverride: Value(row['low_stock_alert_override'] as int?),
         syncStatus: Value(SyncStatus.synced.toInt()),
         localUpdatedAt: Value(DateTime.now()),

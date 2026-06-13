@@ -4,6 +4,9 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:uuid/uuid.dart';
 
+import 'package:pos/core/audit/audit_log_service.dart';
+import 'package:pos/core/config/di.dart';
+import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/inventory_levels_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
@@ -104,9 +107,7 @@ class IngredientsRepository implements IIngredientsRepository {
       if (v == null) continue;
 
       final levels = await _levelsDao.getByVariantId(v.id);
-      final stock = levels.fold(0.0, (s, l) {
-        return s + (l.quantityDecimal ?? l.quantity.toDouble());
-      });
+      final stock = levels.fold(0.0, (s, l) => s + l.effectiveQuantity);
 
       result.add(Ingredient(
         id: v.id,
@@ -132,9 +133,7 @@ class IngredientsRepository implements IIngredientsRepository {
     if (p == null || p.type != 'ingredient') return null;
 
     final levels = await _levelsDao.getByVariantId(variantId);
-    final stock = levels.fold(0.0, (s, l) {
-      return s + (l.quantityDecimal ?? l.quantity.toDouble());
-    });
+    final stock = levels.fold(0.0, (s, l) => s + l.effectiveQuantity);
 
     return Ingredient(
       id: v.id,
@@ -199,6 +198,17 @@ class IngredientsRepository implements IIngredientsRepository {
       );
     }
 
+    sl<AuditLogService>().log(
+      actionType: AuditLogActionType.ingredientCreated,
+      entityType: 'ingredient',
+      entityId: variantId,
+      entityName: name.trim(),
+      description: 'Ingredient ${name.trim()} created',
+      metadata: {'unit': unit, 'opening_stock': openingStock},
+      businessId: businessId,
+      branchId: branchId,
+    );
+
     return variantId;
   }
 
@@ -223,10 +233,19 @@ class IngredientsRepository implements IIngredientsRepository {
       unit: unit,
       lowStockAlert: lowStockAlert,
     );
+
+    sl<AuditLogService>().log(
+      actionType: AuditLogActionType.ingredientUpdated,
+      entityType: 'ingredient',
+      entityId: variantId,
+      entityName: name.trim(),
+      description: 'Ingredient ${name.trim()} updated',
+    );
   }
 
   @override
   Future<void> softDelete(String productId) async {
+    final product = await _productsDao.getById(productId);
     await _productsDao.updateProduct(
       productId,
       ProductsTableCompanion(
@@ -234,6 +253,14 @@ class IngredientsRepository implements IIngredientsRepository {
         syncStatus: Value(SyncStatus.pendingDelete.toInt()),
         localUpdatedAt: Value(DateTime.now()),
       ),
+    );
+
+    sl<AuditLogService>().log(
+      actionType: AuditLogActionType.ingredientDeleted,
+      entityType: 'ingredient',
+      entityId: productId,
+      entityName: product?.name,
+      description: 'Ingredient ${product?.name ?? productId} deleted',
     );
   }
 
@@ -247,8 +274,8 @@ class IngredientsRepository implements IIngredientsRepository {
     required double quantity,
     required String reason,
     String? note,
-  }) {
-    return _stockMovement.apply(
+  }) async {
+    await _stockMovement.apply(
       variantId: variantId,
       productId: productId,
       businessId: businessId,
@@ -257,6 +284,21 @@ class IngredientsRepository implements IIngredientsRepository {
       quantity: quantity,
       reason: reason,
       note: note,
+    );
+
+    final product = await _productsDao.getById(productId);
+    sl<AuditLogService>().log(
+      actionType:
+          isIncoming ? AuditLogActionType.stockAdded : AuditLogActionType.stockAdjusted,
+      entityType: 'ingredient',
+      entityId: variantId,
+      entityName: product?.name,
+      description: isIncoming
+          ? 'Restocked ${product?.name ?? 'ingredient'} (+$quantity)'
+          : 'Adjusted ${product?.name ?? 'ingredient'} stock (-$quantity)',
+      metadata: {'quantity': quantity, 'reason': reason},
+      businessId: businessId,
+      branchId: branchId,
     );
   }
 
