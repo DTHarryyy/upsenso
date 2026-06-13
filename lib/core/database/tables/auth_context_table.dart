@@ -24,7 +24,7 @@ class AuthContextTable extends Table {
   /// User's role ID in the business
   TextColumn get roleId => text().nullable()();
 
-  /// User's role name (e.g., "Super Admin", "Manager")
+  /// User's role name (e.g., "Business Owner", "Manager")
   TextColumn get roleName => text().nullable()();
 
   /// Associated business name

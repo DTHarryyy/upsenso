@@ -323,6 +323,8 @@ class _StatusChips extends StatelessWidget {
       (label: 'Low Stock', value: StockStatus.lowStock),
       (label: 'Warning', value: StockStatus.warning),
       (label: 'In Stock', value: StockStatus.inStock),
+      (label: 'Recipe', value: StockStatus.recipe),
+      (label: 'Service', value: StockStatus.service),
       (label: 'Not Tracked', value: StockStatus.notTracked),
     ];
 

@@ -27,7 +27,7 @@ class BusinessModel extends Business {
       'name': name,
       'owner_id': ownerId,
       'template_id': templateId,
-      'created_at': createdAt.toIso8601String(),
+      'created_at': createdAt.toUtc().toIso8601String(),
       'is_active': isActive,
     };
   }

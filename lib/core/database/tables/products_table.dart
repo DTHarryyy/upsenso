@@ -13,6 +13,18 @@ class ProductsTable extends Table {
   TextColumn get sku => text().nullable()();
   TextColumn get barcode => text().nullable()();
 
+  /// 'product' (sellable) | 'ingredient' (consumed by recipes, never sold).
+  /// Ingredients reuse the variant/levels/ledger stack but are excluded from
+  /// the POS catalogue. Defaults to 'product' so existing rows are unchanged.
+  TextColumn get type => text().withDefault(const Constant('product'))();
+
+  /// How sales affect inventory for this product:
+  /// 'product_stock' (deduct own stock) | 'recipe' (deduct ingredients) |
+  /// 'service' (no inventory). Defaults to 'product_stock' so existing rows
+  /// keep behaving exactly as before (deduction still gated by variant.trackStock).
+  TextColumn get trackingMethod =>
+      text().withDefault(const Constant('product_stock'))();
+
   RealColumn get tax => real().nullable()(); // tax percentage, e.g. 12.0 for 12%
   TextColumn get sellBy =>
       text().withDefault(const Constant('unit'))(); // 'unit' | 'fraction'

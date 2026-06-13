@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:pos/features/products/presentation/cubit/product_form_state.dart';
+
 class VariantForm {
   final TextEditingController name = TextEditingController();
   final TextEditingController price = TextEditingController();
@@ -6,6 +8,9 @@ class VariantForm {
   final TextEditingController stock = TextEditingController(text: '0');
   final TextEditingController lowStock = TextEditingController();
   final TextEditingController barcode = TextEditingController();
+
+  /// Per-variant concrete recipe lines — edited directly by the user.
+  List<RecipeLineFormEntry> recipeLines = [];
 
   void dispose() {
     name.dispose();

@@ -39,15 +39,24 @@ enum AppFeature {
   /// Branch Manager dashboard — branch KPIs, cashier performance, alerts.
   dashboardManager,
 
-  /// Owner / Super Admin dashboard — all branches, full financials.
+  /// Business Owner dashboard — all branches, full financials.
   dashboardOwner,
 
   // ── Sub-modules ───────────────────────────────────────────────────────────
   /// Product catalogue browsing and management.
   productsCatalogue,
 
-  /// Supplier directory.
+  /// Supplier directory (sub-feature of procurement module).
   supplierDirectory,
+
+  /// Procurement module — purchase orders, receiving, supplier management.
+  procurement,
+
+  /// Ingredient directory — stock items consumed by recipe-based products.
+  ingredientsManagement,
+
+  /// Recipe / bill-of-materials configuration on recipe-based products.
+  recipeManagement,
 
   /// Audit log viewer.
   auditLogs,
@@ -89,6 +98,12 @@ extension AppFeatureX on AppFeature {
         return 'Products Catalogue';
       case AppFeature.supplierDirectory:
         return 'Supplier Directory';
+      case AppFeature.procurement:
+        return 'Procurement';
+      case AppFeature.ingredientsManagement:
+        return 'Ingredients';
+      case AppFeature.recipeManagement:
+        return 'Recipes';
       case AppFeature.auditLogs:
         return 'Audit Logs';
       case AppFeature.profileSettings:
@@ -119,8 +134,15 @@ extension AppFeatureX on AppFeature {
         return 'employees';
       case AppFeature.reportsAnalytics:
         return 'reports';
+      // Supplier directory is a sub-feature gated by the procurement module.
       case AppFeature.supplierDirectory:
-        return 'suppliers';
+      case AppFeature.procurement:
+        return 'procurement';
+      // Ingredients has its own module so it can be toggled independently.
+      case AppFeature.ingredientsManagement:
+        return 'ingredients';
+      case AppFeature.recipeManagement:
+        return 'recipes';
       case AppFeature.auditLogs:
         return 'audit';
       // Not module-gated:
@@ -160,6 +182,11 @@ extension AppFeatureX on AppFeature {
         return 'nav.audit_logs';
       case AppFeature.supplierDirectory:
         return 'nav.suppliers';
+      case AppFeature.procurement:
+        return 'nav.procurement';
+      case AppFeature.ingredientsManagement:
+      case AppFeature.recipeManagement:
+        return 'nav.recipes';
       case AppFeature.productsCatalogue:
         return 'nav.inventory';
       case AppFeature.salesHistory:

@@ -29,7 +29,7 @@ class ProductsRepository implements IProductsRepository {
 
   @override
   Stream<List<Product>> watchProducts(String businessId) => _productsDao
-      .watchByBusinessId(businessId)
+      .watchSellableByBusinessId(businessId)
       .map((rows) => rows.map(_mapProduct).toList());
 
   @override
@@ -94,6 +94,7 @@ class ProductsRepository implements IProductsRepository {
     sellBy: row.sellBy,
     imagePath: row.imagePath,
     tax: row.tax,
+    trackingMethod: row.trackingMethod,
   );
 
   static ProductVariant _mapVariant(ProductVariantsTableData row) =>

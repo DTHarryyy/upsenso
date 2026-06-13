@@ -1,0 +1,184 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'package:pos/features/procurement/domain/entities/po_input.dart';
+import 'package:pos/features/procurement/domain/entities/po_status.dart';
+import 'package:pos/features/procurement/domain/entities/purchase_order.dart';
+import 'package:pos/features/procurement/domain/repositories/i_procurement_repository.dart';
+import 'package:pos/features/procurement/presentation/cubit/po_state.dart';
+
+class PoCubit extends Cubit<PoState> {
+  final IProcurementRepository _repository;
+  final String businessId;
+  final String userId;
+  final String userName;
+
+  StreamSubscription? _subscription;
+
+  PoCubit({
+    required IProcurementRepository repository,
+    required this.businessId,
+    required this.userId,
+    required this.userName,
+  }) : _repository = repository,
+       super(PoInitial());
+
+  void watch() {
+    emit(PoLoading());
+    _subscription?.cancel();
+    _subscription = _repository.watchPurchaseOrders(businessId).listen(
+      (orders) {
+        final current = state;
+        final query = current is PoLoaded ? current.searchQuery : '';
+        final filter = current is PoLoaded ? current.statusFilter : null;
+        emit(PoLoaded(orders: orders, searchQuery: query, statusFilter: filter));
+      },
+      onError: (Object e, StackTrace st) {
+        debugPrint('[PoCubit] watch error: $e\n$st');
+        emit(PoError('Failed to load purchase orders.'));
+      },
+    );
+  }
+
+  void search(String query) {
+    final current = state;
+    if (current is PoLoaded) {
+      emit(current.copyWith(searchQuery: query));
+    }
+  }
+
+  void filterByStatus(PoStatus? status) {
+    final current = state;
+    if (current is PoLoaded) {
+      emit(current.copyWith(statusFilter: status));
+    }
+  }
+
+  Future<String?> createPurchaseOrder({
+    String? supplierId,
+    String? supplierName,
+    String? branchId,
+    String? notes,
+    DateTime? expectedDelivery,
+    required List<PoLineInput> lines,
+  }) async {
+    final currentOrders = _currentOrders();
+    emit(PoActionInProgress(currentOrders));
+    try {
+      final id = await _repository.createPurchaseOrder(
+        businessId: businessId,
+        branchId: branchId,
+        supplierId: supplierId,
+        supplierName: supplierName,
+        notes: notes,
+        expectedDelivery: expectedDelivery,
+        createdById: userId,
+        createdByName: userName,
+        lines: lines,
+      );
+      return id;
+    } catch (e, st) {
+      debugPrint('[PoCubit] Error in createPurchaseOrder: $e\n$st');
+      emit(PoError('Failed to create purchase order.'));
+      emit(PoLoaded(orders: currentOrders));
+      return null;
+    }
+  }
+
+  Future<void> updatePurchaseOrder({
+    required String id,
+    String? supplierId,
+    String? supplierName,
+    String? notes,
+    DateTime? expectedDelivery,
+    List<PoLineInput>? lines,
+  }) async {
+    final currentOrders = _currentOrders();
+    emit(PoActionInProgress(currentOrders));
+    try {
+      await _repository.updatePurchaseOrder(
+        id: id,
+        supplierId: supplierId,
+        supplierName: supplierName,
+        notes: notes,
+        expectedDelivery: expectedDelivery,
+        lines: lines,
+      );
+    } catch (e, st) {
+      debugPrint('[PoCubit] Error in updatePurchaseOrder: $e\n$st');
+      emit(PoError('Failed to update purchase order.'));
+      emit(PoLoaded(orders: currentOrders));
+    }
+  }
+
+  Future<void> submitPurchaseOrder(String id) async {
+    final currentOrders = _currentOrders();
+    emit(PoActionInProgress(currentOrders));
+    try {
+      await _repository.submitPurchaseOrder(id);
+    } catch (e, st) {
+      debugPrint('[PoCubit] Error in submitPurchaseOrder: $e\n$st');
+      emit(PoError('Failed to submit purchase order.'));
+      emit(PoLoaded(orders: currentOrders));
+    }
+  }
+
+  Future<void> approvePurchaseOrder(String id) async {
+    final currentOrders = _currentOrders();
+    emit(PoActionInProgress(currentOrders));
+    try {
+      await _repository.approvePurchaseOrder(
+        id: id,
+        approvedById: userId,
+        approvedByName: userName,
+      );
+    } catch (e, st) {
+      debugPrint('[PoCubit] Error in approvePurchaseOrder: $e\n$st');
+      emit(PoError('Failed to approve purchase order.'));
+      emit(PoLoaded(orders: currentOrders));
+    }
+  }
+
+  Future<void> receiveGoods({
+    required String poId,
+    required String branchId,
+    required List<ReceiveLineInput> lines,
+  }) async {
+    final currentOrders = _currentOrders();
+    emit(PoActionInProgress(currentOrders));
+    try {
+      await _repository.receiveGoods(
+        poId: poId,
+        branchId: branchId,
+        lines: lines,
+      );
+    } catch (e, st) {
+      debugPrint('[PoCubit] Error in receiveGoods: $e\n$st');
+      emit(PoError('Failed to receive goods.'));
+      emit(PoLoaded(orders: currentOrders));
+    }
+  }
+
+  Future<void> cancelPurchaseOrder(String id) async {
+    final currentOrders = _currentOrders();
+    emit(PoActionInProgress(currentOrders));
+    try {
+      await _repository.cancelPurchaseOrder(id);
+    } catch (e, st) {
+      debugPrint('[PoCubit] Error in cancelPurchaseOrder: $e\n$st');
+      emit(PoError('Failed to cancel purchase order.'));
+      emit(PoLoaded(orders: currentOrders));
+    }
+  }
+
+  List<PurchaseOrder> _currentOrders() =>
+      state is PoLoaded ? (state as PoLoaded).orders : const <PurchaseOrder>[];
+
+  @override
+  Future<void> close() {
+    _subscription?.cancel();
+    return super.close();
+  }
+}

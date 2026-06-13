@@ -15,6 +15,8 @@ class StockStatusBadge extends StatelessWidget {
       StockStatus.warning => ('Warning', AppColors.warningSoft, AppColors.warning),
       StockStatus.lowStock => ('Low Stock', AppColors.errorSoft, AppColors.error),
       StockStatus.notTracked => ('Not Tracked', AppColors.surfaceAlt, AppColors.textMuted),
+      StockStatus.recipe => ('Recipe', AppColors.brandSoft, AppColors.brand),
+      StockStatus.service => ('Service', AppColors.surfaceAlt, AppColors.textMuted),
     };
 
     return Container(

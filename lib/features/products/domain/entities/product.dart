@@ -10,6 +10,7 @@ class Product {
   final String sellBy;
   final String? imagePath;
   final double? tax;
+  final String trackingMethod;
 
   const Product({
     required this.id,
@@ -23,5 +24,6 @@ class Product {
     this.sellBy = 'unit',
     this.imagePath,
     this.tax,
+    this.trackingMethod = 'product_stock',
   });
 }

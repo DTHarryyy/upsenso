@@ -38,6 +38,14 @@ import 'package:pos/core/database/daos/draft_sales_dao.dart';
 import 'package:pos/core/database/daos/inventory_levels_dao.dart';
 import 'package:pos/core/database/daos/receipt_settings_dao.dart';
 import 'package:pos/core/database/daos/stock_ledger_dao.dart';
+import 'package:pos/core/database/daos/suppliers_dao.dart';
+import 'package:pos/core/database/daos/purchase_orders_dao.dart';
+import 'package:pos/core/database/daos/purchase_order_lines_dao.dart';
+import 'package:pos/core/database/tables/suppliers_table.dart';
+import 'package:pos/core/database/tables/purchase_orders_table.dart';
+import 'package:pos/core/database/tables/purchase_order_lines_table.dart';
+import 'package:pos/core/database/tables/recipe_lines_table.dart';
+import 'package:pos/core/database/daos/recipe_lines_dao.dart';
 
 part 'app_database.g.dart';
 
@@ -62,6 +70,10 @@ part 'app_database.g.dart';
     EmployeesTable,
     EmployeePermissionsTable,
     BusinessModulesTable,
+    SuppliersTable,
+    PurchaseOrdersTable,
+    PurchaseOrderLinesTable,
+    RecipeLinesTable,
   ],
   daos: [
     AuthContextDao,
@@ -81,6 +93,10 @@ part 'app_database.g.dart';
     EmployeesDao,
     EmployeePermissionsDao,
     BusinessModulesDao,
+    SuppliersDao,
+    PurchaseOrdersDao,
+    PurchaseOrderLinesDao,
+    RecipeLinesDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -100,7 +116,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 33;
+  int get schemaVersion => 36;
 
   @override
   MigrationStrategy get migration {
@@ -428,6 +444,67 @@ class AppDatabase extends _$AppDatabase {
           await customStatement(
             'CREATE INDEX IF NOT EXISTS idx_draft_sale_items_draft '
             'ON draft_sale_items(draft_id)',
+          );
+        }
+        if (from < 34) {
+          // Procurement module foundation (Phase 1).
+          // Two additive columns on stock_ledger for source traceability:
+          //   source_type — opaque tag e.g. 'goods_receipt', 'sale', 'manual'
+          //   source_id   — ID of the originating document (NO foreign key)
+          // Both are nullable; all pre-v34 rows remain valid with NULL values.
+          for (final sql in [
+            'ALTER TABLE stock_ledger ADD COLUMN source_type TEXT',
+            'ALTER TABLE stock_ledger ADD COLUMN source_id TEXT',
+          ]) {
+            try {
+              await customStatement(sql);
+            } catch (_) {}
+          }
+          // Suppliers table — present unconditionally; rows only written when
+          // the `procurement` module is enabled.
+          await m.createTable(suppliersTable);
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_suppliers_business '
+            'ON suppliers(business_id)',
+          );
+        }
+
+        if (from < 35) {
+          // Procurement Phase 2: Purchase Orders + Lines tables.
+          await m.createTable(purchaseOrdersTable);
+          await m.createTable(purchaseOrderLinesTable);
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_po_business '
+            'ON purchase_orders(business_id)',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_po_lines_po '
+            'ON purchase_order_lines(purchase_order_id)',
+          );
+        }
+
+        if (from < 36) {
+          // Ingredient / recipe (BOM) module. Fully additive.
+          //   products.type            — 'product' | 'ingredient'
+          //   products.tracking_method — 'product_stock' | 'recipe' | 'service'
+          //   product_variants.unit    — UOM (g/kg/ml/L/pcs)
+          // Defaults keep every existing row behaving exactly as before.
+          for (final sql in [
+            "ALTER TABLE products ADD COLUMN type TEXT NOT NULL DEFAULT 'product'",
+            "ALTER TABLE products ADD COLUMN tracking_method TEXT NOT NULL "
+                "DEFAULT 'product_stock'",
+            'ALTER TABLE product_variants ADD COLUMN unit TEXT',
+          ]) {
+            try {
+              await customStatement(sql);
+            } catch (_) {}
+          }
+          // Recipe lines — present unconditionally; rows only written when the
+          // `recipes` module is enabled. Rollback = drop this table.
+          await m.createTable(recipeLinesTable);
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_recipe_lines_variant '
+            'ON recipe_lines(product_variant_id)',
           );
         }
       },

@@ -633,7 +633,7 @@ class _AccountCard extends StatelessWidget {
         _InfoRow(
           icon: IconlyLight.shield_done,
           label: 'Role',
-          value: user.roleName ?? '—',
+          value: displayRoleName(user.roleName) ?? '—',
           valueStyle: getOutfitStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,

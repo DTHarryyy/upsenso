@@ -36,9 +36,9 @@ class ExpensesRemoteDs {
       'approved_by_id': approvedById,
       'approved_by_name': approvedByName,
       'note': note,
-      'expense_date': expenseDate.toIso8601String(),
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
+      'expense_date': expenseDate.toUtc().toIso8601String(),
+      'created_at': createdAt.toUtc().toIso8601String(),
+      'updated_at': updatedAt.toUtc().toIso8601String(),
     });
   }
 
@@ -53,7 +53,7 @@ class ExpensesRemoteDs {
       'status': status,
       'approved_by_id': approvedById,
       'approved_by_name': approvedByName,
-      'updated_at': updatedAt.toIso8601String(),
+      'updated_at': updatedAt.toUtc().toIso8601String(),
     }).eq('id', id);
   }
 

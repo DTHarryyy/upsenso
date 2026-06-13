@@ -39,6 +39,18 @@ class StockLedgerDao extends DatabaseAccessor<AppDatabase>
         .watch();
   }
 
+  /// Watch the most recent ledger entries for a single variant (newest first).
+  Stream<List<StockLedgerTableData>> watchByVariantId(
+    String variantId, {
+    int limit = 50,
+  }) {
+    return (select(stockLedgerTable)
+          ..where((t) => t.variantId.equals(variantId))
+          ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
+          ..limit(limit))
+        .watch();
+  }
+
   Stream<int> watchPendingSyncCount() {
     final countExp = stockLedgerTable.id.count();
     final query = selectOnly(stockLedgerTable)

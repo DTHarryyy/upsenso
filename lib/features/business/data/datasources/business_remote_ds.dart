@@ -35,13 +35,13 @@ class BusinessRemoteDs {
     return Map<String, dynamic>.from(response);
   }
 
-  /// Create user with super admin role for a business
+  /// Create user with Business Owner role for a business
   Future<Map<String, dynamic>> createUserForBusiness({
     required String businessId,
     required String userId,
     required String email,
     required String? fullName,
-    required String superAdminRoleId,
+    required String ownerRoleId,
   }) async {
     final defaultFullName = fullName ?? _extractNameFromEmail(email);
 
@@ -50,7 +50,7 @@ class BusinessRemoteDs {
       'business_id': businessId,
       'email': email,
       'full_name': defaultFullName,
-      'role_id': superAdminRoleId,
+      'role_id': ownerRoleId,
       'is_active': true,
     };
 
@@ -83,7 +83,7 @@ class BusinessRemoteDs {
   ///   - Seeds product categories from the template's default_categories list
   ///   - Initialises receipt_settings for the business
   ///
-  /// Returns the Super Admin role UUID so the caller can link the owner.
+  /// Returns the Business Owner role UUID so the caller can link the owner.
   Future<String> applyBusinessTemplate({
     required String businessId,
     required String templateId,
@@ -196,7 +196,7 @@ class BusinessRemoteDs {
     return List<Map<String, dynamic>>.from(response);
   }
 
-  /// Fetch all branches for a business (used by Super Admin branch picker)
+  /// Fetch all branches for a business (used by Business Owner branch picker)
   Future<List<Map<String, dynamic>>> getActiveBranchesByBusiness(
     String businessId,
   ) async {

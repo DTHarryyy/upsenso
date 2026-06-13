@@ -50,4 +50,14 @@ class AppRoutes {
   // Employees
   static const String employees = '/more/employees';
   static const String employeePermissions = '/more/employees/permissions';
+
+  // Procurement
+  static const String suppliers = '/more/suppliers';
+  static const String supplierDetail = '/more/suppliers/detail';
+  static const String purchaseOrders = '/more/purchase-orders';
+  static const String poForm = '/more/purchase-orders/form';
+  static const String poDetail = '/more/purchase-orders/detail';
+
+  // Recipes / Ingredients
+  static const String ingredients = '/more/ingredients';
 }

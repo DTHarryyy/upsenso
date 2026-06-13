@@ -6,7 +6,7 @@
 ///
 /// | Role            | type          | branchId | userId |
 /// |-----------------|---------------|----------|--------|
-/// | Owner/SuperAdmin| allBranches   | null     | null   |
+/// | Business Owner  | allBranches   | null     | null   |
 /// | Branch Manager  | branchOnly    | set      | null   |
 /// | Cashier         | ownOnly       | set      | set    |
 /// | Inventory Staff | branchOnly    | set      | null   |
@@ -24,7 +24,7 @@ class DataScope {
 
   const DataScope({required this.type, this.branchId, this.userId});
 
-  /// Convenience: no restrictions (owner / super admin).
+  /// Convenience: no restrictions (Business Owner).
   const DataScope.unrestricted()
     : type = DataScopeType.allBranches,
       branchId = null,
@@ -166,7 +166,7 @@ class DashboardScope {
     showPersonalPaymentSummary: false,
   );
 
-  /// Owner / Super Admin: everything.
+  /// Business Owner: everything.
   static const owner = DashboardScope(
     showRevenue: true,
     showProfit: true,

@@ -21,7 +21,7 @@ import 'package:pos/features/employees/presentation/bloc/employee_state.dart';
 /// Pass [employee] to edit an existing record, or leave null to add a new one.
 ///
 /// [allowedRoles] restricts which roles appear in the role picker. Omit to
-/// allow all roles (Super Admin / Owner behaviour).
+/// allow all roles (Business Owner behaviour).
 ///
 /// [lockedBranchId] forces a specific branch and hides the branch picker.
 Future<void> showEmployeeFormDialog({

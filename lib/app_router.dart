@@ -47,6 +47,17 @@ import 'package:pos/features/employees/domain/entities/employee.dart';
 import 'package:pos/features/employees/presentation/pages/employees_page.dart';
 import 'package:pos/features/employees/presentation/pages/employee_permissions_page.dart';
 import 'package:pos/features/settings/presentation/module_settings_page.dart';
+import 'package:pos/features/procurement/domain/repositories/i_procurement_repository.dart';
+import 'package:pos/features/procurement/presentation/cubit/po_cubit.dart';
+import 'package:pos/features/procurement/presentation/cubit/supplier_cubit.dart';
+import 'package:pos/features/procurement/presentation/pages/po_detail_page.dart';
+import 'package:pos/features/procurement/presentation/pages/po_form_page.dart';
+import 'package:pos/features/procurement/domain/entities/purchase_order.dart';
+import 'package:pos/features/procurement/domain/entities/supplier.dart';
+import 'package:pos/features/procurement/presentation/pages/purchase_orders_page.dart';
+import 'package:pos/features/procurement/presentation/pages/supplier_detail_page.dart';
+import 'package:pos/features/procurement/presentation/pages/suppliers_page.dart';
+import 'package:pos/features/recipes/presentation/pages/ingredients_page.dart';
 import 'package:pos/features/onboarding/onboarding.dart';
 import 'package:pos/features/pos/presentation/pages/receipt_preview_page.dart';
 import 'package:pos/features/pos/data/models/cart_model.dart' show CartItem;
@@ -164,6 +175,11 @@ class AppRouter {
           AppRoutes.receiptSettings: PermissionKeys.navSettings,
           AppRoutes.moduleSettings: PermissionKeys.settingsEditBusiness,
           AppRoutes.employeePermissions: PermissionKeys.navEmployees,
+          AppRoutes.suppliers: PermissionKeys.navProcurement,
+          AppRoutes.purchaseOrders: PermissionKeys.navProcurement,
+          AppRoutes.poForm: PermissionKeys.navProcurement,
+          AppRoutes.poDetail: PermissionKeys.navProcurement,
+          AppRoutes.ingredients: PermissionKeys.navRecipes,
         };
         final requiredKey = routePermissionGuards[location];
         if (requiredKey != null && !sl<PermissionService>().can(requiredKey)) {
@@ -183,6 +199,12 @@ class AppRouter {
           AppRoutes.employees: 'employees',
           AppRoutes.employeePermissions: 'employees',
           AppRoutes.auditLogs: 'audit',
+          AppRoutes.suppliers: 'procurement',
+          AppRoutes.supplierDetail: 'procurement',
+          AppRoutes.purchaseOrders: 'procurement',
+          AppRoutes.poForm: 'procurement',
+          AppRoutes.poDetail: 'procurement',
+          AppRoutes.ingredients: 'ingredients',
         };
         final requiredModule = routeModuleGuards[location];
         if (requiredModule != null &&
@@ -259,6 +281,110 @@ class AppRouter {
           final employee = state.extra as Employee;
           return EmployeePermissionsPage(employee: employee);
         },
+      ),
+      GoRoute(
+        path: AppRoutes.suppliers,
+        builder: (context, _) {
+          final authRepo = sl<AuthRepository>();
+          final currentUser = authRepo.getCurrentUser();
+          return BlocProvider(
+            create: (_) => SupplierCubit(
+              repository: sl<IProcurementRepository>(),
+              businessId: currentUser?.businessId ?? '',
+            )..watch(),
+            child: const SuppliersPage(),
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.supplierDetail,
+        builder: (context, state) {
+          final authRepo = sl<AuthRepository>();
+          final currentUser = authRepo.getCurrentUser();
+          final businessId = currentUser?.businessId ?? '';
+          final supplier = state.extra as Supplier;
+          return MultiBlocProvider(
+            providers: [
+              BlocProvider(
+                create: (_) => SupplierCubit(
+                  repository: sl<IProcurementRepository>(),
+                  businessId: businessId,
+                )..watch(),
+              ),
+              BlocProvider(
+                create: (_) => PoCubit(
+                  repository: sl<IProcurementRepository>(),
+                  businessId: businessId,
+                  userId: currentUser?.id ?? '',
+                  userName: currentUser?.fullName ?? '',
+                )..watch(),
+              ),
+            ],
+            child: SupplierDetailPage(supplier: supplier),
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.purchaseOrders,
+        builder: (context, _) {
+          final authRepo = sl<AuthRepository>();
+          final currentUser = authRepo.getCurrentUser();
+          return BlocProvider(
+            create: (_) => PoCubit(
+              repository: sl<IProcurementRepository>(),
+              businessId: currentUser?.businessId ?? '',
+              userId: currentUser?.id ?? '',
+              userName: currentUser?.fullName ?? '',
+            )..watch(),
+            child: const PurchaseOrdersPage(),
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.poForm,
+        builder: (context, state) {
+          final authRepo = sl<AuthRepository>();
+          final currentUser = authRepo.getCurrentUser();
+          // Extra is a PurchaseOrder when editing, or a Supplier when starting
+          // a new PO pre-filled for that supplier.
+          final extra = state.extra;
+          final po = extra is PurchaseOrder ? extra : null;
+          final initialSupplier = extra is Supplier ? extra : null;
+          return BlocProvider(
+            create: (_) => PoCubit(
+              repository: sl<IProcurementRepository>(),
+              businessId: currentUser?.businessId ?? '',
+              userId: currentUser?.id ?? '',
+              userName: currentUser?.fullName ?? '',
+            )..watch(),
+            child: PoFormPage(
+              po: po,
+              initialSupplier: initialSupplier,
+              businessId: currentUser?.businessId ?? '',
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.poDetail,
+        builder: (context, state) {
+          final authRepo = sl<AuthRepository>();
+          final currentUser = authRepo.getCurrentUser();
+          final poId = state.extra as String;
+          return BlocProvider(
+            create: (_) => PoCubit(
+              repository: sl<IProcurementRepository>(),
+              businessId: currentUser?.businessId ?? '',
+              userId: currentUser?.id ?? '',
+              userName: currentUser?.fullName ?? '',
+            )..watch(),
+            child: PoDetailPage(poId: poId),
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.ingredients,
+        builder: (context, _) => const IngredientsPage(),
       ),
       GoRoute(
         path: AppRoutes.addProduct,

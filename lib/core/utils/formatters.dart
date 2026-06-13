@@ -58,4 +58,19 @@ class AppFormatters {
   /// Capitalises the first character of [s].
   static String capitalise(String s) =>
       s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+
+  /// Compact relative time for activity feeds and list metrics.
+  /// Examples: `Just now`, `5m ago`, `3h ago`, `2d ago`, `6w ago`, then falls
+  /// back to [shortDate] beyond ~12 months.
+  static String relativeDate(DateTime d) {
+    final diff = DateTime.now().difference(d);
+    if (diff.isNegative) return shortDate(d);
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    if (diff.inDays < 30) return '${(diff.inDays / 7).floor()}w ago';
+    if (diff.inDays < 365) return '${(diff.inDays / 30).floor()}mo ago';
+    return shortDate(d);
+  }
 }

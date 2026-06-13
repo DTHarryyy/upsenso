@@ -306,15 +306,18 @@ class AuthRemoteDs {
         }
       }
 
-      // Fetch first active branch for the business (default branch)
-      // Note: Super Admin should NOT be assigned to any specific branch
+      // Business Owner is not scoped to any branch — skip branch assignment.
       String? branchId;
       String? branchName;
       final n = roleName?.trim().toLowerCase();
-      final isSuperAdmin =
-          n == 'business owner' || n == 'super admin' || n == 'superadmin';
+      final isOwner = n == 'business owner' ||
+          n == 'business_owner' ||
+          n == 'owner' ||
+          n == 'super admin' ||
+          n == 'superadmin' ||
+          n == 'super_admin';
 
-      if (businessId != null && !isSuperAdmin) {
+      if (businessId != null && !isOwner) {
         try {
           final branchRows = List<Map<String, dynamic>>.from(
             await client
@@ -345,7 +348,7 @@ class AuthRemoteDs {
             branchName = createdBranch['name']?.toString();
 
             // Best-effort: keep users.branch_id in sync with default branch.
-            // Only for non-Super Admin users
+            // Only for non-owner users
             if ((branchId ?? '').isNotEmpty) {
               await client
                   .from('users')

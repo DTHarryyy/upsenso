@@ -1,12 +1,10 @@
-import 'package:uuid/uuid.dart';
-import 'package:drift/drift.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/core/database/daos/inventory_levels_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
 import 'package:pos/core/database/daos/products_dao.dart';
-import 'package:pos/core/database/daos/stock_ledger_dao.dart';
-// ignore: unused_import — StockLedgerTableCompanion generated into app_database
+import 'package:pos/core/services/recipe_consumption_service.dart';
+import 'package:pos/core/services/stock_movement_service.dart';
 import 'package:pos/features/inventory/data/inventory_data.dart';
 import 'package:pos/features/inventory/domain/repositories/i_inventory_repository.dart';
 
@@ -15,21 +13,22 @@ class InventoryRepository implements IInventoryRepository {
   final ProductVariantsDao _variantsDao;
   final BranchesDao _branchesDao;
   final InventoryLevelsDao _levelsDao;
-  final StockLedgerDao _ledgerDao;
-
-  static const _uuid = Uuid();
+  final StockMovementService _stockMovement;
+  final RecipeConsumptionService _recipeConsumption;
 
   InventoryRepository({
     required ProductsDao productsDao,
     required ProductVariantsDao variantsDao,
     required BranchesDao branchesDao,
     required InventoryLevelsDao levelsDao,
-    required StockLedgerDao ledgerDao,
+    required StockMovementService stockMovement,
+    required RecipeConsumptionService recipeConsumption,
   }) : _productsDao = productsDao,
        _variantsDao = variantsDao,
        _branchesDao = branchesDao,
        _levelsDao = levelsDao,
-       _ledgerDao = ledgerDao;
+       _stockMovement = stockMovement,
+       _recipeConsumption = recipeConsumption;
 
   /// Emits whenever inventory_levels or stock_ledger changes.
   @override
@@ -44,7 +43,7 @@ class InventoryRepository implements IInventoryRepository {
     required String businessId,
     String? branchId,
   }) async {
-    final products = await _productsDao.getByBusinessId(businessId);
+    final products = await _productsDao.getSellableByBusinessId(businessId);
     final variants = await _variantsDao.getByBusinessId(businessId);
     final rawBranches = await _branchesDao.getByBusinessId(businessId);
     final levels = await _levelsDao.getByBusinessId(businessId);
@@ -147,6 +146,7 @@ class InventoryRepository implements IInventoryRepository {
           totalStock: total,
           reorderLevel: reorderLevel,
           trackStock: v.trackStock,
+          trackingMethod: product.trackingMethod,
         ),
       );
     }
@@ -156,9 +156,7 @@ class InventoryRepository implements IInventoryRepository {
     return InventoryData(items: items, branches: branchInfos);
   }
 
-  /// Adjust stock for a variant at a branch.
-  /// All three writes (ledger, inventory_levels, product_variants) are wrapped
-  /// in a single transaction so a crash mid-way leaves no partial state.
+  /// Adjust stock for a variant at a branch via the shared StockMovementService.
   @override
   Future<void> adjustStock({
     required String variantId,
@@ -170,8 +168,6 @@ class InventoryRepository implements IInventoryRepository {
     required String reason,
     String? note,
   }) async {
-    assert(quantity > 0, 'quantity must be positive');
-
     if (branchId == null) {
       assert(
         false,
@@ -179,60 +175,16 @@ class InventoryRepository implements IInventoryRepository {
       );
       return;
     }
-
-    final delta = isIncoming ? quantity : -quantity;
-
-    await _ledgerDao.db.transaction(() async {
-      // Snapshot stock BEFORE the adjustment for the ledger audit trail.
-      final levelBefore = await _levelsDao.getLevel(variantId, branchId);
-      final double qtyBefore = levelBefore?.quantity.toDouble() ?? 0.0;
-      final double qtyAfter = (qtyBefore + delta.toDouble()).clamp(
-        0.0,
-        999999.0,
-      );
-
-      // 1. Insert ledger entry (immutable source of truth)
-      await _ledgerDao.insertEntry(
-        StockLedgerTableCompanion.insert(
-          id: _uuid.v4(),
-          variantId: variantId,
-          productId: productId,
-          branchId: branchId,
-          businessId: businessId,
-          changeType: isIncoming ? 'IN' : 'OUT',
-          quantity: quantity.toDouble(),
-          quantityBefore: Value(qtyBefore),
-          quantityAfter: Value(qtyAfter),
-          reason: reason,
-          note: Value(note),
-          createdAt: Value(DateTime.now()),
-        ),
-      );
-
-      // 2. Update per-branch inventory_levels
-      await _levelsDao.adjustQuantity(
-        variantId: variantId,
-        branchId: branchId,
-        businessId: businessId,
-        delta: delta,
-      );
-
-      // 3. Recalculate global total and write to product_variants.stock
-      final allLevels = await _levelsDao.getByVariantId(variantId);
-      var newTotal = 0;
-      for (final level in allLevels) {
-        newTotal += level.quantity;
-      }
-
-      await _variantsDao.db.customUpdate(
-        'UPDATE product_variants SET stock = ?, sync_status = 1, local_updated_at = ? WHERE id = ?',
-        variables: [
-          Variable.withInt(newTotal),
-          Variable.withDateTime(DateTime.now()),
-          Variable.withString(variantId),
-        ],
-      );
-    });
+    await _stockMovement.applyInt(
+      variantId: variantId,
+      productId: productId,
+      businessId: businessId,
+      branchId: branchId,
+      isIncoming: isIncoming,
+      quantity: quantity,
+      reason: reason,
+      note: note,
+    );
   }
 
   @override
@@ -246,8 +198,31 @@ class InventoryRepository implements IInventoryRepository {
     for (final item in items) {
       if (item.qty <= 0) continue;
       final variant = await _variantsDao.getById(item.variantId);
-      if (variant == null || !variant.trackStock) continue;
+      if (variant == null) continue;
 
+      final product = await _productsDao.getById(variant.productId);
+      final method = product?.trackingMethod ?? 'product_stock';
+
+      if (method == 'service') continue;
+
+      if (method == 'recipe' && branchId != null) {
+        final units = await _recipeConsumption.availableUnits(
+          productVariantId: item.variantId,
+          branchId: branchId,
+        );
+        // null means no recipe lines — treat as unlimited
+        if (units != null && units < item.qty) {
+          shortages.add((
+            variantId: item.variantId,
+            available: units,
+            requested: item.qty,
+          ));
+        }
+        continue;
+      }
+
+      // product_stock: existing behavior
+      if (!variant.trackStock) continue;
       final double available;
       if (branchId != null) {
         final level = await _levelsDao.getLevel(item.variantId, branchId);
@@ -256,7 +231,6 @@ class InventoryRepository implements IInventoryRepository {
       } else {
         available = variant.stockDecimal ?? variant.stock.toDouble();
       }
-
       if (available < item.qty) {
         shortages.add((
           variantId: item.variantId,
@@ -268,11 +242,11 @@ class InventoryRepository implements IInventoryRepository {
     return shortages;
   }
 
-  /// Called at checkout to record each sold item in the ledger, deduct it
-  /// from [inventory_levels], and decrement [product_variants.stock].
-  ///
-  /// Skips variants where [trackStock] is false. Each item's writes are
-  /// wrapped in a transaction so a crash mid-item leaves no partial state.
+  /// Called at checkout to deduct sold items.
+  /// Branches on the product's tracking_method:
+  ///   product_stock → deduct from the variant's own stock
+  ///   recipe        → deduct from ingredient variants via RecipeConsumptionService
+  ///   service       → skip (no inventory impact)
   @override
   Future<void> recordSaleDeductions({
     required List<({String variantId, int qty})> items,
@@ -286,50 +260,35 @@ class InventoryRepository implements IInventoryRepository {
 
     for (final item in items) {
       if (item.qty <= 0) continue;
-
       final variant = await _variantsDao.getById(item.variantId);
-      if (variant == null || !variant.trackStock) continue;
+      if (variant == null) continue;
 
-      await _ledgerDao.db.transaction(() async {
-        // Snapshot stock BEFORE deduction for the ledger audit trail.
-        final levelBefore = await _levelsDao.getLevel(item.variantId, branchId);
-        final double qtyBefore = levelBefore?.quantity.toDouble() ?? 0.0;
-        final double qtyAfter = (qtyBefore - item.qty.toDouble()).clamp(
-          0.0,
-          999999.0,
-        );
+      final product = await _productsDao.getById(variant.productId);
+      final method = product?.trackingMethod ?? 'product_stock';
 
-        // 1. Insert stock ledger entry
-        await _ledgerDao.insertEntry(
-          StockLedgerTableCompanion.insert(
-            id: _uuid.v4(),
+      switch (method) {
+        case 'recipe':
+          await _recipeConsumption.consume(
+            productVariantId: item.variantId,
+            qty: item.qty,
+            businessId: businessId,
+            branchId: branchId,
+          );
+        case 'service':
+          break; // no stock impact
+        default:
+          if (!variant.trackStock) break;
+          await _stockMovement.applyInt(
             variantId: item.variantId,
             productId: variant.productId,
-            branchId: branchId,
             businessId: businessId,
-            changeType: 'OUT',
-            quantity: item.qty.toDouble(),
-            quantityBefore: Value(qtyBefore),
-            quantityAfter: Value(qtyAfter),
+            branchId: branchId,
+            isIncoming: false,
+            quantity: item.qty,
             reason: 'Sale',
-            createdAt: Value(DateTime.now()),
-          ),
-        );
-
-        // 2. Deduct from this branch's inventory_levels row.
-        await _levelsDao.adjustQuantity(
-          variantId: item.variantId,
-          branchId: branchId,
-          businessId: businessId,
-          delta: -item.qty,
-        );
-
-        // 3. Decrement product_variants.stock
-        await _variantsDao.decrementStockIfTracked(
-          item.variantId,
-          item.qty.toDouble(),
-        );
-      });
+            sourceType: 'sale',
+          );
+      }
     }
   }
 }

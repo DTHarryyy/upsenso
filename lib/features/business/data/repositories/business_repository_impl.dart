@@ -142,8 +142,8 @@ class BusinessRepositoryImpl implements BusinessRepository {
 
         // Apply template server-side: creates all 4 roles, seeds server categories,
         // and initialises receipt_settings in one atomic RPC call.
-        // Returns the Super Admin role UUID so we can link the owner.
-        final superAdminRoleId = await remote.applyBusinessTemplate(
+        // Returns the Business Owner role UUID so we can link the owner.
+        final ownerRoleId = await remote.applyBusinessTemplate(
           businessId: businessId,
           templateId: templateId,
         );
@@ -153,7 +153,7 @@ class BusinessRepositoryImpl implements BusinessRepository {
           userId: ownerId,
           email: currentUser?.email ?? '',
           fullName: currentUser?.fullName,
-          superAdminRoleId: superAdminRoleId,
+          ownerRoleId: ownerRoleId,
         );
 
         // Update local business record with server response and mark as synced

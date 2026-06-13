@@ -64,6 +64,17 @@ import 'package:pos/core/database/daos/expenses_dao.dart';
 import 'package:pos/core/database/daos/inventory_levels_dao.dart';
 import 'package:pos/core/database/daos/receipt_settings_dao.dart';
 import 'package:pos/core/database/daos/stock_ledger_dao.dart';
+import 'package:pos/core/database/daos/purchase_order_lines_dao.dart';
+import 'package:pos/core/database/daos/purchase_orders_dao.dart';
+import 'package:pos/core/database/daos/suppliers_dao.dart';
+import 'package:pos/core/services/recipe_consumption_service.dart';
+import 'package:pos/core/services/stock_movement_service.dart';
+import 'package:pos/features/procurement/data/datasources/procurement_remote_ds.dart';
+import 'package:pos/features/procurement/data/procurement_repository.dart';
+import 'package:pos/features/procurement/domain/repositories/i_procurement_repository.dart';
+import 'package:pos/core/database/daos/recipe_lines_dao.dart';
+import 'package:pos/features/recipes/data/ingredients_repository.dart';
+import 'package:pos/features/recipes/domain/repositories/i_ingredients_repository.dart';
 import 'package:pos/core/database/daos/audit_logs_dao.dart';
 import 'package:pos/core/audit/audit_log_service.dart';
 import 'package:pos/features/audit_logs/data/datasources/audit_log_remote_ds.dart';
@@ -288,6 +299,11 @@ Future<void> initDI() async {
       auditLogRemoteDs: sl<AuditLogRemoteDs>(),
       employeesDao: sl<EmployeesDao>(),
       employeesRemoteDs: sl<EmployeesRemoteDs>(),
+      suppliersDao: sl<SuppliersDao>(),
+      purchaseOrdersDao: sl<PurchaseOrdersDao>(),
+      purchaseOrderLinesDao: sl<PurchaseOrderLinesDao>(),
+      procurementRemoteDs: sl<ProcurementRemoteDs>(),
+      recipeLinesDao: sl<RecipeLinesDao>(),
     ),
   );
 
@@ -339,6 +355,41 @@ Future<void> initDI() async {
   sl.registerLazySingleton<BusinessModulesDao>(
     () => BusinessModulesDao(sl<AppDatabase>()),
   );
+  sl.registerLazySingleton<SuppliersDao>(
+    () => SuppliersDao(sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<PurchaseOrdersDao>(
+    () => PurchaseOrdersDao(sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<PurchaseOrderLinesDao>(
+    () => PurchaseOrderLinesDao(sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<RecipeLinesDao>(
+    () => RecipeLinesDao(sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<IIngredientsRepository>(
+    () => IngredientsRepository(
+      productsDao: sl<ProductsDao>(),
+      variantsDao: sl<ProductVariantsDao>(),
+      levelsDao: sl<InventoryLevelsDao>(),
+      stockMovement: sl<StockMovementService>(),
+      ledgerDao: sl<StockLedgerDao>(),
+    ),
+  );
+  sl.registerLazySingleton<ProcurementRemoteDs>(
+    () => ProcurementRemoteDs(sl<SupabaseClient>()),
+  );
+  sl.registerLazySingleton<IProcurementRepository>(
+    () => ProcurementRepository(
+      suppliersDao: sl<SuppliersDao>(),
+      purchaseOrdersDao: sl<PurchaseOrdersDao>(),
+      purchaseOrderLinesDao: sl<PurchaseOrderLinesDao>(),
+      variantsDao: sl<ProductVariantsDao>(),
+      levelsDao: sl<InventoryLevelsDao>(),
+      stockMovement: sl<StockMovementService>(),
+      remoteDs: sl<ProcurementRemoteDs>(),
+    ),
+  );
   sl.registerLazySingleton<PermissionRemoteDs>(
     () => PermissionRemoteDs(sl<SupabaseClient>()),
   );
@@ -360,13 +411,31 @@ Future<void> initDI() async {
   // settings_page.dart resolves this via sl()
   sl.registerFactory(() => SettingsCubit(sl<ReceiptSettingsRepository>()));
 
+  sl.registerLazySingleton<StockMovementService>(
+    () => StockMovementService(
+      ledgerDao: sl<StockLedgerDao>(),
+      levelsDao: sl<InventoryLevelsDao>(),
+      variantsDao: sl<ProductVariantsDao>(),
+    ),
+  );
+
+  sl.registerLazySingleton<RecipeConsumptionService>(
+    () => RecipeConsumptionService(
+      recipeLinesDao: sl<RecipeLinesDao>(),
+      ledgerDao: sl<StockLedgerDao>(),
+      variantsDao: sl<ProductVariantsDao>(),
+      levelsDao: sl<InventoryLevelsDao>(),
+    ),
+  );
+
   sl.registerLazySingleton<IInventoryRepository>(
     () => InventoryRepository(
       productsDao: sl<ProductsDao>(),
       variantsDao: sl<ProductVariantsDao>(),
       branchesDao: sl<BranchesDao>(),
       levelsDao: sl<InventoryLevelsDao>(),
-      ledgerDao: sl<StockLedgerDao>(),
+      stockMovement: sl<StockMovementService>(),
+      recipeConsumption: sl<RecipeConsumptionService>(),
     ),
   );
 

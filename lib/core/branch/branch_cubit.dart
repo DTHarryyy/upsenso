@@ -136,10 +136,12 @@ class BranchCubit extends Cubit<BranchState> {
     }
   }
 
-  /// Check if a role is Super Admin
-  bool _isSuperAdmin(String? roleName) {
+  bool _isOwner(String? roleName) {
     final normalized = roleName?.trim().toLowerCase() ?? '';
-    return normalized == 'super admin' ||
+    return normalized == 'business owner' ||
+        normalized == 'business_owner' ||
+        normalized == 'owner' ||
+        normalized == 'super admin' ||
         normalized == 'superadmin' ||
         normalized == 'super_admin';
   }
@@ -147,7 +149,7 @@ class BranchCubit extends Cubit<BranchState> {
   /// Determine if user can access all branches.
   /// Offline sessions can have missing roleName, so we also infer from branch linkage.
   bool _canAccessAllBranches(AppUser user) {
-    if (_isSuperAdmin(user.roleName)) return true;
+    if (_isOwner(user.roleName)) return true;
 
     final hasBusiness = user.businessId?.trim().isNotEmpty ?? false;
     final hasAssignedBranch = user.branchId?.trim().isNotEmpty ?? false;
@@ -209,7 +211,7 @@ class BranchCubit extends Cubit<BranchState> {
           DataScopeType.allBranches;
       // Can switch only when the role is NOT branch-scoped AND the user has
       // no explicit branch assignment (canAccessAllBranches already encodes
-      // the !hasAssignedBranch logic for non-super-admin users).
+      // the !hasAssignedBranch logic for non-owner users).
       // The cached value is intentionally excluded: it must never override
       // the role / branch assignment determined from the live session.
       final canSwitch = !isBranchScopedRole && canAccessAllBranches;
@@ -375,7 +377,7 @@ class BranchCubit extends Cubit<BranchState> {
     return options.isNotEmpty ? options.first : 'Branch';
   }
 
-  /// Select a different branch (only for Super Admin)
+  /// Select a different branch (only for Business Owner)
   Future<void> selectBranch(String branchName) async {
     if (!state.canSwitchBranches) return;
     if (!state.availableBranches.contains(branchName)) return;
@@ -402,7 +404,7 @@ class BranchCubit extends Cubit<BranchState> {
   }
 
   /// Get the currently selected branch ID (for filtering)
-  /// Returns null for Super Admin when "All Branches" is selected
+  /// Returns null for Business Owner when "All Branches" is selected
   String? getSelectedBranchIdForFiltering() {
     if (state.selectedBranch == allBranchesLabel) {
       return null; // No filter, show all
@@ -410,7 +412,7 @@ class BranchCubit extends Cubit<BranchState> {
     return state.selectedBranchId;
   }
 
-  /// Add a new branch (Super Admin only)
+  /// Add a new branch (Business Owner only)
   Future<String?> addBranch({
     required String businessId,
     required String name,
