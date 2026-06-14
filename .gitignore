@@ -13,6 +13,15 @@
 migrate_working_dir/
 .env
 flavors/
+
+# Signing material & secrets — must never be committed
+*.jks
+*.keystore
+*.pem
+*.p12
+keystore-base64.txt
+**/key.properties
+supabase/.temp/
 # IntelliJ related
 *.iml
 *.ipr
