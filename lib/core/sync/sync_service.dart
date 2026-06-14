@@ -1293,18 +1293,31 @@ class SyncService {
     }
 
     try {
-      final transactions = await _transactionsRemoteDs
-          .getTransactionsByBusiness(businessId);
-      for (final row in transactions) {
-        await _transactionsDao.upsertFromServer(row);
-        pulled++;
-      }
-      // Pull line items for all transactions so dashboard top-items & reports work.
-      final items = await _transactionsRemoteDs.getItemsByBusiness(businessId);
-      for (final item in items) {
-        await _transactionsDao.upsertItemFromServer(item);
-        pulled++;
-      }
+      // Incremental by transactions.updated_at; each page's line items are
+      // fetched by transaction_id (items are append-only, written with their
+      // transaction) so no transaction_items schema change is needed.
+      pulled += await _pullIncremental(
+        entity: 'transactions',
+        businessId: businessId,
+        timestampField: 'updated_at',
+        fetchPage: (after, id, lim) =>
+            _transactionsRemoteDs.getTransactionsByBusiness(
+          businessId,
+          afterTs: after,
+          afterId: id,
+          limit: lim,
+        ),
+        applyRow: (row) => _transactionsDao.upsertFromServer(row),
+        afterPage: (page) async {
+          final ids = page.map((r) => r['id'] as String).toList();
+          if (ids.isEmpty) return;
+          final items =
+              await _transactionsRemoteDs.getItemsByTransactionIds(ids);
+          for (final item in items) {
+            await _transactionsDao.upsertItemFromServer(item);
+          }
+        },
+      );
     } catch (e) {
       failed++;
       errors.add('Pull transactions: ${e.toString()}');
@@ -1505,6 +1518,7 @@ class SyncService {
       int limit,
     ) fetchPage,
     required Future<void> Function(Map<String, dynamic> row) applyRow,
+    Future<void> Function(List<Map<String, dynamic>> page)? afterPage,
   }) async {
     var cursor = await _syncStateDao.getWatermark(entity, businessId);
     int pulled = 0;
@@ -1525,6 +1539,10 @@ class SyncService {
           lastId = id;
         }
       }
+
+      // Apply any dependent child rows for this page (e.g. transaction items)
+      // BEFORE advancing the cursor, so a failure here is retried next sync.
+      if (afterPage != null) await afterPage(page);
 
       // No parseable cursor in the page — stop rather than risk a loop.
       if (lastTs == null || lastId == null) break;
