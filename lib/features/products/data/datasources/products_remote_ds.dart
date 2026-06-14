@@ -274,14 +274,30 @@ class ProductsRemoteDs {
     });
   }
 
+  /// Stock ledger rows for a business.
+  ///
+  /// The ledger is append-only (rows are never updated or deleted), so passing
+  /// [createdAfter] returns only entries newer than the last pulled one —
+  /// enabling incremental sync. Results are ordered ascending by (created_at,
+  /// id) so a created_at cursor can page forward deterministically. Omit both
+  /// args for the original full pull.
   Future<List<Map<String, dynamic>>> getStockLedgerByBusiness(
-    String businessId,
-  ) async {
-    final response = await client
+    String businessId, {
+    DateTime? createdAfter,
+    int? limit,
+  }) async {
+    var filter = client
         .from('stock_ledger')
         .select()
-        .eq('business_id', businessId)
-        .order('created_at', ascending: false);
+        .eq('business_id', businessId);
+    if (createdAfter != null) {
+      filter = filter.gt('created_at', createdAfter.toUtc().toIso8601String());
+    }
+    final ordered = filter
+        .order('created_at', ascending: true)
+        .order('id', ascending: true);
+    final response =
+        limit != null ? await ordered.limit(limit) : await ordered;
     return List<Map<String, dynamic>>.from(response);
   }
 }

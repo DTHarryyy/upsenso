@@ -74,6 +74,7 @@ import 'package:pos/features/procurement/data/datasources/procurement_remote_ds.
 import 'package:pos/features/procurement/data/procurement_repository.dart';
 import 'package:pos/features/procurement/domain/repositories/i_procurement_repository.dart';
 import 'package:pos/core/database/daos/recipe_lines_dao.dart';
+import 'package:pos/core/database/daos/sync_state_dao.dart';
 import 'package:pos/features/recipes/data/ingredients_repository.dart';
 import 'package:pos/features/recipes/domain/repositories/i_ingredients_repository.dart';
 import 'package:pos/core/database/daos/audit_logs_dao.dart';
@@ -160,6 +161,9 @@ Future<void> initDI() async {
   );
   sl.registerLazySingleton<StockLedgerDao>(
     () => StockLedgerDao(sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<SyncStateDao>(
+    () => SyncStateDao(sl<AppDatabase>()),
   );
   sl.registerLazySingleton<ExpensesDao>(() => ExpensesDao(sl<AppDatabase>()));
   sl.registerLazySingleton<EmployeesDao>(() => EmployeesDao(sl<AppDatabase>()));
@@ -305,6 +309,7 @@ Future<void> initDI() async {
       purchaseOrderLinesDao: sl<PurchaseOrderLinesDao>(),
       procurementRemoteDs: sl<ProcurementRemoteDs>(),
       recipeLinesDao: sl<RecipeLinesDao>(),
+      syncStateDao: sl<SyncStateDao>(),
     ),
   );
 

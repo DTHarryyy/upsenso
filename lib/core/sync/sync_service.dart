@@ -30,6 +30,7 @@ import 'package:pos/features/employees/data/datasources/employees_remote_ds.dart
 import 'package:pos/core/database/daos/purchase_order_lines_dao.dart';
 import 'package:pos/core/database/daos/purchase_orders_dao.dart';
 import 'package:pos/core/database/daos/recipe_lines_dao.dart';
+import 'package:pos/core/database/daos/sync_state_dao.dart';
 import 'package:pos/core/database/daos/suppliers_dao.dart';
 import 'package:pos/features/procurement/data/datasources/procurement_remote_ds.dart';
 
@@ -61,6 +62,7 @@ class SyncService {
   final PurchaseOrderLinesDao _purchaseOrderLinesDao;
   final ProcurementRemoteDs _procurementRemoteDs;
   final RecipeLinesDao _recipeLinesDao;
+  final SyncStateDao _syncStateDao;
 
   StreamSubscription<bool>? _connectivitySubscription;
   Timer? _retryTimer;
@@ -98,6 +100,7 @@ class SyncService {
     required PurchaseOrderLinesDao purchaseOrderLinesDao,
     required ProcurementRemoteDs procurementRemoteDs,
     required RecipeLinesDao recipeLinesDao,
+    required SyncStateDao syncStateDao,
   }) : _authContextDao = authContextDao,
        _branchesDao = branchesDao,
        _businessesDao = businessesDao,
@@ -123,7 +126,8 @@ class SyncService {
        _purchaseOrdersDao = purchaseOrdersDao,
        _purchaseOrderLinesDao = purchaseOrderLinesDao,
        _procurementRemoteDs = procurementRemoteDs,
-       _recipeLinesDao = recipeLinesDao;
+       _recipeLinesDao = recipeLinesDao,
+       _syncStateDao = syncStateDao;
 
   /// Returns [provided] if non-null, otherwise reads businessId from the
   /// locally cached auth context. This allows connectivity-triggered syncs
@@ -185,6 +189,9 @@ class SyncService {
     await _purchaseOrderLinesDao.clearAll();
     await _purchaseOrdersDao.clearAll();
     await _recipeLinesDao.clearAll();
+    // Reset delta-sync watermarks so the next sync does a fresh full pull —
+    // otherwise a stale watermark would skip rows that the wipe just removed.
+    await _syncStateDao.clearAll();
     await _authContextDao.clearAll();
   }
 
@@ -1240,13 +1247,7 @@ class SyncService {
     }
 
     try {
-      final ledger = await _productsRemoteDs.getStockLedgerByBusiness(
-        businessId,
-      );
-      for (final row in ledger) {
-        await _stockLedgerDao.upsertFromServer(row);
-        pulled++;
-      }
+      pulled += await _pullStockLedgerIncremental(businessId);
     } catch (e) {
       failed++;
       errors.add('Pull stock ledger: ${e.toString()}');
@@ -1438,6 +1439,50 @@ class SyncService {
       failedCount: failed,
       errors: errors,
     );
+  }
+
+  /// Incremental, paged pull of the append-only stock_ledger.
+  ///
+  /// Uses the [SyncStateDao] watermark (server created_at of the last applied
+  /// row) to fetch only new entries. First run (null watermark) pages through
+  /// the full history. The watermark advances only after each page is applied,
+  /// so a crash just resumes from the last good cursor (upserts are idempotent).
+  /// Safe because the ledger is append-only — no updates or deletes to miss.
+  static const _ledgerPageSize = 500;
+
+  Future<int> _pullStockLedgerIncremental(String businessId) async {
+    const entity = 'stock_ledger';
+    DateTime? cursor = await _syncStateDao.getWatermark(entity, businessId);
+    int pulled = 0;
+
+    while (true) {
+      final page = await _productsRemoteDs.getStockLedgerByBusiness(
+        businessId,
+        createdAfter: cursor,
+        limit: _ledgerPageSize,
+      );
+      if (page.isEmpty) break;
+
+      DateTime? maxCreatedAt = cursor;
+      for (final row in page) {
+        await _stockLedgerDao.upsertFromServer(row);
+        pulled++;
+        final ts = DateTime.tryParse(row['created_at'] as String? ?? '');
+        if (ts != null && (maxCreatedAt == null || ts.isAfter(maxCreatedAt))) {
+          maxCreatedAt = ts;
+        }
+      }
+
+      // Stop if the cursor can't advance (whole page shares one timestamp) to
+      // avoid an infinite loop; persist progress made so far.
+      if (maxCreatedAt == null || maxCreatedAt == cursor) break;
+      cursor = maxCreatedAt;
+      await _syncStateDao.setWatermark(entity, businessId, cursor);
+
+      if (page.length < _ledgerPageSize) break;
+    }
+
+    return pulled;
   }
 
   Future<void> _syncReceiptSettings() async {
