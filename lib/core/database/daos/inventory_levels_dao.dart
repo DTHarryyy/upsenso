@@ -37,6 +37,31 @@ class InventoryLevelsDao extends DatabaseAccessor<AppDatabase>
         .watch();
   }
 
+  /// Inventory levels whose variant OR branch no longer exists locally.
+  /// These can never sync (their parent is gone), so they're surfaced for
+  /// admin review. This is read-only — it never deletes business data.
+  Future<List<InventoryLevelsTableData>> findOrphans(String businessId) async {
+    final levels = await (select(inventoryLevelsTable)
+          ..where((t) => t.businessId.equals(businessId)))
+        .get();
+    if (levels.isEmpty) return const [];
+
+    final variantIds = (await customSelect('SELECT id FROM product_variants')
+            .get())
+        .map((r) => r.read<String>('id'))
+        .toSet();
+    final branchIds =
+        (await customSelect('SELECT id FROM branches').get())
+            .map((r) => r.read<String>('id'))
+            .toSet();
+
+    return levels
+        .where((l) =>
+            !variantIds.contains(l.variantId) ||
+            !branchIds.contains(l.branchId))
+        .toList();
+  }
+
   /// Get the level row for a specific variant + branch combo.
   Future<InventoryLevelsTableData?> getLevel(
     String variantId,
