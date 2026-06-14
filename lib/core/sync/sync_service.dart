@@ -646,7 +646,9 @@ class SyncService {
             synced++;
 
           case SyncStatus.pendingDelete:
-            await _productsRemoteDs.deleteProduct(record.id);
+            // Soft-delete (stamp deleted_at) instead of hard delete so the
+            // removal propagates to other devices via the delta-pull.
+            await _productsRemoteDs.softDeleteProduct(record.id);
             await _productsDao.hardDelete(record.id);
             synced++;
 
@@ -731,17 +733,10 @@ class SyncService {
             synced++;
 
           case SyncStatus.pendingDelete:
-            try {
-              await _productsRemoteDs.deleteProductVariant(record.id);
-            } on PostgrestException catch (e) {
-              if (e.code == '23503') {
-                // Still referenced by transaction_items / stock_ledger /
-                // inventory_levels — soft-delete instead so history is intact.
-                await _productsRemoteDs.softDeleteProductVariant(record.id);
-              } else {
-                rethrow;
-              }
-            }
+            // Soft-delete (stamp deleted_at) so the removal propagates to other
+            // devices via the delta-pull; FK constraints from history stay
+            // satisfied because the row is never hard-deleted on the server.
+            await _productsRemoteDs.softDeleteProductVariant(record.id);
             await _productVariantsDao.hardDelete(record.id);
             synced++;
 

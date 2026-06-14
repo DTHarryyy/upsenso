@@ -88,4 +88,58 @@ void main() {
     final p = await products.getById('p1');
     expect(p!.name, 'Local edited');
   });
+
+  // Delete propagation (B1): a synced row carrying deleted_at must be removed
+  // locally so deletions made on another device reach this one.
+  test('soft-deleted server variant is removed locally', () async {
+    await variants.insertVariant(
+      ProductVariantsTableCompanion.insert(
+        id: 'v1',
+        productId: 'p1',
+        businessId: 'biz',
+        name: 'Doomed',
+        syncStatus: const Value(3), // synced
+      ),
+    );
+
+    final row = variantRow('Doomed', 10.0)
+      ..['deleted_at'] = '2026-06-14T00:00:00.000Z';
+    await variants.upsertFromServer(row);
+
+    expect(await variants.getById('v1'), isNull);
+  });
+
+  test('soft-deleted server product is removed locally', () async {
+    await products.insertProduct(
+      ProductsTableCompanion.insert(
+        id: 'p1',
+        businessId: 'biz',
+        name: 'Doomed',
+        syncStatus: const Value(3),
+      ),
+    );
+
+    final row = productRow('Doomed')..['deleted_at'] = '2026-06-14T00:00:00.000Z';
+    await products.upsertFromServer(row);
+
+    expect(await products.getById('p1'), isNull);
+  });
+
+  test('pending local variant is NOT deleted by a soft-deleted server row',
+      () async {
+    await variants.insertVariant(
+      ProductVariantsTableCompanion.insert(
+        id: 'v1',
+        productId: 'p1',
+        businessId: 'biz',
+        name: 'Local edit',
+        syncStatus: const Value(1), // pendingUpdate — local change wins
+      ),
+    );
+
+    final row = variantRow('x', 1.0)..['deleted_at'] = '2026-06-14T00:00:00.000Z';
+    await variants.upsertFromServer(row);
+
+    expect(await variants.getById('v1'), isNotNull);
+  });
 }

@@ -115,6 +115,13 @@ class ProductsDao extends DatabaseAccessor<AppDatabase>
     if (existing != null && existing.syncStatus != SyncStatus.synced.toInt()) {
       return;
     }
+    // Soft-deleted on the server → remove locally so the deletion propagates.
+    if (row['deleted_at'] != null) {
+      if (existing != null) {
+        await (delete(productsTable)..where((t) => t.id.equals(id))).go();
+      }
+      return;
+    }
     await into(productsTable).insertOnConflictUpdate(
       ProductsTableCompanion.insert(
         id: row['id'] as String,

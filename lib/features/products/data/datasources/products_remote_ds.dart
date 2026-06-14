@@ -107,6 +107,16 @@ class ProductsRemoteDs {
     await client.from('products').delete().eq('id', id);
   }
 
+  /// Soft-delete a product by stamping deleted_at. Preferred over a hard delete:
+  /// it bumps updated_at (via trigger) so the deletion propagates to other
+  /// devices through the delta-pull, and it never violates FK constraints.
+  Future<void> softDeleteProduct(String id) async {
+    await client
+        .from('products')
+        .update({'deleted_at': DateTime.now().toUtc().toIso8601String()})
+        .eq('id', id);
+  }
+
   /// Fetch all products for a business (for pull sync).
   Future<List<Map<String, dynamic>>> getProductsByBusiness(
     String businessId, {
@@ -211,13 +221,15 @@ class ProductsRemoteDs {
     await client.from('product_variants').delete().eq('id', id);
   }
 
-  /// Soft-delete a variant that is still referenced by transaction history.
-  /// Sets is_active = false so it no longer appears in the product catalogue
-  /// but the FK constraints from transaction_items / stock_ledger are satisfied.
+  /// Soft-delete a variant by stamping deleted_at. is_active is left true on
+  /// purpose so the (is_active = true) pull still returns the tombstone once,
+  /// letting the deletion propagate to other devices; each device then removes
+  /// it locally. FK constraints from transaction_items / stock_ledger stay
+  /// satisfied because the row is never hard-deleted.
   Future<void> softDeleteProductVariant(String id) async {
     await client
         .from('product_variants')
-        .update({'is_active': false})
+        .update({'deleted_at': DateTime.now().toUtc().toIso8601String()})
         .eq('id', id);
   }
 
