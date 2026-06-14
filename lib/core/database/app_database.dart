@@ -530,12 +530,24 @@ class AppDatabase extends _$AppDatabase {
 
         if (from < 38) {
           // Delta-sync watermark store. Purely additive; rollback = drop table.
-          await m.createTable(syncStateTable);
+          // createTable uses the CURRENT schema, so a device jumping straight
+          // from <38 already gets last_pulled_id here — the v39 step then tolerates
+          // the duplicate. Guarded so a partially-applied prior run can't wedge it.
+          try {
+            await m.createTable(syncStateTable);
+          } catch (_) {}
         }
 
         if (from < 39) {
-          // Tiebreak id for the (timestamp, id) keyset cursor. Additive.
-          await m.addColumn(syncStateTable, syncStateTable.lastPulledId);
+          // Tiebreak id for the (timestamp, id) keyset cursor. Idempotent: when
+          // v38's createTable above already added it (current schema), this ALTER
+          // throws "duplicate column" — tolerate it. Only devices that created
+          // sync_state under the original v38 (no id column) actually add it here.
+          try {
+            await customStatement(
+              'ALTER TABLE sync_state ADD COLUMN last_pulled_id TEXT',
+            );
+          } catch (_) {}
         }
       },
     );
