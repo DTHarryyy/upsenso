@@ -11,24 +11,34 @@ class SyncStateDao extends DatabaseAccessor<AppDatabase>
     with _$SyncStateDaoMixin {
   SyncStateDao(super.db);
 
-  /// Server `updated_at` of the last row pulled for [entity]/[businessId], or
-  /// null if it has never been delta-pulled (caller should do a full pull).
-  Future<DateTime?> getWatermark(String entity, String businessId) async {
+  /// The (timestamp, id) keyset cursor of the last row pulled for
+  /// [entity]/[businessId]. Both null means never delta-pulled (full pull).
+  /// `id` may be null for cursors written before the tiebreak column existed.
+  Future<({DateTime? ts, String? id})> getWatermark(
+    String entity,
+    String businessId,
+  ) async {
     final row = await (select(syncStateTable)
           ..where(
             (t) => t.entity.equals(entity) & t.businessId.equals(businessId),
           ))
         .getSingleOrNull();
-    return row?.lastPulledAt;
+    return (ts: row?.lastPulledAt, id: row?.lastPulledId);
   }
 
-  /// Advance the watermark after a page has been fully applied.
-  Future<void> setWatermark(String entity, String businessId, DateTime ts) {
+  /// Advance the cursor after a page has been fully applied.
+  Future<void> setWatermark(
+    String entity,
+    String businessId,
+    DateTime ts,
+    String id,
+  ) {
     return into(syncStateTable).insertOnConflictUpdate(
       SyncStateTableCompanion.insert(
         entity: entity,
         businessId: businessId,
         lastPulledAt: Value(ts),
+        lastPulledId: Value(id),
       ),
     );
   }

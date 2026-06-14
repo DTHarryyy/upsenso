@@ -120,7 +120,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 38;
+  int get schemaVersion => 39;
 
   @override
   MigrationStrategy get migration {
@@ -531,6 +531,11 @@ class AppDatabase extends _$AppDatabase {
         if (from < 38) {
           // Delta-sync watermark store. Purely additive; rollback = drop table.
           await m.createTable(syncStateTable);
+        }
+
+        if (from < 39) {
+          // Tiebreak id for the (timestamp, id) keyset cursor. Additive.
+          await m.addColumn(syncStateTable, syncStateTable.lastPulledId);
         }
       },
     );

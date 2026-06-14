@@ -4,6 +4,36 @@ class ProductsRemoteDs {
   final SupabaseClient client;
   ProductsRemoteDs(this.client);
 
+  /// Shared incremental/paged fetch for pull-sync.
+  ///
+  /// Orders by ([tsField], id) ascending and, when a cursor is supplied, returns
+  /// only rows strictly after it using a (timestamp, id) keyset — so rows that
+  /// share a timestamp (a migration backfill, a batch insert) are never skipped
+  /// at a page boundary. A legacy cursor with no id falls back to a plain
+  /// greater-than. Omit the cursor + limit for a full pull.
+  Future<List<Map<String, dynamic>>> _pullByBusiness(
+    String table,
+    String businessId,
+    String tsField, {
+    DateTime? afterTs,
+    String? afterId,
+    int? limit,
+    Map<String, Object> extraEq = const {},
+  }) async {
+    var filter = client.from(table).select().eq('business_id', businessId);
+    extraEq.forEach((k, v) => filter = filter.eq(k, v));
+    if (afterTs != null) {
+      final ts = afterTs.toUtc().toIso8601String();
+      filter = afterId != null
+          ? filter.or('$tsField.gt.$ts,and($tsField.eq.$ts,id.gt.$afterId)')
+          : filter.gt(tsField, ts);
+    }
+    final ordered =
+        filter.order(tsField, ascending: true).order('id', ascending: true);
+    final res = limit != null ? await ordered.limit(limit) : await ordered;
+    return List<Map<String, dynamic>>.from(res);
+  }
+
   // ── PRODUCTS ────────────────────────────────────────────────────────────────
 
   /// Upsert a product to Supabase (safe for re-sync).
@@ -79,15 +109,13 @@ class ProductsRemoteDs {
 
   /// Fetch all products for a business (for pull sync).
   Future<List<Map<String, dynamic>>> getProductsByBusiness(
-    String businessId,
-  ) async {
-    final response = await client
-        .from('products')
-        .select()
-        .eq('business_id', businessId)
-        .order('name');
-    return List<Map<String, dynamic>>.from(response);
-  }
+    String businessId, {
+    DateTime? afterTs,
+    String? afterId,
+    int? limit,
+  }) =>
+      _pullByBusiness('products', businessId, 'updated_at',
+          afterTs: afterTs, afterId: afterId, limit: limit);
 
   // ── RECIPE LINES ──────────────────────────────────────────────────────────────
 
@@ -195,15 +223,16 @@ class ProductsRemoteDs {
 
   /// Fetch all variants for a business (for pull sync).
   Future<List<Map<String, dynamic>>> getVariantsByBusiness(
-    String businessId,
-  ) async {
-    final response = await client
-        .from('product_variants')
-        .select()
-        .eq('business_id', businessId)
-        .eq('is_active', true);
-    return List<Map<String, dynamic>>.from(response);
-  }
+    String businessId, {
+    DateTime? afterTs,
+    String? afterId,
+    int? limit,
+  }) =>
+      _pullByBusiness('product_variants', businessId, 'updated_at',
+          afterTs: afterTs,
+          afterId: afterId,
+          limit: limit,
+          extraEq: const {'is_active': true});
 
   // ── INVENTORY LEVELS ────────────────────────────────────────────────────────
 
@@ -233,14 +262,13 @@ class ProductsRemoteDs {
   }
 
   Future<List<Map<String, dynamic>>> getInventoryLevelsByBusiness(
-    String businessId,
-  ) async {
-    final response = await client
-        .from('inventory_levels')
-        .select()
-        .eq('business_id', businessId);
-    return List<Map<String, dynamic>>.from(response);
-  }
+    String businessId, {
+    DateTime? afterTs,
+    String? afterId,
+    int? limit,
+  }) =>
+      _pullByBusiness('inventory_levels', businessId, 'updated_at',
+          afterTs: afterTs, afterId: afterId, limit: limit);
 
   // ── STOCK LEDGER ─────────────────────────────────────────────────────────────
 
@@ -274,30 +302,15 @@ class ProductsRemoteDs {
     });
   }
 
-  /// Stock ledger rows for a business.
-  ///
-  /// The ledger is append-only (rows are never updated or deleted), so passing
-  /// [createdAfter] returns only entries newer than the last pulled one —
-  /// enabling incremental sync. Results are ordered ascending by (created_at,
-  /// id) so a created_at cursor can page forward deterministically. Omit both
-  /// args for the original full pull.
+  /// Stock ledger rows for a business. The ledger is append-only, but rows
+  /// written in the same batch can share created_at, so it uses the same
+  /// (created_at, id) keyset pull as the other tables to avoid skipping ties.
   Future<List<Map<String, dynamic>>> getStockLedgerByBusiness(
     String businessId, {
-    DateTime? createdAfter,
+    DateTime? afterTs,
+    String? afterId,
     int? limit,
-  }) async {
-    var filter = client
-        .from('stock_ledger')
-        .select()
-        .eq('business_id', businessId);
-    if (createdAfter != null) {
-      filter = filter.gt('created_at', createdAfter.toUtc().toIso8601String());
-    }
-    final ordered = filter
-        .order('created_at', ascending: true)
-        .order('id', ascending: true);
-    final response =
-        limit != null ? await ordered.limit(limit) : await ordered;
-    return List<Map<String, dynamic>>.from(response);
-  }
+  }) =>
+      _pullByBusiness('stock_ledger', businessId, 'created_at',
+          afterTs: afterTs, afterId: afterId, limit: limit);
 }

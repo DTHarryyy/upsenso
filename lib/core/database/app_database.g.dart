@@ -19788,8 +19788,24 @@ class $SyncStateTableTable extends SyncStateTable
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _lastPulledIdMeta = const VerificationMeta(
+    'lastPulledId',
+  );
   @override
-  List<GeneratedColumn> get $columns => [entity, businessId, lastPulledAt];
+  late final GeneratedColumn<String> lastPulledId = GeneratedColumn<String>(
+    'last_pulled_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    entity,
+    businessId,
+    lastPulledAt,
+    lastPulledId,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -19827,6 +19843,15 @@ class $SyncStateTableTable extends SyncStateTable
         ),
       );
     }
+    if (data.containsKey('last_pulled_id')) {
+      context.handle(
+        _lastPulledIdMeta,
+        lastPulledId.isAcceptableOrUnknown(
+          data['last_pulled_id']!,
+          _lastPulledIdMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -19848,6 +19873,10 @@ class $SyncStateTableTable extends SyncStateTable
         DriftSqlType.dateTime,
         data['${effectivePrefix}last_pulled_at'],
       ),
+      lastPulledId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_pulled_id'],
+      ),
     );
   }
 
@@ -19863,12 +19892,19 @@ class SyncStateTableData extends DataClass
   final String entity;
   final String businessId;
 
-  /// Server `updated_at` of the last row applied. Null until first pull.
+  /// Server `updated_at`/`created_at` of the last row applied. Null until first
+  /// pull.
   final DateTime? lastPulledAt;
+
+  /// Id of the last row applied — the tiebreak half of a (timestamp, id) keyset
+  /// cursor, so rows sharing a timestamp (e.g. a migration backfill or a batch
+  /// insert) aren't skipped at a page boundary.
+  final String? lastPulledId;
   const SyncStateTableData({
     required this.entity,
     required this.businessId,
     this.lastPulledAt,
+    this.lastPulledId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -19877,6 +19913,9 @@ class SyncStateTableData extends DataClass
     map['business_id'] = Variable<String>(businessId);
     if (!nullToAbsent || lastPulledAt != null) {
       map['last_pulled_at'] = Variable<DateTime>(lastPulledAt);
+    }
+    if (!nullToAbsent || lastPulledId != null) {
+      map['last_pulled_id'] = Variable<String>(lastPulledId);
     }
     return map;
   }
@@ -19888,6 +19927,9 @@ class SyncStateTableData extends DataClass
       lastPulledAt: lastPulledAt == null && nullToAbsent
           ? const Value.absent()
           : Value(lastPulledAt),
+      lastPulledId: lastPulledId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastPulledId),
     );
   }
 
@@ -19900,6 +19942,7 @@ class SyncStateTableData extends DataClass
       entity: serializer.fromJson<String>(json['entity']),
       businessId: serializer.fromJson<String>(json['businessId']),
       lastPulledAt: serializer.fromJson<DateTime?>(json['lastPulledAt']),
+      lastPulledId: serializer.fromJson<String?>(json['lastPulledId']),
     );
   }
   @override
@@ -19909,6 +19952,7 @@ class SyncStateTableData extends DataClass
       'entity': serializer.toJson<String>(entity),
       'businessId': serializer.toJson<String>(businessId),
       'lastPulledAt': serializer.toJson<DateTime?>(lastPulledAt),
+      'lastPulledId': serializer.toJson<String?>(lastPulledId),
     };
   }
 
@@ -19916,10 +19960,12 @@ class SyncStateTableData extends DataClass
     String? entity,
     String? businessId,
     Value<DateTime?> lastPulledAt = const Value.absent(),
+    Value<String?> lastPulledId = const Value.absent(),
   }) => SyncStateTableData(
     entity: entity ?? this.entity,
     businessId: businessId ?? this.businessId,
     lastPulledAt: lastPulledAt.present ? lastPulledAt.value : this.lastPulledAt,
+    lastPulledId: lastPulledId.present ? lastPulledId.value : this.lastPulledId,
   );
   SyncStateTableData copyWithCompanion(SyncStateTableCompanion data) {
     return SyncStateTableData(
@@ -19930,6 +19976,9 @@ class SyncStateTableData extends DataClass
       lastPulledAt: data.lastPulledAt.present
           ? data.lastPulledAt.value
           : this.lastPulledAt,
+      lastPulledId: data.lastPulledId.present
+          ? data.lastPulledId.value
+          : this.lastPulledId,
     );
   }
 
@@ -19938,37 +19987,43 @@ class SyncStateTableData extends DataClass
     return (StringBuffer('SyncStateTableData(')
           ..write('entity: $entity, ')
           ..write('businessId: $businessId, ')
-          ..write('lastPulledAt: $lastPulledAt')
+          ..write('lastPulledAt: $lastPulledAt, ')
+          ..write('lastPulledId: $lastPulledId')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(entity, businessId, lastPulledAt);
+  int get hashCode =>
+      Object.hash(entity, businessId, lastPulledAt, lastPulledId);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is SyncStateTableData &&
           other.entity == this.entity &&
           other.businessId == this.businessId &&
-          other.lastPulledAt == this.lastPulledAt);
+          other.lastPulledAt == this.lastPulledAt &&
+          other.lastPulledId == this.lastPulledId);
 }
 
 class SyncStateTableCompanion extends UpdateCompanion<SyncStateTableData> {
   final Value<String> entity;
   final Value<String> businessId;
   final Value<DateTime?> lastPulledAt;
+  final Value<String?> lastPulledId;
   final Value<int> rowid;
   const SyncStateTableCompanion({
     this.entity = const Value.absent(),
     this.businessId = const Value.absent(),
     this.lastPulledAt = const Value.absent(),
+    this.lastPulledId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SyncStateTableCompanion.insert({
     required String entity,
     required String businessId,
     this.lastPulledAt = const Value.absent(),
+    this.lastPulledId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : entity = Value(entity),
        businessId = Value(businessId);
@@ -19976,12 +20031,14 @@ class SyncStateTableCompanion extends UpdateCompanion<SyncStateTableData> {
     Expression<String>? entity,
     Expression<String>? businessId,
     Expression<DateTime>? lastPulledAt,
+    Expression<String>? lastPulledId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (entity != null) 'entity': entity,
       if (businessId != null) 'business_id': businessId,
       if (lastPulledAt != null) 'last_pulled_at': lastPulledAt,
+      if (lastPulledId != null) 'last_pulled_id': lastPulledId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -19990,12 +20047,14 @@ class SyncStateTableCompanion extends UpdateCompanion<SyncStateTableData> {
     Value<String>? entity,
     Value<String>? businessId,
     Value<DateTime?>? lastPulledAt,
+    Value<String?>? lastPulledId,
     Value<int>? rowid,
   }) {
     return SyncStateTableCompanion(
       entity: entity ?? this.entity,
       businessId: businessId ?? this.businessId,
       lastPulledAt: lastPulledAt ?? this.lastPulledAt,
+      lastPulledId: lastPulledId ?? this.lastPulledId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -20012,6 +20071,9 @@ class SyncStateTableCompanion extends UpdateCompanion<SyncStateTableData> {
     if (lastPulledAt.present) {
       map['last_pulled_at'] = Variable<DateTime>(lastPulledAt.value);
     }
+    if (lastPulledId.present) {
+      map['last_pulled_id'] = Variable<String>(lastPulledId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -20024,6 +20086,7 @@ class SyncStateTableCompanion extends UpdateCompanion<SyncStateTableData> {
           ..write('entity: $entity, ')
           ..write('businessId: $businessId, ')
           ..write('lastPulledAt: $lastPulledAt, ')
+          ..write('lastPulledId: $lastPulledId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -29464,6 +29527,7 @@ typedef $$SyncStateTableTableCreateCompanionBuilder =
       required String entity,
       required String businessId,
       Value<DateTime?> lastPulledAt,
+      Value<String?> lastPulledId,
       Value<int> rowid,
     });
 typedef $$SyncStateTableTableUpdateCompanionBuilder =
@@ -29471,6 +29535,7 @@ typedef $$SyncStateTableTableUpdateCompanionBuilder =
       Value<String> entity,
       Value<String> businessId,
       Value<DateTime?> lastPulledAt,
+      Value<String?> lastPulledId,
       Value<int> rowid,
     });
 
@@ -29495,6 +29560,11 @@ class $$SyncStateTableTableFilterComposer
 
   ColumnFilters<DateTime> get lastPulledAt => $composableBuilder(
     column: $table.lastPulledAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastPulledId => $composableBuilder(
+    column: $table.lastPulledId,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -29522,6 +29592,11 @@ class $$SyncStateTableTableOrderingComposer
     column: $table.lastPulledAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get lastPulledId => $composableBuilder(
+    column: $table.lastPulledId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SyncStateTableTableAnnotationComposer
@@ -29543,6 +29618,11 @@ class $$SyncStateTableTableAnnotationComposer
 
   GeneratedColumn<DateTime> get lastPulledAt => $composableBuilder(
     column: $table.lastPulledAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get lastPulledId => $composableBuilder(
+    column: $table.lastPulledId,
     builder: (column) => column,
   );
 }
@@ -29587,11 +29667,13 @@ class $$SyncStateTableTableTableManager
                 Value<String> entity = const Value.absent(),
                 Value<String> businessId = const Value.absent(),
                 Value<DateTime?> lastPulledAt = const Value.absent(),
+                Value<String?> lastPulledId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SyncStateTableCompanion(
                 entity: entity,
                 businessId: businessId,
                 lastPulledAt: lastPulledAt,
+                lastPulledId: lastPulledId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -29599,11 +29681,13 @@ class $$SyncStateTableTableTableManager
                 required String entity,
                 required String businessId,
                 Value<DateTime?> lastPulledAt = const Value.absent(),
+                Value<String?> lastPulledId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SyncStateTableCompanion.insert(
                 entity: entity,
                 businessId: businessId,
                 lastPulledAt: lastPulledAt,
+                lastPulledId: lastPulledId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

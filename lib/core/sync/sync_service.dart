@@ -1207,47 +1207,74 @@ class SyncService {
     }
 
     try {
-      final products = await _productsRemoteDs.getProductsByBusiness(
-        businessId,
+      pulled += await _pullIncremental(
+        entity: 'products',
+        businessId: businessId,
+        timestampField: 'updated_at',
+        fetchPage: (after, id, lim) => _productsRemoteDs.getProductsByBusiness(
+          businessId,
+          afterTs: after,
+          afterId: id,
+          limit: lim,
+        ),
+        applyRow: (row) => _productsDao.upsertFromServer(row),
       );
-      for (final row in products) {
-        await _productsDao.upsertFromServer(row);
-        pulled++;
-      }
     } catch (e) {
       failed++;
       errors.add('Pull products: ${e.toString()}');
     }
 
-    // // pull ang variants
     try {
-      final variants = await _productsRemoteDs.getVariantsByBusiness(
-        businessId,
+      pulled += await _pullIncremental(
+        entity: 'product_variants',
+        businessId: businessId,
+        timestampField: 'updated_at',
+        fetchPage: (after, id, lim) => _productsRemoteDs.getVariantsByBusiness(
+          businessId,
+          afterTs: after,
+          afterId: id,
+          limit: lim,
+        ),
+        applyRow: (row) => _productVariantsDao.upsertFromServer(row),
       );
-      for (final row in variants) {
-        await _productVariantsDao.upsertFromServer(row);
-        pulled++;
-      }
     } catch (e) {
       failed++;
       errors.add('Pull variants: ${e.toString()}');
     }
 
     try {
-      final levels = await _productsRemoteDs.getInventoryLevelsByBusiness(
-        businessId,
+      pulled += await _pullIncremental(
+        entity: 'inventory_levels',
+        businessId: businessId,
+        timestampField: 'updated_at',
+        fetchPage: (after, id, lim) =>
+            _productsRemoteDs.getInventoryLevelsByBusiness(
+          businessId,
+          afterTs: after,
+          afterId: id,
+          limit: lim,
+        ),
+        applyRow: (row) => _inventoryLevelsDao.upsertFromServer(row),
       );
-      for (final row in levels) {
-        await _inventoryLevelsDao.upsertFromServer(row);
-        pulled++;
-      }
     } catch (e) {
       failed++;
       errors.add('Pull inventory levels: ${e.toString()}');
     }
 
     try {
-      pulled += await _pullStockLedgerIncremental(businessId);
+      pulled += await _pullIncremental(
+        entity: 'stock_ledger',
+        businessId: businessId,
+        timestampField: 'created_at',
+        fetchPage: (after, id, lim) =>
+            _productsRemoteDs.getStockLedgerByBusiness(
+          businessId,
+          afterTs: after,
+          afterId: id,
+          limit: lim,
+        ),
+        applyRow: (row) => _stockLedgerDao.upsertFromServer(row),
+      );
     } catch (e) {
       failed++;
       errors.add('Pull stock ledger: ${e.toString()}');
@@ -1441,45 +1468,58 @@ class SyncService {
     );
   }
 
-  /// Incremental, paged pull of the append-only stock_ledger.
-  ///
-  /// Uses the [SyncStateDao] watermark (server created_at of the last applied
-  /// row) to fetch only new entries. First run (null watermark) pages through
-  /// the full history. The watermark advances only after each page is applied,
-  /// so a crash just resumes from the last good cursor (upserts are idempotent).
-  /// Safe because the ledger is append-only — no updates or deletes to miss.
-  static const _ledgerPageSize = 500;
+  static const _pullPageSize = 500;
 
-  Future<int> _pullStockLedgerIncremental(String businessId) async {
-    const entity = 'stock_ledger';
-    DateTime? cursor = await _syncStateDao.getWatermark(entity, businessId);
+  /// Generic incremental, paged pull driven by a (timestamp, id) keyset cursor
+  /// stored per entity in [SyncStateDao].
+  ///
+  /// - [timestampField] is the server column to page by ('updated_at' for
+  ///   mutable tables, 'created_at' for the append-only ledger).
+  /// - [fetchPage] requests rows strictly after (afterTs, afterId), ordered by
+  ///   (timestampField, id) ascending, limited to a page.
+  /// - [applyRow] upserts one row locally (existing pending-change guards apply).
+  ///
+  /// The cursor is the (timestamp, id) of the LAST row in each page, so rows
+  /// sharing a timestamp are never skipped at a boundary. The watermark advances
+  /// only after a page is fully applied, so a crash resumes from the last good
+  /// cursor (upserts are idempotent). First run (null cursor) pages the full set.
+  Future<int> _pullIncremental({
+    required String entity,
+    required String businessId,
+    required String timestampField,
+    required Future<List<Map<String, dynamic>>> Function(
+      DateTime? afterTs,
+      String? afterId,
+      int limit,
+    ) fetchPage,
+    required Future<void> Function(Map<String, dynamic> row) applyRow,
+  }) async {
+    var cursor = await _syncStateDao.getWatermark(entity, businessId);
     int pulled = 0;
 
     while (true) {
-      final page = await _productsRemoteDs.getStockLedgerByBusiness(
-        businessId,
-        createdAfter: cursor,
-        limit: _ledgerPageSize,
-      );
+      final page = await fetchPage(cursor.ts, cursor.id, _pullPageSize);
       if (page.isEmpty) break;
 
-      DateTime? maxCreatedAt = cursor;
+      DateTime? lastTs;
+      String? lastId;
       for (final row in page) {
-        await _stockLedgerDao.upsertFromServer(row);
+        await applyRow(row);
         pulled++;
-        final ts = DateTime.tryParse(row['created_at'] as String? ?? '');
-        if (ts != null && (maxCreatedAt == null || ts.isAfter(maxCreatedAt))) {
-          maxCreatedAt = ts;
+        final ts = DateTime.tryParse(row[timestampField] as String? ?? '');
+        final id = row['id'] as String?;
+        if (ts != null && id != null) {
+          lastTs = ts;
+          lastId = id;
         }
       }
 
-      // Stop if the cursor can't advance (whole page shares one timestamp) to
-      // avoid an infinite loop; persist progress made so far.
-      if (maxCreatedAt == null || maxCreatedAt == cursor) break;
-      cursor = maxCreatedAt;
-      await _syncStateDao.setWatermark(entity, businessId, cursor);
+      // No parseable cursor in the page — stop rather than risk a loop.
+      if (lastTs == null || lastId == null) break;
+      cursor = (ts: lastTs, id: lastId);
+      await _syncStateDao.setWatermark(entity, businessId, lastTs, lastId);
 
-      if (page.length < _ledgerPageSize) break;
+      if (page.length < _pullPageSize) break;
     }
 
     return pulled;

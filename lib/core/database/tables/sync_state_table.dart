@@ -14,8 +14,14 @@ class SyncStateTable extends Table {
   TextColumn get entity => text()();
   TextColumn get businessId => text()();
 
-  /// Server `updated_at` of the last row applied. Null until first pull.
+  /// Server `updated_at`/`created_at` of the last row applied. Null until first
+  /// pull.
   DateTimeColumn get lastPulledAt => dateTime().nullable()();
+
+  /// Id of the last row applied — the tiebreak half of a (timestamp, id) keyset
+  /// cursor, so rows sharing a timestamp (e.g. a migration backfill or a batch
+  /// insert) aren't skipped at a page boundary.
+  TextColumn get lastPulledId => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {entity, businessId};
