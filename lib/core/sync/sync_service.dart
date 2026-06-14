@@ -413,6 +413,7 @@ class SyncService {
 
       return SyncResult(
         success:
+            branchResult.success &&
             businessResult.success &&
             categoryResult.success &&
             productResult.success &&
@@ -427,10 +428,11 @@ class SyncService {
             recipeResult.success &&
             pullResult.success,
         message:
-            '${businessResult.message}; ${categoryResult.message}; ${productResult.message}; ${variantResult.message}; ${expenseResult.message}; ${inventoryResult.message}; ${ledgerResult.message}; ${employeeResult.message}; ${supplierResult.message}; ${poResult.message}; ${polResult.message}; ${recipeResult.message}; ${pullResult.message}',
+            '${branchResult.message}; ${businessResult.message}; ${categoryResult.message}; ${productResult.message}; ${variantResult.message}; ${expenseResult.message}; ${inventoryResult.message}; ${ledgerResult.message}; ${employeeResult.message}; ${supplierResult.message}; ${poResult.message}; ${polResult.message}; ${recipeResult.message}; ${pullResult.message}',
         syncedCount: totalSynced + pullResult.syncedCount,
         failedCount: totalFailed + pullResult.failedCount,
         errors: [
+          ...branchResult.errors,
           ...businessResult.errors,
           ...categoryResult.errors,
           ...productResult.errors,
@@ -747,10 +749,14 @@ class SyncService {
         // FK violation: parent product is locally synced but missing from
         // Supabase (e.g. remote DB was reset). Re-queue it so the next cycle
         // uploads it before retrying this variant.
+        // Re-queue the parent product ONLY if it still exists locally; if it's
+        // gone too, re-queuing a non-existent parent would loop forever, so let
+        // the variant fail and be surfaced instead.
         if (e is PostgrestException &&
             e.code == '23503' &&
             (status == SyncStatus.pendingUpload ||
-                status == SyncStatus.failed)) {
+                status == SyncStatus.failed) &&
+            await _productsDao.getById(record.productId) != null) {
           await _productsDao.updateSyncStatus(
             id: record.productId,
             status: SyncStatus.pendingUpload,
@@ -833,16 +839,27 @@ class SyncService {
         // so the next cycle re-uploads them before retrying the transaction.
         if (e is PostgrestException && e.code == '23503') {
           final items = await _transactionsDao.getItemsByTransactionId(tx.id);
+          var requeued = 0;
           for (final item in items) {
-            await _productVariantsDao.updateSyncStatus(
-              id: item.variantId,
-              status: SyncStatus.pendingUpload,
-            );
+            // Only re-queue variants that still exist locally; re-queuing one
+            // that's gone too would loop forever.
+            if (await _productVariantsDao.getById(item.variantId) != null) {
+              await _productVariantsDao.updateSyncStatus(
+                id: item.variantId,
+                status: SyncStatus.pendingUpload,
+              );
+              requeued++;
+            }
           }
-          debugPrint(
-            '[SYNC] Transaction ${tx.id}: variant missing on server, re-queuing variants for upload',
-          );
-          continue;
+          if (requeued > 0) {
+            debugPrint(
+              '[SYNC] Transaction ${tx.id}: $requeued variant(s) missing on '
+              'server, re-queuing for upload',
+            );
+            continue;
+          }
+          // Nothing re-queueable — fall through and surface the failure rather
+          // than retrying a transaction whose variants are gone.
         }
         failed++;
         debugPrint('[SYNC] Transaction ${tx.id} FAILED: $e');
