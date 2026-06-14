@@ -46,6 +46,8 @@ import 'package:pos/core/database/tables/purchase_orders_table.dart';
 import 'package:pos/core/database/tables/purchase_order_lines_table.dart';
 import 'package:pos/core/database/tables/recipe_lines_table.dart';
 import 'package:pos/core/database/daos/recipe_lines_dao.dart';
+import 'package:pos/core/database/tables/sync_state_table.dart';
+import 'package:pos/core/database/daos/sync_state_dao.dart';
 
 part 'app_database.g.dart';
 
@@ -74,6 +76,7 @@ part 'app_database.g.dart';
     PurchaseOrdersTable,
     PurchaseOrderLinesTable,
     RecipeLinesTable,
+    SyncStateTable,
   ],
   daos: [
     AuthContextDao,
@@ -97,6 +100,7 @@ part 'app_database.g.dart';
     PurchaseOrdersDao,
     PurchaseOrderLinesDao,
     RecipeLinesDao,
+    SyncStateDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -116,7 +120,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 37;
+  int get schemaVersion => 38;
 
   @override
   MigrationStrategy get migration {
@@ -522,6 +526,11 @@ class AppDatabase extends _$AppDatabase {
               await customStatement(sql);
             } catch (_) {}
           }
+        }
+
+        if (from < 38) {
+          // Delta-sync watermark store. Purely additive; rollback = drop table.
+          await m.createTable(syncStateTable);
         }
       },
     );
