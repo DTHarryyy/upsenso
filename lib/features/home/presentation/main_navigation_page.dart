@@ -507,6 +507,14 @@ class _AppSidebarState extends State<_AppSidebar>
   bool get _sidebarShowAuditLogs =>
       _permService.can(PermissionKeys.navAuditLogs) &&
       _permService.isModuleEnabled('audit');
+  bool get _sidebarShowSalesHistory =>
+      _permService.can(PermissionKeys.navSalesHistory);
+  bool get _sidebarShowProcurement =>
+      _permService.can(PermissionKeys.navProcurement) &&
+      _permService.isModuleEnabled('procurement');
+  bool get _sidebarShowIngredients =>
+      _permService.can(PermissionKeys.navRecipes) &&
+      _permService.isModuleEnabled('ingredients');
   @override
   Widget build(BuildContext context) {
     final w = widget.expanded ? _kSidebarExpanded : _kSidebarCollapsed;
@@ -661,15 +669,12 @@ class _AppSidebarState extends State<_AppSidebar>
                     ),
 
                   const SizedBox(height: 6),
-                  if (_sidebarShowOperations) ...[
+
+                  // ── SALES section — Sales History (own permission, no module gate) ──
+                  if (_sidebarShowSalesHistory) ...[
                     const Divider(height: 1, color: AppColors.borderSoft),
                     const SizedBox(height: 6),
-                  ],
-
-                  // ── OPERATIONS section ──
-                  if (layoutExpanded && _sidebarShowOperations)
-                    const _SectionLabel(label: 'OPERATIONS'),
-                  if (_sidebarShowOperations)
+                    if (layoutExpanded) const _SectionLabel(label: 'SALES'),
                     _NavItem(
                       icon: IconlyLight.time_circle,
                       activeIcon: IconlyBold.time_circle,
@@ -679,7 +684,42 @@ class _AppSidebarState extends State<_AppSidebar>
                       expanded: layoutExpanded,
                       onTap: widget.onNavTap,
                     ),
-                  if (_sidebarShowOperations)
+                  ],
+
+                  // ── PROCUREMENT section ──
+                  if (_sidebarShowProcurement) ...[
+                    const SizedBox(height: 6),
+                    const Divider(height: 1, color: AppColors.borderSoft),
+                    const SizedBox(height: 6),
+                    if (layoutExpanded)
+                      const _SectionLabel(label: 'PROCUREMENT'),
+                    _PushNavTile(
+                      icon: IconlyLight.bag_2,
+                      activeIcon: IconlyBold.bag_2,
+                      label: 'Purchase Orders',
+                      route: AppRoutes.purchaseOrders,
+                      expanded: layoutExpanded,
+                      currentLocation:
+                          GoRouterState.of(context).matchedLocation,
+                    ),
+                    _PushNavTile(
+                      icon: IconlyLight.work,
+                      activeIcon: IconlyBold.work,
+                      label: 'Suppliers',
+                      route: AppRoutes.suppliers,
+                      expanded: layoutExpanded,
+                      currentLocation:
+                          GoRouterState.of(context).matchedLocation,
+                    ),
+                  ],
+
+                  // ── OPERATIONS section — Expenses only ──
+                  if (_sidebarShowOperations) ...[
+                    const SizedBox(height: 6),
+                    const Divider(height: 1, color: AppColors.borderSoft),
+                    const SizedBox(height: 6),
+                    if (layoutExpanded)
+                      const _SectionLabel(label: 'OPERATIONS'),
                     _NavItem(
                       icon: IconlyLight.wallet,
                       activeIcon: IconlyBold.wallet,
@@ -689,6 +729,25 @@ class _AppSidebarState extends State<_AppSidebar>
                       expanded: layoutExpanded,
                       onTap: widget.onNavTap,
                     ),
+                  ],
+
+                  // ── INVENTORY section — Ingredients ──
+                  if (_sidebarShowIngredients) ...[
+                    const SizedBox(height: 6),
+                    const Divider(height: 1, color: AppColors.borderSoft),
+                    const SizedBox(height: 6),
+                    if (layoutExpanded)
+                      const _SectionLabel(label: 'INVENTORY'),
+                    _PushNavTile(
+                      icon: IconlyLight.category,
+                      activeIcon: IconlyBold.category,
+                      label: 'Ingredients',
+                      route: AppRoutes.ingredients,
+                      expanded: layoutExpanded,
+                      currentLocation:
+                          GoRouterState.of(context).matchedLocation,
+                    ),
+                  ],
 
                   // ── My Profile — restricted employees only ──────────────────
                   if (!_sidebarShowOperations) ...[
@@ -1171,6 +1230,79 @@ class _SectionLabel extends StatelessWidget {
           letterSpacing: 0.8,
         ),
       ),
+    );
+  }
+}
+
+/// A generic sidebar tile that pushes a named route directly.
+/// Used for features that are not shell-route branches (procurement, ingredients).
+class _PushNavTile extends StatelessWidget {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final String route;
+  final bool expanded;
+  final String currentLocation;
+
+  const _PushNavTile({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.route,
+    required this.expanded,
+    required this.currentLocation,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = currentLocation.startsWith(route);
+    final color = isActive ? AppColors.brand : AppColors.textSecondary;
+    final bg = isActive ? AppColors.brandSoft : Colors.transparent;
+
+    final item = Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => context.push(route),
+        borderRadius: BorderRadius.circular(10),
+        mouseCursor: SystemMouseCursors.click,
+        splashColor: AppColors.brand.withAlpha(20),
+        child: Container(
+          height: 36,
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          padding: EdgeInsets.symmetric(horizontal: expanded ? 10 : 0),
+          alignment: expanded ? Alignment.centerLeft : Alignment.center,
+          child: Row(
+            mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,
+            children: [
+              Icon(isActive ? activeIcon : icon, size: 20, color: color),
+              if (expanded) ...[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    label,
+                    overflow: TextOverflow.ellipsis,
+                    style: getOutfitStyle(
+                      fontSize: 13.5,
+                      fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                      color: color,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: expanded
+          ? item
+          : Tooltip(message: label, preferBelow: false, child: item),
     );
   }
 }

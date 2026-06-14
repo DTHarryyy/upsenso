@@ -21,6 +21,7 @@ import 'package:pos/features/procurement/domain/entities/po_status.dart';
 import 'package:pos/features/procurement/domain/entities/purchase_order.dart';
 import 'package:pos/features/procurement/domain/entities/purchase_order_line.dart';
 import 'package:pos/features/procurement/domain/repositories/i_procurement_repository.dart';
+import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/features/procurement/presentation/cubit/po_cubit.dart';
 import 'package:pos/features/procurement/presentation/cubit/po_state.dart';
 import 'package:pos/features/procurement/presentation/widgets/po_status_badge.dart';
@@ -639,7 +640,9 @@ class _ReceiveGoodsDialogState extends State<_ReceiveGoodsDialog> {
       final cubit = context.read<PoCubit>();
       await cubit.receiveGoods(
         poId: widget.po.id,
-        branchId: cubit.businessId,
+        branchId: widget.po.branchId ??
+            context.read<BranchCubit>().state.selectedBranchId ??
+            '',
         lines: inputs,
       );
       if (mounted) Navigator.pop(context);

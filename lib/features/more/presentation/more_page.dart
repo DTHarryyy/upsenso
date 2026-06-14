@@ -149,6 +149,10 @@ class _MorePageState extends State<MorePage>
         final canSeeProcurement =
             permService.can(PermissionKeys.navProcurement) &&
                 permService.isModuleEnabled('procurement');
+        // Sales history: permission only — no module gate (see AppFeature.salesHistory).
+        final canSeeSalesHistory = permService.can(
+          PermissionKeys.navSalesHistory,
+        );
 
         return SafeArea(
           child: Column(
@@ -170,43 +174,48 @@ class _MorePageState extends State<MorePage>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // PROFILE — cashier & inventory staff only
-                      // (header avatar already navigates to profile, but an
-                      // explicit tile makes it obvious and discoverable).
-                      if (isRestrictedEmployee) ...[
-                        _SectionLabel('ACCOUNT'),
-                        _DrawerTile(
-                          icon: IconlyLight.profile,
-                          label: 'My Profile',
-                          onTap: () => _navigate(AppRoutes.profile),
-                        ),
-                        const SizedBox(height: 4),
-                        _Divider(),
-                        const SizedBox(height: 4),
-                      ],
-
-                      // SALES — held sales (visible to cashiers too)
-                      if (canSeeHeldSales) ...[
+                      // SALES — held sales (cashiers too) + history (managers/owners)
+                      if (canSeeHeldSales || canSeeSalesHistory) ...[
                         _SectionLabel('SALES'),
+                        if (canSeeHeldSales)
+                          _DrawerTile(
+                            icon: IconlyLight.bookmark,
+                            label: 'Held Sales',
+                            onTap: () => _pushFullPage(const HeldSalesPage()),
+                          ),
+                        if (canSeeSalesHistory)
+                          _DrawerTile(
+                            icon: IconlyLight.time_circle,
+                            label: 'Sales History',
+                            onTap: () => _pushFullPage(const SalesHistory()),
+                          ),
+                        const SizedBox(height: 4),
+                        _Divider(),
+                        const SizedBox(height: 4),
+                      ],
+
+                      // PROCUREMENT — purchase orders + suppliers
+                      if (canSeeProcurement) ...[
+                        _SectionLabel('PROCUREMENT'),
                         _DrawerTile(
-                          icon: IconlyLight.bookmark,
-                          label: 'Held Sales',
-                          onTap: () => _pushFullPage(const HeldSalesPage()),
+                          icon: IconlyLight.bag_2,
+                          label: 'Purchase Orders',
+                          onTap: () => _navigate(AppRoutes.purchaseOrders),
+                        ),
+                        _DrawerTile(
+                          icon: IconlyLight.work,
+                          label: 'Suppliers',
+                          onTap: () => _navigate(AppRoutes.suppliers),
                         ),
                         const SizedBox(height: 4),
                         _Divider(),
                         const SizedBox(height: 4),
                       ],
 
-                      // OPERATIONS — hidden for cashier/inventory staff and when expenses module is off
+                      // OPERATIONS — expenses only; hidden when module is off or no permission
                       if (!isRestrictedEmployee &&
                           permService.isModuleEnabled('expenses')) ...[
                         _SectionLabel('OPERATIONS'),
-                        _DrawerTile(
-                          icon: IconlyLight.time_circle,
-                          label: 'Sales History',
-                          onTap: () => _pushFullPage(const SalesHistory()),
-                        ),
                         _DrawerTile(
                           icon: IconlyLight.wallet,
                           label: 'Expenses',
@@ -215,7 +224,22 @@ class _MorePageState extends State<MorePage>
                         const SizedBox(height: 4),
                         _Divider(),
                         const SizedBox(height: 4),
-                      ], // end OPERATIONS
+                      ],
+
+                      // INVENTORY — ingredients management, independent module gate
+                      if (permService.can(PermissionKeys.navRecipes) &&
+                          permService.isModuleEnabled('ingredients')) ...[
+                        _SectionLabel('INVENTORY'),
+                        _DrawerTile(
+                          icon: IconlyLight.category,
+                          label: 'Ingredients',
+                          onTap: () => _navigate(AppRoutes.ingredients),
+                        ),
+                        const SizedBox(height: 4),
+                        _Divider(),
+                        const SizedBox(height: 4),
+                      ],
+
                       // ADMIN
                       if (canSeeEmployees || canSeeAuditLogs) ...[
                         _SectionLabel('ADMIN'),
@@ -236,32 +260,13 @@ class _MorePageState extends State<MorePage>
                         const SizedBox(height: 4),
                       ],
 
-                      // INGREDIENTS — own module gate, independent from recipes
-                      if (permService.can(PermissionKeys.navRecipes) &&
-                          permService.isModuleEnabled('ingredients')) ...[
-                        _SectionLabel('INGREDIENTS'),
+                      // ACCOUNT — profile tile for cashier/inventory staff only
+                      if (isRestrictedEmployee) ...[
+                        _SectionLabel('ACCOUNT'),
                         _DrawerTile(
-                          icon: IconlyLight.category,
-                          label: 'Ingredients',
-                          onTap: () => _navigate(AppRoutes.ingredients),
-                        ),
-                        const SizedBox(height: 4),
-                        _Divider(),
-                        const SizedBox(height: 4),
-                      ],
-
-                      // PROCUREMENT — purchase orders + suppliers
-                      if (canSeeProcurement) ...[
-                        _SectionLabel('PROCUREMENT'),
-                        _DrawerTile(
-                          icon: IconlyLight.bag_2,
-                          label: 'Purchase Orders',
-                          onTap: () => _navigate(AppRoutes.purchaseOrders),
-                        ),
-                        _DrawerTile(
-                          icon: IconlyLight.work,
-                          label: 'Suppliers',
-                          onTap: () => _navigate(AppRoutes.suppliers),
+                          icon: IconlyLight.profile,
+                          label: 'My Profile',
+                          onTap: () => _navigate(AppRoutes.profile),
                         ),
                         const SizedBox(height: 4),
                         _Divider(),
