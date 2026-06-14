@@ -105,8 +105,17 @@ class ProductsDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Upsert a product row pulled from Supabase (marks as synced).
-  Future<void> upsertFromServer(Map<String, dynamic> row) {
-    return into(productsTable).insertOnConflictUpdate(
+  Future<void> upsertFromServer(Map<String, dynamic> row) async {
+    final id = row['id'] as String;
+    // Never overwrite a row with unsynced local edits — a failed push followed
+    // by a pull would otherwise silently discard the user's offline changes.
+    final existing = await (select(productsTable)
+          ..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (existing != null && existing.syncStatus != SyncStatus.synced.toInt()) {
+      return;
+    }
+    await into(productsTable).insertOnConflictUpdate(
       ProductsTableCompanion.insert(
         id: row['id'] as String,
         businessId: row['business_id'] as String,

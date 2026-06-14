@@ -175,19 +175,26 @@ class AppBottomNav extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               isActive ? activeIcon : icon,
               color: isActive ? AppColors.brand : AppColors.textMuted,
               size: 24,
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                color: isActive ? AppColors.brand : AppColors.textMuted,
+            const SizedBox(height: 2),
+            // Flexible + maxLines keeps the label from overflowing the fixed
+            // 72px bar when the device text scale is bumped up.
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.clip,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                  color: isActive ? AppColors.brand : AppColors.textMuted,
+                ),
               ),
             ),
           ],

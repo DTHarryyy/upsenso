@@ -69,11 +69,16 @@ class RecipeConsumptionService {
           ),
         );
 
+        // Ingredients are UOM-tracked (g/kg/ml/L) and almost always fractional;
+        // routing them through the int path truncated the deduction.
+        final bool fractional = ingredientVariant.stockDecimal != null ||
+            needed != needed.roundToDouble();
         await _levelsDao.adjustQuantity(
           variantId: line.ingredientVariantId,
           branchId: branchId,
           businessId: businessId,
           delta: -needed.round(),
+          deltaDecimal: fractional ? -needed : null,
         );
 
         await _variantsDao.decrementStockIfTracked(

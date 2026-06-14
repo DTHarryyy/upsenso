@@ -4,6 +4,7 @@ import 'package:pos/core/database/daos/products_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
 import 'package:pos/core/database/daos/transactions_dao.dart';
 import 'package:pos/features/ai_assistant/models/ai_models.dart';
+import 'package:pos/features/inventory/domain/repositories/i_inventory_repository.dart';
 import 'package:uuid/uuid.dart';
 
 /// Layer 5 — Tool / Action Layer: All database operations for the AI assistant.
@@ -17,16 +18,19 @@ class AiToolService {
   final ProductsDao _productsDao;
   final ProductVariantsDao _variantsDao;
   final TransactionsDao _transactionsDao;
+  final IInventoryRepository _inventoryRepository;
   final AppDatabase _db;
 
   AiToolService({
     required ProductsDao productsDao,
     required ProductVariantsDao variantsDao,
     required TransactionsDao transactionsDao,
+    required IInventoryRepository inventoryRepository,
     required AppDatabase db,
   })  : _productsDao = productsDao,
         _variantsDao = variantsDao,
         _transactionsDao = transactionsDao,
+        _inventoryRepository = inventoryRepository,
         _db = db;
 
   /// Returns the SQL WHERE clause and variables for branch filtering.
@@ -438,7 +442,19 @@ class AiToolService {
       syncStatus: const Value(0), // pendingUpload
     );
 
-    await _transactionsDao.insertTransaction(txCompanion, itemCompanions);
+    // Record the sale and move inventory in one atomic unit. Previously the AI
+    // path inserted the transaction but never deducted stock, so AI-completed
+    // sales silently inflated inventory versus reality.
+    await _db.transaction(() async {
+      await _transactionsDao.insertTransaction(txCompanion, itemCompanions);
+      await _inventoryRepository.recordSaleDeductions(
+        items: lineItems
+            .map((l) => (variantId: l.variantId, qty: l.quantity))
+            .toList(),
+        businessId: businessId ?? '',
+        branchId: branchId,
+      );
+    });
 
     return txId;
   }

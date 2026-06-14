@@ -94,10 +94,14 @@ class InventoryLevelsDao extends DatabaseAccessor<AppDatabase>
     final double? nextDecimal;
 
     if (deltaDecimal != null) {
-      // Fractional product path
-      final currentDecimal = existing?.quantityDecimal ?? 0.0;
+      // Fractional product path. Seed from the EFFECTIVE quantity so a row that
+      // until now tracked whole units (quantityDecimal still null) doesn't lose
+      // its existing stock the first time it receives a fractional movement.
+      final currentDecimal = existing?.effectiveQuantity ?? 0.0;
       nextDecimal = (currentDecimal + deltaDecimal).clamp(0.0, 999999.0);
-      nextQty = existing?.quantity ?? 0;
+      // Keep the integer column as a rounded mirror so int-only readers and the
+      // variant-total recompute stay consistent with the decimal source.
+      nextQty = nextDecimal.round().clamp(0, 999999);
     } else {
       // Unit product path
       final current = existing?.quantity ?? 0;

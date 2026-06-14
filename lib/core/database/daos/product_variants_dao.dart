@@ -146,8 +146,18 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Upsert a variant row pulled from Supabase (marks as synced).
-  Future<void> upsertFromServer(Map<String, dynamic> row) {
-    return into(productVariantsTable).insertOnConflictUpdate(
+  Future<void> upsertFromServer(Map<String, dynamic> row) async {
+    final id = row['id'] as String;
+    // Never overwrite a row with unsynced local edits (price/stock/SKU changes
+    // made offline). Without this guard a pull silently discards them — the
+    // same protection InventoryLevelsDao and the employee pull already apply.
+    final existing = await (select(productVariantsTable)
+          ..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (existing != null && existing.syncStatus != SyncStatus.synced.toInt()) {
+      return;
+    }
+    await into(productVariantsTable).insertOnConflictUpdate(
       ProductVariantsTableCompanion.insert(
         id: row['id'] as String,
         productId: row['product_id'] as String,

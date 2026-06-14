@@ -433,10 +433,28 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       );
     }
 
-    // Clear all local data before redirecting so the next account cannot
-    // see the previous account's records.
+    // Push everything pending to the server BEFORE wiping local data — a
+    // logout must never destroy unsynced sales/inventory. If anything is still
+    // unsynced afterwards (offline, or sync failed), keep the local data and
+    // skip the destructive wipe; it will sync on the next session instead.
     sl<PermissionService>().clearPermissions();
-    await syncService?.clearLocalData();
+    if (syncService != null) {
+      final businessId = currentState is AuthAuthenticated
+          ? currentState.user.businessId
+          : null;
+      if (await syncService!.isOnline) {
+        await syncService!.syncAll(businessId: businessId);
+      }
+      final pending = await syncService!.pendingSyncCount();
+      if (pending == 0) {
+        await syncService!.clearLocalData();
+      } else {
+        debugPrint(
+          '[AuthBloc] Logout: $pending unsynced record(s) remain — '
+          'skipping local wipe to avoid data loss',
+        );
+      }
+    }
 
     emit(AuthUnauthenticated());
 

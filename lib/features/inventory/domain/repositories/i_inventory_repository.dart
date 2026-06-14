@@ -16,8 +16,10 @@ abstract class IInventoryRepository {
     String? note,
   });
 
+  // qty is a double so weight/fraction products (e.g. 0.5 kg) deduct the exact
+  // amount sold instead of being rounded to a whole unit.
   Future<void> recordSaleDeductions({
-    required List<({String variantId, int qty})> items,
+    required List<({String variantId, double qty})> items,
     required String businessId,
     required String? branchId,
   });

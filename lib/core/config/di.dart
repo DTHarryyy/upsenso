@@ -18,6 +18,7 @@ import 'package:pos/core/database/daos/transactions_dao.dart';
 import 'package:pos/core/database/daos/draft_sales_dao.dart';
 import 'package:pos/core/theme/theme_controller.dart';
 import 'package:pos/core/services/cart_service.dart';
+import 'package:pos/core/services/checkout_service.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_service.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
@@ -321,6 +322,7 @@ Future<void> initDI() async {
       productsDao: sl<ProductsDao>(),
       variantsDao: sl<ProductVariantsDao>(),
       transactionsDao: sl<TransactionsDao>(),
+      inventoryRepository: sl<IInventoryRepository>(),
       db: sl<AppDatabase>(),
     ),
   );
@@ -436,6 +438,14 @@ Future<void> initDI() async {
       levelsDao: sl<InventoryLevelsDao>(),
       stockMovement: sl<StockMovementService>(),
       recipeConsumption: sl<RecipeConsumptionService>(),
+    ),
+  );
+
+  sl.registerLazySingleton<CheckoutService>(
+    () => CheckoutService(
+      db: sl<AppDatabase>(),
+      transactionsDao: sl<TransactionsDao>(),
+      inventoryRepository: sl<IInventoryRepository>(),
     ),
   );
 

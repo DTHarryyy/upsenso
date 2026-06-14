@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/core/database/daos/inventory_levels_dao.dart';
@@ -85,8 +86,7 @@ class InventoryRepository implements IInventoryRepository {
       return seenVariantKeys.add('${v.productId}:${v.name}');
     }).toList();
 
-    // ignore: avoid_print
-    print(
+    debugPrint(
       '[INV] load: ${variants.length} raw variants → ${dedupedVariants.length} after dedup',
     );
 
@@ -248,7 +248,7 @@ class InventoryRepository implements IInventoryRepository {
   ///   service       → skip (no inventory impact)
   @override
   Future<void> recordSaleDeductions({
-    required List<({String variantId, int qty})> items,
+    required List<({String variantId, double qty})> items,
     required String businessId,
     required String? branchId,
   }) async {
@@ -267,9 +267,11 @@ class InventoryRepository implements IInventoryRepository {
 
       switch (method) {
         case 'recipe':
+          // Recipe products are finished goods sold in whole units; the
+          // per-ingredient fractional math happens inside the consumer.
           await _recipeConsumption.consume(
             productVariantId: item.variantId,
-            qty: item.qty,
+            qty: item.qty.round(),
             businessId: businessId,
             branchId: branchId,
           );
@@ -277,7 +279,9 @@ class InventoryRepository implements IInventoryRepository {
           break; // no stock impact
         default:
           if (!variant.trackStock) break;
-          await _stockMovement.applyInt(
+          // Use the fractional-aware path so weight products deduct the exact
+          // quantity (0.5 kg) instead of truncating to an int.
+          await _stockMovement.apply(
             variantId: item.variantId,
             productId: variant.productId,
             businessId: businessId,

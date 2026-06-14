@@ -68,22 +68,35 @@ class StockMovementService {
         ),
       );
 
+      // A movement is fractional when the variant tracks decimals or the
+      // quantity itself is not a whole number. Routing those through the int
+      // path truncates the fraction and silently drops stock (e.g. selling
+      // 0.5 kg deducts nothing). Whole-unit movements keep the int path so
+      // existing unit-product behaviour is unchanged.
+      final variant = await _variantsDao.getById(variantId);
+      final bool fractional =
+          variant?.stockDecimal != null || delta != delta.roundToDouble();
+
       await _levelsDao.adjustQuantity(
         variantId: variantId,
         branchId: branchId,
         businessId: businessId,
-        delta: delta.toInt(),
+        delta: delta.round(),
+        deltaDecimal: fractional ? delta : null,
       );
 
-      // Recompute variant-level total from the sum of all branch levels.
+      // Recompute variant-level total from the sum of all branch levels using
+      // the effective (decimal-aware) quantity, not the raw int column.
       final allLevels = await _levelsDao.getByVariantId(variantId);
-      final newTotal = allLevels.fold(0, (s, l) => s + l.quantity);
+      final double newTotal =
+          allLevels.fold(0.0, (s, l) => s + l.effectiveQuantity);
 
       await _variantsDao.db.customUpdate(
-        'UPDATE product_variants SET stock = ?, sync_status = 1, '
-        'local_updated_at = ? WHERE id = ?',
+        'UPDATE product_variants SET stock = ?, stock_decimal = ?, '
+        'sync_status = 1, local_updated_at = ? WHERE id = ?',
         variables: [
-          Variable.withInt(newTotal),
+          Variable.withInt(newTotal.round()),
+          Variable<double>(fractional ? newTotal : null),
           Variable.withDateTime(DateTime.now()),
           Variable.withString(variantId),
         ],

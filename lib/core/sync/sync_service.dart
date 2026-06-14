@@ -188,6 +188,29 @@ class SyncService {
     await _authContextDao.clearAll();
   }
 
+  /// One-shot total of records still waiting to reach the server across every
+  /// table. Used by logout to refuse a destructive local wipe while unsynced
+  /// sales/inventory still exist locally.
+  Future<int> pendingSyncCount() async {
+    final counts = await Future.wait<int>([
+      _branchesDao.getPendingSync().then<int>((r) => r.length),
+      _businessesDao.getPendingSync().then<int>((r) => r.length),
+      _categoriesDao.getPendingSync().then<int>((r) => r.length),
+      _productsDao.getPendingSync().then<int>((r) => r.length),
+      _productVariantsDao.getPendingSync().then<int>((r) => r.length),
+      _transactionsDao.getPendingSync().then<int>((r) => r.length),
+      _expensesDao.getPendingSync().then<int>((r) => r.length),
+      _inventoryLevelsDao.getPendingSync().then<int>((r) => r.length),
+      _stockLedgerDao.getPendingSync().then<int>((r) => r.length),
+      _employeesDao.getPendingSync().then<int>((r) => r.length),
+      _suppliersDao.getPendingSync().then<int>((r) => r.length),
+      _purchaseOrdersDao.getPendingSync().then<int>((r) => r.length),
+      _purchaseOrderLinesDao.getPendingSync().then<int>((r) => r.length),
+      _recipeLinesDao.getPendingSync().then<int>((r) => r.length),
+    ]);
+    return counts.fold<int>(0, (sum, n) => sum + n);
+  }
+
   /// check kapag may internet connection
   Future<bool> get isOnline => _connectivityService.isConnected;
 
@@ -718,9 +741,25 @@ class SyncService {
           case SyncStatus.synced:
             break;
         }
-      } catch (e) {
+      } catch (e, st) {
+        // FK violation: parent product is locally synced but missing from
+        // Supabase (e.g. remote DB was reset). Re-queue it so the next cycle
+        // uploads it before retrying this variant.
+        if (e is PostgrestException &&
+            e.code == '23503' &&
+            (status == SyncStatus.pendingUpload ||
+                status == SyncStatus.failed)) {
+          await _productsDao.updateSyncStatus(
+            id: record.productId,
+            status: SyncStatus.pendingUpload,
+          );
+          debugPrint(
+            '[SYNC] Variant ${record.id}: product missing on server, re-queuing product for upload',
+          );
+          continue;
+        }
         failed++;
-        debugPrint('[SYNC] Variant ${record.name} FAILED: $e');
+        debugPrint('[SYNC] Variant ${record.name} FAILED: $e\n$st');
         errors.add('Variant ${record.name}: ${e.toString()}');
         await _productVariantsDao.updateSyncStatus(
           id: record.id,
@@ -924,22 +963,65 @@ class SyncService {
           status: SyncStatus.synced,
         );
         synced++;
-      } catch (e) {
-        // FK violation: variant is locally marked synced but missing from Supabase
-        // (e.g. remote DB was reset). Reset it to pendingUpload so the next cycle
+      } catch (e, st) {
+        // FK violation: a parent row is locally synced but missing from Supabase
+        // (e.g. remote DB was reset). Identify which FK failed via the error
+        // details and re-queue only the missing parent so the next cycle
         // re-uploads it before retrying this inventory level.
         if (e is PostgrestException && e.code == '23503') {
-          await _productVariantsDao.updateSyncStatus(
-            id: record.variantId,
-            status: SyncStatus.pendingUpload,
-          );
+          final info = '${e.details} ${e.message}'.toLowerCase();
+          // Self-heal ONLY when the missing parent still exists locally — then
+          // re-queuing it makes the next cycle upload it first. If the parent
+          // is gone locally too the row is orphaned; re-queuing a non-existent
+          // parent loops forever, so fail it loudly instead of pretending.
+          if (info.contains('product_variant') &&
+              await _productVariantsDao.getById(record.variantId) != null) {
+            await _productVariantsDao.updateSyncStatus(
+              id: record.variantId,
+              status: SyncStatus.pendingUpload,
+            );
+            debugPrint(
+              '[SYNC] InventoryLevel ${record.id}: variant missing on server, re-queuing variant for upload',
+            );
+            continue;
+          } else if (info.contains('branch') &&
+              await _branchesDao.getById(record.branchId) != null) {
+            await _branchesDao.updateSyncStatus(
+              id: record.branchId,
+              status: SyncStatus.pendingUpload,
+            );
+            debugPrint(
+              '[SYNC] InventoryLevel ${record.id}: branch missing on server, re-queuing branch for upload',
+            );
+            continue;
+          } else if (info.contains('business') &&
+              await _businessesDao.getById(record.businessId) != null) {
+            await _businessesDao.updateSyncStatus(
+              id: record.businessId,
+              status: SyncStatus.pendingUpload,
+            );
+            debugPrint(
+              '[SYNC] InventoryLevel ${record.id}: business missing on server, re-queuing business for upload',
+            );
+            continue;
+          }
+          // Orphaned (parent absent locally) or an unrecognised FK — surface it
+          // as a real failure rather than re-queuing a parent that will never
+          // upload.
+          failed++;
           debugPrint(
-            '[SYNC] InventoryLevel ${record.id}: variant missing on server, re-queuing variant for upload',
+            '[SYNC] InventoryLevel ${record.id}: unresolved FK violation, '
+            'likely orphaned parent — details: ${e.details}\n$st',
+          );
+          errors.add('InventoryLevel ${record.id}: unresolved FK (${e.code})');
+          await _inventoryLevelsDao.updateSyncStatus(
+            id: record.id,
+            status: SyncStatus.failed,
           );
           continue;
         }
         failed++;
-        debugPrint('[SYNC] InventoryLevel ${record.id} FAILED: $e');
+        debugPrint('[SYNC] InventoryLevel ${record.id} FAILED: $e\n$st');
         errors.add('InventoryLevel ${record.id}: ${e.toString()}');
         await _inventoryLevelsDao.updateSyncStatus(
           id: record.id,
