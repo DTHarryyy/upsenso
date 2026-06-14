@@ -116,7 +116,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 36;
+  int get schemaVersion => 37;
 
   @override
   MigrationStrategy get migration {
@@ -506,6 +506,22 @@ class AppDatabase extends _$AppDatabase {
             'CREATE INDEX IF NOT EXISTS idx_recipe_lines_variant '
             'ON recipe_lines(product_variant_id)',
           );
+        }
+
+        if (from < 37) {
+          // Stock-ledger source traceability. v34 added these columns via ALTER
+          // for upgrading devices, but fresh installs at v34–v36 created the
+          // table without them (the Drift class didn't declare them yet). They
+          // are now part of the schema; add them here, tolerating the devices
+          // that already have them from v34.
+          for (final sql in [
+            'ALTER TABLE stock_ledger ADD COLUMN source_type TEXT',
+            'ALTER TABLE stock_ledger ADD COLUMN source_id TEXT',
+          ]) {
+            try {
+              await customStatement(sql);
+            } catch (_) {}
+          }
         }
       },
     );

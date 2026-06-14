@@ -10465,6 +10465,28 @@ class $StockLedgerTableTable extends StockLedgerTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _sourceTypeMeta = const VerificationMeta(
+    'sourceType',
+  );
+  @override
+  late final GeneratedColumn<String> sourceType = GeneratedColumn<String>(
+    'source_type',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sourceIdMeta = const VerificationMeta(
+    'sourceId',
+  );
+  @override
+  late final GeneratedColumn<String> sourceId = GeneratedColumn<String>(
+    'source_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -10502,6 +10524,8 @@ class $StockLedgerTableTable extends StockLedgerTable
     quantityAfter,
     reason,
     note,
+    sourceType,
+    sourceId,
     createdAt,
     syncStatus,
   ];
@@ -10602,6 +10626,18 @@ class $StockLedgerTableTable extends StockLedgerTable
         note.isAcceptableOrUnknown(data['note']!, _noteMeta),
       );
     }
+    if (data.containsKey('source_type')) {
+      context.handle(
+        _sourceTypeMeta,
+        sourceType.isAcceptableOrUnknown(data['source_type']!, _sourceTypeMeta),
+      );
+    }
+    if (data.containsKey('source_id')) {
+      context.handle(
+        _sourceIdMeta,
+        sourceId.isAcceptableOrUnknown(data['source_id']!, _sourceIdMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -10667,6 +10703,14 @@ class $StockLedgerTableTable extends StockLedgerTable
         DriftSqlType.string,
         data['${effectivePrefix}note'],
       ),
+      sourceType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_type'],
+      ),
+      sourceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_id'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -10713,6 +10757,15 @@ class StockLedgerTableData extends DataClass
   /// One of: 'Sale', 'Restock', 'Damage', 'Transfer', 'Adjustment'
   final String reason;
   final String? note;
+
+  /// Traceability of what caused this movement: 'sale', 'purchase_order',
+  /// 'recipe_consumption', 'manual', etc. Lets audit/fraud queries tell a sale
+  /// apart from a manual adjustment. Local-only for now — not synced until the
+  /// Supabase stock_ledger schema is confirmed to have these columns.
+  final String? sourceType;
+
+  /// ID of the originating document (transaction id, PO id, …). No foreign key.
+  final String? sourceId;
   final DateTime createdAt;
 
   /// 0=pendingUpload, 3=synced, 4=failed
@@ -10729,6 +10782,8 @@ class StockLedgerTableData extends DataClass
     this.quantityAfter,
     required this.reason,
     this.note,
+    this.sourceType,
+    this.sourceId,
     required this.createdAt,
     required this.syncStatus,
   });
@@ -10752,6 +10807,12 @@ class StockLedgerTableData extends DataClass
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
     }
+    if (!nullToAbsent || sourceType != null) {
+      map['source_type'] = Variable<String>(sourceType);
+    }
+    if (!nullToAbsent || sourceId != null) {
+      map['source_id'] = Variable<String>(sourceId);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['sync_status'] = Variable<int>(syncStatus);
     return map;
@@ -10774,6 +10835,12 @@ class StockLedgerTableData extends DataClass
           : Value(quantityAfter),
       reason: Value(reason),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      sourceType: sourceType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceType),
+      sourceId: sourceId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceId),
       createdAt: Value(createdAt),
       syncStatus: Value(syncStatus),
     );
@@ -10796,6 +10863,8 @@ class StockLedgerTableData extends DataClass
       quantityAfter: serializer.fromJson<double?>(json['quantityAfter']),
       reason: serializer.fromJson<String>(json['reason']),
       note: serializer.fromJson<String?>(json['note']),
+      sourceType: serializer.fromJson<String?>(json['sourceType']),
+      sourceId: serializer.fromJson<String?>(json['sourceId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       syncStatus: serializer.fromJson<int>(json['syncStatus']),
     );
@@ -10815,6 +10884,8 @@ class StockLedgerTableData extends DataClass
       'quantityAfter': serializer.toJson<double?>(quantityAfter),
       'reason': serializer.toJson<String>(reason),
       'note': serializer.toJson<String?>(note),
+      'sourceType': serializer.toJson<String?>(sourceType),
+      'sourceId': serializer.toJson<String?>(sourceId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'syncStatus': serializer.toJson<int>(syncStatus),
     };
@@ -10832,6 +10903,8 @@ class StockLedgerTableData extends DataClass
     Value<double?> quantityAfter = const Value.absent(),
     String? reason,
     Value<String?> note = const Value.absent(),
+    Value<String?> sourceType = const Value.absent(),
+    Value<String?> sourceId = const Value.absent(),
     DateTime? createdAt,
     int? syncStatus,
   }) => StockLedgerTableData(
@@ -10850,6 +10923,8 @@ class StockLedgerTableData extends DataClass
         : this.quantityAfter,
     reason: reason ?? this.reason,
     note: note.present ? note.value : this.note,
+    sourceType: sourceType.present ? sourceType.value : this.sourceType,
+    sourceId: sourceId.present ? sourceId.value : this.sourceId,
     createdAt: createdAt ?? this.createdAt,
     syncStatus: syncStatus ?? this.syncStatus,
   );
@@ -10874,6 +10949,10 @@ class StockLedgerTableData extends DataClass
           : this.quantityAfter,
       reason: data.reason.present ? data.reason.value : this.reason,
       note: data.note.present ? data.note.value : this.note,
+      sourceType: data.sourceType.present
+          ? data.sourceType.value
+          : this.sourceType,
+      sourceId: data.sourceId.present ? data.sourceId.value : this.sourceId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       syncStatus: data.syncStatus.present
           ? data.syncStatus.value
@@ -10895,6 +10974,8 @@ class StockLedgerTableData extends DataClass
           ..write('quantityAfter: $quantityAfter, ')
           ..write('reason: $reason, ')
           ..write('note: $note, ')
+          ..write('sourceType: $sourceType, ')
+          ..write('sourceId: $sourceId, ')
           ..write('createdAt: $createdAt, ')
           ..write('syncStatus: $syncStatus')
           ..write(')'))
@@ -10914,6 +10995,8 @@ class StockLedgerTableData extends DataClass
     quantityAfter,
     reason,
     note,
+    sourceType,
+    sourceId,
     createdAt,
     syncStatus,
   );
@@ -10932,6 +11015,8 @@ class StockLedgerTableData extends DataClass
           other.quantityAfter == this.quantityAfter &&
           other.reason == this.reason &&
           other.note == this.note &&
+          other.sourceType == this.sourceType &&
+          other.sourceId == this.sourceId &&
           other.createdAt == this.createdAt &&
           other.syncStatus == this.syncStatus);
 }
@@ -10948,6 +11033,8 @@ class StockLedgerTableCompanion extends UpdateCompanion<StockLedgerTableData> {
   final Value<double?> quantityAfter;
   final Value<String> reason;
   final Value<String?> note;
+  final Value<String?> sourceType;
+  final Value<String?> sourceId;
   final Value<DateTime> createdAt;
   final Value<int> syncStatus;
   final Value<int> rowid;
@@ -10963,6 +11050,8 @@ class StockLedgerTableCompanion extends UpdateCompanion<StockLedgerTableData> {
     this.quantityAfter = const Value.absent(),
     this.reason = const Value.absent(),
     this.note = const Value.absent(),
+    this.sourceType = const Value.absent(),
+    this.sourceId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.syncStatus = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -10979,6 +11068,8 @@ class StockLedgerTableCompanion extends UpdateCompanion<StockLedgerTableData> {
     this.quantityAfter = const Value.absent(),
     required String reason,
     this.note = const Value.absent(),
+    this.sourceType = const Value.absent(),
+    this.sourceId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.syncStatus = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -11002,6 +11093,8 @@ class StockLedgerTableCompanion extends UpdateCompanion<StockLedgerTableData> {
     Expression<double>? quantityAfter,
     Expression<String>? reason,
     Expression<String>? note,
+    Expression<String>? sourceType,
+    Expression<String>? sourceId,
     Expression<DateTime>? createdAt,
     Expression<int>? syncStatus,
     Expression<int>? rowid,
@@ -11018,6 +11111,8 @@ class StockLedgerTableCompanion extends UpdateCompanion<StockLedgerTableData> {
       if (quantityAfter != null) 'quantity_after': quantityAfter,
       if (reason != null) 'reason': reason,
       if (note != null) 'note': note,
+      if (sourceType != null) 'source_type': sourceType,
+      if (sourceId != null) 'source_id': sourceId,
       if (createdAt != null) 'created_at': createdAt,
       if (syncStatus != null) 'sync_status': syncStatus,
       if (rowid != null) 'rowid': rowid,
@@ -11036,6 +11131,8 @@ class StockLedgerTableCompanion extends UpdateCompanion<StockLedgerTableData> {
     Value<double?>? quantityAfter,
     Value<String>? reason,
     Value<String?>? note,
+    Value<String?>? sourceType,
+    Value<String?>? sourceId,
     Value<DateTime>? createdAt,
     Value<int>? syncStatus,
     Value<int>? rowid,
@@ -11052,6 +11149,8 @@ class StockLedgerTableCompanion extends UpdateCompanion<StockLedgerTableData> {
       quantityAfter: quantityAfter ?? this.quantityAfter,
       reason: reason ?? this.reason,
       note: note ?? this.note,
+      sourceType: sourceType ?? this.sourceType,
+      sourceId: sourceId ?? this.sourceId,
       createdAt: createdAt ?? this.createdAt,
       syncStatus: syncStatus ?? this.syncStatus,
       rowid: rowid ?? this.rowid,
@@ -11094,6 +11193,12 @@ class StockLedgerTableCompanion extends UpdateCompanion<StockLedgerTableData> {
     if (note.present) {
       map['note'] = Variable<String>(note.value);
     }
+    if (sourceType.present) {
+      map['source_type'] = Variable<String>(sourceType.value);
+    }
+    if (sourceId.present) {
+      map['source_id'] = Variable<String>(sourceId.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -11120,6 +11225,8 @@ class StockLedgerTableCompanion extends UpdateCompanion<StockLedgerTableData> {
           ..write('quantityAfter: $quantityAfter, ')
           ..write('reason: $reason, ')
           ..write('note: $note, ')
+          ..write('sourceType: $sourceType, ')
+          ..write('sourceId: $sourceId, ')
           ..write('createdAt: $createdAt, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('rowid: $rowid')
@@ -24704,6 +24811,8 @@ typedef $$StockLedgerTableTableCreateCompanionBuilder =
       Value<double?> quantityAfter,
       required String reason,
       Value<String?> note,
+      Value<String?> sourceType,
+      Value<String?> sourceId,
       Value<DateTime> createdAt,
       Value<int> syncStatus,
       Value<int> rowid,
@@ -24721,6 +24830,8 @@ typedef $$StockLedgerTableTableUpdateCompanionBuilder =
       Value<double?> quantityAfter,
       Value<String> reason,
       Value<String?> note,
+      Value<String?> sourceType,
+      Value<String?> sourceId,
       Value<DateTime> createdAt,
       Value<int> syncStatus,
       Value<int> rowid,
@@ -24787,6 +24898,16 @@ class $$StockLedgerTableTableFilterComposer
 
   ColumnFilters<String> get note => $composableBuilder(
     column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceId => $composableBuilder(
+    column: $table.sourceId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -24865,6 +24986,16 @@ class $$StockLedgerTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceId => $composableBuilder(
+    column: $table.sourceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -24926,6 +25057,14 @@ class $$StockLedgerTableTableAnnotationComposer
   GeneratedColumn<String> get note =>
       $composableBuilder(column: $table.note, builder: (column) => column);
 
+  GeneratedColumn<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sourceId =>
+      $composableBuilder(column: $table.sourceId, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -24983,6 +25122,8 @@ class $$StockLedgerTableTableTableManager
                 Value<double?> quantityAfter = const Value.absent(),
                 Value<String> reason = const Value.absent(),
                 Value<String?> note = const Value.absent(),
+                Value<String?> sourceType = const Value.absent(),
+                Value<String?> sourceId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> syncStatus = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -24998,6 +25139,8 @@ class $$StockLedgerTableTableTableManager
                 quantityAfter: quantityAfter,
                 reason: reason,
                 note: note,
+                sourceType: sourceType,
+                sourceId: sourceId,
                 createdAt: createdAt,
                 syncStatus: syncStatus,
                 rowid: rowid,
@@ -25015,6 +25158,8 @@ class $$StockLedgerTableTableTableManager
                 Value<double?> quantityAfter = const Value.absent(),
                 required String reason,
                 Value<String?> note = const Value.absent(),
+                Value<String?> sourceType = const Value.absent(),
+                Value<String?> sourceId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> syncStatus = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -25030,6 +25175,8 @@ class $$StockLedgerTableTableTableManager
                 quantityAfter: quantityAfter,
                 reason: reason,
                 note: note,
+                sourceType: sourceType,
+                sourceId: sourceId,
                 createdAt: createdAt,
                 syncStatus: syncStatus,
                 rowid: rowid,

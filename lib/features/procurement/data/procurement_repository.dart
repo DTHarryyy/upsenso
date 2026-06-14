@@ -406,67 +406,78 @@ class ProcurementRepository implements IProcurementRepository {
         'receiveGoods',
       );
 
-      for (final receive in lines) {
-        if (receive.quantityToReceive <= 0) continue;
+      // Receiving must be atomic: moving-average cost, the stock movement, the
+      // PO line's received qty, and the PO status all commit together. A crash
+      // mid-loop previously left stock added but the line not marked received,
+      // so re-receiving double-counted the goods.
+      late final bool allReceived;
+      late final String newStatus;
+      await _variantsDao.db.transaction(() async {
+        for (final receive in lines) {
+          if (receive.quantityToReceive <= 0) continue;
 
-        final line = await _purchaseOrderLinesDao.getById(receive.lineId);
-        if (line == null) continue;
+          final line = await _purchaseOrderLinesDao.getById(receive.lineId);
+          if (line == null) continue;
 
-        // Moving-weighted-average costing.
-        // Read current qty BEFORE the stock movement is applied.
-        final levelRow = await _levelsDao.getLevel(receive.variantId, branchId);
-        final currentQty = levelRow != null
-            ? (levelRow.quantityDecimal ?? levelRow.quantity.toDouble())
-            : 0.0;
-        final variant = await _variantsDao.getById(receive.variantId);
-        final currentCost = variant?.costPrice ?? 0.0;
-        final totalQtyAfter = currentQty + receive.quantityToReceive;
-        if (totalQtyAfter > 0) {
-          final newCost = (currentQty * currentCost +
-                  receive.quantityToReceive * receive.unitCost) /
-              totalQtyAfter;
-          await _variantsDao.updateCostPrice(receive.variantId, newCost);
+          // Moving-weighted-average costing.
+          // Read current qty BEFORE the stock movement is applied.
+          final levelRow =
+              await _levelsDao.getLevel(receive.variantId, branchId);
+          final currentQty = levelRow != null
+              ? (levelRow.quantityDecimal ?? levelRow.quantity.toDouble())
+              : 0.0;
+          final variant = await _variantsDao.getById(receive.variantId);
+          final currentCost = variant?.costPrice ?? 0.0;
+          final totalQtyAfter = currentQty + receive.quantityToReceive;
+          if (totalQtyAfter > 0) {
+            final newCost = (currentQty * currentCost +
+                    receive.quantityToReceive * receive.unitCost) /
+                totalQtyAfter;
+            await _variantsDao.updateCostPrice(receive.variantId, newCost);
+          }
+
+          await _stockMovement.apply(
+            variantId: receive.variantId,
+            productId: receive.productId,
+            businessId: po.businessId,
+            branchId: branchId,
+            isIncoming: true,
+            quantity: receive.quantityToReceive,
+            reason: 'Purchase',
+            note: 'PO ${po.poNumber}',
+            sourceType: 'purchase_order',
+            sourceId: poId,
+          );
+
+          final newReceived =
+              line.quantityReceived + receive.quantityToReceive;
+          await _purchaseOrderLinesDao.updateLine(
+            receive.lineId,
+            PurchaseOrderLinesTableCompanion(
+              quantityReceived: Value(newReceived),
+              syncStatus: Value(SyncStatus.pendingUpdate.toInt()),
+              localUpdatedAt: Value(DateTime.now()),
+            ),
+          );
         }
 
-        await _stockMovement.apply(
-          variantId: receive.variantId,
-          productId: receive.productId,
-          businessId: po.businessId,
-          branchId: branchId,
-          isIncoming: true,
-          quantity: receive.quantityToReceive,
-          reason: 'Purchase',
-          note: 'PO ${po.poNumber}',
-          sourceType: 'purchase_order',
-          sourceId: poId,
+        // Determine new PO status.
+        final allLines = await _purchaseOrderLinesDao.getByPoId(poId);
+        allReceived = allLines.every(
+          (l) => l.quantityReceived >= l.quantityOrdered,
         );
-
-        final newReceived = line.quantityReceived + receive.quantityToReceive;
-        await _purchaseOrderLinesDao.updateLine(
-          receive.lineId,
-          PurchaseOrderLinesTableCompanion(
-            quantityReceived: Value(newReceived),
+        newStatus = allReceived
+            ? PoStatus.received.value
+            : PoStatus.partiallyReceived.value;
+        await _purchaseOrdersDao.updatePo(
+          poId,
+          PurchaseOrdersTableCompanion(
+            status: Value(newStatus),
             syncStatus: Value(SyncStatus.pendingUpdate.toInt()),
             localUpdatedAt: Value(DateTime.now()),
           ),
         );
-      }
-
-      // Determine new PO status.
-      final allLines = await _purchaseOrderLinesDao.getByPoId(poId);
-      final allReceived = allLines.every(
-        (l) => l.quantityReceived >= l.quantityOrdered,
-      );
-      final newStatus =
-          allReceived ? PoStatus.received.value : PoStatus.partiallyReceived.value;
-      await _purchaseOrdersDao.updatePo(
-        poId,
-        PurchaseOrdersTableCompanion(
-          status: Value(newStatus),
-          syncStatus: Value(SyncStatus.pendingUpdate.toInt()),
-          localUpdatedAt: Value(DateTime.now()),
-        ),
-      );
+      });
 
       final unitsReceived =
           lines.fold(0.0, (s, l) => s + (l.quantityToReceive > 0 ? l.quantityToReceive : 0));

@@ -35,6 +35,15 @@ class StockLedgerTable extends Table {
   TextColumn get reason => text()();
   TextColumn get note => text().nullable()();
 
+  /// Traceability of what caused this movement: 'sale', 'purchase_order',
+  /// 'recipe_consumption', 'manual', etc. Lets audit/fraud queries tell a sale
+  /// apart from a manual adjustment. Local-only for now — not synced until the
+  /// Supabase stock_ledger schema is confirmed to have these columns.
+  TextColumn get sourceType => text().nullable()();
+
+  /// ID of the originating document (transaction id, PO id, …). No foreign key.
+  TextColumn get sourceId => text().nullable()();
+
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
   /// 0=pendingUpload, 3=synced, 4=failed

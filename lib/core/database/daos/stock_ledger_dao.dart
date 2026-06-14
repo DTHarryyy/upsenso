@@ -95,6 +95,9 @@ class StockLedgerDao extends DatabaseAccessor<AppDatabase>
         quantityAfter: Value((row['quantity_after'] as num?)?.toDouble()),
         reason: row['reason'] as String,
         note: Value(row['note'] as String?),
+        // Defensive: the server may not expose these columns yet.
+        sourceType: Value(row['source_type'] as String?),
+        sourceId: Value(row['source_id'] as String?),
         createdAt: Value(DateTime.parse(row['created_at'] as String)),
         syncStatus: Value(SyncStatus.synced.toInt()),
       ),

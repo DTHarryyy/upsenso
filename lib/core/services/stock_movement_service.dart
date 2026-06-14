@@ -37,8 +37,8 @@ class StockMovementService {
     required double quantity,
     required String reason,
     String? note,
-    // sourceType/sourceId accepted for call-site compat but not stored —
-    // stock_ledger table has no such columns in the current schema.
+    // Traceability: what document caused this movement and its id. Stored on the
+    // ledger so audit/fraud queries can tell a sale from a manual adjustment.
     String? sourceType,
     String? sourceId,
   }) async {
@@ -64,6 +64,8 @@ class StockMovementService {
           quantityAfter: Value(qtyAfter),
           reason: reason,
           note: Value(note),
+          sourceType: Value(sourceType),
+          sourceId: Value(sourceId),
           createdAt: Value(DateTime.now()),
         ),
       );

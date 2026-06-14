@@ -192,9 +192,22 @@ class PermissionService {
   /// that a slow first sync doesn't block the UI.
   /// When loaded, a module code absent from the map is treated as enabled —
   /// new modules added to the app before Supabase is configured stay visible.
+  /// Core operational modules stay available even before module state has
+  /// loaded, so a cold/offline start doesn't leave the POS unusable.
+  static const _coreModulesAlwaysOn = {'pos', 'inventory'};
+
   bool isModuleEnabled(String moduleCode) {
-    if (_moduleStates == null) return true;
-    return _moduleStates![moduleCode] ?? true;
+    final states = _moduleStates;
+    if (states == null) {
+      // Not loaded yet. Fail OPEN for core modules (keep the till working) but
+      // fail CLOSED for sensitive ones (audit, employees, expenses, reports,
+      // suppliers) so a business that disabled them can't be bypassed in the
+      // window before the real state syncs in.
+      return _coreModulesAlwaysOn.contains(moduleCode);
+    }
+    // Loaded: an explicitly-disabled module is false; a module never configured
+    // (absent key) stays enabled so newly-shipped features aren't hidden.
+    return states[moduleCode] ?? true;
   }
 
   /// Load module states from the local Drift cache for [businessId].

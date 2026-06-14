@@ -65,6 +65,8 @@ class RecipeConsumptionService {
             quantityBefore: Value(qtyBefore),
             quantityAfter: Value(qtyAfter),
             reason: 'Recipe consumption',
+            sourceType: const Value('recipe_consumption'),
+            sourceId: Value(productVariantId),
             createdAt: Value(DateTime.now()),
           ),
         );

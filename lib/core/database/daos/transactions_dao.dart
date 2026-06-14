@@ -93,6 +93,12 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
     )..where((t) => t.id.equals(id))).getSingleOrNull();
 
     if (existing != null) {
+      // Never clobber a local sale that hasn't reached the server yet. Flipping
+      // it to "synced" here would stop _syncTransactions from ever pushing it —
+      // a silently lost sale. Leave unsynced rows for the push pass to handle.
+      if (existing.syncStatus != SyncStatus.synced.toInt()) {
+        return;
+      }
       // Row exists locally — preserve original createdAt; only update
       // server-controlled fields (totals, payment, sync metadata).
       await (update(transactionsTable)..where((t) => t.id.equals(id))).write(

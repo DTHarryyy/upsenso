@@ -119,4 +119,33 @@ void main() {
     final level = await levels.getLevel('vf', 'b1');
     expect(level!.effectiveQuantity, 3.25);
   });
+
+  // H-5: the ledger must record what caused the movement so audit/fraud queries
+  // can tell a sale from a manual adjustment.
+  test('movement records source_type and source_id on the ledger', () async {
+    await seedVariant(id: 'vu', trackStock: true, stock: 10);
+    await levels.upsertLevel(
+      variantId: 'vu',
+      branchId: 'b1',
+      businessId: 'biz',
+      quantity: 10,
+    );
+
+    await movement.apply(
+      variantId: 'vu',
+      productId: 'p1',
+      businessId: 'biz',
+      branchId: 'b1',
+      isIncoming: false,
+      quantity: 1,
+      reason: 'Sale',
+      sourceType: 'sale',
+      sourceId: 'tx-123',
+    );
+
+    final ledger = await StockLedgerDao(db).getByVariantId('vu');
+    expect(ledger, hasLength(1));
+    expect(ledger.first.sourceType, 'sale');
+    expect(ledger.first.sourceId, 'tx-123');
+  });
 }
