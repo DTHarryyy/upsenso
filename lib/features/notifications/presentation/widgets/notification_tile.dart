@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:iconly/iconly.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/features/notifications/domain/entities/notification_item.dart';
 import 'package:pos/features/notifications/presentation/cubit/notifications_cubit.dart';
 
@@ -92,6 +94,7 @@ class NotificationTile extends StatelessWidget {
                   if (!item.isRead) {
                     context.read<NotificationsCubit>().markAsRead(item.id);
                   }
+                  _openReference(context);
                 },
               ),
               if (!item.isRead) ...[
@@ -115,6 +118,15 @@ class NotificationTile extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  // Deep-link to the entity that raised the notification. Only purchase-order
+  // references are wired today; other types simply mark-as-read.
+  void _openReference(BuildContext context) {
+    final ref = item.referenceId;
+    if (item.referenceType == 'purchase_order' && ref != null) {
+      context.push(AppRoutes.poDetail, extra: ref);
+    }
   }
 
   static String _timeAgo(DateTime dt) {
