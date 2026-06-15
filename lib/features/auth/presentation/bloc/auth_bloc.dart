@@ -504,7 +504,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     // Avoid extra network fetches when current user already has complete context.
     if (_hasCompleteContext(user)) {
-      _applyPermissionContext(user);
+      await _loadPermissionsFromCache(user);
       emit(AuthAuthenticated(user));
       return;
     }
@@ -544,7 +544,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       return;
     }
 
-    _applyPermissionContext(resolved);
+    await _loadPermissionsFromCache(resolved);
     emit(AuthAuthenticated(resolved));
   }
 

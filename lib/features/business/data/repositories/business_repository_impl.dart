@@ -162,6 +162,16 @@ class BusinessRepositoryImpl implements BusinessRepository {
         // Keep local cache aligned with server payload.
         await businessesDao.upsertFromServer(serverBusiness);
 
+        // The RPC seeded categories on the server with server-generated UUIDs.
+        // Pull them back and replace the client-seeded local rows (different UUIDs)
+        // so the sync service won't push duplicates on next run.
+        final serverCategories =
+            await remote.getCategoriesByBusiness(businessId);
+        await categoriesDao.deleteAllForBusiness(businessId);
+        for (final row in serverCategories) {
+          await categoriesDao.upsertFromServer(row);
+        }
+
         // Mark business as synced
         await businessesDao.updateSyncStatus(
           id: serverBusiness.id,

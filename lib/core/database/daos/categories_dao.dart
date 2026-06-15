@@ -124,6 +124,14 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  /// Delete all categories for a specific business (e.g., to replace
+  /// client-seeded rows with the canonical server set after RPC seeding).
+  Future<void> deleteAllForBusiness(String businessId) {
+    return (delete(categoriesTable)
+          ..where((t) => t.businessId.equals(businessId)))
+        .go();
+  }
+
   /// Clear all categories (e.g., on logout/reset).
   Future<void> clearAll() {
     return delete(categoriesTable).go();

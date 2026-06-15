@@ -1,11 +1,16 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/receipt_settings_dao.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_status.dart';
+import 'package:pos/features/business/data/datasources/business_remote_ds.dart';
 import 'package:pos/features/settings/data/datasources/receipt_settings_remote_ds.dart';
 import 'package:pos/features/settings/domain/receipt_settings.dart';
 
@@ -13,14 +18,17 @@ class ReceiptSettingsRepository {
   final ReceiptSettingsDao _dao;
   final ReceiptSettingsRemoteDs _remote;
   final ConnectivityService _connectivity;
+  final BusinessRemoteDs _businessRemote;
 
   ReceiptSettingsRepository({
     required ReceiptSettingsDao dao,
     required ReceiptSettingsRemoteDs remote,
     required ConnectivityService connectivity,
+    required BusinessRemoteDs businessRemote,
   }) : _dao = dao,
        _remote = remote,
-       _connectivity = connectivity;
+       _connectivity = connectivity,
+       _businessRemote = businessRemote;
 
   // ── Read ─────────────────────────────────────────────────────────────────
 
@@ -50,40 +58,167 @@ class ReceiptSettingsRepository {
     if (online) unawaited(_pushToRemote(s.id));
   }
 
-  /// Upload logo → Supabase Storage → persist public URL locally.
-  Future<String> uploadLogo({
+  /// Save a freshly-picked logo. Offline-first: on native the image is written
+  /// to a local file and shown immediately; the Supabase Storage upload is
+  /// queued (empty logoUrl = "needs upload") and drained by [syncPending] when
+  /// connectivity returns. The public URL is mirrored to businesses.logo_url so
+  /// the app shell and other devices stay in sync.
+  ///
+  /// Web has no local-file display, so it keeps the original online-only path.
+  Future<void> saveLogo({
     required String businessId,
-    required String fileName,
     required Uint8List bytes,
+    required String ext,
     required String mimeType,
   }) async {
-    final online = await _connectivity.isConnected;
-    if (!online) {
-      throw Exception('Logo upload requires an internet connection.');
+    final safeExt = ext.isNotEmpty ? ext.toLowerCase() : '.jpg';
+
+    if (kIsWeb) {
+      final online = await _connectivity.isConnected;
+      if (!online) {
+        throw Exception(
+          'Uploading a logo needs an internet connection on the web app.',
+        );
+      }
+      final url = await _remote.uploadLogo(
+        businessId: businessId,
+        fileName: 'logo$safeExt',
+        bytes: bytes,
+        mimeType: mimeType,
+      );
+      await _persistLogo(businessId: businessId, localPath: '', url: url);
+      await _mirrorLogoUrl(businessId, url);
+      unawaited(_safePush(businessId));
+      return;
     }
 
+    // Native: local file first so the logo is visible instantly, even offline.
+    final localPath = await _writeLogoFile(businessId, bytes, safeExt);
+    await _persistLogo(businessId: businessId, localPath: localPath, url: '');
+
+    final online = await _connectivity.isConnected;
+    if (online) unawaited(_safePush(businessId));
+  }
+
+  /// Reads the queued local logo file and uploads it to Storage when it hasn't
+  /// been uploaded yet (logoUrl still empty). Idempotent — safe to call on every
+  /// sync. Sets logoUrl locally and mirrors it to businesses.logo_url.
+  Future<void> _ensureLogoUploaded(String businessId) async {
+    if (kIsWeb) return;
+    final row = await _dao.getByBusinessId(businessId);
+    if (row == null) return;
+    if (row.logoUrl.isNotEmpty) return; // already uploaded
+    if (row.logoLocalPath.isEmpty) return; // nothing queued
+
+    final file = File(row.logoLocalPath);
+    if (!await file.exists()) {
+      debugPrint('[Logo] Queued file missing, skipping: ${row.logoLocalPath}');
+      return;
+    }
+
+    final bytes = await file.readAsBytes();
+    final ext = p.extension(row.logoLocalPath).toLowerCase();
     final url = await _remote.uploadLogo(
       businessId: businessId,
-      fileName: fileName,
+      fileName: 'logo${ext.isNotEmpty ? ext : '.jpg'}',
       bytes: bytes,
-      mimeType: mimeType,
+      mimeType: _mimeForExt(ext),
     );
 
-    // Persist URL locally so it shows even offline afterwards.
+    // Keep the local path for offline display; just stamp the public URL.
+    final now = DateTime.now();
+    await _dao.upsert(
+      row.toCompanion(true).copyWith(
+        logoUrl: Value(url),
+        updatedAt: Value(now),
+        localUpdatedAt: Value(now),
+      ),
+    );
+    await _mirrorLogoUrl(businessId, url);
+  }
+
+  /// Push a single business's row, marking it failed (for retry) on error.
+  Future<void> _safePush(String businessId) async {
+    try {
+      await _pushToRemote(businessId);
+    } catch (e, st) {
+      debugPrint('[Logo] Push failed for $businessId: $e\n$st');
+      await _dao.updateSyncStatus(
+        id: businessId,
+        status: SyncStatus.failed,
+        error: e.toString(),
+      );
+    }
+  }
+
+  /// Mirror the public URL onto businesses.logo_url + refresh the shell's cache.
+  /// Best-effort — the receipt logo is already saved, so a mirror failure only
+  /// delays the shell/profile picking up the new URL until the next sync.
+  Future<void> _mirrorLogoUrl(String businessId, String url) async {
+    try {
+      await _businessRemote.updateLogoUrl(businessId: businessId, url: url);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        'biz_logo_$businessId',
+        '$url?t=${DateTime.now().millisecondsSinceEpoch}',
+      );
+    } catch (e, st) {
+      debugPrint('[Logo] Mirror to businesses.logo_url failed: $e\n$st');
+    }
+  }
+
+  Future<String> _writeLogoFile(
+    String businessId,
+    Uint8List bytes,
+    String safeExt,
+  ) async {
+    final dir = await getApplicationDocumentsDirectory();
+    final logoDir = Directory(p.join(dir.path, 'business_logos'));
+    if (!await logoDir.exists()) await logoDir.create(recursive: true);
+    final file = File(p.join(logoDir.path, '$businessId$safeExt'));
+    await file.writeAsBytes(bytes, flush: true);
+    return file.path;
+  }
+
+  /// Upsert just the logo columns + mark pending. Creates the row (id =
+  /// businessId, matching the rest of this feature) if none exists yet.
+  Future<void> _persistLogo({
+    required String businessId,
+    required String localPath,
+    required String url,
+  }) async {
+    final now = DateTime.now();
     final existing = await _dao.getByBusinessId(businessId);
     if (existing != null) {
       await _dao.upsert(
-        existing
-            .toCompanion(true)
-            .copyWith(
-              logoUrl: Value(url),
-              syncStatus: Value(SyncStatus.pendingUpdate.toInt()),
-              localUpdatedAt: Value(DateTime.now()),
-              updatedAt: Value(DateTime.now()),
-            ),
+        existing.toCompanion(true).copyWith(
+          logoLocalPath: Value(localPath),
+          logoUrl: Value(url),
+          syncStatus: Value(SyncStatus.pendingUpdate.toInt()),
+          updatedAt: Value(now),
+          localUpdatedAt: Value(now),
+        ),
+      );
+    } else {
+      await _dao.upsert(
+        ReceiptSettingsTableCompanion.insert(
+          id: businessId,
+          businessId: businessId,
+          logoLocalPath: Value(localPath),
+          logoUrl: Value(url),
+          syncStatus: Value(SyncStatus.pendingUpload.toInt()),
+          updatedAt: Value(now),
+          localUpdatedAt: Value(now),
+        ),
       );
     }
-    return url;
+  }
+
+  String _mimeForExt(String ext) {
+    final e = ext.toLowerCase();
+    if (e == '.png') return 'image/png';
+    if (e == '.webp') return 'image/webp';
+    return 'image/jpeg';
   }
 
   // ── Sync (called by SyncService) ─────────────────────────────────────────
@@ -109,6 +244,8 @@ class ReceiptSettingsRepository {
     if (!online) return;
     try {
       final data = await _remote.getByBusinessId(businessId);
+      // The DAO's upsertFromServer guards against clobbering unsynced local
+      // edits (e.g. a logo picked offline), so no extra guard is needed here.
       if (data != null) await _dao.upsertFromServer(data);
     } catch (e) {
       debugPrint('[ReceiptSettings] Pull failed: $e');
@@ -122,6 +259,8 @@ class ReceiptSettingsRepository {
   // ── Private ──────────────────────────────────────────────────────────────
 
   Future<void> _pushToRemote(String id) async {
+    // Upload any queued logo file first so the row we push carries its URL.
+    await _ensureLogoUploaded(id);
     final row = await _dao.getByBusinessId(id);
     if (row == null) return;
     await _remote.upsert({

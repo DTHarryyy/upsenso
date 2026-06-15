@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,6 +10,7 @@ import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/database/daos/business_modules_dao.dart';
+import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/core/permissions/data/permission_remote_ds.dart';
 import 'package:pos/core/permissions/permission_service.dart';
@@ -101,37 +104,136 @@ class ModuleSettingsError extends ModuleSettingsState {
 
 class ModuleSettingsLoaded extends ModuleSettingsState {
   final Map<String, bool> modules;
-  final Set<String> saving;
+  final Set<String> saving; // in-flight remote call
+  final Set<String> pending; // saved locally, awaiting remote sync
+  final bool isOffline; // true when no remote connection could be reached
 
-  ModuleSettingsLoaded({required this.modules, Set<String>? saving})
-    : saving = saving ?? const {};
+  ModuleSettingsLoaded({
+    required this.modules,
+    Set<String>? saving,
+    Set<String>? pending,
+    this.isOffline = false,
+  })  : saving = saving ?? const {},
+        pending = pending ?? const {};
 
   ModuleSettingsLoaded copyWith({
     Map<String, bool>? modules,
     Set<String>? saving,
+    Set<String>? pending,
+    bool? isOffline,
   }) => ModuleSettingsLoaded(
     modules: modules ?? this.modules,
     saving: saving ?? this.saving,
+    pending: pending ?? this.pending,
+    isOffline: isOffline ?? this.isOffline,
   );
 }
 
 // ── Cubit ────────────────────────────────────────────────────────────────────
 
+// SharedPreferences key for changes saved locally but not yet pushed to remote.
+String _pendingKey(String businessId) => 'module_pending_$businessId';
+
 class ModuleSettingsCubit extends Cubit<ModuleSettingsState> {
   final String businessId;
+  StreamSubscription<bool>? _connectivitySub;
 
   ModuleSettingsCubit(this.businessId) : super(ModuleSettingsLoading());
 
   Future<void> load() async {
+    // 1. Render from cache immediately — page is usable offline right away.
+    await _emitFromCache();
+
+    // 2. Auto-sync whenever connectivity is restored.
+    _connectivitySub = sl<ConnectivityService>().onConnectivityChanged.listen(
+      (isConnected) { if (isConnected) _syncWithRemote(); },
+    );
+
+    // 3. Attempt to sync right now.
+    await _syncWithRemote();
+  }
+
+  // Loads local DB + pending set and emits a loaded state.
+  Future<void> _emitFromCache() async {
+    final cached = await sl<BusinessModulesDao>().getAll(businessId);
+    final pendingCodes = await _readPendingCodes();
+    if (cached.isNotEmpty || pendingCodes.isNotEmpty) {
+      final codeMap = {for (final r in cached) r.moduleCode: r.enabled};
+      final modules = {
+        for (final m in _kModules) m.code: codeMap[m.code] ?? true,
+      };
+      emit(ModuleSettingsLoaded(
+        modules: modules,
+        isOffline: true,
+        pending: pendingCodes,
+      ));
+    }
+  }
+
+  // Flushes pending changes then fetches fresh state from remote.
+  Future<void> _syncWithRemote() async {
+    final pendingCodes = await _readPendingCodes();
+    if (pendingCodes.isNotEmpty) {
+      await _flushPending(pendingCodes);
+    }
+
     try {
-      final raw = await sl<PermissionRemoteDs>().fetchEnabledModules(
-        businessId,
-      );
+      final raw = await sl<PermissionRemoteDs>().fetchEnabledModules(businessId);
       final modules = {for (final m in _kModules) m.code: raw[m.code] ?? true};
+      await sl<BusinessModulesDao>().saveModules(businessId, modules);
+      await sl<PermissionService>().syncModules(businessId);
       emit(ModuleSettingsLoaded(modules: modules));
-    } catch (e) {
-      debugPrint('[ModuleSettings] load FAILED: $e');
-      emit(ModuleSettingsError('Failed to load modules. Please try again.'));
+    } catch (e, st) {
+      debugPrint('[ModuleSettings] Error in _syncWithRemote: $e\n$st');
+      if (state is! ModuleSettingsLoaded) {
+        emit(ModuleSettingsError('Failed to load modules. Please try again.'));
+      }
+    }
+  }
+
+  // Pushes each pending module toggle to remote. Removes from pending on success.
+  Future<void> _flushPending(Set<String> codes) async {
+    final localRows = await sl<BusinessModulesDao>().getAll(businessId);
+    final localMap = {for (final r in localRows) r.moduleCode: r.enabled};
+
+    for (final code in codes) {
+      final enabled = localMap[code];
+      if (enabled == null) {
+        await _removePending(code);
+        continue;
+      }
+      try {
+        await sl<PermissionRemoteDs>().setModuleEnabled(businessId, code, enabled);
+        await _removePending(code);
+
+        final label = _kModules
+            .firstWhere(
+              (m) => m.code == code,
+              orElse: () => _ModuleInfo(
+                code: code,
+                label: code,
+                description: '',
+                icon: IconlyLight.category,
+              ),
+            )
+            .label;
+        sl<AuditLogService>().log(
+          actionType: AuditLogActionType.businessModuleChanged,
+          entityType: 'module',
+          entityName: label,
+          description: '$label module ${enabled ? 'enabled' : 'disabled'}',
+          metadata: {'module': code, 'enabled': enabled},
+          businessId: businessId,
+        );
+
+        final s = state;
+        if (s is ModuleSettingsLoaded) {
+          emit(s.copyWith(pending: Set<String>.of(s.pending)..remove(code)));
+        }
+      } catch (e, st) {
+        debugPrint('[ModuleSettings] Error flushing pending "$code": $e\n$st');
+        // Keep in pending — will retry on next connectivity event.
+      }
     }
   }
 
@@ -140,20 +242,19 @@ class ModuleSettingsCubit extends Cubit<ModuleSettingsState> {
     if (current is! ModuleSettingsLoaded) return;
     if (current.saving.contains(code)) return;
 
-    emit(
-      current.copyWith(
-        modules: {...current.modules, code: enabled},
-        saving: {...current.saving, code},
-      ),
-    );
+    // Write locally first — the change survives even if remote is unreachable.
+    await sl<BusinessModulesDao>().saveModules(businessId, {code: enabled});
+    await _addPending(code);
+
+    emit(current.copyWith(
+      modules: {...current.modules, code: enabled},
+      pending: {...current.pending, code},
+      saving: {...current.saving, code},
+    ));
 
     try {
-      await sl<PermissionRemoteDs>().setModuleEnabled(
-        businessId,
-        code,
-        enabled,
-      );
-      await sl<BusinessModulesDao>().saveModules(businessId, {code: enabled});
+      await sl<PermissionRemoteDs>().setModuleEnabled(businessId, code, enabled);
+      await _removePending(code);
       await sl<PermissionService>().syncModules(businessId);
 
       final label = _kModules
@@ -170,25 +271,54 @@ class ModuleSettingsCubit extends Cubit<ModuleSettingsState> {
       sl<AuditLogService>().log(
         actionType: AuditLogActionType.businessModuleChanged,
         entityType: 'module',
-        // Module code is not a UUID — keep it in metadata, not entityId
-        // (remote entity_id is uuid-typed and rejects plain codes).
         entityName: label,
         description: '$label module ${enabled ? 'enabled' : 'disabled'}',
         metadata: {'module': code, 'enabled': enabled},
         businessId: businessId,
       );
-    } catch (e) {
-      debugPrint('[ModuleSettings] toggle "$code" → $enabled FAILED: $e');
+
       final s = state;
       if (s is ModuleSettingsLoaded) {
-        emit(s.copyWith(modules: {...s.modules, code: !enabled}));
+        emit(s.copyWith(pending: Set<String>.of(s.pending)..remove(code)));
       }
+    } catch (e, st) {
+      debugPrint('[ModuleSettings] Error in toggle "$code" → $enabled: $e\n$st');
+      // Change is saved locally as pending — no revert. Syncs when back online.
     } finally {
       final s = state;
       if (s is ModuleSettingsLoaded) {
         emit(s.copyWith(saving: Set<String>.of(s.saving)..remove(code)));
       }
     }
+  }
+
+  // ── SharedPreferences pending-set helpers ────────────────────────────────
+
+  Future<Set<String>> _readPendingCodes() async {
+    final list = sl<SharedPreferences>().getStringList(_pendingKey(businessId));
+    return list?.toSet() ?? {};
+  }
+
+  Future<void> _addPending(String code) async {
+    final codes = await _readPendingCodes()..add(code);
+    await sl<SharedPreferences>().setStringList(
+      _pendingKey(businessId),
+      codes.toList(),
+    );
+  }
+
+  Future<void> _removePending(String code) async {
+    final codes = await _readPendingCodes()..remove(code);
+    await sl<SharedPreferences>().setStringList(
+      _pendingKey(businessId),
+      codes.toList(),
+    );
+  }
+
+  @override
+  Future<void> close() {
+    _connectivitySub?.cancel();
+    return super.close();
   }
 }
 
@@ -331,16 +461,62 @@ class _ModuleSettingsViewState extends State<_ModuleSettingsView> {
                 ),
               ),
 
+              // ── Offline / pending notice ─────────────────────────────────
+              if (loaded.isOffline || loaded.pending.isNotEmpty) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withAlpha(20),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.warning.withAlpha(60),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        IconlyLight.danger,
+                        size: 16,
+                        color: AppColors.warning,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          loaded.pending.isNotEmpty
+                              ? 'You\'re offline — changes saved locally and will sync when you\'re back online.'
+                              : 'Offline — showing cached data.',
+                          style: getOutfitStyle(
+                            fontSize: 12,
+                            color: AppColors.warning,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+              ],
+
               // ── Module cards ─────────────────────────────────────────────
               ...List.generate(_kModules.length, (i) {
                 final m = _kModules[i];
                 final enabled = loaded.modules[m.code] ?? true;
                 final saving = loaded.saving.contains(m.code);
+                final pendingSync = loaded.pending.contains(m.code);
                 return Padding(
                   padding: EdgeInsets.only(
                     bottom: i < _kModules.length - 1 ? 10 : 0,
                   ),
-                  child: _ModuleCard(info: m, enabled: enabled, saving: saving),
+                  child: _ModuleCard(
+                    info: m,
+                    enabled: enabled,
+                    saving: saving,
+                    pendingSync: pendingSync,
+                  ),
                 );
               }),
 
@@ -435,11 +611,13 @@ class _ModuleCard extends StatelessWidget {
   final _ModuleInfo info;
   final bool enabled;
   final bool saving;
+  final bool pendingSync;
 
   const _ModuleCard({
     required this.info,
     required this.enabled,
     required this.saving,
+    this.pendingSync = false,
   });
 
   @override
@@ -515,7 +693,7 @@ class _ModuleCard extends StatelessWidget {
             ),
             const SizedBox(width: 12),
 
-            // Toggle / spinner
+            // Toggle / spinner / pending indicator
             if (saving)
               SizedBox(
                 width: 24,
@@ -526,11 +704,25 @@ class _ModuleCard extends StatelessWidget {
                 ),
               )
             else
-              CupertinoSwitch(
-                value: enabled,
-                activeTrackColor: AppColors.brand,
-                onChanged: (v) =>
-                    context.read<ModuleSettingsCubit>().toggle(info.code, v),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (pendingSync)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: Icon(
+                        Icons.cloud_upload_outlined,
+                        size: 16,
+                        color: AppColors.warning,
+                      ),
+                    ),
+                  CupertinoSwitch(
+                    value: enabled,
+                    activeTrackColor: AppColors.brand,
+                    onChanged: (v) =>
+                        context.read<ModuleSettingsCubit>().toggle(info.code, v),
+                  ),
+                ],
               ),
           ],
         ),

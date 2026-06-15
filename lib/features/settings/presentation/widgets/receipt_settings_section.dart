@@ -20,6 +20,7 @@ import 'package:pos/core/widgets/app_labeled_switch.dart';
 import 'package:pos/core/widgets/app_section_card.dart';
 import 'package:pos/core/widgets/app_switch.dart';
 import 'package:pos/core/widgets/app_toast.dart';
+import 'package:pos/core/widgets/image_source_sheet.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/settings/domain/receipt_settings.dart';
@@ -772,7 +773,6 @@ class _LogoBanner extends StatefulWidget {
 }
 
 class _LogoBannerState extends State<_LogoBanner> {
-  bool _hasLogo = false;
   bool _dismissed = false;
   bool _uploading = false;
   String? _businessId;
@@ -789,20 +789,17 @@ class _LogoBannerState extends State<_LogoBanner> {
     final auth = context.read<AuthBloc>().state;
     _businessId = auth is AuthAuthenticated ? (auth.user.businessId ?? '') : '';
     final prefs = await SharedPreferences.getInstance();
-    final logo = prefs.getString('biz_logo_$_businessId') ?? '';
     final dismissed = prefs.getBool(_prefKey) ?? false;
-    if (mounted) {
-      setState(() {
-        _hasLogo = logo.isNotEmpty;
-        _dismissed = dismissed;
-      });
-    }
+    if (mounted) setState(() => _dismissed = dismissed);
   }
 
   Future<void> _pickLogo() async {
     if (_uploading || _businessId == null) return;
 
-    final source = await _showSourceSheet();
+    final source = await showImageSourceSheet(
+      context,
+      title: 'Upload Business Logo',
+    );
     if (source == null) return;
 
     if (!kIsWeb && source == ImageSource.camera) {
@@ -860,22 +857,17 @@ class _LogoBannerState extends State<_LogoBanner> {
 
       await cubit.uploadLogo(
         businessId: _businessId!,
-        fileName: 'logo$safeExt',
         bytes: bytes,
+        ext: safeExt,
         mimeType: mimeType,
       );
 
-      final prefs = await SharedPreferences.getInstance();
       if (mounted) {
-        setState(() => _hasLogo = true);
-        await prefs.setString('biz_logo_$_businessId', 'uploaded');
-        if (mounted) {
-          AppToast.show(
-            context,
-            'Logo uploaded successfully',
-            variant: AppToastVariant.success,
-          );
-        }
+        AppToast.show(
+          context,
+          'Logo saved — it will sync when you\'re online',
+          variant: AppToastVariant.success,
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -890,112 +882,6 @@ class _LogoBannerState extends State<_LogoBanner> {
     }
   }
 
-  Future<ImageSource?> _showSourceSheet() {
-    return showModalBottomSheet<ImageSource>(
-      context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 8),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.borderSoft,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                'Upload Business Logo',
-                style: getOutfitStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                'Choose a square image for best results.',
-                style: getOutfitStyle(fontSize: 12, color: AppColors.textMuted),
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (!kIsWeb)
-              ListTile(
-                leading: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: AppColors.brandSoft,
-                    borderRadius: BorderRadius.circular(9),
-                  ),
-                  child: const Icon(
-                    IconlyLight.camera,
-                    color: AppColors.brand,
-                    size: 18,
-                  ),
-                ),
-                title: Text(
-                  'Take Photo',
-                  style: getOutfitStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                subtitle: Text(
-                  'Open camera',
-                  style: getOutfitStyle(
-                    fontSize: 12,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-                onTap: () => Navigator.pop(ctx, ImageSource.camera),
-              ),
-            ListTile(
-              leading: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: AppColors.brandSoft,
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: const Icon(
-                  IconlyLight.image,
-                  color: AppColors.brand,
-                  size: 18,
-                ),
-              ),
-              title: Text(
-                'Choose from Gallery',
-                style: getOutfitStyle(
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              subtitle: Text(
-                'Browse your photos',
-                style: getOutfitStyle(fontSize: 12, color: AppColors.textMuted),
-              ),
-              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
-  }
-
   Future<void> _dismiss() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_prefKey, true);
@@ -1004,7 +890,11 @@ class _LogoBannerState extends State<_LogoBanner> {
 
   @override
   Widget build(BuildContext context) {
-    if (_hasLogo || _dismissed) return const SizedBox.shrink();
+    // A logo exists once the live settings carry a local path or a URL.
+    final settings = context.watch<SettingsCubit>().state.settings;
+    final hasLogo = settings != null &&
+        (settings.logoLocalPath.isNotEmpty || settings.logoUrl.isNotEmpty);
+    if (hasLogo || _dismissed) return const SizedBox.shrink();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

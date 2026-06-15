@@ -106,6 +106,19 @@ class BusinessRemoteDs {
     return response != null ? Map<String, dynamic>.from(response) : null;
   }
 
+  /// Mirror the unified business logo URL onto the business row so the app
+  /// shell and any server-side reads stay in sync. The canonical local source
+  /// of truth is receipt_settings; this just keeps businesses.logo_url current.
+  Future<void> updateLogoUrl({
+    required String businessId,
+    required String url,
+  }) async {
+    await client
+        .from('businesses')
+        .update({'logo_url': url})
+        .eq('id', businessId);
+  }
+
   /// Get business by ID
   Future<Map<String, dynamic>?> getBusinessById(String businessId) async {
     final response = await client

@@ -76,6 +76,20 @@ class AuthContextDao extends DatabaseAccessor<AppDatabase>
     await delete(authContextTable).go();
   }
 
+  /// Returns a map of userId → fullName for the given Supabase auth UIDs.
+  /// Used as a fallback when an employee has no authUserId set in the
+  /// employees table (covers the business owner and pre-authUserId employees).
+  Future<Map<String, String>> getNamesForUserIds(List<String> ids) async {
+    if (ids.isEmpty) return {};
+    final rows = await (select(authContextTable)
+          ..where((t) => t.userId.isIn(ids)))
+        .get();
+    return {
+      for (final r in rows)
+        if (r.fullName != null && r.fullName!.isNotEmpty) r.userId: r.fullName!,
+    };
+  }
+
   /// Convert Drift row to AppUser entity
   static AppUser toEntity(AuthContextTableData data) {
     return AppUser(

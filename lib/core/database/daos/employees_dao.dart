@@ -37,16 +37,28 @@ class EmployeesDao extends DatabaseAccessor<AppDatabase>
         .getSingleOrNull();
   }
 
-  /// Returns a map of authUserId → fullName for the given auth user IDs.
+  /// Returns a map of authUserId → fullName for the given Supabase auth UIDs.
+  /// Also matches on the legacy [userId] column for employees whose [authUserId]
+  /// was never populated (e.g., records created before auth_user_id tracking).
   Future<Map<String, String>> getNamesForAuthUserIds(List<String> ids) async {
     if (ids.isEmpty) return {};
     final rows = await (select(employeesTable)
-          ..where((t) => t.authUserId.isIn(ids)))
+          ..where(
+            (t) => t.authUserId.isIn(ids) | t.userId.isIn(ids),
+          ))
         .get();
-    return {
-      for (final r in rows)
-        if (r.authUserId != null) r.authUserId!: r.fullName ?? '',
-    };
+    final result = <String, String>{};
+    for (final r in rows) {
+      final name = r.fullName;
+      if (name == null || name.isEmpty) continue;
+      // Prefer authUserId as the canonical key; fall back to userId for legacy records.
+      if (r.authUserId != null && ids.contains(r.authUserId)) {
+        result[r.authUserId!] = name;
+      } else if (r.userId != null && ids.contains(r.userId)) {
+        result[r.userId!] = name;
+      }
+    }
+    return result;
   }
 
   Future<void> insertEmployee(EmployeesTableCompanion companion) {

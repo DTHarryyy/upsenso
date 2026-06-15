@@ -12,7 +12,6 @@ import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
-import 'package:pos/core/ui/widgets/permission_gate.dart';
 import 'package:pos/core/widgets/app_filled_button.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
@@ -213,6 +212,14 @@ class _EmployeesViewState extends State<_EmployeesView> {
       listener: (ctx, _) => _initialize(),
       child: Scaffold(
         backgroundColor: AppColors.background,
+        floatingActionButton: canCreate
+            ? FloatingActionButton(
+                onPressed: _showAddDialog,
+                backgroundColor: AppColors.brand,
+                tooltip: 'Add Employee',
+                child: const Icon(Icons.add, color: Colors.white),
+              )
+            : null,
         body: Column(
           children: [
             // Custom header with subtitle
@@ -270,12 +277,6 @@ class _EmployeesViewState extends State<_EmployeesView> {
                   );
                 },
               ),
-            ),
-
-            //  Sticky bottom CTA
-            PermissionGate(
-              permissionKey: PermissionKeys.employeesCreate,
-              child: _StickyAddButton(onPressed: _showAddDialog),
             ),
           ],
         ),
@@ -526,20 +527,3 @@ class _EmployeeSkeletonList extends StatelessWidget {
   }
 }
 
-// ── Sticky Bottom CTA ───────────────────────────────────────────────────────
-
-class _StickyAddButton extends StatelessWidget {
-  final VoidCallback onPressed;
-  const _StickyAddButton({required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    final bottomPad = MediaQuery.of(context).padding.bottom;
-
-    return Container(
-      color: AppColors.surface,
-      padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + bottomPad),
-      child: AppFilledButton(label: '+ Add Employee', onPressed: onPressed),
-    );
-  }
-}

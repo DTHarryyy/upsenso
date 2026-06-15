@@ -9,6 +9,7 @@ import 'package:pos/core/widgets/app_dropdown.dart';
 import 'package:pos/core/widgets/app_filled_button.dart';
 import 'package:pos/core/widgets/app_input_decoration.dart';
 import 'package:pos/core/widgets/app_section_card.dart';
+import 'package:pos/core/widgets/app_sticky_action_bar.dart';
 import 'package:pos/core/widgets/app_sub_page_bar.dart';
 import 'package:pos/features/business/domain/entities/branch.dart';
 import 'package:pos/features/employees/domain/entities/employee.dart';
@@ -143,11 +144,7 @@ class _EmployeeFormBody extends StatefulWidget {
   /// When true the widget is hosted inside a [Scaffold] with [AppSubPageBar].
   final bool isPage;
 
-  /// Restricts which roles are available in the role picker.
-  /// Null means all roles are shown.
   final List<EmployeeRole>? allowedRoles;
-
-  /// When set, the branch picker is hidden and this branch ID is always used.
   final String? lockedBranchId;
 
   const _EmployeeFormBody({
@@ -181,6 +178,10 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
   String? _formError;
 
   bool get _isEditing => widget.employee != null;
+
+  List<EmployeeRole> get _availableRoles =>
+      widget.allowedRoles ??
+      EmployeeRole.values.where((r) => r != EmployeeRole.owner).toList();
 
   @override
   void initState() {
@@ -245,6 +246,252 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
     }
   }
 
+  Widget _buildSubmitButton() => AppFilledButton(
+        label: _isEditing ? 'Save Changes' : 'Add Employee',
+        loading: _submitting,
+        onPressed: _submitting ? null : _submit,
+        icon: _isEditing ? Icons.check : Icons.person_add_outlined,
+      );
+
+  Widget _buildScrollContent() {
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        widget.isPage ? 20 : 20,
+        20,
+        20,
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Inline header (dialog only) ───────────────────────────
+            if (!widget.isPage) ...[
+              _DialogHeader(
+                isEditing: _isEditing,
+                onClose: () => Navigator.of(context).pop(),
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            // ── Personal Information ──────────────────────────────────
+            AppSectionCard(
+              title: 'Personal Information',
+              icon: IconlyLight.profile,
+              children: [
+                TextFormField(
+                  controller: _nameCtrl,
+                  decoration: appInputDeco(
+                    'e.g. Maria Santos',
+                    label: 'Full Name',
+                  ),
+                  textCapitalization: TextCapitalization.words,
+                  textInputAction: TextInputAction.next,
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Required' : null,
+                ),
+                if (!_isEditing) ...[
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _emailCtrl,
+                    decoration: appInputDeco(
+                      'e.g. maria@business.com',
+                      label: 'Work Email',
+                    ).copyWith(
+                      errorText: _serverEmailError,
+                      helperText: 'Used for the employee\'s login account',
+                      helperStyle: getOutfitStyle(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    onChanged: (_) {
+                      if (_serverEmailError != null) {
+                        setState(() => _serverEmailError = null);
+                      }
+                    },
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Required';
+                      final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+                      if (!emailRegex.hasMatch(v.trim())) {
+                        return 'Enter a valid email address';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+              ],
+            ),
+
+            // ── Login Credentials (create mode only) ──────────────────
+            if (!_isEditing) ...[
+              const SizedBox(height: 14),
+              AppSectionCard(
+                title: 'Login Credentials',
+                icon: IconlyLight.lock,
+                children: [
+                  TextFormField(
+                    controller: _passwordCtrl,
+                    obscureText: _obscurePassword,
+                    decoration: appInputDeco(
+                      'Min. 6 characters',
+                      label: 'Password',
+                    ).copyWith(
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          size: 20,
+                          color: AppColors.textMuted,
+                        ),
+                        onPressed: () => setState(
+                          () => _obscurePassword = !_obscurePassword,
+                        ),
+                      ),
+                    ),
+                    textInputAction: TextInputAction.next,
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'Required';
+                      if (v.length < 6) {
+                        return 'Password must be at least 6 characters';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  // Live password strength indicator
+                  ListenableBuilder(
+                    listenable: _passwordCtrl,
+                    builder: (context, _) =>
+                        _PasswordStrengthBar(password: _passwordCtrl.text),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _confirmPasswordCtrl,
+                    obscureText: _obscureConfirmPassword,
+                    decoration: appInputDeco(
+                      'Re-enter password',
+                      label: 'Confirm Password',
+                    ).copyWith(
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscureConfirmPassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          size: 20,
+                          color: AppColors.textMuted,
+                        ),
+                        onPressed: () => setState(
+                          () =>
+                              _obscureConfirmPassword = !_obscureConfirmPassword,
+                        ),
+                      ),
+                    ),
+                    textInputAction: TextInputAction.done,
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'Required';
+                      if (v != _passwordCtrl.text) {
+                        return 'Passwords do not match';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+              ),
+            ],
+
+            const SizedBox(height: 14),
+
+            // ── Assignment ────────────────────────────────────────────
+            AppSectionCard(
+              title: 'Assignment',
+              icon: IconlyLight.work,
+              children: [
+                if (widget.lockedBranchId == null) ...[
+                  AppDropdown<String>(
+                    value: _selectedBranchId,
+                    hint: 'Select branch',
+                    items: widget.branches
+                        .map(
+                          (b) =>
+                              AppDropdownItem(value: b.id, label: b.name),
+                        )
+                        .toList(),
+                    onChanged: (v) => setState(() => _selectedBranchId = v),
+                    validator: (v) =>
+                        v == null ? 'Please select a branch' : null,
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                Text(
+                  'Role',
+                  style: getOutfitStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _RoleSelector(
+                  value: _role,
+                  availableRoles: _availableRoles,
+                  onChanged: (r) => setState(() => _role = r),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 14),
+
+            // ── Form-level error banner ───────────────────────────────
+            if (_formError != null) ...[
+              _FormErrorBanner(
+                message: _formError!,
+                onDismiss: () => setState(() => _formError = null),
+              ),
+              const SizedBox(height: 14),
+            ],
+
+            // ── Actions (dialog mode only — page uses sticky bar) ─────
+            if (!widget.isPage)
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _submitting
+                          ? null
+                          : () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: const BorderSide(color: AppColors.borderSoft),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        'Cancel',
+                        style: getOutfitStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildSubmitButton()),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocListener<EmployeeBloc, EmployeeState>(
@@ -274,272 +521,287 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
           });
         }
       },
-      child: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(
-          20,
-          widget.isPage ? 24 : 20,
-          20,
-          widget.isPage ? MediaQuery.paddingOf(context).bottom + 24 : 20,
-        ),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Inline header (dialog only) ───────────────────────────
-              if (!widget.isPage) ...[
-                Row(
-                  children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: AppColors.brandSoft,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        IconlyLight.profile,
-                        color: AppColors.brand,
-                        size: 18,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      _isEditing ? 'Edit Employee' : 'Add Employee',
-                      style: AppTextStyles.headline(context),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close, size: 20),
-                      color: AppColors.textMuted,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
+      child: widget.isPage
+          ? Column(
+              children: [
+                Expanded(child: _buildScrollContent()),
+                AppStickyActionBar(primary: _buildSubmitButton()),
               ],
+            )
+          : _buildScrollContent(),
+    );
+  }
+}
 
-              // ── Personal Information ──────────────────────────────────
-              AppSectionCard(
-                title: 'Personal Information',
-                icon: IconlyLight.profile,
-                children: [
-                  TextFormField(
-                    controller: _nameCtrl,
-                    decoration: appInputDeco(
-                      'e.g. Maria Santos',
-                      label: 'Full Name',
-                    ),
-                    textCapitalization: TextCapitalization.words,
-                    textInputAction: TextInputAction.next,
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Required' : null,
-                  ),
-                  if (!_isEditing) ...[
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _emailCtrl,
-                      decoration: appInputDeco(
-                        'e.g. maria@business.com',
-                        label: 'Email',
-                      ).copyWith(
-                        errorText: _serverEmailError,
-                      ),
-                      keyboardType: TextInputType.emailAddress,
-                      textInputAction: TextInputAction.next,
-                      onChanged: (_) {
-                        if (_serverEmailError != null) {
-                          setState(() => _serverEmailError = null);
-                        }
-                      },
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) return 'Required';
-                        final emailRegex =
-                            RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-                        if (!emailRegex.hasMatch(v.trim())) {
-                          return 'Enter a valid email address';
-                        }
-                        return null;
-                      },
-                    ),
-                  ],
-                ],
-              ),
+// ── Dialog header ─────────────────────────────────────────────────────────────
 
-              const SizedBox(height: 14),
+class _DialogHeader extends StatelessWidget {
+  final bool isEditing;
+  final VoidCallback onClose;
 
-              // ── Login Credentials (create mode only) ──────────────────
-              if (!_isEditing) ...[
-                AppSectionCard(
-                  title: 'Login Credentials',
-                  icon: IconlyLight.lock,
-                  children: [
-                    TextFormField(
-                      controller: _passwordCtrl,
-                      obscureText: _obscurePassword,
-                      decoration: appInputDeco(
-                        'Min. 6 characters',
-                        label: 'Password',
-                      ).copyWith(
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                            size: 20,
-                            color: AppColors.textMuted,
-                          ),
-                          onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword,
-                          ),
-                        ),
-                      ),
-                      textInputAction: TextInputAction.next,
-                      validator: (v) {
-                        if (v == null || v.isEmpty) return 'Required';
-                        if (v.length < 6) {
-                          return 'Password must be at least 6 characters';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _confirmPasswordCtrl,
-                      obscureText: _obscureConfirmPassword,
-                      decoration: appInputDeco(
-                        'Re-enter password',
-                        label: 'Confirm Password',
-                      ).copyWith(
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscureConfirmPassword
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                            size: 20,
-                            color: AppColors.textMuted,
-                          ),
-                          onPressed: () => setState(
-                            () => _obscureConfirmPassword =
-                                !_obscureConfirmPassword,
-                          ),
-                        ),
-                      ),
-                      textInputAction: TextInputAction.done,
-                      validator: (v) {
-                        if (v == null || v.isEmpty) return 'Required';
-                        if (v != _passwordCtrl.text) {
-                          return 'Passwords do not match';
-                        }
-                        return null;
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-              ],
+  const _DialogHeader({required this.isEditing, required this.onClose});
 
-              // ── Assignment ────────────────────────────────────────────
-              AppSectionCard(
-                title: 'Assignment',
-                icon: IconlyLight.work,
-                children: [
-                  if (widget.lockedBranchId == null) ...[
-                    AppDropdown<String>(
-                      value: _selectedBranchId,
-                      hint: 'Select branch',
-                      items: widget.branches
-                          .map(
-                            (b) =>
-                                AppDropdownItem(value: b.id, label: b.name),
-                          )
-                          .toList(),
-                      onChanged: (v) =>
-                          setState(() => _selectedBranchId = v),
-                      validator: (v) =>
-                          v == null ? 'Please select a branch' : null,
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  AppDropdown<EmployeeRole>(
-                    value: _role,
-                    items: (widget.allowedRoles ?? EmployeeRole.values.where((r) => r != EmployeeRole.owner).toList())
-                        .map(
-                          (r) => AppDropdownItem(
-                            value: r,
-                            label: r.displayName,
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (v) {
-                      if (v != null) setState(() => _role = v);
-                    },
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 14),
-
-              // ── Form-level error banner ───────────────────────────────
-              if (_formError != null) ...[
-                _FormErrorBanner(
-                  message: _formError!,
-                  onDismiss: () => setState(() => _formError = null),
-                ),
-                const SizedBox(height: 14),
-              ],
-
-              // ── Actions ───────────────────────────────────────────────
-              if (widget.isPage)
-                SizedBox(
-                  width: double.infinity,
-                  child: AppFilledButton(
-                    label: _isEditing ? 'Save Changes' : 'Add Employee',
-                    loading: _submitting,
-                    onPressed: _submitting ? null : _submit,
-                    icon: _isEditing ? Icons.check : Icons.person_add,
-                  ),
-                )
-              else
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed:
-                            _submitting ? null : () => Navigator.of(context).pop(),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          side: const BorderSide(color: AppColors.borderSoft),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: Text(
-                          'Cancel',
-                          style: getOutfitStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: AppFilledButton(
-                        label: _isEditing ? 'Save Changes' : 'Add Employee',
-                        loading: _submitting,
-                        onPressed: _submitting ? null : _submit,
-                        icon: _isEditing ? Icons.check : Icons.person_add,
-                      ),
-                    ),
-                  ],
-                ),
-            ],
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: AppColors.brandSoft,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Icon(
+            IconlyLight.profile,
+            color: AppColors.brand,
+            size: 18,
           ),
         ),
+        const SizedBox(width: 10),
+        Text(
+          isEditing ? 'Edit Employee' : 'Add Employee',
+          style: AppTextStyles.headline(context),
+        ),
+        const Spacer(),
+        IconButton(
+          onPressed: onClose,
+          icon: const Icon(Icons.close, size: 20),
+          color: AppColors.textMuted,
+        ),
+      ],
+    );
+  }
+}
+
+
+// ── Role selector ─────────────────────────────────────────────────────────────
+
+class _RoleSelector extends StatelessWidget {
+  final EmployeeRole value;
+  final List<EmployeeRole> availableRoles;
+  final ValueChanged<EmployeeRole> onChanged;
+
+  const _RoleSelector({
+    required this.value,
+    required this.availableRoles,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        for (int i = 0; i < availableRoles.length; i++) ...[
+          if (i > 0) const SizedBox(height: 8),
+          _RoleCard(
+            role: availableRoles[i],
+            selected: value == availableRoles[i],
+            onTap: () => onChanged(availableRoles[i]),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _RoleCard extends StatelessWidget {
+  final EmployeeRole role;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _RoleCard({
+    required this.role,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.brandSoft : AppColors.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: selected ? AppColors.brand : AppColors.borderSoft,
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: selected
+                    ? AppColors.brand.withAlpha(25)
+                    : AppColors.surfaceAlt,
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Icon(
+                role._icon,
+                size: 17,
+                color: selected ? AppColors.brand : AppColors.textMuted,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    role.displayName,
+                    style: getOutfitStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: selected ? AppColors.brand : AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    role._description,
+                    style: getOutfitStyle(
+                      fontSize: 11,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              child: selected
+                  ? const Icon(
+                      Icons.check_circle_rounded,
+                      color: AppColors.brand,
+                      size: 20,
+                      key: ValueKey(true),
+                    )
+                  : const SizedBox(width: 20, key: ValueKey(false)),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+extension _EmployeeRoleUI on EmployeeRole {
+  IconData get _icon {
+    switch (this) {
+      case EmployeeRole.owner:
+        return IconlyLight.shield_done;
+      case EmployeeRole.branchManager:
+        return IconlyLight.chart;
+      case EmployeeRole.cashier:
+        return IconlyLight.bag;
+      case EmployeeRole.inventoryStaff:
+        return IconlyLight.scan;
+    }
+  }
+
+  String get _description {
+    switch (this) {
+      case EmployeeRole.owner:
+        return 'Full business access';
+      case EmployeeRole.branchManager:
+        return 'Branch ops, staff & reports';
+      case EmployeeRole.cashier:
+        return 'POS, shifts & sales only';
+      case EmployeeRole.inventoryStaff:
+        return 'Stock control & adjustments';
+    }
+  }
+}
+
+// ── Password strength bar ─────────────────────────────────────────────────────
+
+class _PasswordStrengthBar extends StatelessWidget {
+  final String password;
+
+  const _PasswordStrengthBar({required this.password});
+
+  int get _strength {
+    if (password.isEmpty) return 0;
+    if (password.length < 6) return 1;
+    int s = 2;
+    if (password.length >= 8) s++;
+    if (RegExp(r'[A-Z]').hasMatch(password) &&
+        RegExp(r'[0-9!@#$%^&*]').hasMatch(password)) s++;
+    return s;
+  }
+
+  String get _label {
+    switch (_strength) {
+      case 1:
+        return 'Weak';
+      case 2:
+        return 'Fair';
+      case 3:
+        return 'Good';
+      case 4:
+        return 'Strong';
+      default:
+        return '';
+    }
+  }
+
+  Color get _color {
+    switch (_strength) {
+      case 1:
+        return AppColors.error;
+      case 2:
+        return AppColors.warning;
+      case 3:
+        return AppColors.info;
+      default:
+        return AppColors.success;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (password.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final strength = _strength;
+    final color = _color;
+    return Row(
+      children: [
+        Expanded(
+          child: Row(
+            children: List.generate(4, (i) {
+              final filled = i < strength;
+              return Expanded(
+                child: Container(
+                  margin: EdgeInsets.only(right: i < 3 ? 4 : 0),
+                  height: 3,
+                  decoration: BoxDecoration(
+                    color: filled ? color : AppColors.borderSoft,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          _label,
+          style: getOutfitStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -557,16 +819,16 @@ class _FormErrorBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFEF2F2),
+        color: AppColors.errorSoft,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFFECACA)),
+        border: Border.all(color: AppColors.error.withAlpha(80)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(
             Icons.error_outline_rounded,
-            color: Color(0xFFDC2626),
+            color: AppColors.error,
             size: 18,
           ),
           const SizedBox(width: 10),
@@ -575,7 +837,7 @@ class _FormErrorBanner extends StatelessWidget {
               message,
               style: getOutfitStyle(
                 fontSize: 13,
-                color: const Color(0xFF991B1B),
+                color: AppColors.expense,
               ),
             ),
           ),
@@ -585,7 +847,7 @@ class _FormErrorBanner extends StatelessWidget {
             child: const Icon(
               Icons.close,
               size: 16,
-              color: Color(0xFFDC2626),
+              color: AppColors.error,
             ),
           ),
         ],

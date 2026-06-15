@@ -1,11 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:iconly/iconly.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/core/branch/branch_state.dart';
@@ -26,6 +26,8 @@ import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/more/presentation/more_page.dart';
+import 'package:pos/features/settings/data/receipt_settings_repository.dart';
+import 'package:pos/features/settings/domain/receipt_settings.dart';
 
 const double _kSidebarExpanded = 200;
 const double _kSidebarCollapsed = 60;
@@ -398,7 +400,11 @@ class _AppSidebarState extends State<_AppSidebar>
   bool _settingsExpanded = false;
   late final AnimationController _settingsAnimCtrl;
   late final Animation<double> _settingsExpandAnim;
+  // Unified business logo — watched from the local receipt_settings row so it
+  // shows offline (including a freshly-picked logo before it's uploaded).
   String? _businessLogoUrl;
+  String? _businessLogoLocalPath;
+  StreamSubscription<ReceiptSettings?>? _logoSub;
 
   // Tracks the layout mode separately from widget.expanded.
   // On expand: waits for the animation to finish before switching content.
@@ -409,7 +415,7 @@ class _AppSidebarState extends State<_AppSidebar>
   void initState() {
     super.initState();
     _layoutExpanded = widget.expanded;
-    if (widget.businessId != null) _loadBusinessLogo(widget.businessId!);
+    if (widget.businessId != null) _watchBusinessLogo(widget.businessId!);
     _settingsAnimCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 200),
@@ -434,7 +440,7 @@ class _AppSidebarState extends State<_AppSidebar>
     }
     if (widget.businessId != oldWidget.businessId &&
         widget.businessId != null) {
-      _loadBusinessLogo(widget.businessId!);
+      _watchBusinessLogo(widget.businessId!);
     }
     if (widget.expanded != oldWidget.expanded) {
       if (!widget.expanded) {
@@ -451,30 +457,24 @@ class _AppSidebarState extends State<_AppSidebar>
 
   @override
   void dispose() {
+    _logoSub?.cancel();
     _settingsAnimCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _loadBusinessLogo(String businessId) async {
-    // 1. Show cached value instantly
-    final prefs = await SharedPreferences.getInstance();
-    final cached = prefs.getString('biz_logo_$businessId');
-    if (cached != null && mounted) setState(() => _businessLogoUrl = cached);
-
-    // 2. Background-fetch authoritative URL from Supabase
-    try {
-      final row = await sl<SupabaseClient>()
-          .from('businesses')
-          .select('logo_url')
-          .eq('id', businessId)
-          .maybeSingle();
-      final remote = row?['logo_url'] as String?;
-      if (remote != null && remote.isNotEmpty && mounted) {
-        final url = '$remote?t=${DateTime.now().millisecondsSinceEpoch}';
-        setState(() => _businessLogoUrl = url);
-        await prefs.setString('biz_logo_$businessId', url);
-      }
-    } catch (_) {}
+  // Watch the unified logo from the local receipt_settings row: a local file
+  // shows instantly (even offline / before upload), otherwise the public URL.
+  void _watchBusinessLogo(String businessId) {
+    _logoSub?.cancel();
+    _logoSub = sl<ReceiptSettingsRepository>().watch(businessId).listen((s) {
+      if (!mounted) return;
+      setState(() {
+        _businessLogoLocalPath = (s?.logoLocalPath.isNotEmpty ?? false)
+            ? s!.logoLocalPath
+            : null;
+        _businessLogoUrl = (s?.logoUrl.isNotEmpty ?? false) ? s!.logoUrl : null;
+      });
+    });
   }
 
   void _toggleSettings() {
@@ -557,6 +557,7 @@ class _AppSidebarState extends State<_AppSidebar>
                     children: [
                       const SizedBox(width: 12),
                       _BusinessLogo(
+                        logoLocalPath: _businessLogoLocalPath,
                         logoUrl: _businessLogoUrl,
                         businessName: widget.businessName,
                         size: 32,
@@ -861,11 +862,13 @@ class _AppSidebarState extends State<_AppSidebar>
 // Shows the uploaded business logo, falling back to a branded initial block.
 
 class _BusinessLogo extends StatelessWidget {
+  final String? logoLocalPath;
   final String? logoUrl;
   final String businessName;
   final double size;
 
   const _BusinessLogo({
+    required this.logoLocalPath,
     required this.logoUrl,
     required this.businessName,
     required this.size,
@@ -896,18 +899,36 @@ class _BusinessLogo extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(radius),
-        child: logoUrl != null
-            ? Image.network(
-                logoUrl!,
-                fit: BoxFit.cover,
-                width: size,
-                height: size,
-                errorBuilder: (_, _, _) =>
-                    _Initial(initial: _initial(), size: size),
-              )
-            : _Initial(initial: _initial(), size: size),
+        child: _logo(),
       ),
     );
+  }
+
+  // Prefer the local file (offline-ready), then the public URL, then initials.
+  Widget _logo() {
+    if ((logoLocalPath?.isNotEmpty ?? false) && !kIsWeb) {
+      return Image.file(
+        File(logoLocalPath!),
+        fit: BoxFit.cover,
+        width: size,
+        height: size,
+        errorBuilder: (_, _, _) => _networkOrInitial(),
+      );
+    }
+    return _networkOrInitial();
+  }
+
+  Widget _networkOrInitial() {
+    if (logoUrl?.isNotEmpty ?? false) {
+      return Image.network(
+        logoUrl!,
+        fit: BoxFit.cover,
+        width: size,
+        height: size,
+        errorBuilder: (_, _, _) => _Initial(initial: _initial(), size: size),
+      );
+    }
+    return _Initial(initial: _initial(), size: size);
   }
 }
 

@@ -195,6 +195,7 @@ Future<void> initDI() async {
       dao: sl<ReceiptSettingsDao>(),
       remote: sl<ReceiptSettingsRemoteDs>(),
       connectivity: sl<ConnectivityService>(),
+      businessRemote: sl<BusinessRemoteDs>(),
     ),
   );
 
@@ -464,7 +465,11 @@ Future<void> initDI() async {
   );
 
   sl.registerLazySingleton<ISalesRepository>(
-    () => SalesRepository(sl<TransactionsDao>(), sl<EmployeesDao>()),
+    () => SalesRepository(
+      sl<TransactionsDao>(),
+      sl<EmployeesDao>(),
+      sl<AuthContextDao>(),
+    ),
   );
 
   sl.registerLazySingleton<IDraftSalesRepository>(

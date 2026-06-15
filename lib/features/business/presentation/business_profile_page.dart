@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:iconly/iconly.dart';
@@ -5,16 +6,17 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:permission_handler/permission_handler.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/ui/status/status_snack.dart';
 import 'package:pos/core/ui/status/status_type.dart';
+import 'package:pos/core/widgets/image_source_sheet.dart';
 import 'package:pos/features/auth/domain/entities/app_user.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
+import 'package:pos/features/settings/data/receipt_settings_repository.dart';
+import 'package:pos/features/settings/domain/receipt_settings.dart';
 
 class BusinessProfilePage extends StatefulWidget {
   const BusinessProfilePage({super.key});
@@ -24,45 +26,31 @@ class BusinessProfilePage extends StatefulWidget {
 }
 
 class _BusinessProfilePageState extends State<BusinessProfilePage> {
-  String? _businessId;
-  String? _logoUrl;
+  // Single source of truth for the unified business logo (offline-first).
+  final _repo = sl<ReceiptSettingsRepository>();
   bool _isUploading = false;
 
-  // ── Logo loading ─────────────────────────────────────────────────────────────
+  // Cache the watch stream per business so rebuilds don't resubscribe.
+  Stream<ReceiptSettings?>? _logoStream;
+  String? _watchedBusinessId;
 
-  Future<void> _initLogo(String businessId) async {
-    if (_businessId == businessId) return;
-    _businessId = businessId;
-
-    // 1. Check local cache for instant display
-    final prefs = await SharedPreferences.getInstance();
-    final cached = prefs.getString('biz_logo_$businessId');
-    if (cached != null && mounted) setState(() => _logoUrl = cached);
-
-    // 2. Fetch from Supabase DB in background (authoritative source)
-    try {
-      final row = await sl<SupabaseClient>()
-          .from('businesses')
-          .select('logo_url')
-          .eq('id', businessId)
-          .maybeSingle();
-      final remote = row?['logo_url'] as String?;
-      if (remote != null && remote.isNotEmpty && mounted) {
-        final url = '$remote?t=${DateTime.now().millisecondsSinceEpoch}';
-        setState(() => _logoUrl = url);
-        await prefs.setString('biz_logo_$businessId', url);
-      }
-    } catch (_) {
-      // Silently use cached value
+  Stream<ReceiptSettings?> _logoStreamFor(String businessId) {
+    if (_watchedBusinessId != businessId || _logoStream == null) {
+      _watchedBusinessId = businessId;
+      _logoStream = _repo.watch(businessId);
     }
+    return _logoStream!;
   }
 
-  // ── Logo upload ──────────────────────────────────────────────────────────────
+  // ── Logo upload (offline-first via the shared repository) ─────────────────────
 
-  Future<void> _pickLogo() async {
-    if (_isUploading || _businessId == null) return;
+  Future<void> _pickLogo(String businessId) async {
+    if (_isUploading) return;
 
-    final source = await _showSourceSheet();
+    final source = await showImageSourceSheet(
+      context,
+      title: 'Update Business Logo',
+    );
     if (source == null) return;
 
     // Camera permission — native only (browser handles it via pickImage)
@@ -112,47 +100,29 @@ class _BusinessProfilePageState extends State<BusinessProfilePage> {
       final bytes = Uint8List.fromList(await picked.readAsBytes());
       final ext = p.extension(picked.path).toLowerCase();
       final safeExt = ext.isNotEmpty ? ext : '.jpg';
-      final contentType = safeExt == '.png'
+      final mimeType = safeExt == '.png'
           ? 'image/png'
           : safeExt == '.webp'
           ? 'image/webp'
           : 'image/jpeg';
 
-      final storagePath = '$_businessId/logo$safeExt';
-      final client = sl<SupabaseClient>();
-
-      await client.storage
-          .from('business-logos')
-          .uploadBinary(
-            storagePath,
-            bytes,
-            fileOptions: FileOptions(upsert: true, contentType: contentType),
-          );
-
-      final rawUrl = client.storage
-          .from('business-logos')
-          .getPublicUrl(storagePath);
-      final url = '$rawUrl?t=${DateTime.now().millisecondsSinceEpoch}';
-
-      // Persist URL to DB and local cache
-      await client
-          .from('businesses')
-          .update({'logo_url': rawUrl})
-          .eq('id', _businessId!);
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('biz_logo_$_businessId', url);
+      await _repo.saveLogo(
+        businessId: businessId,
+        bytes: bytes,
+        ext: safeExt,
+        mimeType: mimeType,
+      );
 
       if (mounted) {
-        setState(() => _logoUrl = url);
         StatusSnack.show(
           context,
           type: StatusType.success,
           title: 'Logo Updated',
-          message: 'Business logo saved successfully.',
+          message: 'Saved — it will sync automatically when you\'re online.',
         );
       }
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[Logo] Business profile upload failed: $e\n$st');
       if (mounted) {
         final msg = e.toString();
         final isCameraDenied =
@@ -173,112 +143,6 @@ class _BusinessProfilePageState extends State<BusinessProfilePage> {
     }
   }
 
-  Future<ImageSource?> _showSourceSheet() {
-    return showModalBottomSheet<ImageSource>(
-      context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 8),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.borderSoft,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                'Update Business Logo',
-                style: getOutfitStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                'Choose a square image for best results.',
-                style: getOutfitStyle(fontSize: 12, color: AppColors.textMuted),
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (!kIsWeb)
-              ListTile(
-                leading: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: AppColors.brandSoft,
-                    borderRadius: BorderRadius.circular(9),
-                  ),
-                  child: const Icon(
-                    IconlyLight.camera,
-                    color: AppColors.brand,
-                    size: 18,
-                  ),
-                ),
-                title: Text(
-                  'Take Photo',
-                  style: getOutfitStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                subtitle: Text(
-                  'Open camera',
-                  style: getOutfitStyle(
-                    fontSize: 12,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-                onTap: () => Navigator.pop(ctx, ImageSource.camera),
-              ),
-            ListTile(
-              leading: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: AppColors.brandSoft,
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: const Icon(
-                  IconlyLight.image,
-                  color: AppColors.brand,
-                  size: 18,
-                ),
-              ),
-              title: Text(
-                'Choose from Gallery',
-                style: getOutfitStyle(
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              subtitle: Text(
-                'Browse your photos',
-                style: getOutfitStyle(fontSize: 12, color: AppColors.textMuted),
-              ),
-              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
-  }
-
   // ── Build ────────────────────────────────────────────────────────────────────
 
   @override
@@ -286,10 +150,6 @@ class _BusinessProfilePageState extends State<BusinessProfilePage> {
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, state) {
         final user = state is AuthAuthenticated ? state.user : null;
-
-        if (user?.businessId != null) {
-          _initLogo(user!.businessId!);
-        }
 
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -312,11 +172,26 @@ class _BusinessProfilePageState extends State<BusinessProfilePage> {
           ),
           body: user == null
               ? const Center(child: CircularProgressIndicator())
-              : _Body(
+              : user.businessId == null
+              ? _Body(
                   user: user,
-                  logoUrl: _logoUrl,
+                  logoLocalPath: '',
+                  logoUrl: '',
                   isUploading: _isUploading,
-                  onUploadLogo: _pickLogo,
+                  onUploadLogo: () {},
+                )
+              : StreamBuilder<ReceiptSettings?>(
+                  stream: _logoStreamFor(user.businessId!),
+                  builder: (context, snap) {
+                    final s = snap.data;
+                    return _Body(
+                      user: user,
+                      logoLocalPath: s?.logoLocalPath ?? '',
+                      logoUrl: s?.logoUrl ?? '',
+                      isUploading: _isUploading,
+                      onUploadLogo: () => _pickLogo(user.businessId!),
+                    );
+                  },
                 ),
         );
       },
@@ -328,12 +203,14 @@ class _BusinessProfilePageState extends State<BusinessProfilePage> {
 
 class _Body extends StatelessWidget {
   final AppUser user;
-  final String? logoUrl;
+  final String logoLocalPath;
+  final String logoUrl;
   final bool isUploading;
   final VoidCallback onUploadLogo;
 
   const _Body({
     required this.user,
+    required this.logoLocalPath,
     required this.logoUrl,
     required this.isUploading,
     required this.onUploadLogo,
@@ -356,6 +233,7 @@ class _Body extends StatelessWidget {
             children: [
               _BusinessHeader(
                 user: user,
+                logoLocalPath: logoLocalPath,
                 logoUrl: logoUrl,
                 isUploading: isUploading,
                 onUpload: onUploadLogo,
@@ -387,12 +265,14 @@ class _Body extends StatelessWidget {
 
 class _BusinessHeader extends StatelessWidget {
   final AppUser user;
-  final String? logoUrl;
+  final String logoLocalPath;
+  final String logoUrl;
   final bool isUploading;
   final VoidCallback onUpload;
 
   const _BusinessHeader({
     required this.user,
+    required this.logoLocalPath,
     required this.logoUrl,
     required this.isUploading,
     required this.onUpload,
@@ -440,6 +320,7 @@ class _BusinessHeader extends StatelessWidget {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: _LogoContent(
+                      logoLocalPath: logoLocalPath,
                       logoUrl: logoUrl,
                       isUploading: isUploading,
                       initial: _initial(name),
@@ -493,8 +374,8 @@ class _BusinessHeader extends StatelessWidget {
                         color: AppColors.textPrimary,
                       ),
                     ),
-                    SizedBox(width: 6),
-                    Tooltip(
+                    const SizedBox(width: 6),
+                    const Tooltip(
                       message: 'Account status: Active',
                       child: Icon(
                         IconlyBold.tick_square,
@@ -525,11 +406,13 @@ class _BusinessHeader extends StatelessWidget {
 }
 
 class _LogoContent extends StatelessWidget {
-  final String? logoUrl;
+  final String logoLocalPath;
+  final String logoUrl;
   final bool isUploading;
   final String initial;
 
   const _LogoContent({
+    required this.logoLocalPath,
     required this.logoUrl,
     required this.isUploading,
     required this.initial,
@@ -543,16 +426,29 @@ class _LogoContent extends StatelessWidget {
       );
     }
 
-    if (logoUrl != null) {
+    // Prefer the local file (shows instantly, even offline), then the URL.
+    if (logoLocalPath.isNotEmpty && !kIsWeb) {
+      return Image.file(
+        File(logoLocalPath),
+        fit: BoxFit.cover,
+        width: 68,
+        height: 68,
+        errorBuilder: (_, _, _) => _networkOrInitial(),
+      );
+    }
+    return _networkOrInitial();
+  }
+
+  Widget _networkOrInitial() {
+    if (logoUrl.isNotEmpty) {
       return Image.network(
-        logoUrl!,
+        logoUrl,
         fit: BoxFit.cover,
         width: 68,
         height: 68,
         errorBuilder: (_, _, _) => _Initial(initial: initial),
       );
     }
-
     return _Initial(initial: initial);
   }
 }

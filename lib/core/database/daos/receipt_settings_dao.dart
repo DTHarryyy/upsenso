@@ -66,11 +66,19 @@ class ReceiptSettingsDao extends DatabaseAccessor<AppDatabase>
     return query.watchSingle().map((row) => row.read(countExp) ?? 0);
   }
 
-  Future<void> upsertFromServer(Map<String, dynamic> row) {
-    return into(receiptSettingsTable).insertOnConflictUpdate(
+  Future<void> upsertFromServer(Map<String, dynamic> row) async {
+    final businessId = row['business_id'] as String;
+    // Never overwrite a row with unsynced local edits (e.g. a logo picked
+    // offline lives in logoLocalPath and would be wiped). The pending local
+    // push reconciles the server on the next sync cycle.
+    final existing = await getByBusinessId(businessId);
+    if (existing != null && existing.syncStatus != SyncStatus.synced.toInt()) {
+      return;
+    }
+    await into(receiptSettingsTable).insertOnConflictUpdate(
       ReceiptSettingsTableCompanion.insert(
         id: row['id'] as String,
-        businessId: row['business_id'] as String,
+        businessId: businessId,
         businessName: Value(row['business_name'] as String? ?? ''),
         storeName: Value(row['store_name'] as String? ?? ''),
         ownerName: Value(row['owner_name'] as String? ?? ''),
@@ -86,7 +94,8 @@ class ReceiptSettingsDao extends DatabaseAccessor<AppDatabase>
         returnPolicy: Value(row['return_policy'] as String? ?? ''),
         customNotes: Value(row['custom_notes'] as String? ?? ''),
         showLogo: Value(row['show_logo'] as bool? ?? true),
-        logoLocalPath: const Value(''),
+        // Keep any local logo file so the logo still shows offline after a pull.
+        logoLocalPath: Value(existing?.logoLocalPath ?? ''),
         logoUrl: Value(row['logo_url'] as String? ?? ''),
         showQrCode: Value(row['show_qr_code'] as bool? ?? false),
         showTaxBreakdown: Value(row['show_tax_breakdown'] as bool? ?? true),

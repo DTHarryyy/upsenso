@@ -108,32 +108,27 @@ class SettingsCubit extends Cubit<SettingsState> {
     }
   }
 
-  /// Upload logo from bytes (called after image_picker returns bytes).
+  /// Save a picked logo (offline-first). The repository writes it locally and
+  /// queues the upload; the live [watch] stream emits the updated row, so we
+  /// don't patch settings by hand here.
   Future<void> uploadLogo({
     required String businessId,
-    required String fileName,
     required Uint8List bytes,
+    required String ext,
     required String mimeType,
-    String? localPath,
   }) async {
     emit(state.copyWith(isUploadingLogo: true));
     try {
-      final url = await _repo.uploadLogo(
+      await _repo.saveLogo(
         businessId: businessId,
-        fileName: fileName,
         bytes: bytes,
+        ext: ext,
         mimeType: mimeType,
       );
-      // Patch in-memory settings with both the local path and remote URL
-      final current = state.settings;
-      if (current != null && !isClosed) {
+      if (!isClosed) {
         emit(
           state.copyWith(
             isUploadingLogo: false,
-            settings: current.copyWith(
-              logoLocalPath: localPath ?? '',
-              logoUrl: url,
-            ),
             saveStatus: SettingsSaveStatus.saved,
           ),
         );

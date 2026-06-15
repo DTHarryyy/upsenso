@@ -239,64 +239,62 @@ class _SalesHistoryState extends State<SalesHistory> {
                           Builder(
                             builder: (context) {
                               final branchCubit = context.read<BranchCubit>();
-                              if (!branchCubit.state.canSwitchBranches) {
-                                return const SizedBox.shrink();
-                              }
-                              final branchName = branchCubit.branchNameForId(
-                                tx.branchId,
-                              );
-                              if (branchName == null) {
+                              final branchName =
+                                  branchCubit.state.canSwitchBranches
+                                      ? branchCubit.branchNameForId(tx.branchId)
+                                      : null;
+                              final hasBranch = branchName != null;
+                              final hasCashier = tx.cashierName != null;
+                              if (!hasBranch && !hasCashier) {
                                 return const SizedBox.shrink();
                               }
                               return Padding(
                                 padding: const EdgeInsets.only(top: 2),
                                 child: Row(
                                   children: [
-                                    Icon(
-                                      IconlyLight.location,
-                                      size: 11,
-                                      color: AppColors.brand,
-                                    ),
-                                    const SizedBox(width: 3),
-                                    Text(
-                                      branchName,
-                                      style: AppTextStyles.caption(context)
-                                          .copyWith(
-                                            color: AppColors.brand,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                    ),
+                                    if (hasBranch) ...[
+                                      Icon(
+                                        IconlyLight.location,
+                                        size: 11,
+                                        color: AppColors.brand,
+                                      ),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        branchName,
+                                        style: AppTextStyles.caption(context)
+                                            .copyWith(
+                                              color: AppColors.brand,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                      ),
+                                      if (hasCashier)
+                                        const SizedBox(width: 8),
+                                    ],
+                                    if (hasCashier) ...[
+                                      Icon(
+                                        IconlyLight.profile,
+                                        size: 11,
+                                        color: AppColors.textMuted,
+                                      ),
+                                      const SizedBox(width: 3),
+                                      Flexible(
+                                        child: Text(
+                                          tx.cashierName!,
+                                          style: AppTextStyles.caption(context)
+                                              .copyWith(
+                                                color: AppColors.textSecondary,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
                                   ],
                                 ),
                               );
                             },
                           ),
-                          if (tx.cashierName != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 2),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    IconlyLight.profile,
-                                    size: 11,
-                                    color: AppColors.textMuted,
-                                  ),
-                                  const SizedBox(width: 3),
-                                  Flexible(
-                                    child: Text(
-                                      tx.cashierName!,
-                                      style: AppTextStyles.caption(context)
-                                          .copyWith(
-                                            color: AppColors.textSecondary,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
                         ],
                       ),
                     ),
