@@ -26,6 +26,7 @@ import 'package:pos/features/products/data/datasources/products_remote_ds.dart';
 import 'package:pos/features/pos/data/datasources/transactions_remote_ds.dart';
 import 'package:pos/features/settings/data/receipt_settings_repository.dart';
 import 'package:pos/features/audit_logs/data/datasources/audit_log_remote_ds.dart';
+import 'package:pos/features/audit_logs/data/audit_log_sync_mapper.dart';
 import 'package:pos/features/employees/data/datasources/employees_remote_ds.dart';
 import 'package:pos/core/database/daos/purchase_order_lines_dao.dart';
 import 'package:pos/core/database/daos/purchase_orders_dao.dart';
@@ -1571,19 +1572,7 @@ class SyncService {
     int failed = 0;
 
     for (final r in pending) {
-      final row = {
-        'id': r.id,
-        'business_id': r.businessId,
-        'branch_id': r.branchId.isEmpty ? null : r.branchId,
-        'user_id': r.userId.isEmpty ? null : r.userId,
-        'action_type': r.actionType,
-        'entity_type': r.entityType,
-        'entity_id': (r.entityId?.isEmpty ?? true) ? null : r.entityId,
-        'description': r.description,
-        'metadata': r.metadata,
-        'device_id': r.deviceId,
-        'created_at': r.createdAt.toUtc().toIso8601String(),
-      };
+      final row = auditLogToRemoteRow(r);
       try {
         await _auditLogRemoteDs.upsertLogs([row]);
         await _auditLogsDao.updateSyncStatus(

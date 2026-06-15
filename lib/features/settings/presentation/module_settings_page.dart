@@ -170,7 +170,8 @@ class ModuleSettingsCubit extends Cubit<ModuleSettingsState> {
       sl<AuditLogService>().log(
         actionType: AuditLogActionType.businessModuleChanged,
         entityType: 'module',
-        entityId: code,
+        // Module code is not a UUID — keep it in metadata, not entityId
+        // (remote entity_id is uuid-typed and rejects plain codes).
         entityName: label,
         description: '$label module ${enabled ? 'enabled' : 'disabled'}',
         metadata: {'module': code, 'enabled': enabled},
