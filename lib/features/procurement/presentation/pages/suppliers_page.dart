@@ -26,7 +26,7 @@ class SuppliersPage extends StatelessWidget {
   const SuppliersPage({super.key});
 
   bool get _canManage =>
-      sl<PermissionService>().can(PermissionKeys.procurementManage);
+      sl<PermissionService>().can(PermissionKeys.suppliersManage);
 
   @override
   Widget build(BuildContext context) {

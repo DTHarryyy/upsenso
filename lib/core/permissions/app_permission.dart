@@ -160,6 +160,10 @@ enum AppPermission {
   /// View the supplier directory.
   viewSupplierList,
 
+  /// Create / edit / archive suppliers (separate from full procurement mgmt so
+  /// inventory staff can maintain the directory without controlling POs).
+  manageSuppliers,
+
   // ── Procurement ───────────────────────────────────────────────────────────
   /// View purchase orders and procurement history.
   viewProcurement,
@@ -296,6 +300,8 @@ extension AppPermissionX on AppPermission {
         return 'Suspend Employee';
       case AppPermission.viewSupplierList:
         return 'View Supplier List';
+      case AppPermission.manageSuppliers:
+        return 'Manage Suppliers';
       case AppPermission.viewProcurement:
         return 'View Procurement';
       case AppPermission.createPurchaseOrder:
@@ -408,6 +414,8 @@ extension AppPermissionX on AppPermission {
         return 'employees.suspend';
       case AppPermission.viewSupplierList:
         return 'suppliers.view';
+      case AppPermission.manageSuppliers:
+        return 'suppliers.manage';
       case AppPermission.viewProcurement:
         return 'procurement.view';
       case AppPermission.createPurchaseOrder:

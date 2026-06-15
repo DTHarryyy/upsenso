@@ -364,7 +364,13 @@ class ProcurementRepository implements IProcurementRepository {
     try {
       final po = await _purchaseOrdersDao.getById(id);
       if (po == null) throw Exception('PO not found: $id');
-      _assertStatus(po.status, [PoStatus.submitted], 'approvePurchaseOrder');
+      // Approvers may approve a draft directly (skipping submit) — see the
+      // adaptive create flow. A submitted PO is still the common path.
+      _assertStatus(
+        po.status,
+        [PoStatus.draft, PoStatus.submitted],
+        'approvePurchaseOrder',
+      );
 
       await _purchaseOrdersDao.updatePo(
         id,

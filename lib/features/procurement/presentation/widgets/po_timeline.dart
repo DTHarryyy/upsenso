@@ -45,7 +45,9 @@ class PoTimeline extends StatelessWidget {
 
     chronological.addAll([
       _created(),
-      _submitted(),
+      // Hide the submit step only when the PO was approved straight from draft
+      // (approved set, never submitted) — otherwise show it (done or pending).
+      if (po.submittedAt != null || po.approvedAt == null) _submitted(),
       _approved(),
       TimelineEvent(
         icon: IconlyLight.bag,

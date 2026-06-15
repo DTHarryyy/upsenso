@@ -447,20 +447,31 @@ class _ActionBar extends StatelessWidget {
     final cubit = context.read<PoCubit>();
     final status = po.status;
 
+    final canApprove = perms.can(PermissionKeys.procurementApprovePo);
+    final canCreate = perms.can(PermissionKeys.procurementCreatePo);
+    final canReceive = perms.can(PermissionKeys.procurementReceive);
+
     Widget? primary;
-    if (status.canSubmit && perms.can(PermissionKeys.procurementCreatePo)) {
-      primary = AppFilledButton(
-        label: 'Submit for Approval',
-        onPressed: () => _submit(context, cubit),
-      );
-    } else if (status.canApprove &&
-        perms.can(PermissionKeys.procurementApprovePo)) {
+    if (status == PoStatus.draft) {
+      // Streamlined approval: an approver approves the draft directly instead of
+      // self-submitting; a creator-only user routes it on for approval.
+      if (canApprove) {
+        primary = AppFilledButton(
+          label: 'Approve',
+          onPressed: () => _approve(context, cubit),
+        );
+      } else if (canCreate) {
+        primary = AppFilledButton(
+          label: 'Submit for Approval',
+          onPressed: () => _submit(context, cubit),
+        );
+      }
+    } else if (status == PoStatus.submitted && canApprove) {
       primary = AppFilledButton(
         label: 'Approve',
         onPressed: () => _approve(context, cubit),
       );
-    } else if (status.canReceive &&
-        perms.can(PermissionKeys.procurementReceive)) {
+    } else if (status.canReceive && canReceive) {
       primary = AppFilledButton(
         label: 'Receive Goods',
         onPressed: () => _showReceiveSheet(context, cubit),

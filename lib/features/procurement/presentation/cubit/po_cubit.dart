@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:pos/core/permissions/app_permission.dart';
+import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/features/procurement/domain/entities/po_input.dart';
 import 'package:pos/features/procurement/domain/entities/po_status.dart';
 import 'package:pos/features/procurement/domain/entities/purchase_order.dart';
@@ -11,6 +13,7 @@ import 'package:pos/features/procurement/presentation/cubit/po_state.dart';
 
 class PoCubit extends Cubit<PoState> {
   final IProcurementRepository _repository;
+  final PermissionService _permissions;
   final String businessId;
   final String userId;
   final String userName;
@@ -19,11 +22,27 @@ class PoCubit extends Cubit<PoState> {
 
   PoCubit({
     required IProcurementRepository repository,
+    required PermissionService permissions,
     required this.businessId,
     required this.userId,
     required this.userName,
   }) : _repository = repository,
+       _permissions = permissions,
        super(PoInitial());
+
+  // Defense-in-depth: hidden buttons aren't access control, so every mutation
+  // re-checks permission here. guard() also writes the denial to the audit log.
+  Future<bool> _allowed(AppPermission permission, {String? entityId}) async {
+    final result = await _permissions.guard(
+      permission,
+      entityType: 'purchase_order',
+      entityId: entityId,
+    );
+    if (result.granted) return true;
+    emit(PoError(result.deniedReason ?? 'You do not have permission for this.'));
+    emit(PoLoaded(orders: _currentOrders()));
+    return false;
+  }
 
   void watch() {
     emit(PoLoading());
@@ -64,6 +83,7 @@ class PoCubit extends Cubit<PoState> {
     DateTime? expectedDelivery,
     required List<PoLineInput> lines,
   }) async {
+    if (!await _allowed(AppPermission.createPurchaseOrder)) return null;
     final currentOrders = _currentOrders();
     emit(PoActionInProgress(currentOrders));
     try {
@@ -95,6 +115,7 @@ class PoCubit extends Cubit<PoState> {
     DateTime? expectedDelivery,
     List<PoLineInput>? lines,
   }) async {
+    if (!await _allowed(AppPermission.createPurchaseOrder, entityId: id)) return;
     final currentOrders = _currentOrders();
     emit(PoActionInProgress(currentOrders));
     try {
@@ -114,6 +135,7 @@ class PoCubit extends Cubit<PoState> {
   }
 
   Future<void> submitPurchaseOrder(String id) async {
+    if (!await _allowed(AppPermission.createPurchaseOrder, entityId: id)) return;
     final currentOrders = _currentOrders();
     emit(PoActionInProgress(currentOrders));
     try {
@@ -126,6 +148,9 @@ class PoCubit extends Cubit<PoState> {
   }
 
   Future<void> approvePurchaseOrder(String id) async {
+    if (!await _allowed(AppPermission.approvePurchaseOrder, entityId: id)) {
+      return;
+    }
     final currentOrders = _currentOrders();
     emit(PoActionInProgress(currentOrders));
     try {
@@ -146,6 +171,9 @@ class PoCubit extends Cubit<PoState> {
     required String branchId,
     required List<ReceiveLineInput> lines,
   }) async {
+    if (!await _allowed(AppPermission.receiveGoodsAgainstPo, entityId: poId)) {
+      return;
+    }
     final currentOrders = _currentOrders();
     emit(PoActionInProgress(currentOrders));
     try {
@@ -162,6 +190,7 @@ class PoCubit extends Cubit<PoState> {
   }
 
   Future<void> cancelPurchaseOrder(String id) async {
+    if (!await _allowed(AppPermission.manageProcurement, entityId: id)) return;
     final currentOrders = _currentOrders();
     emit(PoActionInProgress(currentOrders));
     try {

@@ -238,6 +238,12 @@ class _NotificationConfig {
           color: Color(0xFF8B5CF6),
           softColor: Color(0xFFF3F0FF),
         );
+      case NotificationType.poApproval:
+        return const _NotificationConfig(
+          icon: IconlyLight.bag,
+          color: AppColors.brand,
+          softColor: AppColors.brandSoft,
+        );
       case NotificationType.cashDiscrepancy:
         return const _NotificationConfig(
           icon: IconlyLight.wallet,

@@ -86,6 +86,7 @@ class RolePermissionMatrix {
 
       // Suppliers
       AppPermission.viewSupplierList,
+      AppPermission.manageSuppliers,
 
       // Procurement — managers can create, approve, and receive
       AppPermission.viewProcurement,
@@ -137,8 +138,9 @@ class RolePermissionMatrix {
       // Read-only product access
       AppPermission.viewProducts,
 
-      // Suppliers (read-only)
+      // Suppliers — inventory staff maintain the directory (not full procurement)
       AppPermission.viewSupplierList,
+      AppPermission.manageSuppliers,
 
       // Procurement — inventory staff can view and physically receive goods
       // but cannot approve POs (separation of duties)

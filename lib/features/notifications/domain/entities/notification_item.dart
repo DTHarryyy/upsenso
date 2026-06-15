@@ -5,6 +5,7 @@ enum NotificationType {
   lowStock,
   syncConflict,
   expenseApproval,
+  poApproval,
   cashDiscrepancy,
   system,
 }
@@ -106,6 +107,8 @@ class NotificationItem extends Equatable {
         return NotificationType.syncConflict;
       case 'expense_approval':
         return NotificationType.expenseApproval;
+      case 'po_approval':
+        return NotificationType.poApproval;
       case 'cash_discrepancy':
         return NotificationType.cashDiscrepancy;
       default:
@@ -123,6 +126,8 @@ class NotificationItem extends Equatable {
         return 'sync_conflict';
       case NotificationType.expenseApproval:
         return 'expense_approval';
+      case NotificationType.poApproval:
+        return 'po_approval';
       case NotificationType.cashDiscrepancy:
         return 'cash_discrepancy';
       case NotificationType.system:

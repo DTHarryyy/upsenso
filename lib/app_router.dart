@@ -176,8 +176,10 @@ class AppRouter {
           AppRoutes.moduleSettings: PermissionKeys.settingsEditBusiness,
           AppRoutes.employeePermissions: PermissionKeys.navEmployees,
           AppRoutes.suppliers: PermissionKeys.navProcurement,
+          AppRoutes.supplierDetail: PermissionKeys.navProcurement,
           AppRoutes.purchaseOrders: PermissionKeys.navProcurement,
-          AppRoutes.poForm: PermissionKeys.navProcurement,
+          // Form is create/edit only — gate on create, not the view-level nav key.
+          AppRoutes.poForm: PermissionKeys.procurementCreatePo,
           AppRoutes.poDetail: PermissionKeys.navProcurement,
           AppRoutes.ingredients: PermissionKeys.navRecipes,
         };
@@ -290,6 +292,7 @@ class AppRouter {
           return BlocProvider(
             create: (_) => SupplierCubit(
               repository: sl<IProcurementRepository>(),
+              permissions: sl<PermissionService>(),
               businessId: currentUser?.businessId ?? '',
             )..watch(),
             child: const SuppliersPage(),
@@ -308,12 +311,14 @@ class AppRouter {
               BlocProvider(
                 create: (_) => SupplierCubit(
                   repository: sl<IProcurementRepository>(),
+              permissions: sl<PermissionService>(),
                   businessId: businessId,
                 )..watch(),
               ),
               BlocProvider(
                 create: (_) => PoCubit(
                   repository: sl<IProcurementRepository>(),
+              permissions: sl<PermissionService>(),
                   businessId: businessId,
                   userId: currentUser?.id ?? '',
                   userName: currentUser?.fullName ?? '',
@@ -332,6 +337,7 @@ class AppRouter {
           return BlocProvider(
             create: (_) => PoCubit(
               repository: sl<IProcurementRepository>(),
+              permissions: sl<PermissionService>(),
               businessId: currentUser?.businessId ?? '',
               userId: currentUser?.id ?? '',
               userName: currentUser?.fullName ?? '',
@@ -353,6 +359,7 @@ class AppRouter {
           return BlocProvider(
             create: (_) => PoCubit(
               repository: sl<IProcurementRepository>(),
+              permissions: sl<PermissionService>(),
               businessId: currentUser?.businessId ?? '',
               userId: currentUser?.id ?? '',
               userName: currentUser?.fullName ?? '',
@@ -374,6 +381,7 @@ class AppRouter {
           return BlocProvider(
             create: (_) => PoCubit(
               repository: sl<IProcurementRepository>(),
+              permissions: sl<PermissionService>(),
               businessId: currentUser?.businessId ?? '',
               userId: currentUser?.id ?? '',
               userName: currentUser?.fullName ?? '',

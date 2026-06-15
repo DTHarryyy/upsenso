@@ -6,6 +6,7 @@ import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/widgets/app_filled_button.dart';
 import 'package:pos/features/procurement/domain/entities/supplier.dart';
 import 'package:pos/features/procurement/presentation/cubit/supplier_cubit.dart';
+import 'package:pos/features/procurement/presentation/cubit/supplier_state.dart';
 
 class SupplierFormSheet extends StatefulWidget {
   /// Null = create mode; non-null = edit mode.
@@ -24,6 +25,7 @@ class _SupplierFormSheetState extends State<SupplierFormSheet> {
   late final TextEditingController _phone;
   late final TextEditingController _email;
   late final TextEditingController _address;
+  late final TextEditingController _taxId;
   late final TextEditingController _notes;
   bool _saving = false;
 
@@ -38,6 +40,7 @@ class _SupplierFormSheetState extends State<SupplierFormSheet> {
     _phone = TextEditingController(text: s?.phone);
     _email = TextEditingController(text: s?.email);
     _address = TextEditingController(text: s?.address);
+    _taxId = TextEditingController(text: s?.taxId);
     _notes = TextEditingController(text: s?.notes);
   }
 
@@ -48,6 +51,7 @@ class _SupplierFormSheetState extends State<SupplierFormSheet> {
     _phone.dispose();
     _email.dispose();
     _address.dispose();
+    _taxId.dispose();
     _notes.dispose();
     super.dispose();
   }
@@ -57,31 +61,36 @@ class _SupplierFormSheetState extends State<SupplierFormSheet> {
     setState(() => _saving = true);
     try {
       final cubit = context.read<SupplierCubit>();
-      if (_isEdit) {
-        await cubit.updateSupplier(
-          id: widget.supplier!.id,
-          name: _name.text.trim(),
-          contactName: _contact.text.trim().isEmpty ? null : _contact.text.trim(),
-          phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
-          email: _email.text.trim().isEmpty ? null : _email.text.trim(),
-          address: _address.text.trim().isEmpty ? null : _address.text.trim(),
-          notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
-        );
-      } else {
-        await cubit.createSupplier(
-          name: _name.text.trim(),
-          contactName: _contact.text.trim().isEmpty ? null : _contact.text.trim(),
-          phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
-          email: _email.text.trim().isEmpty ? null : _email.text.trim(),
-          address: _address.text.trim().isEmpty ? null : _address.text.trim(),
-          notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
-        );
-      }
-      if (mounted) Navigator.pop(context);
+      final ok = _isEdit
+          ? await cubit.updateSupplier(
+              id: widget.supplier!.id,
+              name: _name.text.trim(),
+              contactName: _nullable(_contact),
+              phone: _nullable(_phone),
+              email: _nullable(_email),
+              address: _nullable(_address),
+              taxId: _nullable(_taxId),
+              notes: _nullable(_notes),
+            )
+          : await cubit.createSupplier(
+              name: _name.text.trim(),
+              contactName: _nullable(_contact),
+              phone: _nullable(_phone),
+              email: _nullable(_email),
+              address: _nullable(_address),
+              taxId: _nullable(_taxId),
+              notes: _nullable(_notes),
+            );
+      // Stay open on failure (permission denied / duplicate / write error) so
+      // the user keeps their input; the cubit surfaces the reason via snackbar.
+      if (ok && mounted) Navigator.pop(context);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
+
+  String? _nullable(TextEditingController c) =>
+      c.text.trim().isEmpty ? null : c.text.trim();
 
   @override
   Widget build(BuildContext context) {
@@ -120,19 +129,35 @@ class _SupplierFormSheetState extends State<SupplierFormSheet> {
               ),
             ),
             const SizedBox(height: 20),
-            _field(_name, 'Supplier Name *', required: true),
+            _field(_name, 'Supplier Name *', validator: _validateName),
             const SizedBox(height: 12),
             _field(_contact, 'Contact Person'),
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(child: _field(_phone, 'Phone')),
+                Expanded(
+                  child: _field(
+                    _phone,
+                    'Phone',
+                    keyboardType: TextInputType.phone,
+                    validator: _validatePhone,
+                  ),
+                ),
                 const SizedBox(width: 10),
-                Expanded(child: _field(_email, 'Email')),
+                Expanded(
+                  child: _field(
+                    _email,
+                    'Email',
+                    keyboardType: TextInputType.emailAddress,
+                    validator: _validateEmail,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
             _field(_address, 'Address'),
+            const SizedBox(height: 12),
+            _field(_taxId, 'Tax ID'),
             const SizedBox(height: 12),
             _field(_notes, 'Notes', maxLines: 2),
             const SizedBox(height: 20),
@@ -148,15 +173,48 @@ class _SupplierFormSheetState extends State<SupplierFormSheet> {
     );
   }
 
+  // Name clash check mirrors the cubit's authoritative guard, surfaced inline
+  // here for immediate feedback. Reads the directory from the cubit state.
+  String? _validateName(String? v) {
+    final name = (v ?? '').trim();
+    if (name.isEmpty) return 'Required';
+    final state = context.read<SupplierCubit>().state;
+    final existing =
+        state is SupplierLoaded ? state.suppliers : const <Supplier>[];
+    final clash = existing.any(
+      (s) =>
+          s.id != widget.supplier?.id &&
+          s.name.trim().toLowerCase() == name.toLowerCase(),
+    );
+    return clash ? 'A supplier with this name already exists' : null;
+  }
+
+  String? _validateEmail(String? v) {
+    final e = (v ?? '').trim();
+    if (e.isEmpty) return null; // optional
+    final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(e);
+    return ok ? null : 'Enter a valid email';
+  }
+
+  String? _validatePhone(String? v) {
+    final p = (v ?? '').trim();
+    if (p.isEmpty) return null; // optional
+    final ok = RegExp(r'^[0-9+()\-\s]{7,}$').hasMatch(p);
+    return ok ? null : 'Enter a valid phone number';
+  }
+
   Widget _field(
     TextEditingController ctrl,
     String label, {
     bool required = false,
     int maxLines = 1,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: ctrl,
       maxLines: maxLines,
+      keyboardType: keyboardType,
       style: getOutfitStyle(fontSize: 14, color: AppColors.textPrimary),
       decoration: InputDecoration(
         labelText: label,
@@ -180,9 +238,10 @@ class _SupplierFormSheetState extends State<SupplierFormSheet> {
           borderSide: const BorderSide(color: AppColors.brand, width: 1.5),
         ),
       ),
-      validator: required
-          ? (v) => (v == null || v.trim().isEmpty) ? 'Required' : null
-          : null,
+      validator: validator ??
+          (required
+              ? (v) => (v == null || v.trim().isEmpty) ? 'Required' : null
+              : null),
     );
   }
 }

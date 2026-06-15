@@ -6,6 +6,8 @@ import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/config/di.dart';
+import 'package:pos/core/permissions/permission_keys.dart';
+import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
 import 'package:pos/core/database/daos/products_dao.dart';
@@ -23,6 +25,10 @@ import 'package:pos/features/procurement/domain/entities/supplier.dart';
 import 'package:pos/features/procurement/domain/repositories/i_procurement_repository.dart';
 import 'package:pos/features/procurement/presentation/cubit/po_cubit.dart';
 import 'package:pos/features/procurement/presentation/cubit/po_state.dart';
+
+/// What to do with a newly-created PO once it's saved: leave it as a draft,
+/// route it for approval, or (for approvers) approve it immediately.
+enum _SaveMode { draft, submit, approve }
 
 /// Create or edit a Purchase Order.
 ///
@@ -174,7 +180,7 @@ class _PoFormPageState extends State<PoFormPage> {
     return result;
   }
 
-  Future<void> _save() async {
+  Future<void> _save(_SaveMode mode) async {
     if (!_formKey.currentState!.validate()) return;
     final lines = _buildLineInputs();
     if (lines.isEmpty) {
@@ -195,14 +201,25 @@ class _PoFormPageState extends State<PoFormPage> {
           expectedDelivery: _expectedDelivery,
           lines: lines,
         );
-      } else {
-        await cubit.createPurchaseOrder(
-          supplierId: _supplierId,
-          supplierName: _supplierName,
-          notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
-          expectedDelivery: _expectedDelivery,
-          lines: lines,
-        );
+        if (mounted) Navigator.pop(context);
+        return;
+      }
+
+      final id = await cubit.createPurchaseOrder(
+        supplierId: _supplierId,
+        supplierName: _supplierName,
+        notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
+        expectedDelivery: _expectedDelivery,
+        lines: lines,
+      );
+      // Null id = the cubit blocked or failed it and already surfaced the error.
+      if (id == null) return;
+      // Chain the lifecycle move so the user lands on the right state in one go:
+      // creators submit for approval; approvers approve the draft immediately.
+      if (mode == _SaveMode.submit) {
+        await cubit.submitPurchaseOrder(id);
+      } else if (mode == _SaveMode.approve) {
+        await cubit.approvePurchaseOrder(id);
       }
       if (mounted) Navigator.pop(context);
     } finally {
@@ -303,31 +320,71 @@ class _PoFormPageState extends State<PoFormPage> {
 
   Widget _buildActionBar() {
     final s = _summary;
+    final summary = Row(
+      children: [
+        Text(
+          s.count == 1 ? '1 item' : '${s.count} items',
+          style: getOutfitStyle(fontSize: 13, color: AppColors.textMuted),
+        ),
+        const Spacer(),
+        Text(
+          AppFormatters.currency(s.total),
+          style: getOutfitStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ],
+    );
+
+    // Editing a draft just saves; the lifecycle actions live on the detail page.
+    if (_isEdit) {
+      return AppStickyActionBar(
+        summary: summary,
+        primary: AppFilledButton(
+          label: 'Save Changes',
+          loading: _saving,
+          onPressed: _saving ? null : () => _save(_SaveMode.draft),
+        ),
+      );
+    }
+
+    // Creating: an approver finishes in one tap (Create & Approve); a creator
+    // routes it for approval. Either way "Save as Draft" stays available.
+    final canApprove =
+        sl<PermissionService>().can(PermissionKeys.procurementApprovePo);
     return AppStickyActionBar(
-      summary: Row(
-        children: [
-          Text(
-            s.count == 1 ? '1 item' : '${s.count} items',
-            style: getOutfitStyle(fontSize: 13, color: AppColors.textMuted),
-          ),
-          const Spacer(),
-          Text(
-            AppFormatters.currency(s.total),
-            style: getOutfitStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-            ),
-          ),
-        ],
-      ),
+      summary: summary,
+      secondary: _draftButton(),
       primary: AppFilledButton(
-        label: _isEdit ? 'Save Changes' : 'Create Purchase Order',
+        label: canApprove ? 'Create & Approve' : 'Submit for Approval',
         loading: _saving,
-        onPressed: _saving ? null : _save,
+        onPressed: _saving
+            ? null
+            : () => _save(canApprove ? _SaveMode.approve : _SaveMode.submit),
       ),
     );
   }
+
+  Widget _draftButton() => OutlinedButton(
+        onPressed: _saving ? null : () => _save(_SaveMode.draft),
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: AppColors.brand),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: Text(
+          'Save as Draft',
+          style: getOutfitStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppColors.brand,
+          ),
+        ),
+      );
 
   Widget _inputField({
     required TextEditingController controller,
