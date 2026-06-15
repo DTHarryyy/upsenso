@@ -285,112 +285,6 @@ class AppRouter {
         },
       ),
       GoRoute(
-        path: AppRoutes.suppliers,
-        builder: (context, _) {
-          final authRepo = sl<AuthRepository>();
-          final currentUser = authRepo.getCurrentUser();
-          return BlocProvider(
-            create: (_) => SupplierCubit(
-              repository: sl<IProcurementRepository>(),
-              permissions: sl<PermissionService>(),
-              businessId: currentUser?.businessId ?? '',
-            )..watch(),
-            child: const SuppliersPage(),
-          );
-        },
-      ),
-      GoRoute(
-        path: AppRoutes.supplierDetail,
-        builder: (context, state) {
-          final authRepo = sl<AuthRepository>();
-          final currentUser = authRepo.getCurrentUser();
-          final businessId = currentUser?.businessId ?? '';
-          final supplier = state.extra as Supplier;
-          return MultiBlocProvider(
-            providers: [
-              BlocProvider(
-                create: (_) => SupplierCubit(
-                  repository: sl<IProcurementRepository>(),
-              permissions: sl<PermissionService>(),
-                  businessId: businessId,
-                )..watch(),
-              ),
-              BlocProvider(
-                create: (_) => PoCubit(
-                  repository: sl<IProcurementRepository>(),
-              permissions: sl<PermissionService>(),
-                  businessId: businessId,
-                  userId: currentUser?.id ?? '',
-                  userName: currentUser?.fullName ?? '',
-                )..watch(),
-              ),
-            ],
-            child: SupplierDetailPage(supplier: supplier),
-          );
-        },
-      ),
-      GoRoute(
-        path: AppRoutes.purchaseOrders,
-        builder: (context, _) {
-          final authRepo = sl<AuthRepository>();
-          final currentUser = authRepo.getCurrentUser();
-          return BlocProvider(
-            create: (_) => PoCubit(
-              repository: sl<IProcurementRepository>(),
-              permissions: sl<PermissionService>(),
-              businessId: currentUser?.businessId ?? '',
-              userId: currentUser?.id ?? '',
-              userName: currentUser?.fullName ?? '',
-            )..watch(),
-            child: const PurchaseOrdersPage(),
-          );
-        },
-      ),
-      GoRoute(
-        path: AppRoutes.poForm,
-        builder: (context, state) {
-          final authRepo = sl<AuthRepository>();
-          final currentUser = authRepo.getCurrentUser();
-          // Extra is a PurchaseOrder when editing, or a Supplier when starting
-          // a new PO pre-filled for that supplier.
-          final extra = state.extra;
-          final po = extra is PurchaseOrder ? extra : null;
-          final initialSupplier = extra is Supplier ? extra : null;
-          return BlocProvider(
-            create: (_) => PoCubit(
-              repository: sl<IProcurementRepository>(),
-              permissions: sl<PermissionService>(),
-              businessId: currentUser?.businessId ?? '',
-              userId: currentUser?.id ?? '',
-              userName: currentUser?.fullName ?? '',
-            )..watch(),
-            child: PoFormPage(
-              po: po,
-              initialSupplier: initialSupplier,
-              businessId: currentUser?.businessId ?? '',
-            ),
-          );
-        },
-      ),
-      GoRoute(
-        path: AppRoutes.poDetail,
-        builder: (context, state) {
-          final authRepo = sl<AuthRepository>();
-          final currentUser = authRepo.getCurrentUser();
-          final poId = state.extra as String;
-          return BlocProvider(
-            create: (_) => PoCubit(
-              repository: sl<IProcurementRepository>(),
-              permissions: sl<PermissionService>(),
-              businessId: currentUser?.businessId ?? '',
-              userId: currentUser?.id ?? '',
-              userName: currentUser?.fullName ?? '',
-            )..watch(),
-            child: PoDetailPage(poId: poId),
-          );
-        },
-      ),
-      GoRoute(
         path: AppRoutes.ingredients,
         builder: (context, _) => const IngredientsPage(),
       ),
@@ -548,6 +442,131 @@ class AppRouter {
               GoRoute(
                 path: AppRoutes.employees,
                 builder: (context, _) => const EmployeesPage(),
+              ),
+            ],
+          ),
+
+          // ── Branch 10: Suppliers ─────────────────────────────────────────
+          // Nested as a shell branch so the sidebar and top bar remain visible
+          // on tablet/desktop when browsing the supplier directory and details.
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.suppliers,
+                builder: (context, _) {
+                  final authRepo = sl<AuthRepository>();
+                  final currentUser = authRepo.getCurrentUser();
+                  return BlocProvider(
+                    create: (_) => SupplierCubit(
+                      repository: sl<IProcurementRepository>(),
+                      permissions: sl<PermissionService>(),
+                      businessId: currentUser?.businessId ?? '',
+                    )..watch(),
+                    child: const SuppliersPage(),
+                  );
+                },
+                routes: [
+                  GoRoute(
+                    path: 'detail',
+                    builder: (context, state) {
+                      final authRepo = sl<AuthRepository>();
+                      final currentUser = authRepo.getCurrentUser();
+                      final businessId = currentUser?.businessId ?? '';
+                      final supplier = state.extra as Supplier;
+                      return MultiBlocProvider(
+                        providers: [
+                          BlocProvider(
+                            create: (_) => SupplierCubit(
+                              repository: sl<IProcurementRepository>(),
+                              permissions: sl<PermissionService>(),
+                              businessId: businessId,
+                            )..watch(),
+                          ),
+                          BlocProvider(
+                            create: (_) => PoCubit(
+                              repository: sl<IProcurementRepository>(),
+                              permissions: sl<PermissionService>(),
+                              businessId: businessId,
+                              userId: currentUser?.id ?? '',
+                              userName: currentUser?.fullName ?? '',
+                            )..watch(),
+                          ),
+                        ],
+                        child: SupplierDetailPage(supplier: supplier),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          // ── Branch 11: Purchase Orders ───────────────────────────────────
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.purchaseOrders,
+                builder: (context, _) {
+                  final authRepo = sl<AuthRepository>();
+                  final currentUser = authRepo.getCurrentUser();
+                  return BlocProvider(
+                    create: (_) => PoCubit(
+                      repository: sl<IProcurementRepository>(),
+                      permissions: sl<PermissionService>(),
+                      businessId: currentUser?.businessId ?? '',
+                      userId: currentUser?.id ?? '',
+                      userName: currentUser?.fullName ?? '',
+                    )..watch(),
+                    child: const PurchaseOrdersPage(),
+                  );
+                },
+                routes: [
+                  GoRoute(
+                    path: 'form',
+                    builder: (context, state) {
+                      final authRepo = sl<AuthRepository>();
+                      final currentUser = authRepo.getCurrentUser();
+                      // Extra is a PurchaseOrder when editing, or a Supplier
+                      // when pre-filling a new PO for that supplier.
+                      final extra = state.extra;
+                      final po = extra is PurchaseOrder ? extra : null;
+                      final initialSupplier =
+                          extra is Supplier ? extra : null;
+                      return BlocProvider(
+                        create: (_) => PoCubit(
+                          repository: sl<IProcurementRepository>(),
+                          permissions: sl<PermissionService>(),
+                          businessId: currentUser?.businessId ?? '',
+                          userId: currentUser?.id ?? '',
+                          userName: currentUser?.fullName ?? '',
+                        )..watch(),
+                        child: PoFormPage(
+                          po: po,
+                          initialSupplier: initialSupplier,
+                          businessId: currentUser?.businessId ?? '',
+                        ),
+                      );
+                    },
+                  ),
+                  GoRoute(
+                    path: 'detail',
+                    builder: (context, state) {
+                      final authRepo = sl<AuthRepository>();
+                      final currentUser = authRepo.getCurrentUser();
+                      final poId = state.extra as String;
+                      return BlocProvider(
+                        create: (_) => PoCubit(
+                          repository: sl<IProcurementRepository>(),
+                          permissions: sl<PermissionService>(),
+                          businessId: currentUser?.businessId ?? '',
+                          userId: currentUser?.id ?? '',
+                          userName: currentUser?.fullName ?? '',
+                        )..watch(),
+                        child: PoDetailPage(poId: poId),
+                      );
+                    },
+                  ),
+                ],
               ),
             ],
           ),

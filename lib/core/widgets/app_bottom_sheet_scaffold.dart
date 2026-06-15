@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/widgets/app_modal.dart';
 
 /// Standard modal bottom-sheet shell: grab handle, title row, scrollable body
 /// and an optional pinned action at the bottom.
@@ -20,8 +21,13 @@ class AppBottomSheetScaffold extends StatelessWidget {
   /// Pinned action shown below the body (e.g. a confirm button). Not scrolled.
   final Widget? action;
 
-  /// Fraction of screen height the sheet may grow to before the body scrolls.
+  /// Fraction of available height the sheet may grow to before the body scrolls.
   final double maxHeightFactor;
+
+  /// When true the sheet always fills [maxHeightFactor] of the available height
+  /// (rather than hugging its content) and the body expands to fill the gap.
+  /// Use for long forms so they open at a stable, predictable height.
+  final bool fullHeight;
 
   const AppBottomSheetScaffold({
     super.key,
@@ -30,22 +36,33 @@ class AppBottomSheetScaffold extends StatelessWidget {
     this.titleTrailing,
     this.action,
     this.maxHeightFactor = 0.85,
+    this.fullHeight = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    return AppModalPresentation.isDialogOf(context)
+        ? _buildDialog(context)
+        : _buildSheet(context);
+  }
+
+  // Phone: rounded-top sheet with a grab handle, anchored to the bottom edge.
+  Widget _buildSheet(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final bottomInset = media.viewInsets.bottom;
+    // Subtract the status-bar inset so a full-height sheet never slips under it.
+    final maxHeight = (media.size.height - media.padding.top) * maxHeightFactor;
+
     return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * maxHeightFactor,
-      ),
+      height: fullHeight ? maxHeight : null,
+      constraints: BoxConstraints(maxHeight: maxHeight),
       decoration: const BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       padding: EdgeInsets.only(bottom: bottomInset),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: fullHeight ? MainAxisSize.max : MainAxisSize.min,
         children: [
           const SizedBox(height: 12),
           Container(
@@ -56,32 +73,62 @@ class AppBottomSheetScaffold extends StatelessWidget {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: getOutfitStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-                ?titleTrailing,
-              ],
-            ),
-          ),
-          Flexible(child: child),
-          if (action != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-              child: action!,
-            ),
+          _titleRow(),
+          if (fullHeight) Expanded(child: child) else Flexible(child: child),
+          if (action != null) _actionArea(),
         ],
       ),
+    );
+  }
+
+  // Tablet / desktop: a centred, content-sized card (presented by [showAppModal]
+  // inside a [Dialog] that handles centring, width and the keyboard inset).
+  Widget _buildDialog(BuildContext context) {
+    final maxHeight = MediaQuery.of(context).size.height * 0.85;
+    return Material(
+      color: AppColors.surface,
+      clipBehavior: Clip.antiAlias,
+      borderRadius: BorderRadius.circular(20),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 18),
+            _titleRow(),
+            Flexible(child: child),
+            if (action != null) _actionArea(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _titleRow() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 12, 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: getOutfitStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          ?titleTrailing,
+        ],
+      ),
+    );
+  }
+
+  Widget _actionArea() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+      child: action!,
     );
   }
 }

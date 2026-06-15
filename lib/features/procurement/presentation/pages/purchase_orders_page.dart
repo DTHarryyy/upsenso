@@ -5,6 +5,7 @@ import 'package:iconly/iconly.dart';
 
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/routes/app_routes.dart';
@@ -39,7 +40,9 @@ class PurchaseOrdersPage extends StatelessWidget {
       builder: (context, state) {
         return Scaffold(
           backgroundColor: AppColors.background,
-          appBar: const AppSubPageBar(title: 'Purchase Orders'),
+          appBar: Breakpoints.isTablet(context)
+              ? null
+              : const AppSubPageBar(title: 'Purchase Orders'),
           floatingActionButton: _canCreate
               ? FloatingActionButton(
                   onPressed: () => context.push(AppRoutes.poForm),

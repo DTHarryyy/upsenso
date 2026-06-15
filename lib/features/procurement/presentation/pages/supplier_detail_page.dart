@@ -5,14 +5,17 @@ import 'package:iconly/iconly.dart';
 
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/core/widgets/app_filled_button.dart';
+import 'package:pos/core/widgets/app_modal.dart';
 import 'package:pos/core/widgets/app_section_card.dart';
 import 'package:pos/core/widgets/app_status_badge.dart';
+import 'package:pos/core/widgets/dashboard_card.dart';
 import 'package:pos/core/widgets/app_sticky_action_bar.dart';
 import 'package:pos/core/widgets/app_sub_page_bar.dart';
 import 'package:pos/core/widgets/stat_card.dart';
@@ -41,67 +44,77 @@ class SupplierDetailPage extends StatelessWidget {
         final current = _resolve(state) ?? supplier;
         return Scaffold(
           backgroundColor: AppColors.background,
-          appBar: AppSubPageBar(
-            title: current.name,
-            actions: [
-              IconButton(
-                icon: const Icon(IconlyLight.edit),
-                tooltip: 'Edit',
-                onPressed: () => _edit(context, current),
-              ),
-            ],
-          ),
+          appBar: Breakpoints.isTablet(context)
+              ? null
+              : AppSubPageBar(
+                  title: current.name,
+                  actions: [
+                    IconButton(
+                      icon: const Icon(IconlyLight.edit),
+                      tooltip: 'Edit',
+                      onPressed: () => _edit(context, current),
+                    ),
+                  ],
+                ),
           body: BlocBuilder<PoCubit, PoState>(
             builder: (context, poState) {
               final pos = _supplierPos(poState, current.id);
-              return ListView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                children: [
-                  _Header(supplier: current),
-                  const SizedBox(height: 16),
-                  _StatsGrid(pos: pos),
-                  const SizedBox(height: 16),
-                  _ContactCard(supplier: current),
-                  const SizedBox(height: 16),
-                  Text(
-                    'PURCHASE HISTORY',
-                    style: getOutfitStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textMuted,
-                    ),
+              return Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: Breakpoints.maxContentWidth(context),
                   ),
-                  const SizedBox(height: 8),
-                  if (pos.isEmpty)
-                    _NoHistory()
-                  else
-                    ...pos.map(
-                      (po) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: PoListCard(
-                          po: po,
-                          onTap: () =>
-                              context.push(AppRoutes.poDetail, extra: po.id),
-                        ),
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                    children: [
+                      _Header(
+                        supplier: current,
+                        onEdit: Breakpoints.isTablet(context)
+                            ? () => _edit(context, current)
+                            : null,
                       ),
-                    ),
-                ],
+                      const SizedBox(height: 16),
+                      _StatsGrid(pos: pos),
+                      const SizedBox(height: 16),
+                      _ContactCard(supplier: current),
+                      const SizedBox(height: 20),
+                      _SectionHeader(
+                        title: 'Purchase History',
+                        count: pos.length,
+                      ),
+                      const SizedBox(height: 8),
+                      if (pos.isEmpty)
+                        _NoHistory()
+                      else
+                        ...pos.map(
+                          (po) => Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: PoListCard(
+                              po: po,
+                              onTap: () => context.push(
+                                AppRoutes.poDetail,
+                                extra: po.id,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               );
             },
           ),
           bottomNavigationBar:
               sl<PermissionService>().can(PermissionKeys.procurementCreatePo)
-                  ? AppStickyActionBar(
-                      primary: AppFilledButton(
-                        label: 'New PO for ${current.name}',
-                        icon: IconlyLight.plus,
-                        onPressed: () => context.push(
-                          AppRoutes.poForm,
-                          extra: current,
-                        ),
-                      ),
-                    )
-                  : null,
+              ? AppStickyActionBar(
+                  primary: AppFilledButton(
+                    label: 'New PO for ${current.name}',
+                    icon: IconlyLight.plus,
+                    onPressed: () =>
+                        context.push(AppRoutes.poForm, extra: current),
+                  ),
+                )
+              : null,
         );
       },
     );
@@ -132,12 +145,11 @@ class SupplierDetailPage extends StatelessWidget {
   }
 
   void _edit(BuildContext context, Supplier supplier) {
-    showModalBottomSheet<void>(
+    final cubit = context.read<SupplierCubit>();
+    showAppModal<void>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
       builder: (_) => BlocProvider.value(
-        value: context.read<SupplierCubit>(),
+        value: cubit,
         child: SupplierFormSheet(supplier: supplier),
       ),
     );
@@ -146,64 +158,121 @@ class SupplierDetailPage extends StatelessWidget {
 
 class _Header extends StatelessWidget {
   final Supplier supplier;
+  final VoidCallback? onEdit;
 
-  const _Header({required this.supplier});
+  const _Header({required this.supplier, this.onEdit});
+
+  @override
+  Widget build(BuildContext context) {
+    return DashboardCard(
+      child: Row(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: AppColors.brandSoft,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Center(
+              child: Text(
+                supplier.name.isNotEmpty ? supplier.name[0].toUpperCase() : '?',
+                style: getOutfitStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.brand,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  supplier.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: getOutfitStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                if (supplier.contactName != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    supplier.contactName!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: getOutfitStyle(
+                      fontSize: 13,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 8),
+                AppStatusBadge(
+                  label: supplier.isActive ? 'Active' : 'Inactive',
+                  color: supplier.isActive
+                      ? AppColors.success
+                      : AppColors.textMuted,
+                ),
+              ],
+            ),
+          ),
+          if (onEdit != null)
+            IconButton(
+              icon: const Icon(IconlyLight.edit, size: 20),
+              tooltip: 'Edit',
+              color: AppColors.textSecondary,
+              onPressed: onEdit,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// List section header with an optional count pill — keeps the "Purchase
+/// History" heading aligned with the rest of the app's section styling.
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final int count;
+
+  const _SectionHeader({required this.title, required this.count});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            color: AppColors.brand.withAlpha(22),
-            borderRadius: BorderRadius.circular(16),
+        Text(
+          title,
+          style: getOutfitStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
           ),
-          child: Center(
+        ),
+        if (count > 0) ...[
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: AppColors.brandSoft,
+              borderRadius: BorderRadius.circular(20),
+            ),
             child: Text(
-              supplier.name.isNotEmpty ? supplier.name[0].toUpperCase() : '?',
+              '$count',
               style: getOutfitStyle(
-                fontSize: 22,
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: AppColors.brand,
               ),
             ),
           ),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                supplier.name,
-                style: getOutfitStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              if (supplier.contactName != null) ...[
-                const SizedBox(height: 2),
-                Text(
-                  supplier.contactName!,
-                  style: getOutfitStyle(
-                    fontSize: 13,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 6),
-              AppStatusBadge(
-                label: supplier.isActive ? 'Active' : 'Inactive',
-                color: supplier.isActive
-                    ? AppColors.success
-                    : AppColors.textMuted,
-              ),
-            ],
-          ),
-        ),
+        ],
       ],
     );
   }
@@ -216,8 +285,7 @@ class _StatsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final orderCount =
-        pos.where((o) => o.status != PoStatus.cancelled).length;
+    final orderCount = pos.where((o) => o.status != PoStatus.cancelled).length;
     final spend = pos
         .where((o) => o.status == PoStatus.received)
         .fold<double>(0, (s, o) => s + o.totalAmount);
@@ -273,10 +341,8 @@ class _ContactCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rows = <Widget>[
-      if (supplier.phone != null)
-        _row(IconlyLight.call, supplier.phone!),
-      if (supplier.email != null)
-        _row(IconlyLight.message, supplier.email!),
+      if (supplier.phone != null) _row(IconlyLight.call, supplier.phone!),
+      if (supplier.email != null) _row(IconlyLight.message, supplier.email!),
       if (supplier.address != null)
         _row(IconlyLight.location, supplier.address!),
       if (supplier.notes != null && supplier.notes!.isNotEmpty)
@@ -290,10 +356,7 @@ class _ContactCard extends StatelessWidget {
           ? [
               Text(
                 'No contact details yet',
-                style: getOutfitStyle(
-                  fontSize: 13,
-                  color: AppColors.textMuted,
-                ),
+                style: getOutfitStyle(fontSize: 13, color: AppColors.textMuted),
               ),
             ]
           : rows,
@@ -301,24 +364,21 @@ class _ContactCard extends StatelessWidget {
   }
 
   Widget _row(IconData icon, String value) => Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, size: 16, color: AppColors.textMuted),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                value,
-                style: getOutfitStyle(
-                  fontSize: 13,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ),
-          ],
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16, color: AppColors.textMuted),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            value,
+            style: getOutfitStyle(fontSize: 13, color: AppColors.textPrimary),
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 class _NoHistory extends StatelessWidget {

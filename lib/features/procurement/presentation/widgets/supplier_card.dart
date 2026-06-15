@@ -32,13 +32,20 @@ class SupplierCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         onLongPress: onMenu,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: AppColors.surface,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: AppColors.borderSoft),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x07101828),
+                blurRadius: 14,
+                offset: Offset(0, 3),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -87,7 +94,7 @@ class SupplierCard extends StatelessWidget {
                     onTap: onMenu,
                     borderRadius: BorderRadius.circular(8),
                     child: const Padding(
-                      padding: EdgeInsets.only(left: 4),
+                      padding: EdgeInsets.fromLTRB(6, 2, 0, 2),
                       child: Icon(
                         Icons.more_vert,
                         size: 18,
@@ -111,18 +118,13 @@ class SupplierCard extends StatelessWidget {
                   const SizedBox(width: 14),
                   _Metric(
                     icon: IconlyLight.bag,
-                    label: m.orderCount == 1 ? '1 order' : '${m.orderCount} orders',
+                    label: m.orderCount == 1
+                        ? '1 order'
+                        : '${m.orderCount} orders',
                   ),
                   const Spacer(),
                   if (m.openValue > 0)
-                    Text(
-                      '${AppFormatters.currency(m.openValue)} open',
-                      style: getOutfitStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.brand,
-                      ),
-                    )
+                    _OpenValuePill(value: m.openValue)
                   else
                     Text(
                       'No open orders',
@@ -141,6 +143,33 @@ class SupplierCard extends StatelessWidget {
   }
 }
 
+/// Highlights money the business still owes this supplier — a soft brand pill so
+/// open balances pop without shouting on cards that have none.
+class _OpenValuePill extends StatelessWidget {
+  final double value;
+
+  const _OpenValuePill({required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.brandSoft,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        '${AppFormatters.currency(value)} open',
+        style: getOutfitStyle(
+          fontSize: 12.5,
+          fontWeight: FontWeight.w700,
+          color: AppColors.brand,
+        ),
+      ),
+    );
+  }
+}
+
 class _Avatar extends StatelessWidget {
   final String name;
 
@@ -149,11 +178,11 @@ class _Avatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 42,
-      height: 42,
+      width: 44,
+      height: 44,
       decoration: BoxDecoration(
-        color: AppColors.brand.withAlpha(20),
-        borderRadius: BorderRadius.circular(11),
+        color: AppColors.brandSoft,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Center(
         child: Text(

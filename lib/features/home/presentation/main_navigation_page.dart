@@ -144,6 +144,14 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
 
               final isTablet = Breakpoints.isTablet(context);
               final isPosTab = _currentIndex == 2;
+              // Procurement pages own their AppSubPageBar on mobile. They're
+              // reached via context.push (drawer) which stacks them on the
+              // active branch's navigator without changing currentIndex — so we
+              // detect them by location, not branch index, to drop shell chrome.
+              final location = GoRouterState.of(context).uri.path;
+              final isProcurement =
+                  location.startsWith(AppRoutes.suppliers) ||
+                  location.startsWith(AppRoutes.purchaseOrders);
 
               // GoRouter's StatefulNavigationShell manages the page stack.
               final shell = widget.navigationShell;
@@ -252,7 +260,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                     ),
                     child: MorePage(),
                   ),
-                  appBar: isPosTab
+                  appBar: (isPosTab || isProcurement)
                       ? null
                       : CustomAppBar(
                           branches: visibleBranches,
@@ -276,7 +284,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                           showThemeToggle: false,
                         ),
                   body: shell,
-                  bottomNavigationBar: isPosTab
+                  bottomNavigationBar: (isPosTab || isProcurement)
                       ? null
                       : AppBottomNav(
                           currentIndex: _currentIndex,
@@ -657,21 +665,40 @@ class _AppSidebarState extends State<_AppSidebar>
                       expanded: layoutExpanded,
                       onTap: widget.onNavTap,
                     ),
-                  if (_sidebarShowInventory)
-                    _NavItem(
-                      icon: IconlyLight.category,
-                      activeIcon: IconlyBold.category,
-                      label: 'Inventory',
-                      index: 4,
-                      currentIndex: widget.currentIndex,
-                      expanded: layoutExpanded,
-                      onTap: widget.onNavTap,
-                    ),
 
                   const SizedBox(height: 6),
 
-                  // ── SALES section — Sales History (own permission, no module gate) ──
+                  // ── INVENTORY section — Stock management + Ingredients ──
+                  if (_sidebarShowInventory || _sidebarShowIngredients) ...[
+                    const Divider(height: 1, color: AppColors.borderSoft),
+                    const SizedBox(height: 6),
+                    if (layoutExpanded)
+                      const _SectionLabel(label: 'INVENTORY'),
+                    if (_sidebarShowInventory)
+                      _NavItem(
+                        icon: IconlyLight.category,
+                        activeIcon: IconlyBold.category,
+                        label: 'Inventory',
+                        index: 4,
+                        currentIndex: widget.currentIndex,
+                        expanded: layoutExpanded,
+                        onTap: widget.onNavTap,
+                      ),
+                    if (_sidebarShowIngredients)
+                      _PushNavTile(
+                        icon: IconlyLight.paper,
+                        activeIcon: IconlyBold.paper,
+                        label: 'Ingredients',
+                        route: AppRoutes.ingredients,
+                        expanded: layoutExpanded,
+                        currentLocation:
+                            GoRouterState.of(context).matchedLocation,
+                      ),
+                  ],
+
+                  // ── SALES section ──
                   if (_sidebarShowSalesHistory) ...[
+                    const SizedBox(height: 6),
                     const Divider(height: 1, color: AppColors.borderSoft),
                     const SizedBox(height: 6),
                     if (layoutExpanded) const _SectionLabel(label: 'SALES'),
@@ -693,27 +720,27 @@ class _AppSidebarState extends State<_AppSidebar>
                     const SizedBox(height: 6),
                     if (layoutExpanded)
                       const _SectionLabel(label: 'PROCUREMENT'),
-                    _PushNavTile(
+                    _NavItem(
                       icon: IconlyLight.bag_2,
                       activeIcon: IconlyBold.bag_2,
                       label: 'Purchase Orders',
-                      route: AppRoutes.purchaseOrders,
+                      index: 11,
+                      currentIndex: widget.currentIndex,
                       expanded: layoutExpanded,
-                      currentLocation:
-                          GoRouterState.of(context).matchedLocation,
+                      onTap: widget.onNavTap,
                     ),
-                    _PushNavTile(
+                    _NavItem(
                       icon: IconlyLight.work,
                       activeIcon: IconlyBold.work,
                       label: 'Suppliers',
-                      route: AppRoutes.suppliers,
+                      index: 10,
+                      currentIndex: widget.currentIndex,
                       expanded: layoutExpanded,
-                      currentLocation:
-                          GoRouterState.of(context).matchedLocation,
+                      onTap: widget.onNavTap,
                     ),
                   ],
 
-                  // ── OPERATIONS section — Expenses only ──
+                  // ── OPERATIONS section — Expenses ──
                   if (_sidebarShowOperations) ...[
                     const SizedBox(height: 6),
                     const Divider(height: 1, color: AppColors.borderSoft),
@@ -728,24 +755,6 @@ class _AppSidebarState extends State<_AppSidebar>
                       currentIndex: widget.currentIndex,
                       expanded: layoutExpanded,
                       onTap: widget.onNavTap,
-                    ),
-                  ],
-
-                  // ── INVENTORY section — Ingredients ──
-                  if (_sidebarShowIngredients) ...[
-                    const SizedBox(height: 6),
-                    const Divider(height: 1, color: AppColors.borderSoft),
-                    const SizedBox(height: 6),
-                    if (layoutExpanded)
-                      const _SectionLabel(label: 'INVENTORY'),
-                    _PushNavTile(
-                      icon: IconlyLight.category,
-                      activeIcon: IconlyBold.category,
-                      label: 'Ingredients',
-                      route: AppRoutes.ingredients,
-                      expanded: layoutExpanded,
-                      currentLocation:
-                          GoRouterState.of(context).matchedLocation,
                     ),
                   ],
 

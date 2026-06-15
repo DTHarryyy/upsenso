@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:iconly/iconly.dart';
 
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/permissions/permission_keys.dart';
@@ -240,9 +241,11 @@ class _PoFormPageState extends State<PoFormPage> {
       },
       child: Scaffold(
         backgroundColor: AppColors.background,
-        appBar: AppSubPageBar(
-          title: _isEdit ? 'Edit Purchase Order' : 'New Purchase Order',
-        ),
+        appBar: Breakpoints.isTablet(context)
+            ? null
+            : AppSubPageBar(
+                title: _isEdit ? 'Edit Purchase Order' : 'New Purchase Order',
+              ),
         body: _loadingData
             ? const Center(
                 child: CircularProgressIndicator(color: AppColors.brand),

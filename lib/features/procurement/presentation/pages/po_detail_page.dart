@@ -6,6 +6,7 @@ import 'package:iconly/iconly.dart';
 
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
@@ -62,7 +63,9 @@ class PoDetailPage extends StatelessWidget {
         if (!snapshot.hasData || snapshot.data == null) {
           return Scaffold(
             backgroundColor: AppColors.background,
-            appBar: AppSubPageBar(title: 'Purchase Order'),
+            appBar: Breakpoints.isTablet(context)
+              ? null
+              : const AppSubPageBar(title: 'Purchase Order'),
             body: const Center(
               child: CircularProgressIndicator(color: AppColors.brand),
             ),
@@ -107,19 +110,21 @@ class _PoDetailContent extends StatelessWidget {
           },
           child: Scaffold(
             backgroundColor: AppColors.background,
-            appBar: AppSubPageBar(
-              title: po.poNumber,
-              actions: [
-                if (po.status == PoStatus.draft &&
-                    perms.can(PermissionKeys.procurementCreatePo))
-                  IconButton(
-                    icon: const Icon(IconlyLight.edit),
-                    tooltip: 'Edit',
-                    onPressed: () =>
-                        context.push(AppRoutes.poForm, extra: po),
+            appBar: Breakpoints.isTablet(context)
+                ? null
+                : AppSubPageBar(
+                    title: po.poNumber,
+                    actions: [
+                      if (po.status == PoStatus.draft &&
+                          perms.can(PermissionKeys.procurementCreatePo))
+                        IconButton(
+                          icon: const Icon(IconlyLight.edit),
+                          tooltip: 'Edit',
+                          onPressed: () =>
+                              context.push(AppRoutes.poForm, extra: po),
+                        ),
+                    ],
                   ),
-              ],
-            ),
             body: ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
               children: [

@@ -3,6 +3,7 @@ import 'package:iconly/iconly.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/widgets/app_toast.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
@@ -71,102 +72,58 @@ class _ReceiptSettingsPageState extends State<ReceiptSettingsPage>
         },
         child: Scaffold(
           backgroundColor: AppColors.background,
-          appBar: AppBar(
-            backgroundColor: AppColors.surface,
-            elevation: 0,
-            scrolledUnderElevation: 0,
-            surfaceTintColor: Colors.transparent,
-            leading: IconButton(
-              icon: const Icon(
-                IconlyLight.arrow_left,
-                size: 18,
-                color: AppColors.textSecondary,
-              ),
-              onPressed: () => Navigator.of(context).maybePop(),
-            ),
-            title: Text(
-              'Receipt Settings',
-              style: getOutfitStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            actions: [
-              BlocBuilder<SettingsCubit, SettingsState>(
-                buildWhen: (p, c) => p.saveStatus != c.saveStatus,
-                builder: (_, state) {
-                  if (state.saveStatus == SettingsSaveStatus.saving) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Center(
-                        child: SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.brand,
-                          ),
-                        ),
-                      ),
-                    );
-                  }
-                  if (state.saveStatus == SettingsSaveStatus.saved) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            IconlyBold.tick_square,
-                            size: 16,
-                            color: AppColors.success,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Saved',
-                            style: getOutfitStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.success,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                  return const SizedBox.shrink();
-                },
-              ),
-            ],
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(49),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(height: 1, color: AppColors.borderSoft),
-                  TabBar(
-                    controller: _tabController,
-                    tabs: _tabs.map((t) => Tab(text: t)).toList(),
-                    indicatorColor: AppColors.brand,
-                    indicatorWeight: 2.5,
-                    indicatorSize: TabBarIndicatorSize.label,
-                    labelColor: AppColors.brand,
-                    unselectedLabelColor: AppColors.textSecondary,
-                    labelStyle: getOutfitStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w600,
+          appBar: Breakpoints.isTablet(context)
+              ? null
+              : AppBar(
+                  backgroundColor: AppColors.surface,
+                  elevation: 0,
+                  scrolledUnderElevation: 0,
+                  surfaceTintColor: Colors.transparent,
+                  leading: IconButton(
+                    icon: const Icon(
+                      IconlyLight.arrow_left,
+                      size: 18,
+                      color: AppColors.textSecondary,
                     ),
-                    unselectedLabelStyle: getOutfitStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    dividerColor: Colors.transparent,
+                    onPressed: () => Navigator.of(context).maybePop(),
                   ),
-                ],
-              ),
-            ),
-          ),
+                  title: Text(
+                    'Receipt Settings',
+                    style: getOutfitStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  actions: [_SaveStatus()],
+                  bottom: PreferredSize(
+                    preferredSize: const Size.fromHeight(49),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(height: 1, color: AppColors.borderSoft),
+                        TabBar(
+                          controller: _tabController,
+                          tabs: _tabs.map((t) => Tab(text: t)).toList(),
+                          indicatorColor: AppColors.brand,
+                          indicatorWeight: 2.5,
+                          indicatorSize: TabBarIndicatorSize.label,
+                          labelColor: AppColors.brand,
+                          unselectedLabelColor: AppColors.textSecondary,
+                          labelStyle: getOutfitStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          unselectedLabelStyle: getOutfitStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          dividerColor: Colors.transparent,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
           body: BlocBuilder<SettingsCubit, SettingsState>(
             builder: (context, state) {
               if (state.isLoading) {
@@ -177,7 +134,7 @@ class _ReceiptSettingsPageState extends State<ReceiptSettingsPage>
               final s = state.settings;
               if (s == null) return const SizedBox.shrink();
 
-              return TabBarView(
+              final tabView = TabBarView(
                 controller: _tabController,
                 children: [
                   BusinessTab(settings: s),
@@ -185,10 +142,101 @@ class _ReceiptSettingsPageState extends State<ReceiptSettingsPage>
                   PrintingTab(settings: s),
                 ],
               );
+
+              // On tablet/desktop the AppBar is hidden; render the tab bar
+              // and save indicator as a surface header inside the body instead.
+              if (Breakpoints.isTablet(context)) {
+                return Column(
+                  children: [
+                    ColoredBox(
+                      color: AppColors.surface,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TabBar(
+                                  controller: _tabController,
+                                  tabs: _tabs.map((t) => Tab(text: t)).toList(),
+                                  indicatorColor: AppColors.brand,
+                                  indicatorWeight: 2.5,
+                                  indicatorSize: TabBarIndicatorSize.label,
+                                  labelColor: AppColors.brand,
+                                  unselectedLabelColor: AppColors.textSecondary,
+                                  labelStyle: getOutfitStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  unselectedLabelStyle: getOutfitStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  dividerColor: Colors.transparent,
+                                ),
+                              ),
+                              _SaveStatus(),
+                            ],
+                          ),
+                          Container(height: 1, color: AppColors.borderSoft),
+                        ],
+                      ),
+                    ),
+                    Expanded(child: tabView),
+                  ],
+                );
+              }
+
+              return tabView;
             },
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SaveStatus extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<SettingsCubit, SettingsState>(
+      buildWhen: (p, c) => p.saveStatus != c.saveStatus,
+      builder: (_, state) {
+        if (state.saveStatus == SettingsSaveStatus.saving) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.brand,
+              ),
+            ),
+          );
+        }
+        if (state.saveStatus == SettingsSaveStatus.saved) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(IconlyBold.tick_square, size: 16, color: AppColors.success),
+                const SizedBox(width: 4),
+                Text(
+                  'Saved',
+                  style: getOutfitStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.success,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        return const SizedBox.shrink();
+      },
     );
   }
 }

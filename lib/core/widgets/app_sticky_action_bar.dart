@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/const/breakpoint.dart';
 
 /// A bottom-anchored action bar with an optional summary and up to two buttons.
 ///
@@ -50,16 +51,22 @@ class AppStickyActionBar extends StatelessWidget {
             ),
           ],
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (summary != null) ...[
-              summary!,
-              const SizedBox(height: 12),
-            ],
-            buttons,
-          ],
+        child: Center(
+          child: ConstrainedBox(
+            // Keep the actions aligned with the centred page body instead of
+            // stretching edge-to-edge on tablet/desktop.
+            constraints: BoxConstraints(
+              maxWidth: Breakpoints.maxContentWidth(context),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (summary != null) ...[summary!, const SizedBox(height: 12)],
+                buttons,
+              ],
+            ),
+          ),
         ),
       ),
     );

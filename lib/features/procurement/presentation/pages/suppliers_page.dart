@@ -6,13 +6,17 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/core/utils/formatters.dart';
+import 'package:pos/core/widgets/app_bottom_sheet_scaffold.dart';
 import 'package:pos/core/widgets/app_empty_state.dart';
 import 'package:pos/core/widgets/app_filter_chip.dart';
+import 'package:pos/core/widgets/app_kpi_card.dart';
+import 'package:pos/core/widgets/app_modal.dart';
 import 'package:pos/core/widgets/app_search_bar.dart';
 import 'package:pos/core/widgets/app_skeleton.dart';
 import 'package:pos/core/widgets/app_sub_page_bar.dart';
@@ -34,26 +38,17 @@ class SuppliersPage extends StatelessWidget {
       listenWhen: (_, current) => current is SupplierError,
       listener: (context, state) {
         if (state is SupplierError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message)),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(state.message)));
         }
       },
       builder: (context, state) {
-        final loaded = state is SupplierLoaded ? state : null;
         return Scaffold(
           backgroundColor: AppColors.background,
-          appBar: AppSubPageBar(
-            title: 'Suppliers',
-            actions: [
-              if (loaded != null && loaded.suppliers.isNotEmpty)
-                IconButton(
-                  icon: const Icon(Icons.swap_vert_rounded),
-                  tooltip: 'Sort',
-                  onPressed: () => _showSortSheet(context, loaded.sort),
-                ),
-            ],
-          ),
+          appBar: Breakpoints.isTablet(context)
+              ? null
+              : const AppSubPageBar(title: 'Suppliers'),
           floatingActionButton: _canManage
               ? FloatingActionButton(
                   onPressed: () => _showForm(context),
@@ -99,9 +94,22 @@ class SuppliersPage extends StatelessWidget {
         _KpiStrip(kpis: loaded.kpis),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-          child: AppSearchBar(
-            hint: 'Search name, contact, phone…',
-            onChanged: (q) => context.read<SupplierCubit>().search(q),
+          child: IntrinsicHeight(
+            child: Row(
+              children: [
+                Expanded(
+                  child: AppSearchBar(
+                    hint: 'Search name, contact, phone…',
+                    onChanged: (q) =>
+                        context.read<SupplierCubit>().search(q),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                _SortButton(
+                  onTap: () => _showSortSheet(context, loaded.sort),
+                ),
+              ],
+            ),
           ),
         ),
         _FilterRow(
@@ -118,56 +126,91 @@ class SuppliersPage extends StatelessWidget {
                       ..setFilter(SupplierFilter.all);
                   },
                 )
-              : RefreshIndicator(
-                  color: AppColors.brand,
-                  onRefresh: () async => context.read<SupplierCubit>().watch(),
-                  child: ListView.separated(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-                    itemCount: items.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 8),
-                    itemBuilder: (context, i) {
-                      final item = items[i];
-                      return SupplierCard(
-                        item: item,
-                        onTap: () => context.push(
-                          AppRoutes.supplierDetail,
-                          extra: item.supplier,
-                        ),
-                        onMenu: () =>
-                            _showActions(context, item.supplier),
-                      );
-                    },
-                  ),
-                ),
+              : _buildResults(context, items),
         ),
       ],
+    );
+  }
+
+  // Single column on phones, a responsive card grid on wider screens. The grid
+  // uses a Wrap so each card keeps its natural height (no fixed-extent clipping).
+  Widget _buildResults(BuildContext context, List<SupplierListItem> items) {
+    return RefreshIndicator(
+      color: AppColors.brand,
+      onRefresh: () async => context.read<SupplierCubit>().watch(),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final cols = _columnsForWidth(constraints.maxWidth);
+          if (cols == 1) {
+            return ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+              itemCount: items.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
+              itemBuilder: (context, i) => _supplierCard(context, items[i]),
+            );
+          }
+          const gap = 12.0;
+          const hPad = 16.0;
+          final itemWidth =
+              (constraints.maxWidth - hPad * 2 - gap * (cols - 1)) / cols;
+          return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(hPad, 12, hPad, 96),
+            child: Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              children: [
+                for (final item in items)
+                  SizedBox(
+                    width: itemWidth,
+                    child: _supplierCard(context, item),
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  int _columnsForWidth(double width) {
+    if (width >= 1100) return 4;
+    if (width >= 760) return 3;
+    if (width >= 540) return 2;
+    return 1;
+  }
+
+  Widget _supplierCard(BuildContext context, SupplierListItem item) {
+    return SupplierCard(
+      item: item,
+      onTap: () => context.push(AppRoutes.supplierDetail, extra: item.supplier),
+      onMenu: () => _showActions(context, item.supplier),
     );
   }
 
   // ── Sheets & dialogs ────────────────────────────────────────────────────────
 
   void _showForm(BuildContext context, {Supplier? supplier}) {
-    showModalBottomSheet<void>(
+    final cubit = context.read<SupplierCubit>();
+    showAppModal<void>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
       builder: (_) => BlocProvider.value(
-        value: context.read<SupplierCubit>(),
+        value: cubit,
         child: SupplierFormSheet(supplier: supplier),
       ),
     );
   }
 
   void _showSortSheet(BuildContext context, SupplierSort current) {
-    showModalBottomSheet<void>(
+    final cubit = context.read<SupplierCubit>();
+    showAppModal<void>(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _SortSheet(
+      builder: (sheetContext) => _SortSheet(
         current: current,
         onSelected: (s) {
-          context.read<SupplierCubit>().setSort(s);
-          Navigator.pop(context);
+          cubit.setSort(s);
+          Navigator.pop(sheetContext);
         },
       ),
     );
@@ -175,18 +218,18 @@ class SuppliersPage extends StatelessWidget {
 
   void _showActions(BuildContext context, Supplier supplier) {
     final cubit = context.read<SupplierCubit>();
-    showModalBottomSheet<void>(
+    showAppModal<void>(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => BlocProvider.value(
+      builder: (sheetContext) => BlocProvider.value(
         value: cubit,
         child: _SupplierActionsSheet(
           supplier: supplier,
-          canCreatePo:
-              sl<PermissionService>().can(PermissionKeys.procurementCreatePo),
+          canCreatePo: sl<PermissionService>().can(
+            PermissionKeys.procurementCreatePo,
+          ),
           canManage: _canManage,
           onEdit: () {
-            Navigator.pop(context);
+            Navigator.pop(sheetContext);
             _showForm(context, supplier: supplier);
           },
         ),
@@ -195,7 +238,8 @@ class SuppliersPage extends StatelessWidget {
   }
 }
 
-/// Portfolio summary chips — fills the top of the page with at-a-glance health.
+/// Portfolio summary — fills the top of the page with at-a-glance health using
+/// the shared [AppKpiStrip] so suppliers reads the same as the rest of the app.
 class _KpiStrip extends StatelessWidget {
   final ({int total, int active, double openValue, int reorder}) kpis;
 
@@ -203,77 +247,68 @@ class _KpiStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 80,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-        children: [
-          _KpiChip(
-            label: 'Suppliers',
-            value: '${kpis.total}',
-            color: AppColors.brand,
-          ),
-          _KpiChip(
-            label: 'Active',
-            value: '${kpis.active}',
-            color: AppColors.success,
-          ),
-          _KpiChip(
-            label: 'Open value',
-            value: AppFormatters.currency(kpis.openValue),
-            color: AppColors.info,
-          ),
-          _KpiChip(
-            label: 'Reorder',
-            value: '${kpis.reorder}',
-            color: AppColors.warning,
-          ),
-        ],
-      ),
+    return AppKpiStrip(
+      tiles: [
+        AppKpiTile(
+          icon: IconlyBold.work,
+          label: 'Suppliers',
+          value: '${kpis.total}',
+          color: AppColors.brand,
+        ),
+        AppKpiTile(
+          icon: IconlyBold.tick_square,
+          label: 'Active',
+          value: '${kpis.active}',
+          color: AppColors.success,
+        ),
+        AppKpiTile(
+          icon: IconlyBold.wallet,
+          label: 'Open value',
+          value: AppFormatters.currency(kpis.openValue),
+          color: AppColors.info,
+        ),
+        AppKpiTile(
+          icon: IconlyBold.danger,
+          label: 'Reorder',
+          value: '${kpis.reorder}',
+          color: AppColors.warning,
+        ),
+      ],
     );
   }
 }
 
-class _KpiChip extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
+/// Square sort trigger sized to match the search bar height (via IntrinsicHeight)
+/// so the two sit flush as one control row.
+class _SortButton extends StatelessWidget {
+  final VoidCallback onTap;
 
-  const _KpiChip({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
+  const _SortButton({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
+    return Tooltip(
+      message: 'Sort',
+      child: Material(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderSoft),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            value,
-            style: getOutfitStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: color,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: 48,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.borderSoft),
+            ),
+            child: const Icon(
+              Icons.swap_vert_rounded,
+              size: 22,
+              color: AppColors.textSecondary,
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: getOutfitStyle(fontSize: 11, color: AppColors.textMuted),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -384,60 +419,40 @@ class _SortSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.borderSoft,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Sort by',
-                  style: getOutfitStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+    return AppBottomSheetScaffold(
+      title: 'Sort by',
+      child: SingleChildScrollView(
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final s in SupplierSort.values)
+                ListTile(
+                  title: Text(
+                    _labels[s]!,
+                    style: getOutfitStyle(
+                      fontSize: 14,
+                      fontWeight: s == current
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      color: s == current
+                          ? AppColors.brand
+                          : AppColors.textPrimary,
+                    ),
                   ),
+                  trailing: s == current
+                      ? const Icon(
+                          Icons.check,
+                          color: AppColors.brand,
+                          size: 20,
+                        )
+                      : null,
+                  onTap: () => onSelected(s),
                 ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            for (final s in SupplierSort.values)
-              ListTile(
-                title: Text(
-                  _labels[s]!,
-                  style: getOutfitStyle(
-                    fontSize: 14,
-                    fontWeight: s == current ? FontWeight.w700 : FontWeight.w500,
-                    color: s == current
-                        ? AppColors.brand
-                        : AppColors.textPrimary,
-                  ),
-                ),
-                trailing: s == current
-                    ? const Icon(Icons.check, color: AppColors.brand, size: 20)
-                    : null,
-                onTap: () => onSelected(s),
-              ),
-            const SizedBox(height: 8),
-          ],
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
       ),
     );
@@ -464,88 +479,60 @@ class _SupplierActionsSheet extends StatelessWidget {
     final phone = supplier.phone;
     final email = supplier.email;
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.borderSoft,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  supplier.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: getOutfitStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
+    return AppBottomSheetScaffold(
+      title: supplier.name,
+      child: SingleChildScrollView(
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (canCreatePo)
+                _ActionTile(
+                  icon: IconlyLight.plus,
+                  label: 'New purchase order',
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push(AppRoutes.poForm, extra: supplier);
+                  },
                 ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            if (canCreatePo)
-              _ActionTile(
-                icon: IconlyLight.plus,
-                label: 'New purchase order',
-                onTap: () {
-                  Navigator.pop(context);
-                  context.push(AppRoutes.poForm, extra: supplier);
-                },
-              ),
-            if (phone != null && phone.isNotEmpty)
-              _ActionTile(
-                icon: IconlyLight.call,
-                label: 'Call $phone',
-                onTap: () {
-                  Navigator.pop(context);
-                  _launch(context, 'tel:$phone');
-                },
-              ),
-            if (email != null && email.isNotEmpty)
-              _ActionTile(
-                icon: IconlyLight.message,
-                label: 'Email $email',
-                onTap: () {
-                  Navigator.pop(context);
-                  _launch(context, 'mailto:$email');
-                },
-              ),
-            if (canManage)
-              _ActionTile(
-                icon: IconlyLight.edit,
-                label: 'Edit supplier',
-                onTap: onEdit,
-              ),
-            if (canManage)
-              _ActionTile(
-                icon: IconlyLight.delete,
-                label: 'Archive supplier',
-                color: AppColors.error,
-                onTap: () {
-                  Navigator.pop(context);
-                  _confirmArchive(context);
-                },
-              ),
-            const SizedBox(height: 8),
-          ],
+              if (phone != null && phone.isNotEmpty)
+                _ActionTile(
+                  icon: IconlyLight.call,
+                  label: 'Call $phone',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _launch(context, 'tel:$phone');
+                  },
+                ),
+              if (email != null && email.isNotEmpty)
+                _ActionTile(
+                  icon: IconlyLight.message,
+                  label: 'Email $email',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _launch(context, 'mailto:$email');
+                  },
+                ),
+              if (canManage)
+                _ActionTile(
+                  icon: IconlyLight.edit,
+                  label: 'Edit supplier',
+                  onTap: onEdit,
+                ),
+              if (canManage)
+                _ActionTile(
+                  icon: IconlyLight.delete,
+                  label: 'Archive supplier',
+                  color: AppColors.error,
+                  onTap: () {
+                    Navigator.pop(context);
+                    _confirmArchive(context);
+                  },
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
       ),
     );
