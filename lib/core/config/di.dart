@@ -326,6 +326,7 @@ Future<void> initDI() async {
       procurementRemoteDs: sl<ProcurementRemoteDs>(),
       recipeLinesDao: sl<RecipeLinesDao>(),
       syncStateDao: sl<SyncStateDao>(),
+      imageService: sl<ImageService>(),
     ),
   );
 

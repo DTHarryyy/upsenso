@@ -113,14 +113,11 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   Future<void> pickImage(ImageSource source) async {
     emit(state.copyWith(isUploadingImage: true, clearError: true));
     try {
-      final url = await _imageService.pickAndUploadProductImage(
-        businessId: businessId,
-        source: source,
-      );
+      final localPath = await _imageService.pickImageLocally(source: source);
       emit(
         state.copyWith(
           isUploadingImage: false,
-          imagePath: url ?? state.imagePath,
+          imagePath: localPath ?? state.imagePath,
         ),
       );
     } catch (e) {

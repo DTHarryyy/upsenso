@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -11,11 +14,10 @@ class ImageService {
   final SupabaseClient _client;
   final _picker = ImagePicker();
 
-  /// Picks a product image and uploads it to the `product-images` bucket.
-  /// Path: `{businessId}/{uuid}.ext`
-  /// Returns the public URL on success, null if cancelled or permission denied.
-  Future<String?> pickAndUploadProductImage({
-    required String businessId,
+  /// Picks a product image and saves it to the local documents directory.
+  /// Returns the absolute local file path, or null if cancelled/denied.
+  /// The image is uploaded to Supabase Storage during the next sync.
+  Future<String?> pickImageLocally({
     ImageSource source = ImageSource.gallery,
   }) async {
     if (!kIsWeb && source == ImageSource.camera) {
@@ -33,12 +35,32 @@ class ImageService {
     final bytes = await picked.readAsBytes();
     final ext = p.extension(picked.path).toLowerCase();
     final safeExt = ext.isNotEmpty ? ext : '.jpg';
-    final storagePath = '$businessId/${const Uuid().v4()}$safeExt';
 
-    final contentType = safeExt == '.png' ? 'image/png'
-        : safeExt == '.webp' ? 'image/webp'
+    final appDir = await getApplicationDocumentsDirectory();
+    final imagesDir = Directory('${appDir.path}/product_images');
+    await imagesDir.create(recursive: true);
+    final localPath = '${imagesDir.path}/${const Uuid().v4()}$safeExt';
+    await File(localPath).writeAsBytes(bytes);
+
+    return localPath;
+  }
+
+  /// Uploads a locally-saved image to Supabase Storage.
+  /// Returns the public URL. Throws on network or storage error.
+  Future<String> uploadLocalImageToStorage({
+    required String localPath,
+    required String businessId,
+  }) async {
+    final ext = p.extension(localPath).toLowerCase();
+    final safeExt = ext.isNotEmpty ? ext : '.jpg';
+    final storagePath = '$businessId/${const Uuid().v4()}$safeExt';
+    final contentType = safeExt == '.png'
+        ? 'image/png'
+        : safeExt == '.webp'
+        ? 'image/webp'
         : 'image/jpeg';
 
+    final bytes = await File(localPath).readAsBytes();
     await _client.storage.from('product-images').uploadBinary(
       storagePath,
       Uint8List.fromList(bytes),

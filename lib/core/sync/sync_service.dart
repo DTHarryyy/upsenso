@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -34,6 +35,7 @@ import 'package:pos/core/database/daos/purchase_orders_dao.dart';
 import 'package:pos/core/database/daos/recipe_lines_dao.dart';
 import 'package:pos/core/database/daos/sync_state_dao.dart';
 import 'package:pos/core/database/daos/suppliers_dao.dart';
+import 'package:pos/core/services/image_service.dart';
 import 'package:pos/features/procurement/data/datasources/procurement_remote_ds.dart';
 
 /// Service to handle synchronization between local Drift DB and Supabase
@@ -66,6 +68,7 @@ class SyncService {
   final ProcurementRemoteDs _procurementRemoteDs;
   final RecipeLinesDao _recipeLinesDao;
   final SyncStateDao _syncStateDao;
+  final ImageService _imageService;
 
   StreamSubscription<bool>? _connectivitySubscription;
   Timer? _retryTimer;
@@ -105,6 +108,7 @@ class SyncService {
     required ProcurementRemoteDs procurementRemoteDs,
     required RecipeLinesDao recipeLinesDao,
     required SyncStateDao syncStateDao,
+    required ImageService imageService,
   }) : _authContextDao = authContextDao,
        _activeBusinessContext = activeBusinessContext,
        _branchesDao = branchesDao,
@@ -132,7 +136,8 @@ class SyncService {
        _purchaseOrderLinesDao = purchaseOrderLinesDao,
        _procurementRemoteDs = procurementRemoteDs,
        _recipeLinesDao = recipeLinesDao,
-       _syncStateDao = syncStateDao;
+       _syncStateDao = syncStateDao,
+       _imageService = imageService;
 
   /// Resolves the businessId a sync should operate on.
   ///
@@ -629,6 +634,22 @@ class SyncService {
     for (final record in pending) {
       final status = SyncStatusExtension.fromInt(record.syncStatus);
       try {
+        // Upload any locally-stored image before syncing to Supabase.
+        // Local paths don't start with https:// — they're absolute device paths.
+        String? resolvedImagePath = record.imagePath;
+        if (resolvedImagePath != null &&
+            !resolvedImagePath.startsWith('https://') &&
+            File(resolvedImagePath).existsSync()) {
+          resolvedImagePath = await _imageService.uploadLocalImageToStorage(
+            localPath: resolvedImagePath,
+            businessId: record.businessId,
+          );
+          await _productsDao.updateProduct(
+            record.id,
+            ProductsTableCompanion(imagePath: Value(resolvedImagePath)),
+          );
+        }
+
         switch (status) {
           case SyncStatus.pendingUpload:
           case SyncStatus.failed:
@@ -643,6 +664,7 @@ class SyncService {
               sellBy: record.sellBy,
               hasVariants: record.hasVariants,
               isActive: record.isActive,
+              imagePath: resolvedImagePath,
               type: record.type,
               trackingMethod: record.trackingMethod,
             );
@@ -663,6 +685,7 @@ class SyncService {
               sellBy: record.sellBy,
               hasVariants: record.hasVariants,
               isActive: record.isActive,
+              imagePath: resolvedImagePath,
               type: record.type,
               trackingMethod: record.trackingMethod,
             );
