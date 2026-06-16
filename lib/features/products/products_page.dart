@@ -10,8 +10,6 @@ import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/core/services/cart_service.dart';
-import 'package:pos/core/ui/status/status_snack.dart';
-import 'package:pos/core/ui/status/status_type.dart';
 import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
@@ -79,11 +77,7 @@ class _ProductsPageState extends State<ProductsPage> {
         ? product.name
         : '${product.name} · ${variant.name}';
     if (mounted) {
-      StatusSnack.show(
-        context,
-        type: StatusType.success,
-        message: '$label × $qtyLabel added to cart',
-      );
+      AppToast.show(context, '$label × $qtyLabel added to cart');
     }
   }
 

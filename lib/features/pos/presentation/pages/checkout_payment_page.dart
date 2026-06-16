@@ -11,8 +11,6 @@ import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/services/checkout_service.dart';
-import 'package:pos/core/ui/status/status_snack.dart';
-import 'package:pos/core/ui/status/status_type.dart';
 import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
@@ -107,10 +105,10 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
         branchName = selection.name;
       } else {
         if (mounted) {
-          StatusSnack.show(
+          AppToast.show(
             context,
-            type: StatusType.error,
-            message: 'No branch assigned. Please contact your administrator.',
+            'No branch assigned. Please contact your administrator.',
+            variant: AppToastVariant.error,
           );
         }
         return;
@@ -158,8 +156,8 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
           .toList();
 
       // Record the sale and move inventory atomically — never one without the
-      // other (see CheckoutService).
-      await sl<CheckoutService>().completeSale(
+      // other (see CheckoutService). Returns the assigned invoice number.
+      final invoiceNumber = await sl<CheckoutService>().completeSale(
         transaction: tx,
         items: txItems,
         deductions: widget.items
@@ -178,6 +176,7 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
           reverseTransitionDuration: const Duration(milliseconds: 300),
           pageBuilder: (_, _, _) => CheckoutSuccessPage(
             transactionId: txId,
+            invoiceNumber: invoiceNumber,
             items: widget.items,
             subtotal: widget.subtotal,
             taxAmount: widget.tax,
@@ -217,10 +216,10 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
       );
     } catch (e) {
       if (mounted) {
-        StatusSnack.show(
+        AppToast.show(
           context,
-          type: StatusType.error,
-          message: 'Failed to save transaction: $e',
+          'Failed to save transaction: $e',
+          variant: AppToastVariant.error,
         );
       }
     } finally {

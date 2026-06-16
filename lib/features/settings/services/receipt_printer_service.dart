@@ -98,6 +98,7 @@ class ReceiptPrinterService {
   Future<Uint8List> buildPdf({
     required ReceiptSettings settings,
     required String transactionId,
+    required String invoiceNumber,
     required List<CartItem> items,
     required double subtotal,
     required double taxAmount,
@@ -112,6 +113,7 @@ class ReceiptPrinterService {
   }) => _buildPdf(
         settings: settings,
         transactionId: transactionId,
+        invoiceNumber: invoiceNumber,
         items: items,
         subtotal: subtotal,
         taxAmount: taxAmount,
@@ -128,6 +130,7 @@ class ReceiptPrinterService {
   Future<void> printReceipt({
     required ReceiptSettings settings,
     required String transactionId,
+    required String invoiceNumber,
     required List<CartItem> items,
     required double subtotal,
     required double taxAmount,
@@ -144,6 +147,7 @@ class ReceiptPrinterService {
     final bytes = await _buildPdf(
       settings: settings,
       transactionId: transactionId,
+      invoiceNumber: invoiceNumber,
       items: items,
       subtotal: subtotal,
       taxAmount: taxAmount,
@@ -327,6 +331,7 @@ class ReceiptPrinterService {
   Future<Uint8List> _buildPdf({
     required ReceiptSettings settings,
     required String transactionId,
+    required String invoiceNumber,
     required List<CartItem> items,
     required double subtotal,
     required double taxAmount,
@@ -455,14 +460,7 @@ class ReceiptPrinterService {
 
             // ── Transaction meta ─────────────────────────────────────
             if (settings.showOrderId)
-              _metaRow(
-                'Invoice #:',
-                transactionId.length > 8
-                    ? transactionId.substring(0, 8).toUpperCase()
-                    : transactionId,
-                baseFs,
-                fonts,
-              ),
+              _metaRow('Invoice #:', invoiceNumber, baseFs, fonts),
             if (settings.showDateTime)
               _metaRow('Date:', _fmtDate(dateTime), baseFs, fonts),
             if (settings.showCashierName && cashierName.isNotEmpty)

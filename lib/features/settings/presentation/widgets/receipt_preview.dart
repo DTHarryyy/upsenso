@@ -14,6 +14,7 @@ class ReceiptPreview extends StatelessWidget {
   final ReceiptSettings settings;
 
   final String? transactionId;
+  final String? invoiceNumber;
   final List<CartItem>? items;
   final double? subtotal;
   final double? taxAmount;
@@ -33,6 +34,7 @@ class ReceiptPreview extends StatelessWidget {
     super.key,
     required this.settings,
     this.transactionId,
+    this.invoiceNumber,
     this.items,
     this.subtotal,
     this.taxAmount,
@@ -68,6 +70,7 @@ class ReceiptPreview extends StatelessWidget {
       baseFontSize: baseFontSize,
       align: align,
       transactionId: transactionId,
+      invoiceNumber: invoiceNumber,
       items: items,
       subtotal: subtotal,
       taxAmount: taxAmount,
@@ -123,6 +126,7 @@ class _ReceiptBody extends StatelessWidget {
   final TextAlign align;
 
   final String? transactionId;
+  final String? invoiceNumber;
   final List<CartItem>? items;
   final double? subtotal;
   final double? taxAmount;
@@ -140,6 +144,7 @@ class _ReceiptBody extends StatelessWidget {
     required this.baseFontSize,
     required this.align,
     this.transactionId,
+    this.invoiceNumber,
     this.items,
     this.subtotal,
     this.taxAmount,
@@ -168,11 +173,9 @@ class _ReceiptBody extends StatelessWidget {
     final displayChange = change ?? 85.0;
     final displayPayment = _fmtPayment(paymentMethod ?? 'cash');
     final displayDate = _fmtDate(dateTime ?? DateTime.now());
-    final displayInvoice = transactionId != null
-        ? (transactionId!.length > 8
-            ? transactionId!.substring(0, 8).toUpperCase()
-            : transactionId!.toUpperCase())
-        : 'INV-00001';
+    final displayInvoice = invoiceNumber ?? (transactionId != null
+        ? transactionId!.substring(0, 8).toUpperCase()
+        : 'INV-000001');
     final displayCashier =
         cashierName?.isNotEmpty == true ? cashierName! : 'Sample Cashier';
     final displayCustomer =

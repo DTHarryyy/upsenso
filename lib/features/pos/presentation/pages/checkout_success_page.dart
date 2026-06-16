@@ -16,6 +16,7 @@ import 'package:pos/features/settings/services/receipt_printer_service.dart';
 
 class CheckoutSuccessPage extends StatefulWidget {
   final String transactionId;
+  final String invoiceNumber;
   final List<CartItem> items;
   final double subtotal;
   final double taxAmount;
@@ -34,6 +35,7 @@ class CheckoutSuccessPage extends StatefulWidget {
   const CheckoutSuccessPage({
     super.key,
     required this.transactionId,
+    required this.invoiceNumber,
     required this.items,
     required this.subtotal,
     required this.taxAmount,
@@ -81,6 +83,7 @@ class _CheckoutSuccessPageState extends State<CheckoutSuccessPage> {
       await const ReceiptPrinterService().printReceipt(
         settings: settings,
         transactionId: widget.transactionId,
+        invoiceNumber: widget.invoiceNumber,
         items: widget.items,
         subtotal: widget.subtotal,
         taxAmount: widget.taxAmount,
@@ -113,6 +116,7 @@ class _CheckoutSuccessPageState extends State<CheckoutSuccessPage> {
       AppRoutes.receiptPreview,
       extra: ReceiptPreviewArgs(
         transactionId: widget.transactionId,
+        invoiceNumber: widget.invoiceNumber,
         items: widget.items,
         subtotal: widget.subtotal,
         taxAmount: widget.taxAmount,

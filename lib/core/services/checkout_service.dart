@@ -1,5 +1,7 @@
+import 'package:drift/drift.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/transactions_dao.dart';
+import 'package:pos/core/services/invoice_number_service.dart';
 import 'package:pos/features/inventory/domain/repositories/i_inventory_repository.dart';
 
 /// Single, atomic entry point for completing a sale.
@@ -12,30 +14,45 @@ class CheckoutService {
   final AppDatabase _db;
   final TransactionsDao _transactionsDao;
   final IInventoryRepository _inventoryRepository;
+  final InvoiceNumberService _invoiceNumberService;
 
   CheckoutService({
     required AppDatabase db,
     required TransactionsDao transactionsDao,
     required IInventoryRepository inventoryRepository,
+    required InvoiceNumberService invoiceNumberService,
   })  : _db = db,
         _transactionsDao = transactionsDao,
-        _inventoryRepository = inventoryRepository;
+        _inventoryRepository = inventoryRepository,
+        _invoiceNumberService = invoiceNumberService;
 
   /// Persists [transaction] + [items] and deducts [deductions] atomically.
-  Future<void> completeSale({
+  /// Claims the next invoice number (server RPC when online, local counter
+  /// when offline) and writes it into the companion before committing.
+  Future<String> completeSale({
     required TransactionsTableCompanion transaction,
     required List<TransactionItemsTableCompanion> items,
     required List<({String variantId, double qty})> deductions,
     required String businessId,
     required String? branchId,
   }) async {
+    // Claim the invoice number BEFORE opening the DB transaction so a server
+    // roundtrip (when online) doesn't hold the SQLite write lock.
+    final invoiceNumber = await _invoiceNumberService.claimNext(businessId);
+
+    final txWithInvoice = transaction.copyWith(
+      invoiceNumber: Value(invoiceNumber),
+    );
+
     await _db.transaction(() async {
-      await _transactionsDao.insertTransaction(transaction, items);
+      await _transactionsDao.insertTransaction(txWithInvoice, items);
       await _inventoryRepository.recordSaleDeductions(
         items: deductions,
         businessId: businessId,
         branchId: branchId,
       );
     });
+
+    return invoiceNumber;
   }
 }

@@ -6,8 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/routes/app_routes.dart';
-import 'package:pos/core/ui/status/status_snack.dart';
-import 'package:pos/core/ui/status/status_type.dart';
+import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
@@ -111,20 +110,19 @@ class _VerificationPageState extends State<VerificationPage> {
           return;
         }
         if (state is AuthError) {
-          StatusSnack.show(
+          AppToast.show(
             context,
-            type: StatusType.error,
-            title: 'Verification failed',
-            message: state.message,
+            'Verification failed',
+            subtitle: state.message,
+            variant: AppToastVariant.error,
           );
           return;
         }
         if (state is AuthCodeSent && state.email == widget.email) {
-          StatusSnack.show(
+          AppToast.show(
             context,
-            type: StatusType.success,
-            title: 'Code sent',
-            message: 'A new 6-digit code has been sent to your email.',
+            'Code sent',
+            subtitle: 'A new 6-digit code has been sent to your email.',
           );
         }
       },

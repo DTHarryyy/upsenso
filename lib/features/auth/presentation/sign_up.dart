@@ -9,8 +9,7 @@ import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/validators.dart';
 import 'package:pos/core/routes/app_routes.dart';
-import 'package:pos/core/ui/status/status_snack.dart';
-import 'package:pos/core/ui/status/status_type.dart';
+import 'package:pos/core/widgets/widgets.dart';
 
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
@@ -34,6 +33,7 @@ class _SignUpState extends State<SignUp> {
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -52,6 +52,7 @@ class _SignUpState extends State<SignUp> {
   }
 
   void _onSubmit() {
+    if (_errorMessage != null) setState(() => _errorMessage = null);
     final valid = _formKey.currentState?.validate() ?? false;
     if (!valid) return;
     context.read<AuthBloc>().add(
@@ -66,6 +67,11 @@ class _SignUpState extends State<SignUp> {
     context.read<AuthBloc>().add(const AuthGoogleSignInRequested());
   }
 
+  // Dismiss the server error once the user starts fixing their input.
+  void _clearError(String _) {
+    if (_errorMessage != null) setState(() => _errorMessage = null);
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AuthBloc, AuthState>(
@@ -77,12 +83,7 @@ class _SignUpState extends State<SignUp> {
           return;
         }
         if (state is AuthError) {
-          StatusSnack.show(
-            context,
-            type: StatusType.error,
-            title: 'Sign up failed',
-            message: state.message,
-          );
+          setState(() => _errorMessage = state.message);
         }
       },
       builder: (context, state) {
@@ -152,12 +153,16 @@ class _SignUpState extends State<SignUp> {
                 ),
                 const SizedBox(height: 16),
 
+                // Inline auth error — replaces the transient toast.
+                AppInlineBanner(message: _errorMessage),
+
                 // Email
                 TextFormField(
                   controller: _emailController,
                   decoration: const InputDecoration(labelText: 'Email'),
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
+                  onChanged: _clearError,
                   validator: (v) => Validators.combine(v, [
                     (x) => Validators.required(x, fieldName: 'Email'),
                     Validators.email,
@@ -186,7 +191,10 @@ class _SignUpState extends State<SignUp> {
                   ),
                   obscureText: _obscurePassword,
                   textInputAction: TextInputAction.next,
-                  onChanged: (_) => setState(() {}),
+                  onChanged: (v) {
+                    setState(() {});
+                    _clearError(v);
+                  },
                   validator: (v) => Validators.combine(v, [
                     (x) => Validators.required(x, fieldName: 'Password'),
                     (x) => Validators.strongPassword(x, min: 8),
@@ -216,7 +224,10 @@ class _SignUpState extends State<SignUp> {
                   ),
                   obscureText: _obscureConfirmPassword,
                   textInputAction: TextInputAction.done,
-                  onChanged: (_) => setState(() {}),
+                  onChanged: (v) {
+                    setState(() {});
+                    _clearError(v);
+                  },
                   onFieldSubmitted: (_) => _onSubmit(),
                   validator: (v) => Validators.combine(v, [
                     (x) =>

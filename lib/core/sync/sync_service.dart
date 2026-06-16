@@ -807,6 +807,7 @@ class SyncService {
           taxAmount: tx.taxAmount,
           createdAt: tx.createdAt,
           paymentMethod: tx.paymentMethod,
+          invoiceNumber: tx.invoiceNumber,
         );
         final items = await _transactionsDao.getItemsByTransactionId(tx.id);
         if (items.isNotEmpty) {

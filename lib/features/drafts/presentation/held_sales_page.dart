@@ -11,10 +11,8 @@ import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/core/services/cart_service.dart';
-import 'package:pos/core/ui/status/status_snack.dart';
-import 'package:pos/core/ui/status/status_type.dart';
 import 'package:pos/core/utils/formatters.dart';
-import 'package:pos/core/widgets/app_sub_page_bar.dart';
+import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/features/drafts/domain/entities/draft_sale.dart';
 import 'package:pos/features/drafts/domain/entities/draft_sale_item.dart';
@@ -162,11 +160,7 @@ class _HeldSalesPageState extends State<HeldSalesPage> {
     await _cubit.discard(draft.id);
     _auditDiscarded(draft);
     if (mounted) {
-      StatusSnack.show(
-        context,
-        type: StatusType.success,
-        message: 'Held sale discarded',
-      );
+      AppToast.show(context, 'Held sale discarded');
     }
   }
 

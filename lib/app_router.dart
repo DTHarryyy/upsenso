@@ -308,6 +308,7 @@ class AppRouter {
           final args = state.extra as ReceiptPreviewArgs;
           return ReceiptPreviewPage(
             transactionId: args.transactionId,
+            invoiceNumber: args.invoiceNumber,
             items: args.items,
             subtotal: args.subtotal,
             taxAmount: args.taxAmount,
@@ -590,6 +591,7 @@ class AppRouter {
 
 class ReceiptPreviewArgs {
   final String transactionId;
+  final String invoiceNumber;
   final List<CartItem> items;
   final double subtotal;
   final double taxAmount;
@@ -606,6 +608,7 @@ class ReceiptPreviewArgs {
 
   const ReceiptPreviewArgs({
     required this.transactionId,
+    required this.invoiceNumber,
     required this.items,
     required this.subtotal,
     required this.taxAmount,

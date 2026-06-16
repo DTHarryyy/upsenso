@@ -6,10 +6,7 @@ import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
-import 'package:pos/core/ui/status/status_snack.dart';
-import 'package:pos/core/ui/status/status_type.dart';
-import 'package:pos/core/widgets/app_dropdown.dart';
-import 'package:pos/core/widgets/app_popup_menu.dart';
+import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/reports/data/reports_data.dart';
@@ -135,21 +132,20 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
         branchLabel: branchLabel,
       );
       if (mounted) {
-        StatusSnack.show(
+        AppToast.show(
           context,
-          type: StatusType.success,
-          title: 'PDF Ready',
-          message: 'Choose where to save from the share sheet.',
+          'PDF Ready',
+          subtitle: 'Choose where to save from the share sheet.',
           duration: const Duration(seconds: 3),
         );
       }
     } catch (e) {
       if (mounted) {
-        StatusSnack.show(
+        AppToast.show(
           context,
-          type: StatusType.error,
-          title: 'Export Failed',
-          message: e.toString(),
+          'Export Failed',
+          subtitle: e.toString(),
+          variant: AppToastVariant.error,
         );
       }
     } finally {
@@ -176,21 +172,20 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
         final msg = kIsWeb
             ? 'Download started.'
             : 'Saved: ${result.split('/').last}';
-        StatusSnack.show(
+        AppToast.show(
           context,
-          type: StatusType.success,
-          title: 'Excel Exported',
-          message: msg,
+          'Excel Exported',
+          subtitle: msg,
           duration: const Duration(seconds: 4),
         );
       }
     } catch (e) {
       if (mounted) {
-        StatusSnack.show(
+        AppToast.show(
           context,
-          type: StatusType.error,
-          title: 'Export Failed',
-          message: e.toString(),
+          'Export Failed',
+          subtitle: e.toString(),
+          variant: AppToastVariant.error,
         );
       }
     } finally {

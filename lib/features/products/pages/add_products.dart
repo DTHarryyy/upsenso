@@ -10,8 +10,6 @@ import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
-import 'package:pos/core/ui/status/status_snack.dart';
-import 'package:pos/core/ui/status/status_type.dart';
 import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
@@ -450,11 +448,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
                           if (!sheetCtx.mounted) return;
                           Navigator.of(sheetCtx).pop();
                           if (mounted) {
-                            StatusSnack.show(
-                              context,
-                              type: StatusType.success,
-                              message: 'Category saved',
-                            );
+                            AppToast.show(context, 'Category saved');
                           }
                         },
                 ),

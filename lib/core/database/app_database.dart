@@ -48,6 +48,8 @@ import 'package:pos/core/database/tables/recipe_lines_table.dart';
 import 'package:pos/core/database/daos/recipe_lines_dao.dart';
 import 'package:pos/core/database/tables/sync_state_table.dart';
 import 'package:pos/core/database/daos/sync_state_dao.dart';
+import 'package:pos/core/database/tables/invoice_sequences_table.dart';
+import 'package:pos/core/database/daos/invoice_sequences_dao.dart';
 
 part 'app_database.g.dart';
 
@@ -77,6 +79,7 @@ part 'app_database.g.dart';
     PurchaseOrderLinesTable,
     RecipeLinesTable,
     SyncStateTable,
+    InvoiceSequencesTable,
   ],
   daos: [
     AuthContextDao,
@@ -101,6 +104,7 @@ part 'app_database.g.dart';
     PurchaseOrderLinesDao,
     RecipeLinesDao,
     SyncStateDao,
+    InvoiceSequencesDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -120,7 +124,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 39;
+  int get schemaVersion => 40;
 
   @override
   MigrationStrategy get migration {
@@ -547,6 +551,29 @@ class AppDatabase extends _$AppDatabase {
             await customStatement(
               'ALTER TABLE sync_state ADD COLUMN last_pulled_id TEXT',
             );
+          } catch (_) {}
+        }
+
+        if (from < 40) {
+          // Sequential invoice numbers. Two additive operations:
+          //   • invoice_number column on transactions (nullable — pre-feature rows stay NULL)
+          //   • invoice_sequences table for the per-business offline counter
+          // Rollback: drop the table + drop the column (no data loss for old rows).
+          try {
+            await customStatement(
+              'ALTER TABLE transactions ADD COLUMN invoice_number TEXT',
+            );
+          } catch (_) {}
+          try {
+            await customStatement('''
+              CREATE TABLE IF NOT EXISTS invoice_sequences (
+                business_id TEXT NOT NULL,
+                month_key   TEXT NOT NULL,
+                last_value  INTEGER NOT NULL DEFAULT 0,
+                updated_at  INTEGER NOT NULL DEFAULT (CAST(strftime('%s','now') * 1000 AS INTEGER)),
+                PRIMARY KEY (business_id, month_key)
+              )
+            ''');
           } catch (_) {}
         }
       },

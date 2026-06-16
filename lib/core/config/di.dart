@@ -77,6 +77,8 @@ import 'package:pos/core/database/daos/recipe_lines_dao.dart';
 import 'package:pos/core/database/daos/sync_state_dao.dart';
 import 'package:pos/features/recipes/data/ingredients_repository.dart';
 import 'package:pos/features/recipes/domain/repositories/i_ingredients_repository.dart';
+import 'package:pos/core/database/daos/invoice_sequences_dao.dart';
+import 'package:pos/core/services/invoice_number_service.dart';
 import 'package:pos/core/database/daos/audit_logs_dao.dart';
 import 'package:pos/core/audit/audit_log_service.dart';
 import 'package:pos/features/audit_logs/data/datasources/audit_log_remote_ds.dart';
@@ -152,6 +154,12 @@ Future<void> initDI() async {
   );
   sl.registerLazySingleton<TransactionsDao>(
     () => TransactionsDao(sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<InvoiceSequencesDao>(
+    () => InvoiceSequencesDao(sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<InvoiceNumberService>(
+    () => InvoiceNumberService(sl<SupabaseClient>(), sl<InvoiceSequencesDao>()),
   );
   sl.registerLazySingleton<DraftSalesDao>(
     () => DraftSalesDao(sl<AppDatabase>()),
@@ -452,6 +460,7 @@ Future<void> initDI() async {
       db: sl<AppDatabase>(),
       transactionsDao: sl<TransactionsDao>(),
       inventoryRepository: sl<IInventoryRepository>(),
+      invoiceNumberService: sl<InvoiceNumberService>(),
     ),
   );
 

@@ -6,8 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/routes/app_routes.dart';
-import 'package:pos/core/ui/status/status_snack.dart';
-import 'package:pos/core/ui/status/status_type.dart';
+import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
@@ -120,27 +119,25 @@ class _ResetPasswordVerificationPageState
       listenWhen: (prev, curr) => curr is! AuthLoading,
       listener: (context, state) {
         if (state is AuthResetCodeVerified) {
-          StatusSnack.show(
+          AppToast.show(
             context,
-            type: StatusType.success,
-            title: 'Code verified',
-            message: 'Please enter your new password.',
+            'Code verified',
+            subtitle: 'Please enter your new password.',
           );
           context.go('${AppRoutes.resetPassword}?email=${state.email}');
         } else if (state is AuthError) {
-          StatusSnack.show(
+          AppToast.show(
             context,
-            type: StatusType.error,
-            title: 'Verification failed',
-            message: state.message,
+            'Verification failed',
+            subtitle: state.message,
+            variant: AppToastVariant.error,
           );
           _clearAndRefocus();
         } else if (state is AuthResetCodeSent) {
-          StatusSnack.show(
+          AppToast.show(
             context,
-            type: StatusType.success,
-            title: 'Code resent',
-            message: 'A new 6-digit code has been sent to your email.',
+            'Code resent',
+            subtitle: 'A new 6-digit code has been sent to your email.',
           );
         }
       },

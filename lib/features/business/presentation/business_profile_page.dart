@@ -9,9 +9,8 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
-import 'package:pos/core/ui/status/status_snack.dart';
-import 'package:pos/core/ui/status/status_type.dart';
 import 'package:pos/core/widgets/image_source_sheet.dart';
+import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/auth/domain/entities/app_user.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
@@ -114,11 +113,10 @@ class _BusinessProfilePageState extends State<BusinessProfilePage> {
       );
 
       if (mounted) {
-        StatusSnack.show(
+        AppToast.show(
           context,
-          type: StatusType.success,
-          title: 'Logo Updated',
-          message: 'Saved — it will sync automatically when you\'re online.',
+          'Logo Updated',
+          subtitle: 'Saved — it will sync automatically when you\'re online.',
         );
       }
     } catch (e, st) {
@@ -129,13 +127,13 @@ class _BusinessProfilePageState extends State<BusinessProfilePage> {
             kIsWeb &&
             (msg.toLowerCase().contains('notallowederror') ||
                 msg.toLowerCase().contains('permission'));
-        StatusSnack.show(
+        AppToast.show(
           context,
-          type: StatusType.error,
-          title: isCameraDenied ? 'Camera Access Denied' : 'Upload Failed',
-          message: isCameraDenied
+          isCameraDenied ? 'Camera Access Denied' : 'Upload Failed',
+          subtitle: isCameraDenied
               ? 'Allow camera access in your browser settings, then try again.'
               : msg,
+          variant: AppToastVariant.error,
         );
       }
     } finally {
@@ -143,8 +141,7 @@ class _BusinessProfilePageState extends State<BusinessProfilePage> {
     }
   }
 
-  // ── Build ────────────────────────────────────────────────────────────────────
-
+  // Build
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<AuthBloc, AuthState>(

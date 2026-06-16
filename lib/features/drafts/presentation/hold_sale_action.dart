@@ -7,9 +7,8 @@ import 'package:pos/core/config/di.dart';
 import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/services/cart_service.dart';
-import 'package:pos/core/ui/status/status_snack.dart';
-import 'package:pos/core/ui/status/status_type.dart';
 import 'package:pos/core/utils/formatters.dart';
+import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
@@ -85,15 +84,15 @@ Future<void> holdCurrentCart(BuildContext context) async {
     );
     cart.clear();
     if (context.mounted) {
-      StatusSnack.show(context, type: StatusType.success, message: 'Sale held');
+      AppToast.show(context, 'Sale held');
     }
   } catch (e, st) {
     debugPrint('[HoldSale] Error in holdCurrentCart: $e\n$st');
     if (context.mounted) {
-      StatusSnack.show(
+      AppToast.show(
         context,
-        type: StatusType.error,
-        message: 'Could not hold this sale. Please try again.',
+        'Could not hold this sale. Please try again.',
+        variant: AppToastVariant.error,
       );
     }
   }

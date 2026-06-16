@@ -8,8 +8,7 @@ import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/validators.dart';
 import 'package:pos/core/routes/app_routes.dart';
-import 'package:pos/core/ui/status/status_snack.dart';
-import 'package:pos/core/ui/status/status_type.dart';
+import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
@@ -29,6 +28,7 @@ class _SignInState extends State<SignIn> {
   late final TextEditingController _passwordController;
 
   bool _obscurePassword = true;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -46,6 +46,7 @@ class _SignInState extends State<SignIn> {
   }
 
   void _onSubmit() {
+    if (_errorMessage != null) setState(() => _errorMessage = null);
     final valid = _formKey.currentState?.validate() ?? false;
     if (!valid) return;
     context.read<AuthBloc>().add(
@@ -60,6 +61,11 @@ class _SignInState extends State<SignIn> {
     context.read<AuthBloc>().add(const AuthGoogleSignInRequested());
   }
 
+  // Dismiss the server error once the user starts fixing their input.
+  void _clearError(String _) {
+    if (_errorMessage != null) setState(() => _errorMessage = null);
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AuthBloc, AuthState>(
@@ -68,12 +74,7 @@ class _SignInState extends State<SignIn> {
         if (state is AuthAuthenticated) {
           context.go(AppRoutes.home);
         } else if (state is AuthError) {
-          StatusSnack.show(
-            context,
-            type: StatusType.error,
-            title: 'Sign in failed',
-            message: state.message,
-          );
+          setState(() => _errorMessage = state.message);
         }
       },
       builder: (context, state) {
@@ -143,12 +144,16 @@ class _SignInState extends State<SignIn> {
                 ),
                 const SizedBox(height: 16),
 
+                // Inline auth error — replaces the transient toast.
+                AppInlineBanner(message: _errorMessage),
+
                 // Email
                 TextFormField(
                   controller: _emailController,
                   decoration: const InputDecoration(labelText: 'Email'),
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
+                  onChanged: _clearError,
                   validator: (v) => Validators.combine(v, [
                     (x) => Validators.required(x, fieldName: 'Email'),
                     Validators.email,
@@ -177,7 +182,10 @@ class _SignInState extends State<SignIn> {
                   ),
                   obscureText: _obscurePassword,
                   textInputAction: TextInputAction.done,
-                  onChanged: (_) => setState(() {}),
+                  onChanged: (v) {
+                    setState(() {});
+                    _clearError(v);
+                  },
                   onFieldSubmitted: (_) => _onSubmit(),
                   validator: (v) =>
                       Validators.required(v, fieldName: 'Password'),

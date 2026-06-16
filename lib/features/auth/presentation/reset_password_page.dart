@@ -6,8 +6,7 @@ import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/validators.dart';
 import 'package:pos/core/routes/app_routes.dart';
-import 'package:pos/core/ui/status/status_snack.dart';
-import 'package:pos/core/ui/status/status_type.dart';
+import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
@@ -70,19 +69,18 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       listenWhen: (prev, curr) => curr is! AuthLoading,
       listener: (context, state) {
         if (state is AuthPasswordResetSuccess) {
-          StatusSnack.show(
+          AppToast.show(
             context,
-            type: StatusType.success,
-            title: 'Password reset',
-            message: 'You can now sign in with your new password.',
+            'Password reset',
+            subtitle: 'You can now sign in with your new password.',
           );
           context.go(AppRoutes.signIn);
         } else if (state is AuthError) {
-          StatusSnack.show(
+          AppToast.show(
             context,
-            type: StatusType.error,
-            title: 'Failed',
-            message: state.message,
+            'Failed',
+            subtitle: state.message,
+            variant: AppToastVariant.error,
           );
         }
       },

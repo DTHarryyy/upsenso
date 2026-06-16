@@ -6,8 +6,7 @@ import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/routes/app_routes.dart';
-import 'package:pos/core/ui/status/status_snack.dart';
-import 'package:pos/core/ui/status/status_type.dart';
+import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/pos/data/models/cart_model.dart';
 import 'package:pos/features/settings/data/receipt_settings_repository.dart';
 import 'package:pos/features/settings/domain/receipt_settings.dart';
@@ -17,6 +16,7 @@ import 'package:pos/features/settings/services/receipt_printer_service.dart';
 
 class ReceiptPreviewPage extends StatefulWidget {
   final String transactionId;
+  final String invoiceNumber;
   final List<CartItem> items;
   final double subtotal;
   final double taxAmount;
@@ -34,6 +34,7 @@ class ReceiptPreviewPage extends StatefulWidget {
   const ReceiptPreviewPage({
     super.key,
     required this.transactionId,
+    required this.invoiceNumber,
     required this.items,
     required this.subtotal,
     required this.taxAmount,
@@ -103,10 +104,10 @@ class _ReceiptPreviewPageState extends State<ReceiptPreviewPage>
     if (_activeAction != null) return;
     final s = _settings;
     if (s == null) {
-      StatusSnack.show(
+      AppToast.show(
         context,
-        type: StatusType.warning,
-        message: 'No receipt settings found. Configure them in Settings.',
+        'No receipt settings found. Configure them in Settings.',
+        variant: AppToastVariant.warning,
       );
       return;
     }
@@ -137,6 +138,7 @@ class _ReceiptPreviewPageState extends State<ReceiptPreviewPage>
         final bytes = await service.buildPdf(
           settings: s,
           transactionId: widget.transactionId,
+          invoiceNumber: widget.invoiceNumber,
           items: widget.items,
           subtotal: widget.subtotal,
           taxAmount: widget.taxAmount,
@@ -154,6 +156,7 @@ class _ReceiptPreviewPageState extends State<ReceiptPreviewPage>
         await service.printReceipt(
           settings: s,
           transactionId: widget.transactionId,
+          invoiceNumber: widget.invoiceNumber,
           items: widget.items,
           subtotal: widget.subtotal,
           taxAmount: widget.taxAmount,
@@ -167,20 +170,12 @@ class _ReceiptPreviewPageState extends State<ReceiptPreviewPage>
           dateTime: widget.dateTime,
         );
         if (mounted) {
-          StatusSnack.show(
-            context,
-            type: StatusType.success,
-            message: 'Sent to printer',
-          );
+          AppToast.show(context, 'Sent to printer');
         }
       }
     } catch (e) {
       if (mounted) {
-        StatusSnack.show(
-          context,
-          type: StatusType.error,
-          message: 'Failed: $e',
-        );
+        AppToast.show(context, 'Failed: $e', variant: AppToastVariant.error);
       }
     } finally {
       if (mounted) setState(() => _activeAction = null);
@@ -197,6 +192,7 @@ class _ReceiptPreviewPageState extends State<ReceiptPreviewPage>
         pageBuilder: (context, a, b) => _FullscreenOverlay(
           settings: _settings!,
           transactionId: widget.transactionId,
+          invoiceNumber: widget.invoiceNumber,
           items: widget.items,
           subtotal: widget.subtotal,
           taxAmount: widget.taxAmount,
@@ -249,6 +245,7 @@ class _ReceiptPreviewPageState extends State<ReceiptPreviewPage>
                           ? ReceiptPreview(
                               settings: _settings!,
                               transactionId: widget.transactionId,
+                              invoiceNumber: widget.invoiceNumber,
                               items: widget.items,
                               subtotal: widget.subtotal,
                               taxAmount: widget.taxAmount,
@@ -385,6 +382,7 @@ class _ReceiptPreviewPageState extends State<ReceiptPreviewPage>
                                   ? ReceiptPreview(
                                       settings: _settings!,
                                       transactionId: widget.transactionId,
+                                      invoiceNumber: widget.invoiceNumber,
                                       items: widget.items,
                                       subtotal: widget.subtotal,
                                       taxAmount: widget.taxAmount,
@@ -936,6 +934,7 @@ class _NoSettingsCard extends StatelessWidget {
 class _FullscreenOverlay extends StatelessWidget {
   final ReceiptSettings settings;
   final String transactionId;
+  final String invoiceNumber;
   final List<CartItem> items;
   final double subtotal;
   final double taxAmount;
@@ -951,6 +950,7 @@ class _FullscreenOverlay extends StatelessWidget {
   const _FullscreenOverlay({
     required this.settings,
     required this.transactionId,
+    required this.invoiceNumber,
     required this.items,
     required this.subtotal,
     required this.taxAmount,
@@ -1012,6 +1012,7 @@ class _FullscreenOverlay extends StatelessWidget {
                       ReceiptPreview(
                         settings: settings,
                         transactionId: transactionId,
+                        invoiceNumber: invoiceNumber,
                         items: items,
                         subtotal: subtotal,
                         taxAmount: taxAmount,

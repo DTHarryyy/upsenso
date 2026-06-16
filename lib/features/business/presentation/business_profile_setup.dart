@@ -8,9 +8,7 @@ import 'package:pos/core/const/app_strings.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/validators.dart';
 import 'package:pos/core/routes/app_routes.dart';
-import 'package:pos/core/ui/status/status_snack.dart';
-import 'package:pos/core/ui/status/status_type.dart';
-import 'package:pos/core/widgets/app_dropdown.dart';
+import 'package:pos/core/widgets/widgets.dart';
 
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
@@ -76,11 +74,11 @@ class _BusinessProfilePageState extends State<BusinessProfileSetup> {
     if (!valid) return;
 
     if (_selectedTemplate == null) {
-      StatusSnack.show(
+      AppToast.show(
         context,
-        type: StatusType.warning,
-        title: 'Select template',
-        message: 'Please select a business type to continue.',
+        'Select template',
+        subtitle: 'Please select a business type to continue.',
+        variant: AppToastVariant.warning,
       );
       return;
     }
@@ -101,21 +99,20 @@ class _BusinessProfilePageState extends State<BusinessProfileSetup> {
       listener: (context, state) {
         if (state is BusinessCreated) {
           context.read<AuthBloc>().add(AuthStarted());
-          StatusSnack.show(
+          AppToast.show(
             context,
-            type: StatusType.success,
-            title: 'Business created',
-            message: 'Your business profile is ready!',
+            'Business created',
+            subtitle: 'Your business profile is ready!',
           );
           _navigateToHomeWhenBusinessContextReady();
           return;
         }
         if (state is BusinessError) {
-          StatusSnack.show(
+          AppToast.show(
             context,
-            type: StatusType.error,
-            title: 'Error',
-            message: state.message,
+            'Error',
+            subtitle: state.message,
+            variant: AppToastVariant.error,
           );
         }
       },
@@ -228,9 +225,7 @@ class _BusinessProfilePageState extends State<BusinessProfileSetup> {
                       .map(
                         (t) => AppDropdownItem<BusinessTemplate>(
                           value: t,
-                          label: t.description.isNotEmpty
-                              ? '${t.name} — ${t.description}'
-                              : t.name,
+                          label: t.name,
                         ),
                       )
                       .toList(),

@@ -4,6 +4,7 @@ import 'package:equatable/equatable.dart';
 /// Decouples the presentation layer from Drift-generated table types.
 class SaleTransaction extends Equatable {
   final String id;
+  final String? invoiceNumber;
   final DateTime createdAt;
   final double totalAmount;
   final double subtotal;
@@ -20,6 +21,7 @@ class SaleTransaction extends Equatable {
 
   const SaleTransaction({
     required this.id,
+    this.invoiceNumber,
     required this.createdAt,
     required this.totalAmount,
     required this.subtotal,
@@ -38,6 +40,7 @@ class SaleTransaction extends Equatable {
   @override
   List<Object?> get props => [
     id,
+    invoiceNumber,
     createdAt,
     totalAmount,
     subtotal,

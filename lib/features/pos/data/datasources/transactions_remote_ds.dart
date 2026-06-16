@@ -14,6 +14,7 @@ class TransactionsRemoteDs {
     required double taxAmount,
     required DateTime createdAt,
     String paymentMethod = 'cash',
+    String? invoiceNumber,
   }) async {
     await client.from('transactions').upsert({
       'id': id,
@@ -25,6 +26,7 @@ class TransactionsRemoteDs {
       'tax_amount': taxAmount,
       'status': 'completed',
       'payment_method': paymentMethod,
+      'invoice_number': invoiceNumber,
       'created_at': createdAt.toUtc().toIso8601String(),
     });
   }

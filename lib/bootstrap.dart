@@ -77,10 +77,20 @@ Future<Widget> bootstrap() async {
       branchId: u.branchId,
       userId: u.id,
     );
-    // Load cached permissions immediately (offline-safe, no network call).
+    // Load cached permissions AND module state immediately (offline-safe, no
+    // network). setContext nulls _moduleStates, and a null module map fails
+    // CLOSED for every non-core feature — so skipping the module load left the
+    // sidebar/More drawer empty offline until a relaunch.
     await sl<PermissionService>().loadPermissions(u.id);
+    final bid = u.businessId;
+    if (bid != null && bid.isNotEmpty) {
+      await sl<PermissionService>().loadEnabledModules(bid);
+    }
     // Sync from Supabase in the background — does not block startup.
     sl<PermissionService>().syncPermissions(u.id).ignore();
+    if (bid != null && bid.isNotEmpty) {
+      sl<PermissionService>().syncModules(bid).ignore();
+    }
   } else {
     // Fallback: try to load role from local Drift cache (offline start where
     // Supabase did not respond in time).
@@ -96,10 +106,18 @@ Future<Widget> bootstrap() async {
         branchId: u.branchId,
         userId: u.id,
       );
-      // Reload permissions whenever the auth state changes (role switch, etc.)
+      // Reload permissions AND modules on every auth change (role/branch
+      // switch, context refresh). setContext clears both maps; reloading
+      // modules too keeps non-core features visible offline.
       sl<PermissionService>().loadPermissions(u.id).then((_) {
         sl<PermissionService>().syncPermissions(u.id).ignore();
       });
+      final bid = u.businessId;
+      if (bid != null && bid.isNotEmpty) {
+        sl<PermissionService>().loadEnabledModules(bid).then((_) {
+          sl<PermissionService>().syncModules(bid).ignore();
+        });
+      }
     } else if (state is AuthUnauthenticated) {
       sl<PermissionService>().setContext(
         roleName: null,

@@ -11,6 +11,14 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
     with _$TransactionsDaoMixin {
   TransactionsDao(super.db);
 
+  /// Updates the invoice_number for a transaction that was saved offline with
+  /// a locally-generated number that later collided on Supabase sync.
+  Future<void> updateInvoiceNumber(String txId, String invoiceNumber) {
+    return (update(transactionsTable)..where((t) => t.id.equals(txId))).write(
+      TransactionsTableCompanion(invoiceNumber: Value(invoiceNumber)),
+    );
+  }
+
   /// Atomically inserts a transaction and all its line-items in one transaction.
   Future<void> insertTransaction(
     TransactionsTableCompanion tx,
@@ -100,7 +108,7 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
         return;
       }
       // Row exists locally — preserve original createdAt; only update
-      // server-controlled fields (totals, payment, sync metadata).
+      // server-controlled fields (totals, payment, invoice_number, sync metadata).
       await (update(transactionsTable)..where((t) => t.id.equals(id))).write(
         TransactionsTableCompanion(
           cashierId: Value(row['cashier_id'] as String),
@@ -109,6 +117,7 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
           totalAmount: Value((row['total_amount'] as num).toDouble()),
           taxAmount: Value((row['tax_amount'] as num).toDouble()),
           paymentMethod: Value(paymentMethod),
+          invoiceNumber: Value(row['invoice_number'] as String?),
           syncStatus: const Value(3),
           lastSyncAttempt: Value(DateTime.now()),
         ),

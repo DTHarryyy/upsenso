@@ -24,6 +24,8 @@ class TransactionsTable extends Table {
       text().nullable()(); // → transaction_hash (null)
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
+  TextColumn get invoiceNumber => text().nullable()(); // → invoice_number (synced)
+
   // ── Local-only fields (not present in Supabase schema) ──────────────────
   TextColumn get customerName => text().nullable()();
   TextColumn get paymentMethod => text().withDefault(const Constant('cash'))();

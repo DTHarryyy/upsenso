@@ -11,10 +11,10 @@ import 'package:pos/features/employees/presentation/bloc/employee_event.dart';
 import 'package:pos/features/employees/presentation/bloc/employee_state.dart';
 
 const _kRoles = [
-  (role: 'Branch Manager', color: Color(0xFF7C3AED)),
-  (role: 'Cashier', color: Color(0xFF1D4ED8)),
-  (role: 'Inventory Staff', color: Color(0xFF0F766E)),
-  (role: 'Business Owner', color: Color(0xFFB45309)),
+  (role: 'Branch Manager', color: AppColors.brand),
+  (role: 'Cashier', color: AppColors.brand),
+  (role: 'Inventory Staff', color: AppColors.brand),
+  (role: 'Business Owner', color: AppColors.brand),
 ];
 
 class EmployeeFilterBar extends StatefulWidget {
@@ -66,7 +66,7 @@ class _EmployeeFilterBarState extends State<EmployeeFilterBar> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Search + filter icon 
+          // Search + filter icon
           Row(
             children: [
               Expanded(
@@ -88,7 +88,8 @@ class _EmployeeFilterBarState extends State<EmployeeFilterBar> {
                 builder: (context, state) {
                   final loaded = _resolveLoaded(state);
                   return _FilterButton(
-                    hasActiveFilters: loaded?.isActiveFilter != null ||
+                    hasActiveFilters:
+                        loaded?.isActiveFilter != null ||
                         loaded?.branchFilter != null,
                     onTap: () => _showFilterSheet(loaded),
                   );
@@ -101,8 +102,7 @@ class _EmployeeFilterBarState extends State<EmployeeFilterBar> {
           const SizedBox(height: 10),
           BlocBuilder<EmployeeBloc, EmployeeState>(
             buildWhen: (p, c) =>
-                _resolveLoaded(p)?.roleFilter !=
-                _resolveLoaded(c)?.roleFilter,
+                _resolveLoaded(p)?.roleFilter != _resolveLoaded(c)?.roleFilter,
             builder: (context, state) {
               final loaded = _resolveLoaded(state);
               return SingleChildScrollView(
@@ -112,9 +112,9 @@ class _EmployeeFilterBarState extends State<EmployeeFilterBar> {
                     AppFilterChip(
                       label: 'All',
                       isSelected: loaded?.roleFilter == null,
-                      onTap: () => context
-                          .read<EmployeeBloc>()
-                          .add(const SetRoleFilter(null)),
+                      onTap: () => context.read<EmployeeBloc>().add(
+                        const SetRoleFilter(null),
+                      ),
                     ),
                     for (final entry in _kRoles) ...[
                       const SizedBox(width: 8),
@@ -123,12 +123,12 @@ class _EmployeeFilterBarState extends State<EmployeeFilterBar> {
                         isSelected: loaded?.roleFilter == entry.role,
                         selectedColor: entry.color,
                         onTap: () => context.read<EmployeeBloc>().add(
-                              SetRoleFilter(
-                                loaded?.roleFilter == entry.role
-                                    ? null
-                                    : entry.role,
-                              ),
-                            ),
+                          SetRoleFilter(
+                            loaded?.roleFilter == entry.role
+                                ? null
+                                : entry.role,
+                          ),
+                        ),
                       ),
                     ],
                   ],
@@ -200,11 +200,7 @@ class _FilterSheet extends StatefulWidget {
   final EmployeeLoaded? loaded;
   final List<Branch> branches;
 
-  const _FilterSheet({
-    required this.bloc,
-    required this.branches,
-    this.loaded,
-  });
+  const _FilterSheet({required this.bloc, required this.branches, this.loaded});
 
   @override
   State<_FilterSheet> createState() => _FilterSheetState();

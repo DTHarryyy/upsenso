@@ -6349,6 +6349,17 @@ class $TransactionsTableTable extends TransactionsTable
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _invoiceNumberMeta = const VerificationMeta(
+    'invoiceNumber',
+  );
+  @override
+  late final GeneratedColumn<String> invoiceNumber = GeneratedColumn<String>(
+    'invoice_number',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _customerNameMeta = const VerificationMeta(
     'customerName',
   );
@@ -6464,6 +6475,7 @@ class $TransactionsTableTable extends TransactionsTable
     status,
     transactionHash,
     createdAt,
+    invoiceNumber,
     customerName,
     paymentMethod,
     subtotal,
@@ -6564,6 +6576,15 @@ class $TransactionsTableTable extends TransactionsTable
       context.handle(
         _createdAtMeta,
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('invoice_number')) {
+      context.handle(
+        _invoiceNumberMeta,
+        invoiceNumber.isAcceptableOrUnknown(
+          data['invoice_number']!,
+          _invoiceNumberMeta,
+        ),
       );
     }
     if (data.containsKey('customer_name')) {
@@ -6689,6 +6710,10 @@ class $TransactionsTableTable extends TransactionsTable
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      invoiceNumber: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}invoice_number'],
+      ),
       customerName: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}customer_name'],
@@ -6747,6 +6772,7 @@ class TransactionsTableData extends DataClass
   final String status;
   final String? transactionHash;
   final DateTime createdAt;
+  final String? invoiceNumber;
   final String? customerName;
   final String paymentMethod;
   final double subtotal;
@@ -6770,6 +6796,7 @@ class TransactionsTableData extends DataClass
     required this.status,
     this.transactionHash,
     required this.createdAt,
+    this.invoiceNumber,
     this.customerName,
     required this.paymentMethod,
     required this.subtotal,
@@ -6802,6 +6829,9 @@ class TransactionsTableData extends DataClass
       map['transaction_hash'] = Variable<String>(transactionHash);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || invoiceNumber != null) {
+      map['invoice_number'] = Variable<String>(invoiceNumber);
+    }
     if (!nullToAbsent || customerName != null) {
       map['customer_name'] = Variable<String>(customerName);
     }
@@ -6845,6 +6875,9 @@ class TransactionsTableData extends DataClass
           ? const Value.absent()
           : Value(transactionHash),
       createdAt: Value(createdAt),
+      invoiceNumber: invoiceNumber == null && nullToAbsent
+          ? const Value.absent()
+          : Value(invoiceNumber),
       customerName: customerName == null && nullToAbsent
           ? const Value.absent()
           : Value(customerName),
@@ -6884,6 +6917,7 @@ class TransactionsTableData extends DataClass
       status: serializer.fromJson<String>(json['status']),
       transactionHash: serializer.fromJson<String?>(json['transactionHash']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      invoiceNumber: serializer.fromJson<String?>(json['invoiceNumber']),
       customerName: serializer.fromJson<String?>(json['customerName']),
       paymentMethod: serializer.fromJson<String>(json['paymentMethod']),
       subtotal: serializer.fromJson<double>(json['subtotal']),
@@ -6910,6 +6944,7 @@ class TransactionsTableData extends DataClass
       'status': serializer.toJson<String>(status),
       'transactionHash': serializer.toJson<String?>(transactionHash),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'invoiceNumber': serializer.toJson<String?>(invoiceNumber),
       'customerName': serializer.toJson<String?>(customerName),
       'paymentMethod': serializer.toJson<String>(paymentMethod),
       'subtotal': serializer.toJson<double>(subtotal),
@@ -6934,6 +6969,7 @@ class TransactionsTableData extends DataClass
     String? status,
     Value<String?> transactionHash = const Value.absent(),
     DateTime? createdAt,
+    Value<String?> invoiceNumber = const Value.absent(),
     Value<String?> customerName = const Value.absent(),
     String? paymentMethod,
     double? subtotal,
@@ -6957,6 +6993,9 @@ class TransactionsTableData extends DataClass
         ? transactionHash.value
         : this.transactionHash,
     createdAt: createdAt ?? this.createdAt,
+    invoiceNumber: invoiceNumber.present
+        ? invoiceNumber.value
+        : this.invoiceNumber,
     customerName: customerName.present ? customerName.value : this.customerName,
     paymentMethod: paymentMethod ?? this.paymentMethod,
     subtotal: subtotal ?? this.subtotal,
@@ -6992,6 +7031,9 @@ class TransactionsTableData extends DataClass
           ? data.transactionHash.value
           : this.transactionHash,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      invoiceNumber: data.invoiceNumber.present
+          ? data.invoiceNumber.value
+          : this.invoiceNumber,
       customerName: data.customerName.present
           ? data.customerName.value
           : this.customerName,
@@ -7028,6 +7070,7 @@ class TransactionsTableData extends DataClass
           ..write('status: $status, ')
           ..write('transactionHash: $transactionHash, ')
           ..write('createdAt: $createdAt, ')
+          ..write('invoiceNumber: $invoiceNumber, ')
           ..write('customerName: $customerName, ')
           ..write('paymentMethod: $paymentMethod, ')
           ..write('subtotal: $subtotal, ')
@@ -7042,7 +7085,7 @@ class TransactionsTableData extends DataClass
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     businessId,
     branchId,
@@ -7054,6 +7097,7 @@ class TransactionsTableData extends DataClass
     status,
     transactionHash,
     createdAt,
+    invoiceNumber,
     customerName,
     paymentMethod,
     subtotal,
@@ -7063,7 +7107,7 @@ class TransactionsTableData extends DataClass
     syncStatus,
     lastSyncAttempt,
     syncError,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -7079,6 +7123,7 @@ class TransactionsTableData extends DataClass
           other.status == this.status &&
           other.transactionHash == this.transactionHash &&
           other.createdAt == this.createdAt &&
+          other.invoiceNumber == this.invoiceNumber &&
           other.customerName == this.customerName &&
           other.paymentMethod == this.paymentMethod &&
           other.subtotal == this.subtotal &&
@@ -7103,6 +7148,7 @@ class TransactionsTableCompanion
   final Value<String> status;
   final Value<String?> transactionHash;
   final Value<DateTime> createdAt;
+  final Value<String?> invoiceNumber;
   final Value<String?> customerName;
   final Value<String> paymentMethod;
   final Value<double> subtotal;
@@ -7125,6 +7171,7 @@ class TransactionsTableCompanion
     this.status = const Value.absent(),
     this.transactionHash = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.invoiceNumber = const Value.absent(),
     this.customerName = const Value.absent(),
     this.paymentMethod = const Value.absent(),
     this.subtotal = const Value.absent(),
@@ -7148,6 +7195,7 @@ class TransactionsTableCompanion
     this.status = const Value.absent(),
     this.transactionHash = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.invoiceNumber = const Value.absent(),
     this.customerName = const Value.absent(),
     this.paymentMethod = const Value.absent(),
     required double subtotal,
@@ -7176,6 +7224,7 @@ class TransactionsTableCompanion
     Expression<String>? status,
     Expression<String>? transactionHash,
     Expression<DateTime>? createdAt,
+    Expression<String>? invoiceNumber,
     Expression<String>? customerName,
     Expression<String>? paymentMethod,
     Expression<double>? subtotal,
@@ -7199,6 +7248,7 @@ class TransactionsTableCompanion
       if (status != null) 'status': status,
       if (transactionHash != null) 'transaction_hash': transactionHash,
       if (createdAt != null) 'created_at': createdAt,
+      if (invoiceNumber != null) 'invoice_number': invoiceNumber,
       if (customerName != null) 'customer_name': customerName,
       if (paymentMethod != null) 'payment_method': paymentMethod,
       if (subtotal != null) 'subtotal': subtotal,
@@ -7224,6 +7274,7 @@ class TransactionsTableCompanion
     Value<String>? status,
     Value<String?>? transactionHash,
     Value<DateTime>? createdAt,
+    Value<String?>? invoiceNumber,
     Value<String?>? customerName,
     Value<String>? paymentMethod,
     Value<double>? subtotal,
@@ -7247,6 +7298,7 @@ class TransactionsTableCompanion
       status: status ?? this.status,
       transactionHash: transactionHash ?? this.transactionHash,
       createdAt: createdAt ?? this.createdAt,
+      invoiceNumber: invoiceNumber ?? this.invoiceNumber,
       customerName: customerName ?? this.customerName,
       paymentMethod: paymentMethod ?? this.paymentMethod,
       subtotal: subtotal ?? this.subtotal,
@@ -7296,6 +7348,9 @@ class TransactionsTableCompanion
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (invoiceNumber.present) {
+      map['invoice_number'] = Variable<String>(invoiceNumber.value);
+    }
     if (customerName.present) {
       map['customer_name'] = Variable<String>(customerName.value);
     }
@@ -7343,6 +7398,7 @@ class TransactionsTableCompanion
           ..write('status: $status, ')
           ..write('transactionHash: $transactionHash, ')
           ..write('createdAt: $createdAt, ')
+          ..write('invoiceNumber: $invoiceNumber, ')
           ..write('customerName: $customerName, ')
           ..write('paymentMethod: $paymentMethod, ')
           ..write('subtotal: $subtotal, ')
@@ -20093,6 +20149,331 @@ class SyncStateTableCompanion extends UpdateCompanion<SyncStateTableData> {
   }
 }
 
+class $InvoiceSequencesTableTable extends InvoiceSequencesTable
+    with TableInfo<$InvoiceSequencesTableTable, InvoiceSequencesTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InvoiceSequencesTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _monthKeyMeta = const VerificationMeta(
+    'monthKey',
+  );
+  @override
+  late final GeneratedColumn<String> monthKey = GeneratedColumn<String>(
+    'month_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastValueMeta = const VerificationMeta(
+    'lastValue',
+  );
+  @override
+  late final GeneratedColumn<int> lastValue = GeneratedColumn<int>(
+    'last_value',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    businessId,
+    monthKey,
+    lastValue,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'invoice_sequences';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InvoiceSequencesTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('month_key')) {
+      context.handle(
+        _monthKeyMeta,
+        monthKey.isAcceptableOrUnknown(data['month_key']!, _monthKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_monthKeyMeta);
+    }
+    if (data.containsKey('last_value')) {
+      context.handle(
+        _lastValueMeta,
+        lastValue.isAcceptableOrUnknown(data['last_value']!, _lastValueMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {businessId, monthKey};
+  @override
+  InvoiceSequencesTableData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InvoiceSequencesTableData(
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      monthKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}month_key'],
+      )!,
+      lastValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_value'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $InvoiceSequencesTableTable createAlias(String alias) {
+    return $InvoiceSequencesTableTable(attachedDatabase, alias);
+  }
+}
+
+class InvoiceSequencesTableData extends DataClass
+    implements Insertable<InvoiceSequencesTableData> {
+  final String businessId;
+  final String monthKey;
+  final int lastValue;
+  final DateTime updatedAt;
+  const InvoiceSequencesTableData({
+    required this.businessId,
+    required this.monthKey,
+    required this.lastValue,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['business_id'] = Variable<String>(businessId);
+    map['month_key'] = Variable<String>(monthKey);
+    map['last_value'] = Variable<int>(lastValue);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  InvoiceSequencesTableCompanion toCompanion(bool nullToAbsent) {
+    return InvoiceSequencesTableCompanion(
+      businessId: Value(businessId),
+      monthKey: Value(monthKey),
+      lastValue: Value(lastValue),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory InvoiceSequencesTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InvoiceSequencesTableData(
+      businessId: serializer.fromJson<String>(json['businessId']),
+      monthKey: serializer.fromJson<String>(json['monthKey']),
+      lastValue: serializer.fromJson<int>(json['lastValue']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'businessId': serializer.toJson<String>(businessId),
+      'monthKey': serializer.toJson<String>(monthKey),
+      'lastValue': serializer.toJson<int>(lastValue),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  InvoiceSequencesTableData copyWith({
+    String? businessId,
+    String? monthKey,
+    int? lastValue,
+    DateTime? updatedAt,
+  }) => InvoiceSequencesTableData(
+    businessId: businessId ?? this.businessId,
+    monthKey: monthKey ?? this.monthKey,
+    lastValue: lastValue ?? this.lastValue,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  InvoiceSequencesTableData copyWithCompanion(
+    InvoiceSequencesTableCompanion data,
+  ) {
+    return InvoiceSequencesTableData(
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      monthKey: data.monthKey.present ? data.monthKey.value : this.monthKey,
+      lastValue: data.lastValue.present ? data.lastValue.value : this.lastValue,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InvoiceSequencesTableData(')
+          ..write('businessId: $businessId, ')
+          ..write('monthKey: $monthKey, ')
+          ..write('lastValue: $lastValue, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(businessId, monthKey, lastValue, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InvoiceSequencesTableData &&
+          other.businessId == this.businessId &&
+          other.monthKey == this.monthKey &&
+          other.lastValue == this.lastValue &&
+          other.updatedAt == this.updatedAt);
+}
+
+class InvoiceSequencesTableCompanion
+    extends UpdateCompanion<InvoiceSequencesTableData> {
+  final Value<String> businessId;
+  final Value<String> monthKey;
+  final Value<int> lastValue;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const InvoiceSequencesTableCompanion({
+    this.businessId = const Value.absent(),
+    this.monthKey = const Value.absent(),
+    this.lastValue = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  InvoiceSequencesTableCompanion.insert({
+    required String businessId,
+    required String monthKey,
+    this.lastValue = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : businessId = Value(businessId),
+       monthKey = Value(monthKey);
+  static Insertable<InvoiceSequencesTableData> custom({
+    Expression<String>? businessId,
+    Expression<String>? monthKey,
+    Expression<int>? lastValue,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (businessId != null) 'business_id': businessId,
+      if (monthKey != null) 'month_key': monthKey,
+      if (lastValue != null) 'last_value': lastValue,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  InvoiceSequencesTableCompanion copyWith({
+    Value<String>? businessId,
+    Value<String>? monthKey,
+    Value<int>? lastValue,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return InvoiceSequencesTableCompanion(
+      businessId: businessId ?? this.businessId,
+      monthKey: monthKey ?? this.monthKey,
+      lastValue: lastValue ?? this.lastValue,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (monthKey.present) {
+      map['month_key'] = Variable<String>(monthKey.value);
+    }
+    if (lastValue.present) {
+      map['last_value'] = Variable<int>(lastValue.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InvoiceSequencesTableCompanion(')
+          ..write('businessId: $businessId, ')
+          ..write('monthKey: $monthKey, ')
+          ..write('lastValue: $lastValue, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -20143,6 +20524,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $SyncStateTableTable syncStateTable = $SyncStateTableTable(this);
+  late final $InvoiceSequencesTableTable invoiceSequencesTable =
+      $InvoiceSequencesTableTable(this);
   late final AuthContextDao authContextDao = AuthContextDao(
     this as AppDatabase,
   );
@@ -20187,6 +20570,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this as AppDatabase,
   );
   late final SyncStateDao syncStateDao = SyncStateDao(this as AppDatabase);
+  late final InvoiceSequencesDao invoiceSequencesDao = InvoiceSequencesDao(
+    this as AppDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -20216,6 +20602,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     purchaseOrderLinesTable,
     recipeLinesTable,
     syncStateTable,
+    invoiceSequencesTable,
   ];
 }
 
@@ -23192,6 +23579,7 @@ typedef $$TransactionsTableTableCreateCompanionBuilder =
       Value<String> status,
       Value<String?> transactionHash,
       Value<DateTime> createdAt,
+      Value<String?> invoiceNumber,
       Value<String?> customerName,
       Value<String> paymentMethod,
       required double subtotal,
@@ -23216,6 +23604,7 @@ typedef $$TransactionsTableTableUpdateCompanionBuilder =
       Value<String> status,
       Value<String?> transactionHash,
       Value<DateTime> createdAt,
+      Value<String?> invoiceNumber,
       Value<String?> customerName,
       Value<String> paymentMethod,
       Value<double> subtotal,
@@ -23289,6 +23678,11 @@ class $$TransactionsTableTableFilterComposer
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get invoiceNumber => $composableBuilder(
+    column: $table.invoiceNumber,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -23402,6 +23796,11 @@ class $$TransactionsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get invoiceNumber => $composableBuilder(
+    column: $table.invoiceNumber,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get customerName => $composableBuilder(
     column: $table.customerName,
     builder: (column) => ColumnOrderings(column),
@@ -23498,6 +23897,11 @@ class $$TransactionsTableTableAnnotationComposer
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
+  GeneratedColumn<String> get invoiceNumber => $composableBuilder(
+    column: $table.invoiceNumber,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get customerName => $composableBuilder(
     column: $table.customerName,
     builder: (column) => column,
@@ -23587,6 +23991,7 @@ class $$TransactionsTableTableTableManager
                 Value<String> status = const Value.absent(),
                 Value<String?> transactionHash = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> invoiceNumber = const Value.absent(),
                 Value<String?> customerName = const Value.absent(),
                 Value<String> paymentMethod = const Value.absent(),
                 Value<double> subtotal = const Value.absent(),
@@ -23609,6 +24014,7 @@ class $$TransactionsTableTableTableManager
                 status: status,
                 transactionHash: transactionHash,
                 createdAt: createdAt,
+                invoiceNumber: invoiceNumber,
                 customerName: customerName,
                 paymentMethod: paymentMethod,
                 subtotal: subtotal,
@@ -23633,6 +24039,7 @@ class $$TransactionsTableTableTableManager
                 Value<String> status = const Value.absent(),
                 Value<String?> transactionHash = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> invoiceNumber = const Value.absent(),
                 Value<String?> customerName = const Value.absent(),
                 Value<String> paymentMethod = const Value.absent(),
                 required double subtotal,
@@ -23655,6 +24062,7 @@ class $$TransactionsTableTableTableManager
                 status: status,
                 transactionHash: transactionHash,
                 createdAt: createdAt,
+                invoiceNumber: invoiceNumber,
                 customerName: customerName,
                 paymentMethod: paymentMethod,
                 subtotal: subtotal,
@@ -29715,6 +30123,208 @@ typedef $$SyncStateTableTableProcessedTableManager =
       SyncStateTableData,
       PrefetchHooks Function()
     >;
+typedef $$InvoiceSequencesTableTableCreateCompanionBuilder =
+    InvoiceSequencesTableCompanion Function({
+      required String businessId,
+      required String monthKey,
+      Value<int> lastValue,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$InvoiceSequencesTableTableUpdateCompanionBuilder =
+    InvoiceSequencesTableCompanion Function({
+      Value<String> businessId,
+      Value<String> monthKey,
+      Value<int> lastValue,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$InvoiceSequencesTableTableFilterComposer
+    extends Composer<_$AppDatabase, $InvoiceSequencesTableTable> {
+  $$InvoiceSequencesTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get monthKey => $composableBuilder(
+    column: $table.monthKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastValue => $composableBuilder(
+    column: $table.lastValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$InvoiceSequencesTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $InvoiceSequencesTableTable> {
+  $$InvoiceSequencesTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get monthKey => $composableBuilder(
+    column: $table.monthKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastValue => $composableBuilder(
+    column: $table.lastValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$InvoiceSequencesTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $InvoiceSequencesTableTable> {
+  $$InvoiceSequencesTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get monthKey =>
+      $composableBuilder(column: $table.monthKey, builder: (column) => column);
+
+  GeneratedColumn<int> get lastValue =>
+      $composableBuilder(column: $table.lastValue, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$InvoiceSequencesTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $InvoiceSequencesTableTable,
+          InvoiceSequencesTableData,
+          $$InvoiceSequencesTableTableFilterComposer,
+          $$InvoiceSequencesTableTableOrderingComposer,
+          $$InvoiceSequencesTableTableAnnotationComposer,
+          $$InvoiceSequencesTableTableCreateCompanionBuilder,
+          $$InvoiceSequencesTableTableUpdateCompanionBuilder,
+          (
+            InvoiceSequencesTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $InvoiceSequencesTableTable,
+              InvoiceSequencesTableData
+            >,
+          ),
+          InvoiceSequencesTableData,
+          PrefetchHooks Function()
+        > {
+  $$InvoiceSequencesTableTableTableManager(
+    _$AppDatabase db,
+    $InvoiceSequencesTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$InvoiceSequencesTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$InvoiceSequencesTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$InvoiceSequencesTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> businessId = const Value.absent(),
+                Value<String> monthKey = const Value.absent(),
+                Value<int> lastValue = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InvoiceSequencesTableCompanion(
+                businessId: businessId,
+                monthKey: monthKey,
+                lastValue: lastValue,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String businessId,
+                required String monthKey,
+                Value<int> lastValue = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InvoiceSequencesTableCompanion.insert(
+                businessId: businessId,
+                monthKey: monthKey,
+                lastValue: lastValue,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$InvoiceSequencesTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $InvoiceSequencesTableTable,
+      InvoiceSequencesTableData,
+      $$InvoiceSequencesTableTableFilterComposer,
+      $$InvoiceSequencesTableTableOrderingComposer,
+      $$InvoiceSequencesTableTableAnnotationComposer,
+      $$InvoiceSequencesTableTableCreateCompanionBuilder,
+      $$InvoiceSequencesTableTableUpdateCompanionBuilder,
+      (
+        InvoiceSequencesTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $InvoiceSequencesTableTable,
+          InvoiceSequencesTableData
+        >,
+      ),
+      InvoiceSequencesTableData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -29776,4 +30386,6 @@ class $AppDatabaseManager {
       $$RecipeLinesTableTableTableManager(_db, _db.recipeLinesTable);
   $$SyncStateTableTableTableManager get syncStateTable =>
       $$SyncStateTableTableTableManager(_db, _db.syncStateTable);
+  $$InvoiceSequencesTableTableTableManager get invoiceSequencesTable =>
+      $$InvoiceSequencesTableTableTableManager(_db, _db.invoiceSequencesTable);
 }

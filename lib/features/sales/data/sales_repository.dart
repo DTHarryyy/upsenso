@@ -69,6 +69,7 @@ class SalesRepository implements ISalesRepository {
     String? cashierName,
   }) => SaleTransaction(
     id: row.id,
+    invoiceNumber: row.invoiceNumber,
     createdAt: row.createdAt,
     totalAmount: row.totalAmount,
     subtotal: row.subtotal,

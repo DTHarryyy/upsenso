@@ -12,8 +12,6 @@ import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
-import 'package:pos/core/ui/status/status_snack.dart';
-import 'package:pos/core/ui/status/status_type.dart';
 import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/features/pos/domain/usecases/resolve_barcode_use_case.dart';
 import 'package:pos/core/widgets/widgets.dart';
@@ -326,10 +324,10 @@ class _PosTerminalPageState extends State<PosTerminalPage>
 
   void _showFeedback(String message, {bool isError = false}) {
     if (!mounted) return;
-    StatusSnack.show(
+    AppToast.show(
       context,
-      type: isError ? StatusType.error : StatusType.success,
-      message: message,
+      message,
+      variant: isError ? AppToastVariant.error : AppToastVariant.success,
     );
   }
 

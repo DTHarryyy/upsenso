@@ -6,8 +6,7 @@ import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/validators.dart';
 import 'package:pos/core/routes/app_routes.dart';
-import 'package:pos/core/ui/status/status_snack.dart';
-import 'package:pos/core/ui/status/status_type.dart';
+import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
@@ -51,21 +50,20 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       listenWhen: (prev, curr) => curr is! AuthLoading,
       listener: (context, state) {
         if (state is AuthResetCodeSent) {
-          StatusSnack.show(
+          AppToast.show(
             context,
-            type: StatusType.success,
-            title: 'Code sent',
-            message: 'Check your email for the verification code.',
+            'Code sent',
+            subtitle: 'Check your email for the verification code.',
           );
           context.go(
             '${AppRoutes.resetPasswordVerification}?email=${state.email}',
           );
         } else if (state is AuthError) {
-          StatusSnack.show(
+          AppToast.show(
             context,
-            type: StatusType.error,
-            title: 'Failed',
-            message: state.message,
+            'Failed',
+            subtitle: state.message,
+            variant: AppToastVariant.error,
           );
         }
       },
