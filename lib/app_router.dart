@@ -80,7 +80,13 @@ class AppRouter {
   static final GoRouter router = GoRouter(
     initialLocation: AppRoutes.dashboard,
 
-    refreshListenable: _AuthRefreshNotifier(sl<AuthBloc>().stream),
+    // Re-run guards on auth changes AND module-gate changes, so disabling a
+    // module (offline toggle or background sync) redirects users off a now-
+    // disabled page and refreshes the shell nav without a manual navigation.
+    refreshListenable: Listenable.merge([
+      _AuthRefreshNotifier(sl<AuthBloc>().stream),
+      sl<PermissionService>().moduleGateRevision,
+    ]),
 
     onException: (_, state, router) => router.go(AppRoutes.signIn),
 
