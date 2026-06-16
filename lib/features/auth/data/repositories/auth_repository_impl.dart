@@ -369,6 +369,11 @@ class AuthRepositoryImpl implements AuthRepository {
       businessTemplateId: user.businessTemplateId,
       businessTemplateName: user.businessTemplateName,
     );
+
+    // Keep exactly one cached context — the active user. This neutralises the
+    // tenant-agnostic getAny() lookup so it can never return a previous
+    // account's business on a shared device.
+    await authContextDao.deleteOthers(user.id);
   }
 
   /// Retrieve cached user context from Drift when offline

@@ -246,9 +246,15 @@ class ModuleSettingsCubit extends Cubit<ModuleSettingsState> {
     await sl<BusinessModulesDao>().saveModules(businessId, {code: enabled});
     await _addPending(code);
 
+    // Refresh the live module gate from the local cache so the toggle takes
+    // effect instantly across the app — online or offline. Without this the
+    // gate only updates on remote sync, which never runs while offline.
+    await sl<PermissionService>().loadEnabledModules(businessId);
+
+    // Show spinner only — don't add to pending yet. If remote succeeds we
+    // never show the offline banner. If remote fails we promote to pending.
     emit(current.copyWith(
       modules: {...current.modules, code: enabled},
-      pending: {...current.pending, code},
       saving: {...current.saving, code},
     ));
 
@@ -283,7 +289,11 @@ class ModuleSettingsCubit extends Cubit<ModuleSettingsState> {
       }
     } catch (e, st) {
       debugPrint('[ModuleSettings] Error in toggle "$code" → $enabled: $e\n$st');
-      // Change is saved locally as pending — no revert. Syncs when back online.
+      // Remote failed — promote to pending so the offline banner appears.
+      final s = state;
+      if (s is ModuleSettingsLoaded) {
+        emit(s.copyWith(pending: {...s.pending, code}));
+      }
     } finally {
       final s = state;
       if (s is ModuleSettingsLoaded) {

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:pos/core/audit/audit_log_service.dart';
 import 'package:pos/core/database/daos/auth_context_dao.dart';
+import 'package:pos/core/session/active_business_context.dart';
 import 'package:pos/core/database/daos/business_modules_dao.dart';
 import 'package:pos/core/database/daos/employee_permissions_dao.dart';
 import 'package:pos/core/permissions/app_feature.dart';
@@ -55,6 +56,7 @@ class PermissionResult {
 ///   Supabase is only consulted during [syncPermissions], which is non-blocking.
 class PermissionService {
   final AuthContextDao _authContextDao;
+  final ActiveBusinessContext _activeBusinessContext;
   final AuditLogService _auditLogService;
   final EmployeePermissionsDao _permissionsDao;
   final PermissionRemoteDs _permissionRemoteDs;
@@ -76,6 +78,16 @@ class PermissionService {
   /// Missing key = module never configured → defaults to enabled.
   Map<String, bool>? _moduleStates;
 
+  /// Bumps whenever [_moduleStates] changes. The router and nav surfaces gate on
+  /// modules; they listen to this so a toggle — made offline or arriving via
+  /// background sync — re-runs route guards and repaints without a manual
+  /// navigation.
+  final ValueNotifier<int> _moduleGateRevision = ValueNotifier<int>(0);
+
+  /// Reactive signal for module-gate changes. Merge into the router's
+  /// `refreshListenable` and wrap module-gated UI to keep it in sync.
+  ValueListenable<int> get moduleGateRevision => _moduleGateRevision;
+
   bool get _hasLoadedPermissions => _permissionsMap.isNotEmpty;
 
   /// The auth user ID currently bound to this service.
@@ -83,11 +95,13 @@ class PermissionService {
 
   PermissionService({
     required AuthContextDao authContextDao,
+    required ActiveBusinessContext activeBusinessContext,
     required AuditLogService auditLogService,
     required EmployeePermissionsDao permissionsDao,
     required PermissionRemoteDs permissionRemoteDs,
     required BusinessModulesDao businessModulesDao,
   }) : _authContextDao = authContextDao,
+       _activeBusinessContext = activeBusinessContext,
        _auditLogService = auditLogService,
        _permissionsDao = permissionsDao,
        _permissionRemoteDs = permissionRemoteDs,
@@ -218,6 +232,7 @@ class PermissionService {
     final rows = await _businessModulesDao.getAll(businessId);
     if (rows.isNotEmpty) {
       _moduleStates = {for (final r in rows) r.moduleCode: r.enabled};
+      _moduleGateRevision.value++;
       final enabledCount = rows.where((r) => r.enabled).length;
       debugPrint(
         '[PermissionService] modules loaded from cache ($enabledCount/${rows.length} enabled)',
@@ -234,6 +249,7 @@ class PermissionService {
       if (modules.isNotEmpty) {
         await _businessModulesDao.saveModules(businessId, modules);
         _moduleStates = Map.unmodifiable(modules);
+        _moduleGateRevision.value++;
         final enabledCount = modules.values.where((v) => v).length;
         debugPrint(
           '[PermissionService] modules synced from Supabase '
@@ -300,9 +316,9 @@ class PermissionService {
   }) async {
     if (hasPermission(permission)) return const PermissionResult.granted();
 
-    // Resolve role name from auth context (offline — reads local Drift DB).
-    final ctx = await _authContextDao.getAny();
-    final roleName = ctx?.roleName ?? _roleKey ?? 'unknown';
+    // Role name for the denial log — from the authoritative active session.
+    final roleName =
+        _activeBusinessContext.roleName ?? _roleKey ?? 'unknown';
     final reason = permission.deniedMessage;
 
     await _auditLogService.log(
@@ -381,8 +397,8 @@ class PermissionService {
   }) async {
     if (canAccessFeature(feature)) return const PermissionResult.granted();
 
-    final ctx = await _authContextDao.getAny();
-    final roleName = ctx?.roleName ?? _roleKey ?? 'unknown';
+    final roleName =
+        _activeBusinessContext.roleName ?? _roleKey ?? 'unknown';
 
     await _auditLogService.log(
       actionType: AuditLogActionType.permissionDenied,

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/auth_context_dao.dart';
+import 'package:pos/core/session/active_business_context.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/core/database/daos/businesses_dao.dart';
 import 'package:pos/core/database/daos/categories_dao.dart';
@@ -38,6 +39,7 @@ import 'package:pos/features/procurement/data/datasources/procurement_remote_ds.
 /// Service to handle synchronization between local Drift DB and Supabase
 class SyncService {
   final AuthContextDao _authContextDao;
+  final ActiveBusinessContext _activeBusinessContext;
   final BranchesDao _branchesDao;
   final BusinessesDao _businessesDao;
   final CategoriesDao _categoriesDao;
@@ -76,6 +78,7 @@ class SyncService {
 
   SyncService({
     required AuthContextDao authContextDao,
+    required ActiveBusinessContext activeBusinessContext,
     required BranchesDao branchesDao,
     required BusinessesDao businessesDao,
     required CategoriesDao categoriesDao,
@@ -103,6 +106,7 @@ class SyncService {
     required RecipeLinesDao recipeLinesDao,
     required SyncStateDao syncStateDao,
   }) : _authContextDao = authContextDao,
+       _activeBusinessContext = activeBusinessContext,
        _branchesDao = branchesDao,
        _businessesDao = businessesDao,
        _categoriesDao = categoriesDao,
@@ -130,13 +134,21 @@ class SyncService {
        _recipeLinesDao = recipeLinesDao,
        _syncStateDao = syncStateDao;
 
-  /// Returns [provided] if non-null, otherwise reads businessId from the
-  /// locally cached auth context. This allows connectivity-triggered syncs
-  /// (which don't know the businessId) to still run the pull phase.
-  Future<String?> _resolveBusinessId(String? provided) async {
-    if (provided != null) return provided;
-    final ctx = await _authContextDao.getAny();
-    return ctx?.businessId;
+  /// Resolves the businessId a sync should operate on.
+  ///
+  /// Connectivity-/timer-triggered syncs arrive with no businessId; they must
+  /// resolve it from the AUTHORITATIVE active session — never from a
+  /// tenant-agnostic "first cached row" lookup, which is how a background pull
+  /// could load a previous account's data on a shared device. When no business
+  /// is active (logged out, or mid-onboarding before a business exists) the pull
+  /// is skipped entirely.
+  String? _resolveBusinessId(String? provided) {
+    final active = _activeBusinessContext.businessId;
+    final resolved = resolveSyncBusinessId(provided: provided, active: active);
+    if (resolved == null && provided != null && provided.trim().isNotEmpty) {
+      debugPrint('[SYNC] Refusing pull for $provided — active business is $active');
+    }
+    return resolved;
   }
 
   /// Initialize sync service and listen for connectivity changes.
@@ -168,6 +180,18 @@ class SyncService {
   void dispose() {
     _retryTimer?.cancel();
     _connectivitySubscription?.cancel();
+  }
+
+  /// Stop all background sync triggers on logout so no timer- or
+  /// connectivity-driven pull can run while no account is active (which is when
+  /// a stale tenant could otherwise be resolved). [init] re-arms on next login.
+  void pause() {
+    _retryTimer?.cancel();
+    _retryTimer = null;
+    _connectivitySubscription?.cancel();
+    _connectivitySubscription = null;
+    _pendingBusinessId = null;
+    _initCalled = false;
   }
 
   /// Wipe all business-specific local data on logout so the next account
@@ -403,7 +427,7 @@ class SyncService {
           recipeResult.failedCount;
 
       // pull kapag may businessId (either provided or from auth context)
-      final effectiveBusinessId = await _resolveBusinessId(businessId);
+      final effectiveBusinessId = _resolveBusinessId(businessId);
       SyncResult pullResult = SyncResult(
         success: true,
         message: 'Pull skipped (no businessId)',
@@ -454,9 +478,9 @@ class SyncService {
       // If a sync call with a businessId arrived while we were running (e.g.
       // AuthBloc._backgroundSync during the startup init sync), schedule a
       // quick pull-only pass so that server data is never missed.
-      final followUp = _pendingBusinessId;
+      final followUp = _resolveBusinessId(_pendingBusinessId);
+      _pendingBusinessId = null;
       if (followUp != null) {
-        _pendingBusinessId = null;
         _connectivityService.isConnected.then((online) {
           if (online) pullFromServer(followUp).ignore();
         });
@@ -1198,6 +1222,15 @@ class SyncService {
 
   // pull the data from sever kapag  bago ang device or may changes sa server that are not yet in local db, then update local db with server data. This ensures na kahit connectivity-triggered syncs on a new device still pull server data.
   Future<SyncResult> pullFromServer(String businessId) async {
+    // Defensive tenant guard: never pull a business other than the active one.
+    final active = _activeBusinessContext.businessId;
+    if (active != null && active.trim().isNotEmpty && businessId != active) {
+      debugPrint(
+        '[SYNC] pullFromServer blocked: $businessId != active $active',
+      );
+      return SyncResult(success: false, message: 'Pull blocked: tenant mismatch');
+    }
+
     final online = await isOnline;
     if (!online) {
       return SyncResult(success: false, message: 'Pull skipped: offline');
@@ -1941,6 +1974,25 @@ class SyncService {
         syncStatus == SyncStatus.pendingUpdate.toInt() ||
         syncStatus == SyncStatus.pendingDelete.toInt();
   }
+}
+
+/// Pure tenant-resolution rule for syncs (extracted so it can be unit-tested
+/// in isolation — it is the security-critical guard against cross-tenant pulls).
+///
+/// - Prefer an explicitly [provided] businessId, else fall back to the [active]
+///   session's business.
+/// - Blank/whitespace ids are treated as absent.
+/// - When a business is active, NEVER resolve to a different one (a stale id
+///   queued before an account switch is rejected → returns null).
+/// - With no business available at all, returns null so the pull is skipped.
+String? resolveSyncBusinessId({String? provided, String? active}) {
+  String? norm(String? s) => (s != null && s.trim().isNotEmpty) ? s : null;
+  final p = norm(provided);
+  final a = norm(active);
+  final candidate = p ?? a;
+  if (candidate == null) return null;
+  if (a != null && candidate != a) return null;
+  return candidate;
 }
 
 /// Result of a sync operation

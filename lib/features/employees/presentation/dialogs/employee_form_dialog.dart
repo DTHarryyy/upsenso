@@ -247,20 +247,15 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
   }
 
   Widget _buildSubmitButton() => AppFilledButton(
-        label: _isEditing ? 'Save Changes' : 'Add Employee',
-        loading: _submitting,
-        onPressed: _submitting ? null : _submit,
-        icon: _isEditing ? Icons.check : Icons.person_add_outlined,
-      );
+    label: _isEditing ? 'Save Changes' : 'Add Employee',
+    loading: _submitting,
+    onPressed: _submitting ? null : _submit,
+    icon: _isEditing ? Icons.check : Icons.person_add_outlined,
+  );
 
   Widget _buildScrollContent() {
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        widget.isPage ? 20 : 20,
-        20,
-        20,
-      ),
+      padding: EdgeInsets.fromLTRB(20, widget.isPage ? 20 : 20, 20, 20),
       child: Form(
         key: _formKey,
         child: Column(
@@ -296,17 +291,18 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _emailCtrl,
-                    decoration: appInputDeco(
-                      'e.g. maria@business.com',
-                      label: 'Work Email',
-                    ).copyWith(
-                      errorText: _serverEmailError,
-                      helperText: 'Used for the employee\'s login account',
-                      helperStyle: getOutfitStyle(
-                        fontSize: 11,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
+                    decoration:
+                        appInputDeco(
+                          'e.g. maria@business.com',
+                          label: 'Work Email',
+                        ).copyWith(
+                          errorText: _serverEmailError,
+                          helperText: 'Used for the employee\'s login account',
+                          helperStyle: getOutfitStyle(
+                            fontSize: 11,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
                     onChanged: (_) {
@@ -337,23 +333,24 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
                   TextFormField(
                     controller: _passwordCtrl,
                     obscureText: _obscurePassword,
-                    decoration: appInputDeco(
-                      'Min. 6 characters',
-                      label: 'Password',
-                    ).copyWith(
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
-                          size: 20,
-                          color: AppColors.textMuted,
+                    decoration:
+                        appInputDeco(
+                          'Min. 6 characters',
+                          label: 'Password',
+                        ).copyWith(
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              size: 20,
+                              color: AppColors.textMuted,
+                            ),
+                            onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword,
+                            ),
+                          ),
                         ),
-                        onPressed: () => setState(
-                          () => _obscurePassword = !_obscurePassword,
-                        ),
-                      ),
-                    ),
                     textInputAction: TextInputAction.next,
                     validator: (v) {
                       if (v == null || v.isEmpty) return 'Required';
@@ -374,24 +371,25 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
                   TextFormField(
                     controller: _confirmPasswordCtrl,
                     obscureText: _obscureConfirmPassword,
-                    decoration: appInputDeco(
-                      'Re-enter password',
-                      label: 'Confirm Password',
-                    ).copyWith(
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscureConfirmPassword
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
-                          size: 20,
-                          color: AppColors.textMuted,
+                    decoration:
+                        appInputDeco(
+                          'Re-enter password',
+                          label: 'Confirm Password',
+                        ).copyWith(
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscureConfirmPassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              size: 20,
+                              color: AppColors.textMuted,
+                            ),
+                            onPressed: () => setState(
+                              () => _obscureConfirmPassword =
+                                  !_obscureConfirmPassword,
+                            ),
+                          ),
                         ),
-                        onPressed: () => setState(
-                          () =>
-                              _obscureConfirmPassword = !_obscureConfirmPassword,
-                        ),
-                      ),
-                    ),
                     textInputAction: TextInputAction.done,
                     validator: (v) {
                       if (v == null || v.isEmpty) return 'Required';
@@ -417,10 +415,7 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
                     value: _selectedBranchId,
                     hint: 'Select branch',
                     items: widget.branches
-                        .map(
-                          (b) =>
-                              AppDropdownItem(value: b.id, label: b.name),
-                        )
+                        .map((b) => AppDropdownItem(value: b.id, label: b.name))
                         .toList(),
                     onChanged: (v) => setState(() => _selectedBranchId = v),
                     validator: (v) =>
@@ -573,7 +568,6 @@ class _DialogHeader extends StatelessWidget {
     );
   }
 }
-
 
 // ── Role selector ─────────────────────────────────────────────────────────────
 
@@ -734,7 +728,9 @@ class _PasswordStrengthBar extends StatelessWidget {
     int s = 2;
     if (password.length >= 8) s++;
     if (RegExp(r'[A-Z]').hasMatch(password) &&
-        RegExp(r'[0-9!@#$%^&*]').hasMatch(password)) s++;
+        RegExp(r'[0-9!@#$%^&*]').hasMatch(password)) {
+      s++;
+    }
     return s;
   }
 
@@ -835,20 +831,13 @@ class _FormErrorBanner extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: getOutfitStyle(
-                fontSize: 13,
-                color: AppColors.expense,
-              ),
+              style: getOutfitStyle(fontSize: 13, color: AppColors.expense),
             ),
           ),
           const SizedBox(width: 8),
           GestureDetector(
             onTap: onDismiss,
-            child: const Icon(
-              Icons.close,
-              size: 16,
-              color: AppColors.error,
-            ),
+            child: const Icon(Icons.close, size: 16, color: AppColors.error),
           ),
         ],
       ),

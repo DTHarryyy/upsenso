@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/audit_logs_dao.dart';
 import 'package:pos/core/database/daos/auth_context_dao.dart';
+import 'package:pos/core/session/active_business_context.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 
 /// Lightweight, fire-and-forget service for writing audit log entries.
@@ -27,13 +28,16 @@ import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 class AuditLogService {
   final AuditLogsDao _dao;
   final AuthContextDao _authContextDao;
+  final ActiveBusinessContext _activeBusinessContext;
   static const _uuid = Uuid();
 
   AuditLogService({
     required AuditLogsDao dao,
     required AuthContextDao authContextDao,
+    required ActiveBusinessContext activeBusinessContext,
   }) : _dao = dao,
-       _authContextDao = authContextDao;
+       _authContextDao = authContextDao,
+       _activeBusinessContext = activeBusinessContext;
 
   /// Write an audit log entry.  Fire-and-forget — errors are swallowed so
   /// audit logging never breaks the caller's flow.
@@ -55,19 +59,42 @@ class AuditLogService {
     String? userId,
   }) async {
     try {
-      final ctx = await _authContextDao.getAny();
-      final resolvedBusinessId = businessId ?? ctx?.businessId ?? '';
-      final resolvedBranchId = branchId ?? ctx?.branchId ?? '';
-      final resolvedUserId = userId ?? ctx?.userId ?? '';
-      // Prefer explicitly supplied name, then fall back to auth context full name.
-      final resolvedUserName = userName ?? ctx?.fullName;
+      // Resolve from the AUTHORITATIVE active session first; fall back to the
+      // single cached auth row only for cold-start writes before AuthBloc has
+      // bound the active context. Never resolve a tenant from a "first row"
+      // lookup of an arbitrary account.
+      final active = _activeBusinessContext;
+      final ctx = active.hasBusiness ? null : await _authContextDao.getAny();
+      final activeBusinessId = active.businessId ?? ctx?.businessId;
+
+      final resolvedBusinessId = businessId ?? activeBusinessId ?? '';
+      final resolvedBranchId = branchId ?? active.branchId ?? ctx?.branchId ?? '';
+      final resolvedUserId = userId ?? active.userId ?? ctx?.userId ?? '';
+      // Prefer explicitly supplied name, then active/cached full name.
+      final resolvedUserName = userName ?? active.fullName ?? ctx?.fullName;
+      final resolvedBranchNameSource =
+          active.branchName ?? ctx?.branchName;
       // Use branch name from context; fall back to 'All Branches' when the
       // resolved user has no assigned branch (Business Owner / all-branch access).
-      final resolvedBranchName = ctx?.branchName?.trim().isNotEmpty == true
-          ? ctx!.branchName
+      final resolvedBranchName =
+          resolvedBranchNameSource?.trim().isNotEmpty == true
+          ? resolvedBranchNameSource
           : (resolvedBranchId.isEmpty ? 'All Branches' : null);
 
       if (resolvedBusinessId.isEmpty) return; // no session — skip silently
+
+      // Tenant guard: if a session is active, never write a log attributed to a
+      // different business than the active one. Drop it rather than corrupt
+      // another tenant's audit trail.
+      if (activeBusinessId != null &&
+          activeBusinessId.isNotEmpty &&
+          resolvedBusinessId != activeBusinessId) {
+        debugPrint(
+          '[AuditLogService] dropped log for $resolvedBusinessId — '
+          'active business is $activeBusinessId',
+        );
+        return;
+      }
 
       final enrichedMetadata = {
         ...metadata,

@@ -3,8 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/audit/audit_log_service.dart';
 import 'package:pos/core/config/di.dart';
+import 'package:pos/core/database/daos/auth_context_dao.dart';
 import 'package:pos/core/errors/supabase_error_mapper.dart';
 import 'package:pos/core/permissions/permission_service.dart';
+import 'package:pos/core/session/active_business_context.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_service.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
@@ -68,6 +70,52 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final id = user.businessId;
     if (id == null || id.trim().isEmpty) return;
     unawaited(syncService?.syncAll(businessId: id));
+  }
+
+  // ── Active-tenant helpers ─────────────────────────────────────────────────
+
+  /// Bind the authoritative active session. Every tenant-sensitive service
+  /// (sync, audit, permissions) resolves businessId from here, so this MUST be
+  /// set before emitting [AuthAuthenticated].
+  void _setActiveContext(AppUser user) {
+    sl<ActiveBusinessContext>().set(
+      userId: user.id,
+      businessId: user.businessId,
+      branchId: user.branchId,
+      branchName: user.branchName,
+      roleName: user.roleName,
+      fullName: user.fullName,
+    );
+  }
+
+  /// Set the active context, then emit [AuthAuthenticated]. Single choke point
+  /// so the in-memory tenant can never lag behind the emitted auth state.
+  void _emitAuthenticated(Emitter<AuthState> emit, AppUser user) {
+    _setActiveContext(user);
+    emit(AuthAuthenticated(user));
+  }
+
+  /// The userId cached on this device BEFORE the current authentication began.
+  /// Captured before any sign-in/context fetch (which rewrites the cache), so we
+  /// can reliably tell a re-login from an account switch.
+  Future<String?> _priorCachedUserId() async {
+    final ctx = await sl<AuthContextDao>().getAny();
+    return ctx?.userId;
+  }
+
+  /// When a DIFFERENT account is authenticating on this device, wipe all local
+  /// business data + cached context so the new account can never inherit the
+  /// previous tenant's records. [priorUserId] must be captured BEFORE sign-in.
+  /// No-op for a fresh device or the same user re-logging in.
+  Future<void> _resetIfAccountSwitch(
+    String? priorUserId,
+    String newUserId,
+  ) async {
+    if (priorUserId == null || priorUserId == newUserId) return;
+    debugPrint('[AuthBloc] Account switch detected — clearing local data');
+    sl<PermissionService>().clearPermissions();
+    sl<ActiveBusinessContext>().clear();
+    await syncService?.clearLocalData();
   }
 
   // ── Permission helpers ────────────────────────────────────────────────────
@@ -221,7 +269,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     if (_hasCompleteContext(user)) {
       debugPrint('AuthBloc: Emitting cached user (with complete context)');
       await _loadPermissionsFromCache(user);
-      emit(AuthAuthenticated(user));
+      _emitAuthenticated(emit, user);
       _backgroundSync(user);
       _syncPermissionsBackground(user);
       return;
@@ -249,13 +297,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         '(${authed.businessId != null ? "with" : "without"} business)',
       );
       await _loadPermissionsFromCache(authed);
-      emit(AuthAuthenticated(authed));
+      _emitAuthenticated(emit, authed);
       _backgroundSync(authed);
       _syncPermissionsBackground(authed);
     } catch (e) {
       debugPrint('AuthBloc: Context fetch failed: $e — emitting partial user');
       await _loadPermissionsFromCache(user);
-      emit(AuthAuthenticated(user));
+      _emitAuthenticated(emit, user);
       _backgroundSync(user);
       _syncPermissionsBackground(user);
     }
@@ -270,17 +318,20 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         _sameContext(currentState.user, event.user)) {
       return;
     }
-    emit(AuthAuthenticated(event.user));
+    _emitAuthenticated(emit, event.user);
   }
 
   Future<void> _onLogin(AuthLoginRequested e, Emitter<AuthState> emit) async {
     emit(const AuthLoading(type: AuthLoadingType.email));
     try {
+      final priorUserId = await _priorCachedUserId();
       final user = await signIn(e.email, e.password);
+      // Wipe any previous account's local data BEFORE pulling this account's.
+      await _resetIfAccountSwitch(priorUserId, user.id);
       final authed = (await _getUserContextWithRetry(user.id)) ?? user;
       await _initialSync(authed);
       await _loadPermissionsFromCache(authed);
-      emit(AuthAuthenticated(authed));
+      _emitAuthenticated(emit, authed);
       _syncPermissionsBackground(authed);
       sl<AuditLogService>().log(
         actionType: AuditLogActionType.userLogin,
@@ -373,6 +424,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         throw 'Verification email mismatch. Please start sign up again.';
       }
 
+      final priorUserId = await _priorCachedUserId();
       final user = await verifySignUpOtp(
         email: e.email,
         token: e.code,
@@ -382,10 +434,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       _pendingSignUpEmail = null;
       _pendingSignUpPassword = null;
 
+      // A brand-new account on a device that still holds a previous account's
+      // data: wipe it before establishing the new context.
+      await _resetIfAccountSwitch(priorUserId, user.id);
       final authed = (await _getUserContextWithRetry(user.id)) ?? user;
       await _initialSync(authed);
       await _loadPermissionsFromCache(authed);
-      emit(AuthAuthenticated(authed));
+      _emitAuthenticated(emit, authed);
       _syncPermissionsBackground(authed);
     } catch (err) {
       emit(AuthError(_errorMessage(err)));
@@ -454,7 +509,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           'skipping local wipe to avoid data loss',
         );
       }
+      // Stop background sync triggers so no timer-/connectivity-driven pull
+      // runs while logged out. If the wipe above was skipped (unsynced data),
+      // the next DIFFERENT account login wipes it via _resetIfAccountSwitch
+      // before pulling, so a new account never inherits this tenant's data.
+      syncService!.pause();
     }
+
+    // Drop the authoritative active tenant — guards every getAny-free resolver.
+    sl<ActiveBusinessContext>().clear();
 
     emit(AuthUnauthenticated());
 
@@ -478,12 +541,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           const AuthError('Your session has expired. Please sign in again.'),
         );
       }
+      sl<ActiveBusinessContext>().clear();
+      syncService?.pause();
       emit(AuthUnauthenticated());
       return;
     }
 
     final user = getCurrentUser();
     if (user == null) {
+      sl<ActiveBusinessContext>().clear();
       emit(AuthUnauthenticated());
       return;
     }
@@ -502,10 +568,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
     }
 
+    // OAuth/external account switch: if a different account's data is still on
+    // this device, wipe it before establishing the new context. (Capture the
+    // prior id before getUserBusinessContext rewrites the cache.)
+    final priorUserId = await _priorCachedUserId();
+    await _resetIfAccountSwitch(priorUserId, user.id);
+
     // Avoid extra network fetches when current user already has complete context.
     if (_hasCompleteContext(user)) {
       await _loadPermissionsFromCache(user);
-      emit(AuthAuthenticated(user));
+      _emitAuthenticated(emit, user);
       return;
     }
 
@@ -518,7 +590,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       user.id,
     ).timeout(const Duration(seconds: 3), onTimeout: () => null);
     if (cachedContext != null && _hasCompleteContext(cachedContext)) {
-      emit(AuthAuthenticated(cachedContext));
+      _emitAuthenticated(emit, cachedContext);
       return;
     }
 
@@ -526,7 +598,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     // This ensures hasBusiness is true in the router so setup is not triggered.
     final interim = cachedContext ?? user;
     if (_hasText(interim.businessId)) {
-      emit(AuthAuthenticated(interim));
+      _emitAuthenticated(emit, interim);
     }
 
     final userWithContext = await _getUserContextWithRetry(
@@ -545,7 +617,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
 
     await _loadPermissionsFromCache(resolved);
-    emit(AuthAuthenticated(resolved));
+    _emitAuthenticated(emit, resolved);
   }
 
   Future<void> _onForgotPassword(

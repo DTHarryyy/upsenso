@@ -76,6 +76,14 @@ class AuthContextDao extends DatabaseAccessor<AppDatabase>
     await delete(authContextTable).go();
   }
 
+  /// Remove every cached context row that does NOT belong to [userId].
+  /// Enforces the single-active-user invariant so [getAny] can never resolve a
+  /// different account's business on a shared device.
+  Future<void> deleteOthers(String userId) async {
+    await (delete(authContextTable)..where((t) => t.userId.equals(userId).not()))
+        .go();
+  }
+
   /// Returns a map of userId → fullName for the given Supabase auth UIDs.
   /// Used as a fallback when an employee has no authUserId set in the
   /// employees table (covers the business owner and pre-authUserId employees).

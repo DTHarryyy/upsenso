@@ -21,6 +21,7 @@ import 'package:pos/core/services/cart_service.dart';
 import 'package:pos/core/services/checkout_service.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_service.dart';
+import 'package:pos/core/session/active_business_context.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/features/auth/data/datasources/auth_remote_ds.dart';
 import 'package:pos/features/auth/data/repositories/auth_repository_impl.dart';
@@ -134,6 +135,11 @@ Future<void> initDI() async {
       : AppEnv.oauthRedirectUrl;
 
   sl.registerLazySingleton<AppDatabase>(() => AppDatabase());
+
+  // Authoritative in-memory active-tenant holder. Set on authenticate, cleared
+  // on logout/account switch. Tenant-sensitive services resolve businessId from
+  // here instead of a tenant-agnostic "first cached row" lookup.
+  sl.registerLazySingleton<ActiveBusinessContext>(() => ActiveBusinessContext());
 
   sl.registerLazySingleton<AuthContextDao>(
     () => AuthContextDao(sl<AppDatabase>()),
@@ -293,6 +299,7 @@ Future<void> initDI() async {
   sl.registerLazySingleton<SyncService>(
     () => SyncService(
       authContextDao: sl<AuthContextDao>(),
+      activeBusinessContext: sl<ActiveBusinessContext>(),
       branchesDao: sl<BranchesDao>(),
       businessesDao: sl<BusinessesDao>(),
       categoriesDao: sl<CategoriesDao>(),
@@ -362,6 +369,7 @@ Future<void> initDI() async {
     () => AuditLogService(
       dao: sl<AuditLogsDao>(),
       authContextDao: sl<AuthContextDao>(),
+      activeBusinessContext: sl<ActiveBusinessContext>(),
     ),
   );
 
@@ -413,6 +421,7 @@ Future<void> initDI() async {
   sl.registerLazySingleton<PermissionService>(
     () => PermissionService(
       authContextDao: sl<AuthContextDao>(),
+      activeBusinessContext: sl<ActiveBusinessContext>(),
       auditLogService: sl<AuditLogService>(),
       permissionsDao: sl<EmployeePermissionsDao>(),
       permissionRemoteDs: sl<PermissionRemoteDs>(),
