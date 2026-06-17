@@ -56,7 +56,7 @@ extension ReportPeriodX on ReportPeriod {
   int get days => dateRange.end.difference(dateRange.start).inDays + 1;
 }
 
-// ─── Inventory status ─────────────────────────────────────────────────────────
+// ─── Inventory / ingredient status ───────────────────────────────────────────
 
 enum InventoryStatusType { low, warning, ok, slowMoving }
 
@@ -87,6 +87,31 @@ class InventoryStatusItem {
     this.daysLeft,
     this.notes,
   });
+}
+
+class IngredientReportItem {
+  final String name;
+  final String? unit;
+  final double currentStock;
+  final double consumed;
+  final double avgDailyConsumption;
+  final double? daysLeft;
+  final double? costPerUnit;
+  final InventoryStatusType status;
+
+  const IngredientReportItem({
+    required this.name,
+    required this.unit,
+    required this.currentStock,
+    required this.consumed,
+    required this.avgDailyConsumption,
+    this.daysLeft,
+    this.costPerUnit,
+    required this.status,
+  });
+
+  double get consumptionCost =>
+      costPerUnit != null ? consumed * costPerUnit! : 0.0;
 }
 
 class SalesTrendPoint {
@@ -146,6 +171,12 @@ class ReportsData {
   final int totalSKUs;
   final List<InventoryStatusItem> inventoryItems;
 
+  // Ingredient Health
+  final int totalIngredients;
+  final int lowIngredientCount;
+  final double ingredientConsumptionCost;
+  final List<IngredientReportItem> ingredientItems;
+
   // Profit Summary
   final double grossRevenue;
   final double costOfGoods;
@@ -172,6 +203,10 @@ class ReportsData {
     required this.deadStockCount,
     required this.totalSKUs,
     required this.inventoryItems,
+    required this.totalIngredients,
+    required this.lowIngredientCount,
+    required this.ingredientConsumptionCost,
+    required this.ingredientItems,
     required this.grossRevenue,
     required this.costOfGoods,
     required this.netProfit,
@@ -196,6 +231,10 @@ class ReportsData {
     deadStockCount: 0,
     totalSKUs: 0,
     inventoryItems: [],
+    totalIngredients: 0,
+    lowIngredientCount: 0,
+    ingredientConsumptionCost: 0,
+    ingredientItems: [],
     grossRevenue: 0,
     costOfGoods: 0,
     netProfit: 0,

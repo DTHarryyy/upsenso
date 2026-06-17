@@ -134,8 +134,8 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
       if (mounted) {
         AppToast.show(
           context,
-          'PDF Ready',
-          subtitle: 'Choose where to save from the share sheet.',
+          'PDF Saved',
+          subtitle: 'Check your Downloads folder.',
           duration: const Duration(seconds: 3),
         );
       }
@@ -171,10 +171,10 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
       if (mounted) {
         final msg = kIsWeb
             ? 'Download started.'
-            : 'Saved: ${result.split('/').last}';
+            : 'Saved to Downloads: $result';
         AppToast.show(
           context,
-          'Excel Exported',
+          'Excel Saved',
           subtitle: msg,
           duration: const Duration(seconds: 4),
         );
@@ -232,15 +232,6 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ① Report header
-                      _ReportHeaderCard(
-                        businessName: businessName,
-                        branchLabel: branchLabel,
-                        period: _period,
-                        customRange: _customRange,
-                      ),
-                      const SizedBox(height: 16),
-                      // ② KPI summary cards
                       _buildPageSummaryCards(data),
                       const SizedBox(height: 16),
                       // ③ Filter row: period picker + export dropdown
@@ -254,7 +245,7 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
                       ),
                       const SizedBox(height: 20),
                       // ⑤ Tab content
-                      // Tab 1 (Inventory) handles its own adaptive skeleton.
+                      // Tab 1 (Inventory Health) handles its own adaptive skeleton.
                       if (isLoading && _selectedTab != 1)
                         const _ReportsTabSkeleton()
                       else if (state is ReportsError && _selectedTab != 1)
@@ -391,32 +382,32 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
         return ReportStatCardsRow(
           cards: [
             ReportStatCard(
-              title: 'Low Stock',
+              title: 'Total SKUs',
+              value: '${data.totalSKUs}',
+              icon: IconlyLight.scan,
+              iconBg: AppColors.brandSoft,
+              iconColor: AppColors.brand,
+            ),
+            ReportStatCard(
+              title: 'Low Products',
               value: '${data.lowStockCount}',
               icon: IconlyLight.category,
               iconBg: AppColors.errorSoft,
               iconColor: AppColors.error,
             ),
             ReportStatCard(
-              title: 'Fast Movers',
-              value: '${data.fastMoversCount}',
-              icon: IconlyBold.activity,
-              iconBg: AppColors.successSoft,
-              iconColor: AppColors.success,
+              title: 'Ingredients',
+              value: '${data.totalIngredients}',
+              icon: IconlyLight.buy,
+              iconBg: const Color(0xFFF3E8FF),
+              iconColor: const Color(0xFF7C3AED),
             ),
             ReportStatCard(
-              title: 'Dead Stock',
-              value: '${data.deadStockCount}',
+              title: 'Low Ingredients',
+              value: '${data.lowIngredientCount}',
               icon: IconlyLight.time_circle,
               iconBg: AppColors.warningSoft,
               iconColor: AppColors.warning,
-            ),
-            ReportStatCard(
-              title: 'Total SKUs',
-              value: '${data.totalSKUs}',
-              icon: IconlyLight.scan,
-              iconBg: AppColors.brandSoft,
-              iconColor: AppColors.brand,
             ),
           ],
         );
@@ -506,133 +497,7 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
   }
 }
 
-// ─── Report header card ───────────────────────────────────────────────────────
-
-class _ReportHeaderCard extends StatelessWidget {
-  final String businessName;
-  final String branchLabel;
-  final ReportPeriod period;
-  final DateTimeRange? customRange;
-
-  const _ReportHeaderCard({
-    required this.businessName,
-    required this.branchLabel,
-    required this.period,
-    this.customRange,
-  });
-
-  String get _periodLabel {
-    if (customRange != null) {
-      String fmt(DateTime d) =>
-          '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
-      final s = customRange!.start;
-      final e = customRange!.end;
-      final sameDay = s.year == e.year && s.month == e.month && s.day == e.day;
-      return sameDay ? fmt(s) : '${fmt(s)} – ${fmt(e)}';
-    }
-    return period.label;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final stamp =
-        '${now.day}/${now.month}/${now.year}  ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderSoft),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: AppColors.brandSoft,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              IconlyLight.chart,
-              color: AppColors.brand,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  businessName.isNotEmpty
-                      ? businessName
-                      : 'Reports & Analytics',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 4,
-                  children: [
-                    _Chip(IconlyLight.calendar, _periodLabel),
-                    _Chip(IconlyLight.work, branchLabel),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              const Text(
-                'Generated',
-                style: TextStyle(fontSize: 10, color: AppColors.textMuted),
-              ),
-              Text(
-                stamp,
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  const _Chip(this.icon, this.label);
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 11, color: AppColors.textMuted),
-        const SizedBox(width: 3),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-        ),
-      ],
-    );
-  }
-}
-
-// ─── Export dropdown ──────────────────────────────────────────────────────────
+// Export dropdown
 
 enum _ExportType { pdf, excel }
 

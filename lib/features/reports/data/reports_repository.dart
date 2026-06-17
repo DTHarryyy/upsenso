@@ -4,8 +4,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/core/database/daos/categories_dao.dart';
+import 'package:pos/core/database/daos/inventory_levels_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
 import 'package:pos/core/database/daos/products_dao.dart';
+import 'package:pos/core/database/daos/stock_ledger_dao.dart';
 import 'package:pos/core/database/daos/transactions_dao.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/features/dashboard/data/dashboard_data.dart';
@@ -19,6 +21,8 @@ class ReportsRepository implements IReportsRepository {
   final ProductsDao _productsDao;
   final CategoriesDao _categoriesDao;
   final BranchesDao _branchesDao;
+  final InventoryLevelsDao _levelsDao;
+  final StockLedgerDao _ledgerDao;
   final SharedPreferences _prefs;
 
   static const String _branchCubitOptionsKeyPrefix = 'cached_branch_options';
@@ -29,12 +33,16 @@ class ReportsRepository implements IReportsRepository {
     required ProductsDao productsDao,
     required CategoriesDao categoriesDao,
     required BranchesDao branchesDao,
+    required InventoryLevelsDao levelsDao,
+    required StockLedgerDao ledgerDao,
     required SharedPreferences prefs,
   }) : _txnDao = txnDao,
        _variantsDao = variantsDao,
        _productsDao = productsDao,
        _categoriesDao = categoriesDao,
        _branchesDao = branchesDao,
+       _levelsDao = levelsDao,
+       _ledgerDao = ledgerDao,
        _prefs = prefs;
 
   // ─── Real-time change stream ─────────────────────────────────────────────
@@ -469,6 +477,89 @@ class ReportsRepository implements IReportsRepository {
       );
     }).toList();
 
+    // ── 8. Ingredient Health ──────────────────────────────────────────────
+    final ingredientProductIds = products
+        .where((p) => p.type == 'ingredient')
+        .map((p) => p.id)
+        .toSet();
+    final ingredientVariants = variants
+        .where((v) => ingredientProductIds.contains(v.productId))
+        .toList();
+
+    // Recipe consumption from ledger in current period
+    final allLedger = await _ledgerDao.getByBusinessId(businessId);
+    final consumedMap = <String, double>{};
+    for (final entry in allLedger) {
+      if (entry.sourceType != 'recipe_consumption') continue;
+      if (entry.changeType != 'OUT') continue;
+      if (entry.createdAt.isBefore(cutoff) ||
+          !entry.createdAt.isBefore(rangeEnd)) continue;
+      if (branchId != null && entry.branchId != branchId) {
+        continue;
+      }
+      consumedMap[entry.variantId] =
+          (consumedMap[entry.variantId] ?? 0) + entry.quantity;
+    }
+
+    // Per-branch stock via inventory_levels when a branch is filtered
+    Map<String, double>? branchLevelMap;
+    if (branchId != null) {
+      final levels = await _levelsDao.getByBusinessId(businessId);
+      branchLevelMap = {};
+      for (final level in levels) {
+        if (level.branchId != branchId) continue;
+        branchLevelMap[level.variantId] = level.effectiveQuantity;
+      }
+    }
+
+    final ingredientItems = <IngredientReportItem>[];
+    int lowIngredientCount = 0;
+    double ingredientConsumptionCost = 0;
+
+    for (final v in ingredientVariants) {
+      final name = productToName[v.productId] ?? 'Unknown';
+      final currentStock = branchLevelMap != null
+          ? (branchLevelMap[v.id] ?? 0.0)
+          : (v.stockDecimal ?? v.stock.toDouble());
+      final consumedQty = consumedMap[v.id] ?? 0.0;
+      final avgDailyConsumption = consumedQty / rangeDays;
+      final daysLeft =
+          avgDailyConsumption > 0 ? currentStock / avgDailyConsumption : null;
+
+      InventoryStatusType status;
+      final threshold = v.lowStockAlert;
+      if ((threshold != null && currentStock <= threshold) ||
+          (threshold == null && currentStock <= 0)) {
+        status = InventoryStatusType.low;
+        lowIngredientCount++;
+      } else if (daysLeft != null && daysLeft <= 5) {
+        status = InventoryStatusType.warning;
+      } else if (avgDailyConsumption < 0.01) {
+        status = InventoryStatusType.slowMoving;
+      } else {
+        status = InventoryStatusType.ok;
+      }
+
+      if (v.costPrice != null) {
+        ingredientConsumptionCost += consumedQty * v.costPrice!;
+      }
+
+      ingredientItems.add(IngredientReportItem(
+        name: name,
+        unit: v.unit,
+        currentStock: currentStock,
+        consumed: consumedQty,
+        avgDailyConsumption: avgDailyConsumption,
+        daysLeft: daysLeft,
+        costPerUnit: v.costPrice,
+        status: status,
+      ));
+    }
+
+    ingredientItems.sort(
+      (a, b) => statusOrder[a.status]!.compareTo(statusOrder[b.status]!),
+    );
+
     return ReportsData(
       totalRevenue: totalRevenue,
       totalTransactions: totalTransactions,
@@ -485,6 +576,10 @@ class ReportsRepository implements IReportsRepository {
       deadStockCount: deadStockCount,
       totalSKUs: totalSKUs,
       inventoryItems: inventoryItems,
+      totalIngredients: ingredientVariants.length,
+      lowIngredientCount: lowIngredientCount,
+      ingredientConsumptionCost: ingredientConsumptionCost,
+      ingredientItems: ingredientItems,
       grossRevenue: totalRevenue,
       costOfGoods: costOfGoods,
       netProfit: netProfit,

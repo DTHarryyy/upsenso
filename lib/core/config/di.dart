@@ -514,6 +514,8 @@ Future<void> initDI() async {
       productsDao: sl<ProductsDao>(),
       categoriesDao: sl<CategoriesDao>(),
       branchesDao: sl<BranchesDao>(),
+      levelsDao: sl<InventoryLevelsDao>(),
+      ledgerDao: sl<StockLedgerDao>(),
       prefs: sl<SharedPreferences>(),
     ),
   );

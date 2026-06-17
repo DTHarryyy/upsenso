@@ -22,6 +22,7 @@ class ReportExcelExporter {
       _buildInventorySheet(data),
       _buildProfitSheet(data),
       if (data.branchStats.isNotEmpty) _buildBranchSheet(data),
+      if (data.ingredientItems.isNotEmpty) _buildIngredientsSheet(data),
     ];
 
     final bytes = _XlsxWriter.encode(sheets);
@@ -114,6 +115,51 @@ class ReportExcelExporter {
       name: 'Inventory',
       rows: rows,
       colWidths: [32, 14, 12, 12, 12, 28],
+      frozenRows: 1,
+    );
+  }
+
+  static _Sheet _buildIngredientsSheet(ReportsData data) {
+    final rows = <_Row>[];
+    rows.add(_headerRow(['Ingredient', 'Status', 'Unit', 'Stock', 'Consumed', 'Days Left', 'Cost/Unit', 'Total Cost']));
+
+    for (int i = 0; i < data.ingredientItems.length; i++) {
+      final item = data.ingredientItems[i];
+      final stock = item.currentStock % 1 == 0
+          ? item.currentStock.toInt().toString()
+          : item.currentStock.toStringAsFixed(1);
+      final consumed = item.consumed < 0.01
+          ? '0'
+          : item.consumed % 1 == 0
+          ? item.consumed.toInt().toString()
+          : item.consumed.toStringAsFixed(1);
+      final days = item.daysLeft == null
+          ? '∞'
+          : item.daysLeft! > 999
+          ? '999+'
+          : item.daysLeft!.toStringAsFixed(1);
+      final costPer = item.costPerUnit != null
+          ? '₱${item.costPerUnit!.toStringAsFixed(2)}'
+          : '—';
+      final totalCost = item.consumptionCost > 0
+          ? '₱${item.consumptionCost.toStringAsFixed(2)}'
+          : '—';
+      rows.add(_Row([
+        _Cell(item.name, i.isOdd ? _S.altL : _S.normalL),
+        _Cell(item.status.label, i.isOdd ? _S.altL : _S.normalL),
+        _Cell(item.unit ?? 'pcs', i.isOdd ? _S.altL : _S.normalL),
+        _Cell(stock, i.isOdd ? _S.altR : _S.normalR),
+        _Cell(consumed, i.isOdd ? _S.altR : _S.normalR),
+        _Cell(days, i.isOdd ? _S.altR : _S.normalR),
+        _Cell(costPer, i.isOdd ? _S.altR : _S.normalR),
+        _Cell(totalCost, i.isOdd ? _S.altR : _S.normalR),
+      ]));
+    }
+
+    return _Sheet(
+      name: 'Ingredients',
+      rows: rows,
+      colWidths: [30, 14, 10, 12, 12, 12, 13, 14],
       frozenRows: 1,
     );
   }

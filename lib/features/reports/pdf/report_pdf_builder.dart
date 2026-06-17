@@ -6,6 +6,7 @@ import 'package:pos/features/reports/data/reports_data.dart';
 import 'package:pos/features/reports/pdf/report_pdf_styles.dart';
 import 'package:pos/features/reports/pdf/sections/pdf_branch_section.dart';
 import 'package:pos/features/reports/pdf/sections/pdf_cover_section.dart';
+import 'package:pos/features/reports/pdf/sections/pdf_ingredients_section.dart';
 import 'package:pos/features/reports/pdf/sections/pdf_inventory_section.dart';
 import 'package:pos/features/reports/pdf/sections/pdf_profit_section.dart';
 import 'package:pos/features/reports/pdf/sections/pdf_sales_section.dart';
@@ -70,6 +71,10 @@ class ReportPdfBuilder {
           if (data.branchStats.isNotEmpty) ...[
             pw.NewPage(),
             ...buildBranchSection(data),
+          ],
+          if (data.ingredientItems.isNotEmpty) ...[
+            pw.NewPage(),
+            ...buildIngredientsSection(data),
           ],
         ],
       ),

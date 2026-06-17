@@ -1,14 +1,9 @@
-import 'package:printing/printing.dart';
 import 'package:pos/features/reports/data/reports_data.dart';
 import 'package:pos/features/reports/pdf/report_pdf_builder.dart';
+import 'package:pos/features/reports/pdf/_pdf_saver_stub.dart'
+    if (dart.library.io) 'package:pos/features/reports/pdf/_pdf_saver_io.dart'
+    if (dart.library.html) 'package:pos/features/reports/pdf/_pdf_saver_web.dart';
 
-/// Builds the PDF and hands it to the OS via [Printing.sharePdf].
-///
-/// On Android this opens the system share sheet — the user can pick
-/// "Save to Downloads", Google Drive, email, etc.
-/// On iOS it opens the share sheet where they can "Save to Files".
-///
-/// Returns the filename that was used so the caller can show it.
 class ReportPdfExporter {
   static Future<String> export({
     required ReportsData data,
@@ -22,9 +17,8 @@ class ReportPdfExporter {
       businessName: businessName,
       branchLabel: branchLabel,
     );
-
     final filename = _buildFilename(period);
-    await Printing.sharePdf(bytes: bytes, filename: filename);
+    await sharePdfBytes(bytes, filename);
     return filename;
   }
 
