@@ -368,10 +368,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         await _productVariantsDao.insertVariants(companions);
       } else if (isAdvanced) {
         final id = const Uuid().v4();
-        final price = double.tryParse(data.sellingPrice ?? '') ?? 0.0;
-        // Apply tax to get the tax-inclusive price stored & displayed to customers.
-        final taxRate = tax != null ? tax / 100.0 : 0.0;
-        final finalPrice = taxRate > 0 ? price * (1 + taxRate) : price;
+        // Store the tax-exclusive price. Tax is applied once at the cart layer
+        // via the product's tax rate — storing it inclusive here double-taxes.
+        final finalPrice = double.tryParse(data.sellingPrice ?? '') ?? 0.0;
         final cost = (data.costPrice?.trim().isNotEmpty == true)
             ? double.tryParse(data.costPrice!)
             : null;
@@ -644,10 +643,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       } else if (isAdvanced) {
         // Advanced + variants OFF: single "Default" variant.
         final id = const Uuid().v4();
-        final price = double.tryParse(data.sellingPrice ?? '') ?? 0.0;
-        // Apply tax to get the tax-inclusive price stored & displayed to customers.
-        final taxRate = tax != null ? tax / 100.0 : 0.0;
-        final finalPrice = taxRate > 0 ? price * (1 + taxRate) : price;
+        // Store the tax-exclusive price. Tax is applied once at the cart layer
+        // via the product's tax rate — storing it inclusive here double-taxes.
+        final finalPrice = double.tryParse(data.sellingPrice ?? '') ?? 0.0;
         final cost = (data.costPrice?.trim().isNotEmpty == true)
             ? double.tryParse(data.costPrice!)
             : null;

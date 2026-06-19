@@ -14,3 +14,16 @@ class EmployeeDuplicateException implements Exception {
   @override
   String toString() => 'EmployeeDuplicateException: $fieldErrors';
 }
+
+/// Thrown when an action is blocked because the target employee is a protected
+/// account (Owner / Super Admin) that cannot be removed or deactivated.
+class EmployeeProtectedException implements Exception {
+  final String message;
+
+  const EmployeeProtectedException([
+    this.message = 'Owners and Super Admins cannot be removed or suspended.',
+  ]);
+
+  @override
+  String toString() => 'EmployeeProtectedException: $message';
+}

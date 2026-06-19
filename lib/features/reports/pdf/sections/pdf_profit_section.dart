@@ -6,12 +6,11 @@ import 'package:pos/features/reports/presentation/widgets/report_card.dart'
 
 List<pw.Widget> buildProfitSection(ReportsData data) {
   final profitChg = pctChange(data.netProfit, data.prevNetProfit);
-  final margin = data.grossRevenue > 0
-      ? data.netProfit / data.grossRevenue * 100
-      : 0.0;
-  final cogsRatio = data.grossRevenue > 0
-      ? data.costOfGoods / data.grossRevenue * 100
-      : 0.0;
+  // Profit math excludes collected tax. Net revenue is the profit base
+  // (netProfit = netRevenue - COGS), derived without a model change.
+  final netRevenue = data.netProfit + data.costOfGoods;
+  final margin = netRevenue > 0 ? data.netProfit / netRevenue * 100 : 0.0;
+  final cogsRatio = netRevenue > 0 ? data.costOfGoods / netRevenue * 100 : 0.0;
 
   String s(double v) =>
       '${v >= 0 ? '+' : ''}${v.toStringAsFixed(1)}% vs prev';
@@ -26,7 +25,7 @@ List<pw.Widget> buildProfitSection(ReportsData data) {
 
     // ── P&L Summary KPIs ────────────────────────────────────────────────────
     PdfS.metricRow([
-      PdfMetric('Gross Revenue', pdfCurrency(data.grossRevenue)),
+      PdfMetric('Net Revenue', pdfCurrency(netRevenue)),
       PdfMetric('Cost of Goods', pdfCurrency(data.costOfGoods),
           change: '${cogsRatio.toStringAsFixed(1)}% of revenue',
           isPositive: false),
@@ -56,8 +55,8 @@ List<pw.Widget> buildProfitSection(ReportsData data) {
       headers: ['Line Item', 'Amount', '% of Revenue'],
       rows: [
         [
-          'Gross Revenue',
-          pdfCurrency(data.grossRevenue),
+          'Net Revenue',
+          pdfCurrency(netRevenue),
           '100%',
         ],
         [
@@ -67,7 +66,7 @@ List<pw.Widget> buildProfitSection(ReportsData data) {
         ],
         [
           'Gross Profit',
-          pdfCurrency(data.grossRevenue - data.costOfGoods),
+          pdfCurrency(netRevenue - data.costOfGoods),
           '${(100 - cogsRatio).toStringAsFixed(1)}%',
         ],
       ],
@@ -88,9 +87,11 @@ List<pw.Widget> buildProfitSection(ReportsData data) {
 }
 
 pw.Widget _profitTrendTable(ReportsData data) {
+  // Totals span every bucket; labels are blanked only for axis readability,
+  // so summing over the displayed rows would silently drop most days.
   final pts = data.profitTrend.where((p) => p.label.isNotEmpty).toList();
   double totRev = 0, totCogs = 0;
-  for (final p in pts) {
+  for (final p in data.profitTrend) {
     totRev += p.revenue;
     totCogs += p.cogs;
   }

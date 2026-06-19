@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:pos/core/database/daos/invoice_sequences_dao.dart';
+import 'package:pos/core/sync/connectivity_service.dart';
 
 /// Generates production-ready invoice numbers in INV-YYYYMM-NNNNNN format.
 ///
@@ -15,8 +16,15 @@ import 'package:pos/core/database/daos/invoice_sequences_dao.dart';
 class InvoiceNumberService {
   final SupabaseClient _supabase;
   final InvoiceSequencesDao _dao;
+  // Owned directly (not injected) so checkout can short-circuit the server RPC
+  // when offline without a DI wiring change. Zero-arg ConnectivityService is cheap.
+  final ConnectivityService _connectivity;
 
-  const InvoiceNumberService(this._supabase, this._dao);
+  InvoiceNumberService(
+    this._supabase,
+    this._dao, [
+    ConnectivityService? connectivity,
+  ]) : _connectivity = connectivity ?? ConnectivityService();
 
   static String _monthKey(DateTime dt) =>
       '${dt.year}${dt.month.toString().padLeft(2, '0')}';
@@ -26,13 +34,19 @@ class InvoiceNumberService {
   Future<String> claimNext(String businessId) async {
     final monthKey = _monthKey(DateTime.now());
 
+    // Offline: skip the server RPC entirely so checkout never blocks on a
+    // network roundtrip. The local counter keeps numbers unique on this device.
+    if (!await _connectivity.isConnected) {
+      return _dao.nextLocalInvoiceNumber(businessId, monthKey);
+    }
+
     try {
       final result = await _supabase
           .rpc('claim_invoice_number', params: {
             'p_business_id': businessId,
             'p_month_key': monthKey,
           })
-          .timeout(const Duration(seconds: 4));
+          .timeout(const Duration(milliseconds: 1500));
 
       final invoiceNumber = result as String;
 

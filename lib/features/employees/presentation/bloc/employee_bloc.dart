@@ -83,8 +83,36 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
     }
   }
 
+  // True when the actor is allowed to assign [roleName]. An empty/absent
+  // allow-list means no restriction (e.g. Business Owner managing everyone).
+  bool _roleAllowed(List<String>? allowed, String? roleName) {
+    if (allowed == null || allowed.isEmpty) return true;
+    final target = roleName?.toLowerCase().trim();
+    return allowed.any((r) => r.toLowerCase().trim() == target);
+  }
+
+  bool _isOwnerRole(String? roleName) {
+    switch (roleName?.toLowerCase().trim()) {
+      case 'owner':
+      case 'business owner':
+      case 'super admin':
+      case 'superadmin':
+        return true;
+      default:
+        return false;
+    }
+  }
+
   Future<void> _onAdd(AddEmployee event, Emitter<EmployeeState> emit) async {
     final current = _currentLoaded;
+
+    if (!_roleAllowed(event.allowedRoleNames, event.roleName)) {
+      emit(EmployeeError(
+        'You are not allowed to assign the ${event.roleName ?? 'selected'} role.',
+      ));
+      return;
+    }
+
     if (current != null) emit(EmployeeOperationInProgress(current));
 
     try {
@@ -119,6 +147,14 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
     Emitter<EmployeeState> emit,
   ) async {
     final current = _currentLoaded;
+
+    if (!_roleAllowed(event.allowedRoleNames, event.roleName)) {
+      emit(EmployeeError(
+        'You are not allowed to assign the ${event.roleName ?? 'selected'} role.',
+      ));
+      return;
+    }
+
     if (current != null) emit(EmployeeOperationInProgress(current));
 
     try {
@@ -126,6 +162,7 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
         id: event.id,
         fullName: event.fullName,
         roleId: event.roleId,
+        roleName: event.roleName,
         branchId: event.branchId,
         isActive: event.isActive,
       );
@@ -140,15 +177,35 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
     }
   }
 
+  // Looks up the target in the current snapshot so we can block protected
+  // (owner / super admin) accounts before any remote/DB call is attempted.
+  bool _targetIsProtected(String id) {
+    final loaded = _currentLoaded;
+    if (loaded == null) return false;
+    for (final e in loaded.allEmployees) {
+      if (e.id == id) return _isOwnerRole(e.roleName);
+    }
+    return false;
+  }
+
   Future<void> _onArchive(
     ArchiveEmployee event,
     Emitter<EmployeeState> emit,
   ) async {
+    if (_targetIsProtected(event.id)) {
+      emit(const EmployeeError(
+        'Owners and Super Admins cannot be removed.',
+      ));
+      return;
+    }
+
     final current = _currentLoaded;
     if (current != null) emit(EmployeeOperationInProgress(current));
 
     try {
       await _repository.archiveEmployee(event.id);
+    } on EmployeeProtectedException catch (e) {
+      emit(EmployeeError(e.message));
     } catch (e) {
       emit(EmployeeError(AppErrorMapper.message(e)));
     }
@@ -158,11 +215,20 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
     SuspendEmployee event,
     Emitter<EmployeeState> emit,
   ) async {
+    if (_targetIsProtected(event.id)) {
+      emit(const EmployeeError(
+        'Owners and Super Admins cannot be suspended.',
+      ));
+      return;
+    }
+
     final current = _currentLoaded;
     if (current != null) emit(EmployeeOperationInProgress(current));
 
     try {
       await _repository.suspendEmployee(event.id);
+    } on EmployeeProtectedException catch (e) {
+      emit(EmployeeError(e.message));
     } catch (e) {
       emit(EmployeeError(AppErrorMapper.message(e)));
     }

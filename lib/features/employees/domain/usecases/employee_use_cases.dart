@@ -39,12 +39,14 @@ class UpdateEmployeeUseCase {
     required String id,
     required String fullName,
     String? roleId,
+    String? roleName,
     String? branchId,
     bool? isActive,
   }) => _repository.updateEmployee(
     id: id,
     fullName: fullName,
     roleId: roleId,
+    roleName: roleName,
     branchId: branchId,
     isActive: isActive,
   );

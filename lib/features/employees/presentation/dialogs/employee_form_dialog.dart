@@ -225,12 +225,20 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
 
     setState(() => _submitting = true);
 
+    // The actor's allowed role set is enforced again in the bloc; passing it
+    // here is what lets that business-logic check run (the dropdown alone is
+    // only UX, not access control).
+    final allowedRoleNames =
+        _availableRoles.map((r) => r.displayName).toList();
+
     if (_isEditing) {
       context.read<EmployeeBloc>().add(
         UpdateEmployee(
           id: widget.employee!.id,
           fullName: _nameCtrl.text.trim(),
+          roleName: _role.displayName,
           branchId: _selectedBranchId,
+          allowedRoleNames: allowedRoleNames,
         ),
       );
     } else {
@@ -241,6 +249,7 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
           email: _emailCtrl.text.trim(),
           password: _passwordCtrl.text,
           roleName: _role.displayName,
+          allowedRoleNames: allowedRoleNames,
         ),
       );
     }

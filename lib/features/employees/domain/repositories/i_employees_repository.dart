@@ -20,6 +20,7 @@ abstract class IEmployeesRepository {
     required String id,
     required String fullName,
     String? roleId,
+    String? roleName,
     String? branchId,
     bool? isActive,
   });

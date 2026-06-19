@@ -149,17 +149,24 @@ class ReportsRepository implements IReportsRepository {
     // Monthly bucketing for lastMonth or large custom ranges (> 60 days).
     if (period == ReportPeriod.lastMonth ||
         (period == ReportPeriod.custom && rangeDays > 60)) {
-      // Build one bucket per month in the range.
+      // Build one bucket per month in the range. The first bucket can start
+      // mid-month, so clamp its start to the real cutoff and label it with the
+      // start day to signal it is a partial month, not a full one.
       final buckets = <({DateTime start, DateTime end, String label})>[];
       var monthStart = DateTime(cutoff.year, cutoff.month);
+      var first = true;
       while (monthStart.isBefore(rangeEnd)) {
         final monthEnd = _addMonths(monthStart, 1);
+        final isPartialFirst = first && cutoff.isAfter(monthStart);
+        final bucketStart = isPartialFirst ? cutoff : monthStart;
+        final monthName = _months[monthStart.month - 1];
         buckets.add((
-          start: monthStart,
+          start: bucketStart,
           end: monthEnd,
-          label: _months[monthStart.month - 1],
+          label: isPartialFirst ? '$monthName ${cutoff.day}+' : monthName,
         ));
         monthStart = monthEnd;
+        first = false;
       }
       return buckets;
     }
@@ -241,28 +248,40 @@ class ReportsRepository implements IReportsRepository {
           )
         : allFiltered;
 
+    // Voided/refunded sales must never count toward money math — only
+    // completed transactions represent real, settled revenue.
+    bool isCompleted(TransactionsTableData t) => t.status == 'completed';
+
     final currentTxns = allFiltered
         .where(
           (t) =>
-              !t.createdAt.isBefore(cutoff) && t.createdAt.isBefore(rangeEnd),
+              isCompleted(t) &&
+              !t.createdAt.isBefore(cutoff) &&
+              t.createdAt.isBefore(rangeEnd),
         )
         .toList();
     final prevTxns = allFiltered
         .where(
           (t) =>
-              !t.createdAt.isBefore(prevCutoff) && t.createdAt.isBefore(cutoff),
+              isCompleted(t) &&
+              !t.createdAt.isBefore(prevCutoff) &&
+              t.createdAt.isBefore(cutoff),
         )
         .toList();
     final currentAllBranch = allBranches
         .where(
           (t) =>
-              !t.createdAt.isBefore(cutoff) && t.createdAt.isBefore(rangeEnd),
+              isCompleted(t) &&
+              !t.createdAt.isBefore(cutoff) &&
+              t.createdAt.isBefore(rangeEnd),
         )
         .toList();
     final prevAllBranch = allBranches
         .where(
           (t) =>
-              !t.createdAt.isBefore(prevCutoff) && t.createdAt.isBefore(cutoff),
+              isCompleted(t) &&
+              !t.createdAt.isBefore(prevCutoff) &&
+              t.createdAt.isBefore(cutoff),
         )
         .toList();
 
@@ -399,14 +418,24 @@ class ReportsRepository implements IReportsRepository {
       final cp = variantMap[item.variantId]?.costPrice;
       if (cp != null) costOfGoods += cp * item.qty;
     }
-    final netProfit = totalRevenue - costOfGoods;
+    // Collected tax is not merchant revenue — exclude it from profit math.
+    // Gross revenue displays stay tax-inclusive; profit/margin use net revenue.
+    final netRevenue = currentTxns.fold(
+      0.0,
+      (s, t) => s + (t.totalAmount - t.taxAmount),
+    );
+    final prevNetRevenue = prevTxns.fold(
+      0.0,
+      (s, t) => s + (t.totalAmount - t.taxAmount),
+    );
+    final netProfit = netRevenue - costOfGoods;
 
     var prevCogs = 0.0;
     for (final item in prevItems) {
       final cp = variantMap[item.variantId]?.costPrice;
       if (cp != null) prevCogs += cp * item.qty;
     }
-    final prevNetProfit = prevRevenue - prevCogs;
+    final prevNetProfit = prevNetRevenue - prevCogs;
 
     // Profit trend (revenue + COGS per bucket)
     final txnCogs = <String, double>{};
@@ -420,7 +449,7 @@ class ReportsRepository implements IReportsRepository {
       final bTxns = currentTxns.where(
         (t) => !t.createdAt.isBefore(b.start) && t.createdAt.isBefore(b.end),
       );
-      final rev = bTxns.fold(0.0, (s, t) => s + t.totalAmount);
+      final rev = bTxns.fold(0.0, (s, t) => s + (t.totalAmount - t.taxAmount));
       final cogs = bTxns.fold(0.0, (s, t) => s + (txnCogs[t.id] ?? 0));
       return ProfitTrendPoint(label: b.label, revenue: rev, cogs: cogs);
     }).toList();
