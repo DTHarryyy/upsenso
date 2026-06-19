@@ -26,6 +26,23 @@ class EmployeesRemoteDs {
     });
   }
 
+  /// Returns the business roles as a name (lowercased) -> id map so callers
+  /// can resolve a display role name to its real UUID before writing.
+  Future<Map<String, String>> getRolesByBusiness(String businessId) async {
+    final response = await client
+        .from('roles')
+        .select('id, name')
+        .eq('business_id', businessId);
+    final rows = List<Map<String, dynamic>>.from(response as List);
+    final map = <String, String>{};
+    for (final row in rows) {
+      final name = row['name']?.toString();
+      final id = row['id']?.toString();
+      if (name != null && id != null) map[name.toLowerCase().trim()] = id;
+    }
+    return map;
+  }
+
   /// Assign an employee to a branch via the employee_branches join table.
   Future<void> assignBranch({
     required String employeeId,

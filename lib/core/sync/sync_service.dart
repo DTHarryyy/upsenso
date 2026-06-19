@@ -36,6 +36,8 @@ import 'package:pos/core/database/daos/recipe_lines_dao.dart';
 import 'package:pos/core/database/daos/sync_state_dao.dart';
 import 'package:pos/core/database/daos/suppliers_dao.dart';
 import 'package:pos/core/services/image_service.dart';
+import 'package:pos/core/services/invoice_number_service.dart';
+import 'package:pos/core/database/daos/invoice_sequences_dao.dart';
 import 'package:pos/features/procurement/data/datasources/procurement_remote_ds.dart';
 
 /// Service to handle synchronization between local Drift DB and Supabase
@@ -69,6 +71,16 @@ class SyncService {
   final RecipeLinesDao _recipeLinesDao;
   final SyncStateDao _syncStateDao;
   final ImageService _imageService;
+
+  // Built lazily from existing deps (no DI change) so duplicate-invoice
+  // recovery can re-claim a fresh server number on a 23505 conflict.
+  InvoiceNumberService? _invoiceNumberService;
+  InvoiceNumberService get _invoiceService =>
+      _invoiceNumberService ??= InvoiceNumberService(
+        _transactionsRemoteDs.client,
+        InvoiceSequencesDao(_transactionsDao.db),
+        _connectivityService,
+      );
 
   StreamSubscription<bool>? _connectivitySubscription;
   Timer? _retryTimer;
@@ -201,28 +213,44 @@ class SyncService {
 
   /// Wipe all business-specific local data on logout so the next account
   /// starts with a clean slate. Called before emitting AuthUnauthenticated.
+  ///
+  /// Refuses to run while unsynced changes still exist locally — wiping them
+  /// would silently discard sales/inventory that never reached the server. The
+  /// wipe runs inside one DB transaction so a crash can't leave a half-cleared
+  /// (partially-orphaned) local database.
   Future<void> clearLocalData() async {
-    await _inventoryLevelsDao.clearAll();
-    await _stockLedgerDao.clearAll();
-    await _expensesDao.clearAll();
-    await _transactionsDao.clearAll();
-    await _draftSalesDao.clearAll();
-    await _productVariantsDao.clearAll();
-    await _productsDao.clearAll();
-    await _categoriesDao.clearAll();
-    await _branchesDao.clearAll();
-    await _businessesDao.clearAll();
-    await _receiptSettingsRepo.clearAll();
-    await _auditLogsDao.clearAll();
-    await _employeesDao.clearAll();
-    await _suppliersDao.clearAll();
-    await _purchaseOrderLinesDao.clearAll();
-    await _purchaseOrdersDao.clearAll();
-    await _recipeLinesDao.clearAll();
-    // Reset delta-sync watermarks so the next sync does a fresh full pull —
-    // otherwise a stale watermark would skip rows that the wipe just removed.
-    await _syncStateDao.clearAll();
-    await _authContextDao.clearAll();
+    final pending = await pendingSyncCount();
+    if (pending > 0) {
+      debugPrint(
+        '[SYNC] clearLocalData aborted: $pending unsynced record(s) remain',
+      );
+      throw StateError(
+        'Refusing to clear local data: $pending unsynced record(s) pending',
+      );
+    }
+    await _transactionsDao.db.transaction(() async {
+      await _inventoryLevelsDao.clearAll();
+      await _stockLedgerDao.clearAll();
+      await _expensesDao.clearAll();
+      await _transactionsDao.clearAll();
+      await _draftSalesDao.clearAll();
+      await _productVariantsDao.clearAll();
+      await _productsDao.clearAll();
+      await _categoriesDao.clearAll();
+      await _branchesDao.clearAll();
+      await _businessesDao.clearAll();
+      await _receiptSettingsRepo.clearAll();
+      await _auditLogsDao.clearAll();
+      await _employeesDao.clearAll();
+      await _suppliersDao.clearAll();
+      await _purchaseOrderLinesDao.clearAll();
+      await _purchaseOrdersDao.clearAll();
+      await _recipeLinesDao.clearAll();
+      // Reset delta-sync watermarks so the next sync does a fresh full pull —
+      // otherwise a stale watermark would skip rows that the wipe just removed.
+      await _syncStateDao.clearAll();
+      await _authContextDao.clearAll();
+    });
   }
 
   /// One-shot total of records still waiting to reach the server across every
@@ -843,6 +871,12 @@ class SyncService {
     final errors = <String>[];
 
     for (final tx in pending) {
+      // Backoff: skip failed rows whose retry window hasn't elapsed yet so a
+      // permanently-failing sale doesn't hammer the server every 60s.
+      if (_shouldSkipForBackoff(tx.syncStatus, tx.lastSyncAttempt)) {
+        continue;
+      }
+      var invoiceNumber = tx.invoiceNumber;
       try {
         await _transactionsRemoteDs.createTransaction(
           id: tx.id,
@@ -854,7 +888,7 @@ class SyncService {
           taxAmount: tx.taxAmount,
           createdAt: tx.createdAt,
           paymentMethod: tx.paymentMethod,
-          invoiceNumber: tx.invoiceNumber,
+          invoiceNumber: invoiceNumber,
         );
         final items = await _transactionsDao.getItemsByTransactionId(tx.id);
         if (items.isNotEmpty) {
@@ -882,7 +916,68 @@ class SyncService {
           status: SyncStatus.synced,
         );
         synced++;
-      } catch (e) {
+      } catch (e, st) {
+        // Duplicate invoice number: an offline-claimed number collided with the
+        // per-business (business_id, invoice_number) unique index. Re-claim a
+        // fresh server number, persist it, and retry the upload this same cycle.
+        if (e is PostgrestException &&
+            e.code == '23505' &&
+            tx.businessId != null) {
+          try {
+            invoiceNumber = await _invoiceService.reclaim(tx.businessId!);
+            await _transactionsDao.updateInvoiceNumber(tx.id, invoiceNumber);
+            await _transactionsRemoteDs.createTransaction(
+              id: tx.id,
+              cashierId: tx.cashierId,
+              businessId: tx.businessId,
+              branchId: tx.branchId,
+              totalAmount: tx.totalAmount,
+              discountAmount: tx.discountAmount,
+              taxAmount: tx.taxAmount,
+              createdAt: tx.createdAt,
+              paymentMethod: tx.paymentMethod,
+              invoiceNumber: invoiceNumber,
+            );
+            final items = await _transactionsDao.getItemsByTransactionId(tx.id);
+            if (items.isNotEmpty) {
+              await _transactionsRemoteDs.upsertTransactionItems(
+                items
+                    .map(
+                      (i) => {
+                        'id': i.id,
+                        'transaction_id': i.transactionId,
+                        'variant_id': i.variantId,
+                        'product_name': i.productName,
+                        'variant_name': i.variantName,
+                        'unit_price': i.unitPrice,
+                        'tax_rate': i.taxRate,
+                        'qty': i.qty,
+                        'line_total': i.lineTotal,
+                        'line_tax': i.lineTax,
+                      },
+                    )
+                    .toList(),
+              );
+            }
+            await _transactionsDao.updateSyncStatus(
+              id: tx.id,
+              status: SyncStatus.synced,
+            );
+            synced++;
+            debugPrint(
+              '[SYNC] Transaction ${tx.id}: duplicate invoice re-claimed as '
+              '$invoiceNumber and re-uploaded',
+            );
+            continue;
+          } catch (e2, st2) {
+            // Re-claim/retry failed (e.g. went offline mid-recovery) — fall
+            // through to mark failed so the next cycle tries again.
+            debugPrint(
+              '[SYNC] Transaction ${tx.id} duplicate-invoice recovery failed: '
+              '$e2\n$st2',
+            );
+          }
+        }
         // FK violation: a referenced variant is missing from Supabase.
         // Reset all variants in this transaction's items to pendingUpload
         // so the next cycle re-uploads them before retrying the transaction.
@@ -911,7 +1006,7 @@ class SyncService {
           // than retrying a transaction whose variants are gone.
         }
         failed++;
-        debugPrint('[SYNC] Transaction ${tx.id} FAILED: $e');
+        debugPrint('[SYNC] Transaction ${tx.id} FAILED: $e\n$st');
         errors.add('Transaction ${tx.id}: ${e.toString()}');
         await _transactionsDao.updateSyncStatus(
           id: tx.id,
@@ -1988,6 +2083,19 @@ class SyncService {
       failedCount: failed,
       errors: errors,
     );
+  }
+
+  // Backoff for failed transaction uploads. Without it the 60s retry timer
+  // re-hits the server for a permanently-failing row every single cycle. We
+  // only have a single lastSyncAttempt timestamp (no failure-count column to
+  // add), so we throttle with a fixed cool-off window instead of a true
+  // exponential curve. Only `failed` rows are affected.
+  static const _failedRetryCooldown = Duration(minutes: 5);
+
+  bool _shouldSkipForBackoff(int syncStatus, DateTime? lastAttempt) {
+    if (syncStatus != SyncStatus.failed.toInt()) return false;
+    if (lastAttempt == null) return false;
+    return DateTime.now().difference(lastAttempt) < _failedRetryCooldown;
   }
 
   /// Returns true when [syncStatus] represents a locally pending change that

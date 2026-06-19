@@ -18,10 +18,9 @@
 
   <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
 
-  <!-- ── Network hints ──────────────────────────────────────────────────── -->
-  <!-- DNS pre-connect for Supabase so the first API call skips DNS lookup -->
-  <link rel="preconnect" href="https://ltcvjttxomshxaotrrki.supabase.co" crossorigin="">
-  <link rel="dns-prefetch" href="https://ltcvjttxomshxaotrrki.supabase.co">
+  <!-- Supabase DNS pre-connect intentionally omitted: the backend host comes
+       from the SUPABASE_URL dart-define at build time, so it must not be
+       hardcoded here (the previous literal pointed at a stale project). -->
 
   <!-- Preload Flutter bootstrap script (critical path) -->
   <link rel="preload" href="flutter_bootstrap.js" as="script">

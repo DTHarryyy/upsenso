@@ -57,6 +57,19 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
 
   // ── Write ──────────────────────────────────────────────────────────────────
 
+  // Resolves a display role name to its real role UUID for this business.
+  // Returns null when no matching role row exists so callers fall back safely.
+  Future<String?> _resolveRoleId(String businessId, String? roleName) async {
+    if (roleName == null || roleName.trim().isEmpty) return null;
+    try {
+      final roles = await _remoteDs.getRolesByBusiness(businessId);
+      return roles[roleName.toLowerCase().trim()];
+    } catch (e, st) {
+      debugPrint('[EmployeesRepo] Error in _resolveRoleId: $e\n$st');
+      return null;
+    }
+  }
+
   @override
   Future<void> addEmployee({
     required String businessId,
@@ -70,6 +83,10 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
   }) async {
     final id = _uuid.v4();
     final now = DateTime.now();
+
+    // The form only carries a display role name; resolve the real UUID so RBAC
+    // is keyed on a stable role id rather than free-text.
+    roleId ??= await _resolveRoleId(businessId, roleName);
 
     // Step 1: Create the Supabase Auth user. This MUST succeed — the password
     // is only available now and cannot be stored for a later retry.
@@ -168,16 +185,24 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
     required String id,
     required String fullName,
     String? roleId,
+    String? roleName,
     String? branchId,
     bool? isActive,
   }) async {
     final existing = await _dao.getById(id);
+
+    // Resolve the role UUID from the chosen display name so an edited role
+    // actually persists (and syncs) instead of being silently dropped.
+    if (roleId == null && roleName != null && existing != null) {
+      roleId = await _resolveRoleId(existing.businessId, roleName);
+    }
 
     await _dao.updateEmployee(
       id,
       EmployeesTableCompanion(
         fullName: Value(fullName),
         roleId: roleId != null ? Value(roleId) : const Value.absent(),
+        roleName: roleName != null ? Value(roleName) : const Value.absent(),
         branchId: branchId != null ? Value(branchId) : const Value.absent(),
         isActive: isActive != null ? Value(isActive) : const Value.absent(),
         syncStatus: Value(
@@ -209,6 +234,20 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
   Future<void> reactivateEmployee(String id) =>
       _setActive(id, true, AuditLogActionType.employeeStatusChanged, 'active');
 
+  // Owner / Super Admin accounts are protected: the DB rejects deactivating
+  // them, so we block it here too rather than letting it fail during sync.
+  static bool _isOwnerRole(String? roleName) {
+    switch (roleName?.toLowerCase().trim()) {
+      case 'owner':
+      case 'business owner':
+      case 'super admin':
+      case 'superadmin':
+        return true;
+      default:
+        return false;
+    }
+  }
+
   Future<void> _setActive(
     String id,
     bool active,
@@ -216,6 +255,11 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
     String statusLabel,
   ) async {
     final existing = await _dao.getById(id);
+
+    if (!active && _isOwnerRole(existing?.roleName)) {
+      throw const EmployeeProtectedException();
+    }
+
     await _dao.updateEmployee(
       id,
       EmployeesTableCompanion(
