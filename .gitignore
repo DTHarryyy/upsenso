@@ -22,6 +22,9 @@ flavors/
 keystore-base64.txt
 **/key.properties
 supabase/.temp/
+
+# Local agent worktrees — per-machine, never shared via git
+.claude/worktrees/
 # IntelliJ related
 *.iml
 *.ipr
