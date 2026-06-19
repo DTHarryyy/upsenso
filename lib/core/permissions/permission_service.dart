@@ -130,13 +130,52 @@ class PermissionService {
   ///     role default instead of being silently denied. An explicit `false`
   ///     stored in the map is preserved (it's present, not absent).
   ///  3. `false`
+  ///
+  /// A granted permission whose owning module is disabled for the business
+  /// still resolves to `false` — the module gate must hold even for callers
+  /// that check a raw permission key instead of going through
+  /// [canAccessFeature] (e.g. [PermissionGate], route guards, bottom nav).
   bool can(String key) {
+    final module = _moduleCodeForKey(key);
+    if (module != null && !isModuleEnabled(module)) return false;
+
     if (_hasLoadedPermissions) {
       return _permissionsMap[key] ??
           DefaultPermissionMatrix.forRole(_roleKey)[key] ??
           false;
     }
     return DefaultPermissionMatrix.forRole(_roleKey)[key] ?? false;
+  }
+
+  /// Resolves the business-module code that gates [key], or `null` if the
+  /// key's area isn't module-gated (settings, dashboard widgets, nav entries,
+  /// data-scope flags). Mirrors [AppFeature.moduleCode] — same module list,
+  /// keyed by permission prefix instead of by feature.
+  static String? _moduleCodeForKey(String key) {
+    switch (key.split('.').first) {
+      case 'pos':
+        return 'pos';
+      case 'products':
+      case 'inventory':
+        return 'inventory';
+      case 'expenses':
+        return 'expenses';
+      case 'employees':
+        return 'employees';
+      case 'reports':
+        return 'reports';
+      case 'suppliers':
+      case 'procurement':
+        return 'procurement';
+      case 'ingredients':
+        return 'ingredients';
+      case 'recipes':
+        return 'recipes';
+      case 'audit_logs':
+        return 'audit';
+      default:
+        return null;
+    }
   }
 
   /// Load permissions for [authUserId] from the local Drift cache.
@@ -187,8 +226,8 @@ class PermissionService {
           '(${result.permissions.length} keys)',
         );
       }
-    } catch (e) {
-      debugPrint('[PermissionService] sync skipped (offline?) — $e');
+    } catch (e, st) {
+      debugPrint('[PermissionService] sync skipped (offline?) — $e\n$st');
     }
   }
 
@@ -256,8 +295,8 @@ class PermissionService {
           '($enabledCount/${modules.length} enabled)',
         );
       }
-    } catch (e) {
-      debugPrint('[PermissionService] module sync skipped (offline?) — $e');
+    } catch (e, st) {
+      debugPrint('[PermissionService] module sync skipped (offline?) — $e\n$st');
     }
   }
 

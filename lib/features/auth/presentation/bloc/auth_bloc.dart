@@ -300,8 +300,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       _emitAuthenticated(emit, authed);
       _backgroundSync(authed);
       _syncPermissionsBackground(authed);
-    } catch (e) {
-      debugPrint('AuthBloc: Context fetch failed: $e — emitting partial user');
+    } catch (e, st) {
+      debugPrint('AuthBloc: Context fetch failed: $e\n$st — emitting partial user');
       await _loadPermissionsFromCache(user);
       _emitAuthenticated(emit, user);
       _backgroundSync(user);

@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -50,15 +51,9 @@ class PoDetailPage extends StatelessWidget {
     final repo = sl<IProcurementRepository>();
 
     return StreamBuilder<PurchaseOrder?>(
-      stream: repo.watchPurchaseOrders(_businessId(context)).map(
-        (orders) {
-          try {
-            return orders.firstWhere((o) => o.id == poId);
-          } catch (_) {
-            return null;
-          }
-        },
-      ),
+      stream: repo
+          .watchPurchaseOrders(_businessId(context))
+          .map((orders) => orders.firstWhereOrNull((o) => o.id == poId)),
       builder: (context, snapshot) {
         if (!snapshot.hasData || snapshot.data == null) {
           return Scaffold(

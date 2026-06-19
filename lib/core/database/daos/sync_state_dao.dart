@@ -5,7 +5,8 @@ import 'package:pos/core/database/tables/sync_state_table.dart';
 part 'sync_state_dao.g.dart';
 
 /// Read/write access to the per-entity delta-sync watermark.
-/// See docs/delta_sync_design.md. Not yet consumed by SyncService.
+/// See docs/delta_sync_design.md. Consumed by SyncService's
+/// _pullIncremental for the (timestamp, id) keyset cursor.
 @DriftAccessor(tables: [SyncStateTable])
 class SyncStateDao extends DatabaseAccessor<AppDatabase>
     with _$SyncStateDaoMixin {

@@ -177,13 +177,13 @@ class ModelDownloadService {
       );
       debugPrint('ModelDownload: Completed (${targetFile.path})');
       return targetFile.path;
-    } catch (e) {
+    } catch (e, st) {
       await _fileSink?.flush();
       await _fileSink?.close();
       _fileSink = null;
 
       final error = e.toString();
-      debugPrint('ModelDownload: Error — $error');
+      debugPrint('ModelDownload: Error — $error\n$st');
       _emitProgress(ModelDownloadStatus.failed, 0.0, 0, 0, error: error);
       return null;
     } finally {

@@ -128,7 +128,8 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> signInWithGoogle() async {
     try {
       await remote.signInWithGoogle(mobileRedirectTo: oauthRedirectUrl);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[AuthRepo] Error in signInWithGoogle: $e\n$st');
       throw SupabaseAuthErrorMapper.message(e);
     }
   }
@@ -137,7 +138,8 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> signInWithFacebook() async {
     try {
       await remote.signInWithFacebook(mobileRedirectTo: oauthRedirectUrl);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[AuthRepo] Error in signInWithFacebook: $e\n$st');
       throw SupabaseAuthErrorMapper.message(e);
     }
   }
@@ -156,7 +158,8 @@ class AuthRepositoryImpl implements AuthRepository {
       await _cacheUserContext(appUser);
 
       return appUser;
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[AuthRepo] Error in signUp: $e\n$st');
       throw SupabaseAuthErrorMapper.message(e);
     }
   }
@@ -165,7 +168,8 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<bool> checkEmailExists(String email) async {
     try {
       return await remote.checkEmailExists(email);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[AuthRepo] Error in checkEmailExists: $e\n$st');
       throw SupabaseAuthErrorMapper.message(e);
     }
   }
@@ -174,7 +178,8 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> sendSignUpOtp(String email) async {
     try {
       await remote.sendSignUpOtp(email);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[AuthRepo] Error in sendSignUpOtp: $e\n$st');
       throw SupabaseAuthErrorMapper.message(e);
     }
   }
@@ -207,7 +212,8 @@ class AuthRepositoryImpl implements AuthRepository {
       await _cacheUserContext(appUser);
 
       return appUser;
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[AuthRepo] Error in verifySignUpOtp: $e\n$st');
       throw SupabaseAuthErrorMapper.message(e);
     }
   }
@@ -225,14 +231,17 @@ class AuthRepositoryImpl implements AuthRepository {
     // so an offline failure should not prevent the user from being signed out.
     try {
       await remote.signOut();
-    } catch (_) {}
+    } catch (e, st) {
+      debugPrint('[AuthRepo] Error in signOut (best-effort remote): $e\n$st');
+    }
   }
 
   @override
   Future<void> sendPasswordResetOtp(String email) async {
     try {
       await remote.sendPasswordResetOtp(email);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[AuthRepo] Error in sendPasswordResetOtp: $e\n$st');
       throw SupabaseAuthErrorMapper.message(e);
     }
   }
@@ -244,7 +253,8 @@ class AuthRepositoryImpl implements AuthRepository {
   }) async {
     try {
       await remote.verifyPasswordResetOtp(email: email, token: token);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[AuthRepo] Error in verifyPasswordResetOtp: $e\n$st');
       throw SupabaseAuthErrorMapper.message(e);
     }
   }
@@ -253,7 +263,8 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> resetPassword(String newPassword) async {
     try {
       await remote.updatePasswordAfterReset(newPassword);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[AuthRepo] Error in resetPassword: $e\n$st');
       throw SupabaseAuthErrorMapper.message(e);
     }
   }
@@ -324,7 +335,8 @@ class AuthRepositoryImpl implements AuthRepository {
       await _cacheUserContext(user);
 
       return user;
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[AuthRepo] Error in getUserBusinessContext: $e\n$st');
       // When offline or remote fails, return cached context
       final cached = await _getCachedUserContextFor(userId);
       if (cached != null) {
@@ -479,7 +491,8 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> changePassword(String newPassword) async {
     try {
       await remote.updatePassword(newPassword);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[AuthRepo] Error in changePassword: $e\n$st');
       throw SupabaseAuthErrorMapper.message(e);
     }
   }

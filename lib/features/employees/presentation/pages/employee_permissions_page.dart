@@ -11,6 +11,7 @@ import 'package:pos/core/permissions/default_permission_matrix.dart';
 import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/permissions/data/permission_remote_ds.dart';
+import 'package:pos/core/session/active_business_context.dart';
 import 'package:pos/core/widgets/app_sub_page_bar.dart';
 import 'package:pos/core/widgets/app_toast.dart';
 import 'package:pos/core/widgets/user_avatar.dart';
@@ -18,7 +19,7 @@ import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/features/employees/domain/entities/employee.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// ── Permission catalogue ──────────────────────────────────────────────────────
+// Permission catalogue
 
 class _PermGroup {
   final String label;
@@ -555,9 +556,12 @@ class EmployeePermissionsPage extends StatelessWidget {
       return _AccessDeniedPage();
     }
 
+    // Session user id comes from ActiveBusinessContext (the single source of
+    // truth for the active session) rather than the Supabase SDK directly —
+    // widgets must not reach into Supabase from build().
     final isSelf =
         employee.authUserId != null &&
-        employee.authUserId == Supabase.instance.client.auth.currentUser?.id;
+        employee.authUserId == sl<ActiveBusinessContext>().userId;
 
     return BlocProvider(
       create: (_) => EmployeePermissionsCubit(employee)..load(),

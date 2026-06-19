@@ -78,7 +78,7 @@ class SyncService {
   InvoiceNumberService get _invoiceService =>
       _invoiceNumberService ??= InvoiceNumberService(
         _transactionsRemoteDs.client,
-        InvoiceSequencesDao(_transactionsDao.db),
+        InvoiceSequencesDao(_transactionsDao.attachedDatabase),
         _connectivityService,
       );
 
@@ -228,7 +228,7 @@ class SyncService {
         'Refusing to clear local data: $pending unsynced record(s) pending',
       );
     }
-    await _transactionsDao.db.transaction(() async {
+    await _transactionsDao.attachedDatabase.transaction(() async {
       await _inventoryLevelsDao.clearAll();
       await _stockLedgerDao.clearAll();
       await _expensesDao.clearAll();
@@ -476,6 +476,7 @@ class SyncService {
             categoryResult.success &&
             productResult.success &&
             variantResult.success &&
+            orderResult.success &&
             expenseResult.success &&
             inventoryResult.success &&
             ledgerResult.success &&
@@ -486,7 +487,7 @@ class SyncService {
             recipeResult.success &&
             pullResult.success,
         message:
-            '${branchResult.message}; ${businessResult.message}; ${categoryResult.message}; ${productResult.message}; ${variantResult.message}; ${expenseResult.message}; ${inventoryResult.message}; ${ledgerResult.message}; ${employeeResult.message}; ${supplierResult.message}; ${poResult.message}; ${polResult.message}; ${recipeResult.message}; ${pullResult.message}',
+            '${branchResult.message}; ${businessResult.message}; ${categoryResult.message}; ${productResult.message}; ${variantResult.message}; ${orderResult.message}; ${expenseResult.message}; ${inventoryResult.message}; ${ledgerResult.message}; ${employeeResult.message}; ${supplierResult.message}; ${poResult.message}; ${polResult.message}; ${recipeResult.message}; ${pullResult.message}',
         syncedCount: totalSynced + pullResult.syncedCount,
         failedCount: totalFailed + pullResult.failedCount,
         errors: [
@@ -495,6 +496,7 @@ class SyncService {
           ...categoryResult.errors,
           ...productResult.errors,
           ...variantResult.errors,
+          ...orderResult.errors,
           ...expenseResult.errors,
           ...inventoryResult.errors,
           ...ledgerResult.errors,
@@ -565,9 +567,9 @@ class SyncService {
           case SyncStatus.synced:
             break;
         }
-      } catch (e) {
+      } catch (e, st) {
         failed++;
-        debugPrint('[SYNC] Branch ${record.name} FAILED: $e');
+        debugPrint('[SYNC] Branch ${record.name} FAILED: $e\n$st');
         errors.add('Branch ${record.name}: ${e.toString()}');
         await _branchesDao.updateSyncStatus(
           id: record.id,
@@ -630,9 +632,9 @@ class SyncService {
           case SyncStatus.synced:
             break;
         }
-      } catch (e) {
+      } catch (e, st) {
         failed++;
-        debugPrint('[SYNC] Category ${record.name} FAILED: $e');
+        debugPrint('[SYNC] Category ${record.name} FAILED: $e\n$st');
         errors.add('Category ${record.name}: ${e.toString()}');
         await _categoriesDao.updateSyncStatus(
           id: record.id,
@@ -695,6 +697,7 @@ class SyncService {
               imagePath: resolvedImagePath,
               type: record.type,
               trackingMethod: record.trackingMethod,
+              clientUpdatedAt: record.localUpdatedAt,
             );
             await _productsDao.updateSyncStatus(
               id: record.id,
@@ -703,7 +706,7 @@ class SyncService {
             synced++;
 
           case SyncStatus.pendingUpdate:
-            await _productsRemoteDs.updateProduct(
+            final updatedRows = await _productsRemoteDs.updateProduct(
               id: record.id,
               categoryId: record.categoryId,
               name: record.name,
@@ -716,7 +719,16 @@ class SyncService {
               imagePath: resolvedImagePath,
               type: record.type,
               trackingMethod: record.trackingMethod,
+              clientUpdatedAt: record.localUpdatedAt,
             );
+            if (updatedRows.isEmpty) {
+              // Rejected as stale — a newer edit from another device already
+              // landed. Don't retry; the next pull fetches the winning row.
+              debugPrint(
+                '[SYNC] Product ${record.id} push superseded by a newer '
+                'edit elsewhere — discarding local change',
+              );
+            }
             await _productsDao.updateSyncStatus(
               id: record.id,
               status: SyncStatus.synced,
@@ -733,9 +745,9 @@ class SyncService {
           case SyncStatus.synced:
             break;
         }
-      } catch (e) {
+      } catch (e, st) {
         failed++;
-        debugPrint('[SYNC] Product ${record.name} FAILED: $e');
+        debugPrint('[SYNC] Product ${record.name} FAILED: $e\n$st');
         errors.add('Product ${record.name}: ${e.toString()}');
         await _productsDao.updateSyncStatus(
           id: record.id,
@@ -783,6 +795,7 @@ class SyncService {
               trackExpiry: record.trackExpiry,
               expiryDate: record.expiryDate?.millisecondsSinceEpoch,
               isActive: record.isActive,
+              clientUpdatedAt: record.localUpdatedAt,
             );
             await _productVariantsDao.updateSyncStatus(
               id: record.id,
@@ -791,7 +804,7 @@ class SyncService {
             synced++;
 
           case SyncStatus.pendingUpdate:
-            await _productsRemoteDs.updateProductVariant(
+            final updatedRows = await _productsRemoteDs.updateProductVariant(
               id: record.id,
               name: record.name,
               price: record.price,
@@ -803,7 +816,14 @@ class SyncService {
               trackExpiry: record.trackExpiry,
               expiryDate: record.expiryDate?.millisecondsSinceEpoch,
               isActive: record.isActive,
+              clientUpdatedAt: record.localUpdatedAt,
             );
+            if (updatedRows.isEmpty) {
+              debugPrint(
+                '[SYNC] Variant ${record.id} push superseded by a newer '
+                'edit elsewhere — discarding local change',
+              );
+            }
             await _productVariantsDao.updateSyncStatus(
               id: record.id,
               status: SyncStatus.synced,
@@ -1083,9 +1103,9 @@ class SyncService {
           case SyncStatus.synced:
             break;
         }
-      } catch (e) {
+      } catch (e, st) {
         failed++;
-        debugPrint('[SYNC] Expense ${record.id} FAILED: $e');
+        debugPrint('[SYNC] Expense ${record.id} FAILED: $e\n$st');
         errors.add('Expense ${record.id}: ${e.toString()}');
         await _expensesDao.updateSyncStatus(
           id: record.id,
@@ -1229,7 +1249,7 @@ class SyncService {
           status: SyncStatus.synced,
         );
         synced++;
-      } catch (e) {
+      } catch (e, st) {
         // FK violation: variant or product is locally synced but missing from
         // Supabase. Reset the parent(s) to pendingUpload for self-healing.
         if (e is PostgrestException && e.code == '23503') {
@@ -1247,7 +1267,7 @@ class SyncService {
           continue;
         }
         failed++;
-        debugPrint('[SYNC] StockLedger ${record.id} FAILED: $e');
+        debugPrint('[SYNC] StockLedger ${record.id} FAILED: $e\n$st');
         errors.add('StockLedger ${record.id}: ${e.toString()}');
         await _stockLedgerDao.updateSyncStatus(
           id: record.id,
@@ -1294,8 +1314,9 @@ class SyncService {
           case SyncStatus.synced:
             break;
         }
-      } catch (e) {
+      } catch (e, st) {
         failed++;
+        debugPrint('[SYNC] Business ${record.name} FAILED: $e\n$st');
         errors.add('${record.name}: ${e.toString()}');
         await _businessesDao.updateSyncStatus(
           id: record.id,
@@ -1366,8 +1387,9 @@ class SyncService {
         await _categoriesDao.upsertFromServer(row);
         pulled++;
       }
-    } catch (e) {
+    } catch (e, st) {
       failed++;
+      debugPrint('[SYNC] Pull categories failed: $e\n$st');
       errors.add('Pull categories: ${e.toString()}');
     }
 
@@ -1384,8 +1406,9 @@ class SyncService {
         ),
         applyRow: (row) => _productsDao.upsertFromServer(row),
       );
-    } catch (e) {
+    } catch (e, st) {
       failed++;
+      debugPrint('[SYNC] Pull products failed: $e\n$st');
       errors.add('Pull products: ${e.toString()}');
     }
 
@@ -1402,8 +1425,9 @@ class SyncService {
         ),
         applyRow: (row) => _productVariantsDao.upsertFromServer(row),
       );
-    } catch (e) {
+    } catch (e, st) {
       failed++;
+      debugPrint('[SYNC] Pull variants failed: $e\n$st');
       errors.add('Pull variants: ${e.toString()}');
     }
 
@@ -1421,8 +1445,9 @@ class SyncService {
         ),
         applyRow: (row) => _inventoryLevelsDao.upsertFromServer(row),
       );
-    } catch (e) {
+    } catch (e, st) {
       failed++;
+      debugPrint('[SYNC] Pull inventory levels failed: $e\n$st');
       errors.add('Pull inventory levels: ${e.toString()}');
     }
 
@@ -1440,8 +1465,9 @@ class SyncService {
         ),
         applyRow: (row) => _stockLedgerDao.upsertFromServer(row),
       );
-    } catch (e) {
+    } catch (e, st) {
       failed++;
+      debugPrint('[SYNC] Pull stock ledger failed: $e\n$st');
       errors.add('Pull stock ledger: ${e.toString()}');
     }
 
@@ -1471,8 +1497,9 @@ class SyncService {
           }
         },
       );
-    } catch (e) {
+    } catch (e, st) {
       failed++;
+      debugPrint('[SYNC] Pull transactions failed: $e\n$st');
       errors.add('Pull transactions: ${e.toString()}');
     }
 
@@ -1484,8 +1511,9 @@ class SyncService {
         await _expensesDao.upsertFromServer(row);
         pulled++;
       }
-    } catch (e) {
+    } catch (e, st) {
       failed++;
+      debugPrint('[SYNC] Pull expenses failed: $e\n$st');
       errors.add('Pull expenses: ${e.toString()}');
     }
 
@@ -1504,8 +1532,9 @@ class SyncService {
         );
         pulled++;
       }
-    } catch (e) {
+    } catch (e, st) {
       failed++;
+      debugPrint('[SYNC] Pull branches failed: $e\n$st');
       errors.add('Pull branches: ${e.toString()}');
     }
 
@@ -1517,16 +1546,18 @@ class SyncService {
         );
         pulled++;
       }
-    } catch (e) {
+    } catch (e, st) {
       failed++;
+      debugPrint('[SYNC] Pull business failed: $e\n$st');
       errors.add('Pull business: ${e.toString()}');
     }
 
     try {
       await _receiptSettingsRepo.pullFromServer(businessId);
       pulled++;
-    } catch (e) {
+    } catch (e, st) {
       failed++;
+      debugPrint('[SYNC] Pull receipt settings failed: $e\n$st');
       errors.add('Pull receipt settings: ${e.toString()}');
     }
 
@@ -1580,8 +1611,9 @@ class SyncService {
         );
         pulled++;
       }
-    } catch (e) {
+    } catch (e, st) {
       failed++;
+      debugPrint('[SYNC] Pull employees failed: $e\n$st');
       errors.add('Pull employees: ${e.toString()}');
     }
 
@@ -1593,8 +1625,9 @@ class SyncService {
         await _suppliersDao.upsertFromServer(row);
         pulled++;
       }
-    } catch (e) {
+    } catch (e, st) {
       failed++;
+      debugPrint('[SYNC] Pull suppliers failed: $e\n$st');
       errors.add('Pull suppliers: ${e.toString()}');
     }
 
@@ -1606,8 +1639,9 @@ class SyncService {
         await _purchaseOrdersDao.upsertFromServer(row);
         pulled++;
       }
-    } catch (e) {
+    } catch (e, st) {
       failed++;
+      debugPrint('[SYNC] Pull purchase orders failed: $e\n$st');
       errors.add('Pull purchase orders: ${e.toString()}');
     }
 
@@ -1619,8 +1653,9 @@ class SyncService {
         await _purchaseOrderLinesDao.upsertFromServer(row);
         pulled++;
       }
-    } catch (e) {
+    } catch (e, st) {
       failed++;
+      debugPrint('[SYNC] Pull PO lines failed: $e\n$st');
       errors.add('Pull PO lines: ${e.toString()}');
     }
 
@@ -1632,8 +1667,9 @@ class SyncService {
         await _recipeLinesDao.upsertFromServer(row);
         pulled++;
       }
-    } catch (e) {
+    } catch (e, st) {
       failed++;
+      debugPrint('[SYNC] Pull recipe lines failed: $e\n$st');
       errors.add('Pull recipe lines: ${e.toString()}');
     }
 
@@ -1711,8 +1747,8 @@ class SyncService {
   Future<void> _syncReceiptSettings() async {
     try {
       await _receiptSettingsRepo.syncPending();
-    } catch (e) {
-      debugPrint('[SYNC] Receipt settings push failed: $e');
+    } catch (e, st) {
+      debugPrint('[SYNC] Receipt settings push failed: $e\n$st');
     }
   }
 
@@ -1732,11 +1768,11 @@ class SyncService {
           status: SyncStatus.synced,
         );
         synced++;
-      } catch (e) {
+      } catch (e, st) {
         failed++;
         debugPrint(
           '[SYNC] AuditLog ${r.id} FAILED '
-          '(business=${r.businessId} action=${r.actionType}): $e',
+          '(business=${r.businessId} action=${r.actionType}): $e\n$st',
         );
         await _auditLogsDao.updateSyncStatus(
           id: r.id,
@@ -1794,9 +1830,9 @@ class SyncService {
           case SyncStatus.synced:
             break;
         }
-      } catch (e) {
+      } catch (e, st) {
         failed++;
-        debugPrint('[SYNC] Employee ${record.fullName} FAILED: $e');
+        debugPrint('[SYNC] Employee ${record.fullName} FAILED: $e\n$st');
         errors.add('Employee ${record.fullName}: ${e.toString()}');
         await _employeesDao.updateSyncStatus(
           id: record.id,
@@ -1870,9 +1906,9 @@ class SyncService {
           case SyncStatus.synced:
             break;
         }
-      } catch (e) {
+      } catch (e, st) {
         failed++;
-        debugPrint('[SYNC] Supplier ${record.name} FAILED: $e');
+        debugPrint('[SYNC] Supplier ${record.name} FAILED: $e\n$st');
         errors.add('Supplier ${record.name}: ${e.toString()}');
         await _suppliersDao.updateSyncStatus(
           id: record.id,
@@ -1940,9 +1976,9 @@ class SyncService {
           case SyncStatus.synced:
             break;
         }
-      } catch (e) {
+      } catch (e, st) {
         failed++;
-        debugPrint('[SYNC] PurchaseOrder ${record.poNumber} FAILED: $e');
+        debugPrint('[SYNC] PurchaseOrder ${record.poNumber} FAILED: $e\n$st');
         errors.add('PO ${record.poNumber}: ${e.toString()}');
         await _purchaseOrdersDao.updateSyncStatus(
           id: record.id,
@@ -2004,9 +2040,9 @@ class SyncService {
           case SyncStatus.synced:
             break;
         }
-      } catch (e) {
+      } catch (e, st) {
         failed++;
-        debugPrint('[SYNC] PurchaseOrderLine ${record.id} FAILED: $e');
+        debugPrint('[SYNC] PurchaseOrderLine ${record.id} FAILED: $e\n$st');
         errors.add('PO line ${record.id}: ${e.toString()}');
         await _purchaseOrderLinesDao.updateSyncStatus(
           id: record.id,
@@ -2064,9 +2100,9 @@ class SyncService {
           case SyncStatus.synced:
             break;
         }
-      } catch (e) {
+      } catch (e, st) {
         failed++;
-        debugPrint('[SYNC] RecipeLine ${record.id} FAILED: $e');
+        debugPrint('[SYNC] RecipeLine ${record.id} FAILED: $e\n$st');
         errors.add('Recipe line ${record.id}: ${e.toString()}');
         await _recipeLinesDao.updateSyncStatus(
           id: record.id,

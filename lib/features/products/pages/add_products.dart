@@ -10,6 +10,7 @@ import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
@@ -434,13 +435,14 @@ class _AddProductsViewState extends State<_AddProductsView> {
                           saving.value = true;
                           try {
                             await cubit.addCategory(name);
-                          } catch (e) {
+                          } catch (e, st) {
+                            debugPrint('[AddProducts] Error in addCategory: $e\n$st');
                             saving.value = false;
                             if (!sheetCtx.mounted) return;
                             AppToast.show(
                               sheetCtx,
                               'Failed to save',
-                              subtitle: '$e',
+                              subtitle: AppErrorMapper.message(e),
                               variant: AppToastVariant.error,
                             );
                             return;

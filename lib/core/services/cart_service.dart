@@ -10,6 +10,14 @@ class CartService extends ChangeNotifier {
   DiscountType? _discountType;
   double _discountValue = 0;
 
+  // ── Held-sale resume tracking ────────────────────────────────────────────
+  // Set when the cart was loaded from a held sale so checkout can mark that
+  // draft converted on success. The draft itself is NOT touched here — it
+  // stays "open" (recoverable) until a sale actually completes, so an
+  // abandoned resume never loses the held sale.
+  String? _sourceDraftId;
+  String? get sourceDraftId => _sourceDraftId;
+
   DiscountType? get discountType => _discountType;
   double get discountValue => _discountValue;
   bool get hasDiscount => _discountType != null && _discountValue > 0;
@@ -22,6 +30,12 @@ class CartService extends ChangeNotifier {
     }
     return _discountValue.clamp(0, subtotal);
   }
+
+  /// Subtotal/discount/tax/total for [items] (defaults to this cart's items)
+  /// using this cart's current discount. See [CartTotals] for why tax is
+  /// computed post-discount.
+  CartTotals computeTotals([List<CartItem>? items]) =>
+      CartTotals.compute(items ?? _items, discountAmount);
 
   void applyDiscount(DiscountType type, double value) {
     _discountType = type;
@@ -36,6 +50,7 @@ class CartService extends ChangeNotifier {
     List<CartItem> items, {
     DiscountType? discountType,
     double discountValue = 0,
+    String? sourceDraftId,
   }) {
     _items
       ..clear()
@@ -52,6 +67,7 @@ class CartService extends ChangeNotifier {
       );
     _discountType = discountType;
     _discountValue = discountType == null ? 0 : discountValue;
+    _sourceDraftId = sourceDraftId;
     notifyListeners();
   }
 
@@ -116,6 +132,7 @@ class CartService extends ChangeNotifier {
     _items.clear();
     _discountType = null;
     _discountValue = 0;
+    _sourceDraftId = null;
     notifyListeners();
   }
 }

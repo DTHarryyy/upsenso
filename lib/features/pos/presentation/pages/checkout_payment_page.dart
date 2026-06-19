@@ -10,6 +10,7 @@ import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/database/app_database.dart';
+import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:pos/core/services/checkout_service.dart';
 import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/core/widgets/widgets.dart';
@@ -115,6 +116,22 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
       }
     }
 
+    // A missing businessId here means the session lost its tenant context —
+    // letting it fall through as '' would write the invoice/stock-ledger
+    // rows under a fake tenant instead of the real one. Abort with a clear
+    // message rather than silently corrupting cross-table tenant linkage.
+    final businessId = authState.user.businessId;
+    if (businessId == null || businessId.isEmpty) {
+      if (mounted) {
+        AppToast.show(
+          context,
+          'Session error: no business context. Please sign in again.',
+          variant: AppToastVariant.error,
+        );
+      }
+      return;
+    }
+
     setState(() => _confirming = true);
     try {
       final cashierId = authState.user.id;
@@ -124,7 +141,7 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
       final tx = TransactionsTableCompanion.insert(
         id: txId,
         cashierId: cashierId,
-        businessId: Value(authState.user.businessId),
+        businessId: Value(businessId),
         branchId: Value(branchId),
         totalAmount: widget.total,
         taxAmount: widget.tax,
@@ -163,7 +180,7 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
         deductions: widget.items
             .map((i) => (variantId: i.variantId, qty: i.qty))
             .toList(),
-        businessId: authState.user.businessId ?? '',
+        businessId: businessId,
         branchId: branchId,
       );
 
@@ -189,7 +206,7 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
             customerName: customerName,
             itemCount: widget.items.length,
             dateTime: DateTime.now(),
-            businessId: authState.user.businessId ?? '',
+            businessId: businessId,
             branchName: branchName,
           ),
           transitionsBuilder: (_, animation, _, child) {
@@ -214,11 +231,13 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
           },
         ),
       );
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[CheckoutPaymentPage] Error saving transaction: $e\n$st');
       if (mounted) {
         AppToast.show(
           context,
-          'Failed to save transaction: $e',
+          'Failed to save transaction',
+          subtitle: AppErrorMapper.message(e),
           variant: AppToastVariant.error,
         );
       }

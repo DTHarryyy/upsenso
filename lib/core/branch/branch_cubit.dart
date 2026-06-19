@@ -44,8 +44,8 @@ class BranchCubit extends Cubit<BranchState> {
           prefs.getString(nameKey) ?? prefs.getString(_legacySelectedBranchKey);
       final selectedId = prefs.getString(idKey);
       return _CachedBranchSelection(name: selectedName, id: selectedId);
-    } catch (e) {
-      debugPrint('[BranchCubit] Error loading cached selection: $e');
+    } catch (e, st) {
+      debugPrint('[BranchCubit] Error loading cached selection: $e\n$st');
       return const _CachedBranchSelection();
     }
   }
@@ -69,8 +69,8 @@ class BranchCubit extends Cubit<BranchState> {
       } else {
         await prefs.setString(idKey, branchId);
       }
-    } catch (e) {
-      debugPrint('[BranchCubit] Error saving selection: $e');
+    } catch (e, st) {
+      debugPrint('[BranchCubit] Error saving selection: $e\n$st');
     }
   }
 
@@ -104,8 +104,8 @@ class BranchCubit extends Cubit<BranchState> {
       }
 
       return options;
-    } catch (e) {
-      debugPrint('[BranchCubit] Error loading cached options: $e');
+    } catch (e, st) {
+      debugPrint('[BranchCubit] Error loading cached options: $e\n$st');
       return const [];
     }
   }
@@ -123,8 +123,8 @@ class BranchCubit extends Cubit<BranchState> {
         '${_cachedBranchOptionsKey}_$businessId',
         jsonEncode(payload),
       );
-    } catch (e) {
-      debugPrint('[BranchCubit] Error saving cached options: $e');
+    } catch (e, st) {
+      debugPrint('[BranchCubit] Error saving cached options: $e\n$st');
     }
   }
 
@@ -133,8 +133,8 @@ class BranchCubit extends Cubit<BranchState> {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('${_cachedCanSwitchKey}_$businessId', canSwitch);
-    } catch (e) {
-      debugPrint('[BranchCubit] Error saving canSwitch: $e');
+    } catch (e, st) {
+      debugPrint('[BranchCubit] Error saving canSwitch: $e\n$st');
     }
   }
 
@@ -444,8 +444,8 @@ class BranchCubit extends Cubit<BranchState> {
         location: branch.location,
       );
       await branchesDao.updateSyncStatus(id: id, status: SyncStatus.synced);
-    } catch (e) {
-      debugPrint('[BranchCubit] Remote branch creation failed: $e');
+    } catch (e, st) {
+      debugPrint('[BranchCubit] Remote branch creation failed: $e\n$st');
     }
 
     // Update state with the new branch

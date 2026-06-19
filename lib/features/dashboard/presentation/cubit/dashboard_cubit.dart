@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:pos/features/dashboard/domain/repositories/i_dashboard_repository.dart';
@@ -65,7 +66,8 @@ class DashboardCubit extends Cubit<DashboardState> {
         branchId: _branchId,
       );
       if (!isClosed) emit(DashboardLoaded(data));
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[DashboardCubit] Error loading dashboard: $e\n$st');
       if (!isClosed) emit(DashboardError(AppErrorMapper.message(e)));
     } finally {
       _isLoading = false;

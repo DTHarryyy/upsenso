@@ -28,6 +28,10 @@ class ExpensesCubit extends Cubit<ExpensesState> {
   DateTimeRange? _dateRange;
   ExpensesViewMode _viewMode = ExpensesViewMode.table;
 
+  // Guards against a double-tap on an approve/reject button firing the same
+  // mutation twice before the list stream re-emits and hides the button.
+  final Set<String> _inFlightApprovalActions = {};
+
   ExpensesCubit(this._repository) : super(const ExpensesInitial());
 
   bool get canApprove =>
@@ -223,51 +227,61 @@ class ExpensesCubit extends Cubit<ExpensesState> {
 
   Future<void> approveExpense(String id) async {
     if (_userId == null) return;
-    await _repository.approveExpense(
-      id: id,
-      approvedById: _userId!,
-      approvedByName: _userName ?? 'Unknown',
-    );
-    final approvedItem = state is ExpensesLoaded
-        ? (state as ExpensesLoaded).allItems
-              .where((e) => e.id == id)
-              .firstOrNull
-        : null;
-    sl<AuditLogService>().log(
-      actionType: AuditLogActionType.expenseApproved,
-      entityType: 'expense',
-      entityName: approvedItem != null
-          ? '${approvedItem.vendor} — ${approvedItem.category}'
-          : null,
-      description: approvedItem != null
-          ? 'Expense approved: ${approvedItem.vendor} — ${approvedItem.category}'
-          : 'Expense approved',
-      businessId: _businessId ?? '',
-      branchId: _branchId ?? '',
-      userId: _userId,
-    );
+    if (!_inFlightApprovalActions.add(id)) return; // already approving/rejecting
+    try {
+      await _repository.approveExpense(
+        id: id,
+        approvedById: _userId!,
+        approvedByName: _userName ?? 'Unknown',
+      );
+      final approvedItem = state is ExpensesLoaded
+          ? (state as ExpensesLoaded).allItems
+                .where((e) => e.id == id)
+                .firstOrNull
+          : null;
+      sl<AuditLogService>().log(
+        actionType: AuditLogActionType.expenseApproved,
+        entityType: 'expense',
+        entityName: approvedItem != null
+            ? '${approvedItem.vendor} — ${approvedItem.category}'
+            : null,
+        description: approvedItem != null
+            ? 'Expense approved: ${approvedItem.vendor} — ${approvedItem.category}'
+            : 'Expense approved',
+        businessId: _businessId ?? '',
+        branchId: _branchId ?? '',
+        userId: _userId,
+      );
+    } finally {
+      _inFlightApprovalActions.remove(id);
+    }
   }
 
   Future<void> rejectExpense(String id) async {
-    await _repository.rejectExpense(id);
-    final rejectedItem = state is ExpensesLoaded
-        ? (state as ExpensesLoaded).allItems
-              .where((e) => e.id == id)
-              .firstOrNull
-        : null;
-    sl<AuditLogService>().log(
-      actionType: AuditLogActionType.expenseRejected,
-      entityType: 'expense',
-      entityName: rejectedItem != null
-          ? '${rejectedItem.vendor} — ${rejectedItem.category}'
-          : null,
-      description: rejectedItem != null
-          ? 'Expense rejected: ${rejectedItem.vendor} — ${rejectedItem.category}'
-          : 'Expense rejected',
-      businessId: _businessId ?? '',
-      branchId: _branchId ?? '',
-      userId: _userId,
-    );
+    if (!_inFlightApprovalActions.add(id)) return; // already approving/rejecting
+    try {
+      await _repository.rejectExpense(id);
+      final rejectedItem = state is ExpensesLoaded
+          ? (state as ExpensesLoaded).allItems
+                .where((e) => e.id == id)
+                .firstOrNull
+          : null;
+      sl<AuditLogService>().log(
+        actionType: AuditLogActionType.expenseRejected,
+        entityType: 'expense',
+        entityName: rejectedItem != null
+            ? '${rejectedItem.vendor} — ${rejectedItem.category}'
+            : null,
+        description: rejectedItem != null
+            ? 'Expense rejected: ${rejectedItem.vendor} — ${rejectedItem.category}'
+            : 'Expense rejected',
+        businessId: _businessId ?? '',
+        branchId: _branchId ?? '',
+        userId: _userId,
+      );
+    } finally {
+      _inFlightApprovalActions.remove(id);
+    }
   }
 
   @override

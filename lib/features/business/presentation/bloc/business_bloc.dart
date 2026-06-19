@@ -26,7 +26,8 @@ class BusinessBloc extends Bloc<BusinessEvent, BusinessState> {
     try {
       final templates = await businessRepository.getBusinessTemplates();
       emit(BusinessTemplatesLoaded(templates: templates));
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[BusinessBloc] Error in _onLoadTemplates: $e\n$st');
       emit(BusinessError(AppErrorMapper.message(e)));
     }
   }
@@ -62,9 +63,9 @@ class BusinessBloc extends Bloc<BusinessEvent, BusinessState> {
       );
 
       emit(BusinessCreated(business));
-    } catch (e) {
-      debugPrint('Error creating business: $e');
-      
+    } catch (e, st) {
+      debugPrint('[BusinessBloc] Error creating business: $e\n$st');
+
       emit(BusinessError(AppErrorMapper.message(e)));
       // Re-emit templates loaded state so user can retry
       emit(currentState);

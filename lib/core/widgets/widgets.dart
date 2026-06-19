@@ -20,6 +20,7 @@ export 'app_input_decoration.dart';
 export 'app_kpi_card.dart';
 export 'app_labeled_switch.dart';
 export 'app_modal.dart';
+export 'network_error_view.dart';
 export 'app_search_bar.dart';
 export 'app_section_card.dart';
 export 'app_status_badge.dart';

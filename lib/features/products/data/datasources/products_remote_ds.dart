@@ -51,6 +51,7 @@ class ProductsRemoteDs {
     String? imagePath,
     String type = 'product',
     String trackingMethod = 'product_stock',
+    DateTime? clientUpdatedAt,
   }) async {
     await client.from('products').upsert({
       'id': id,
@@ -66,11 +67,17 @@ class ProductsRemoteDs {
       'image_path': imagePath,
       'type': type,
       'tracking_method': trackingMethod,
+      'client_updated_at': clientUpdatedAt?.toUtc().toIso8601String(),
     });
   }
 
   /// Update an existing product on Supabase.
-  Future<void> updateProduct({
+  ///
+  /// When [clientUpdatedAt] is given, the write only applies if the row's
+  /// stored client_updated_at isn't already newer — so a device pushing a
+  /// stale edit late can't clobber a newer edit that already landed. Returns
+  /// the updated rows; an empty list means the push was rejected as stale.
+  Future<List<Map<String, dynamic>>> updateProduct({
     required String id,
     String? categoryId,
     required String name,
@@ -83,8 +90,9 @@ class ProductsRemoteDs {
     String? imagePath,
     String type = 'product',
     String trackingMethod = 'product_stock',
+    DateTime? clientUpdatedAt,
   }) async {
-    await client
+    var query = client
         .from('products')
         .update({
           'category_id': categoryId,
@@ -98,8 +106,14 @@ class ProductsRemoteDs {
           'image_path': imagePath,
           'type': type,
           'tracking_method': trackingMethod,
+          'client_updated_at': clientUpdatedAt?.toUtc().toIso8601String(),
         })
         .eq('id', id);
+    if (clientUpdatedAt != null) {
+      final iso = clientUpdatedAt.toUtc().toIso8601String();
+      query = query.or('client_updated_at.is.null,client_updated_at.lte.$iso');
+    }
+    return List<Map<String, dynamic>>.from(await query.select('id'));
   }
 
   /// Delete a product from Supabase.
@@ -167,6 +181,7 @@ class ProductsRemoteDs {
     bool trackExpiry = false,
     int? expiryDate,
     required bool isActive,
+    DateTime? clientUpdatedAt,
   }) async {
     await client.from('product_variants').upsert({
       'id': id,
@@ -182,11 +197,13 @@ class ProductsRemoteDs {
       'track_expiry': trackExpiry,
       'expiry_date': expiryDate,
       'is_active': isActive,
+      'client_updated_at': clientUpdatedAt?.toUtc().toIso8601String(),
     });
   }
 
-  /// Update an existing variant on Supabase.
-  Future<void> updateProductVariant({
+  /// Update an existing variant on Supabase. See [updateProduct] for the
+  /// [clientUpdatedAt] staleness guard.
+  Future<List<Map<String, dynamic>>> updateProductVariant({
     required String id,
     required String name,
     required double price,
@@ -198,8 +215,9 @@ class ProductsRemoteDs {
     bool trackExpiry = false,
     int? expiryDate,
     required bool isActive,
+    DateTime? clientUpdatedAt,
   }) async {
-    await client
+    var query = client
         .from('product_variants')
         .update({
           'name': name,
@@ -212,8 +230,14 @@ class ProductsRemoteDs {
           'track_expiry': trackExpiry,
           'expiry_date': expiryDate,
           'is_active': isActive,
+          'client_updated_at': clientUpdatedAt?.toUtc().toIso8601String(),
         })
         .eq('id', id);
+    if (clientUpdatedAt != null) {
+      final iso = clientUpdatedAt.toUtc().toIso8601String();
+      query = query.or('client_updated_at.is.null,client_updated_at.lte.$iso');
+    }
+    return List<Map<String, dynamic>>.from(await query.select('id'));
   }
 
   /// Delete a variant from Supabase.

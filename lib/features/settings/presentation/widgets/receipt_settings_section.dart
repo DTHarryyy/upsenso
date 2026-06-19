@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:iconly/iconly.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:path/path.dart' as p;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
@@ -869,11 +870,13 @@ class _LogoBannerState extends State<_LogoBanner> {
           variant: AppToastVariant.success,
         );
       }
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[ReceiptSettingsSection] Error uploading logo: $e\n$st');
       if (mounted) {
         AppToast.show(
           context,
-          'Upload failed: $e',
+          'Upload failed',
+          subtitle: AppErrorMapper.message(e),
           variant: AppToastVariant.error,
         );
       }
@@ -1266,7 +1269,9 @@ class _PrinterSetupDialogState extends State<PrinterSetupDialog> {
       } else if (!kIsWeb && Platform.isIOS) {
         await Permission.bluetooth.request();
       }
-    } catch (_) {}
+    } catch (e, st) {
+      debugPrint('[ReceiptSettingsSection] Error requesting Bluetooth permission: $e\n$st');
+    }
 
     // List paired BT devices (only paired devices are visible without active scan)
     if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {

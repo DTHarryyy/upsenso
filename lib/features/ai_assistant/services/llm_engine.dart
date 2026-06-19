@@ -37,11 +37,11 @@ class LlmEngine {
       _loadedModelPath = modelPath;
       debugPrint('LlmEngine: Model loaded from $modelPath');
       return true;
-    } catch (e) {
+    } catch (e, st) {
       _lastError = e.toString();
       _isLoaded = false;
       _chat = null;
-      debugPrint('LlmEngine: Failed to load model: $_lastError');
+      debugPrint('LlmEngine: Failed to load model: $_lastError\n$st');
       return false;
     } finally {
       _isLoading = false;
@@ -68,8 +68,8 @@ class LlmEngine {
 
       final response = await _chat!.ask(userMessage).completed();
       return response;
-    } catch (e) {
-      debugPrint('LlmEngine: Generation error: $e');
+    } catch (e, st) {
+      debugPrint('LlmEngine: Generation error: $e\n$st');
       return null;
     }
   }

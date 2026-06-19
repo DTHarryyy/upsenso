@@ -165,6 +165,12 @@ class _HeldSalesPageState extends State<HeldSalesPage> {
   }
 
   /// Pops the held sale back into the live cart and opens the POS terminal.
+  ///
+  /// The draft is intentionally left "open" here rather than marked resumed —
+  /// it only converts when [ProductCheckoutPage] confirms payment (via the
+  /// cart's tracked [CartService.sourceDraftId]). If the cashier abandons the
+  /// cart before checking out, the held sale stays in the list instead of
+  /// being silently lost.
   Future<void> _resume(DraftSale draft) async {
     final cart = sl<CartService>();
     // Resuming replaces the live cart — warn if it would discard current items.
@@ -178,8 +184,8 @@ class _HeldSalesPageState extends State<HeldSalesPage> {
       DraftCartMapper.toCartItems(items),
       discountType: DraftCartMapper.discountTypeFrom(draft.discountType),
       discountValue: draft.discountValue ?? 0,
+      sourceDraftId: draft.id,
     );
-    await repo.markResumed(draft.id);
     _auditResumed(draft);
     if (!mounted) return;
     final router = GoRouter.of(context);

@@ -5,6 +5,7 @@ import 'package:printing/printing.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/pos/data/models/cart_model.dart';
@@ -173,9 +174,15 @@ class _ReceiptPreviewPageState extends State<ReceiptPreviewPage>
           AppToast.show(context, 'Sent to printer');
         }
       }
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[ReceiptPreviewPage] Error printing receipt: $e\n$st');
       if (mounted) {
-        AppToast.show(context, 'Failed: $e', variant: AppToastVariant.error);
+        AppToast.show(
+          context,
+          'Failed',
+          subtitle: AppErrorMapper.message(e),
+          variant: AppToastVariant.error,
+        );
       }
     } finally {
       if (mounted) setState(() => _activeAction = null);

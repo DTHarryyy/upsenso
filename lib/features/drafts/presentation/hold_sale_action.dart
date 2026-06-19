@@ -32,10 +32,7 @@ Future<void> holdCurrentCart(BuildContext context) async {
   final label = await _promptHoldLabel(context);
   if (label == null || !context.mounted) return; // cancelled
 
-  final subtotal = cart.items.fold(0.0, (s, i) => s + i.total);
-  final tax = cart.items.fold(0.0, (s, i) => s + i.taxAmount);
-  final discountAmount = cart.discountAmount(subtotal);
-  final total = (subtotal - discountAmount + tax).clamp(0.0, double.infinity);
+  final totals = cart.computeTotals();
 
   final branchId =
       context.read<BranchCubit>().getSelectedBranchIdForFiltering() ??
@@ -51,7 +48,7 @@ Future<void> holdCurrentCart(BuildContext context) async {
           taxRate: i.taxRate,
           qty: i.qty,
           lineTotal: i.total,
-          lineTax: i.taxAmount,
+          lineTax: totals.lineTax(i),
         ),
       )
       .toList();
@@ -63,11 +60,13 @@ Future<void> holdCurrentCart(BuildContext context) async {
       branchId: branchId,
       cashierId: authState.user.id,
       label: label.isEmpty ? null : label,
-      subtotal: subtotal,
-      taxAmount: tax,
-      discountAmount: discountAmount,
-      totalAmount: total,
-      itemCount: cart.items.fold(0, (s, i) => s + i.qty.round()),
+      subtotal: totals.subtotal,
+      taxAmount: totals.tax,
+      discountAmount: totals.discountAmount,
+      totalAmount: totals.total,
+      // Sum exact quantities, not per-line rounded ints — fractional items
+      // (e.g. 0.5 kg + 0.5 kg) must not collapse to 0 or double-count.
+      itemCount: cart.items.fold(0.0, (s, i) => s + i.qty).round(),
       discountType: DraftCartMapper.discountTypeToString(cart.discountType),
       discountValue: cart.discountValue,
       items: items,
@@ -76,8 +75,8 @@ Future<void> holdCurrentCart(BuildContext context) async {
       actionType: AuditLogActionType.draftCreated,
       entityType: 'draft_sale',
       entityId: id,
-      description: 'Held sale saved — ${AppFormatters.currency(total)}',
-      metadata: {'total': total, 'item_count': items.length},
+      description: 'Held sale saved — ${AppFormatters.currency(totals.total)}',
+      metadata: {'total': totals.total, 'item_count': items.length},
       businessId: authState.user.businessId,
       branchId: branchId,
       userId: authState.user.id,
@@ -99,31 +98,35 @@ Future<void> holdCurrentCart(BuildContext context) async {
 }
 
 /// Returns the entered label (may be empty) or `null` if cancelled.
-Future<String?> _promptHoldLabel(BuildContext context) {
+Future<String?> _promptHoldLabel(BuildContext context) async {
   final controller = TextEditingController();
-  return showDialog<String>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: const Text('Hold Sale'),
-      content: TextField(
-        controller: controller,
-        autofocus: true,
-        textCapitalization: TextCapitalization.words,
-        decoration: const InputDecoration(
-          labelText: 'Label (optional)',
-          hintText: 'e.g. Table 5, Mrs. Cruz',
+  try {
+    return await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hold Sale'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(
+            labelText: 'Label (optional)',
+            hintText: 'e.g. Table 5, Mrs. Cruz',
+          ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+            child: const Text('Hold'),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
-          child: const Text('Hold'),
-        ),
-      ],
-    ),
-  );
+    );
+  } finally {
+    controller.dispose();
+  }
 }

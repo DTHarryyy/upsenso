@@ -86,7 +86,8 @@ class ReportsCubit extends Cubit<ReportsState> {
         customRange: _customRange,
       );
       if (!isClosed) emit(ReportsLoaded(data));
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[ReportsCubit] Error loading reports: $e\n$st');
       if (!isClosed) emit(ReportsError(AppErrorMapper.message(e)));
     } finally {
       _isLoading = false;

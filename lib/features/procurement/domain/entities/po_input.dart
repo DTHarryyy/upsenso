@@ -18,7 +18,14 @@ class PoLineInput {
     required this.unitCost,
   });
 
-  double get totalCost => quantityOrdered * unitCost;
+  /// Rounded to cents so floating-point noise (e.g. 0.1 * 3) never persists
+  /// into the PO's stored total, and a stray "Infinity"/"NaN" typed into a
+  /// qty/cost field can't propagate into the order total.
+  double get totalCost {
+    final raw = quantityOrdered * unitCost;
+    if (!raw.isFinite) return 0.0;
+    return (raw * 100).round() / 100;
+  }
 }
 
 /// Input for receiving one line of a PO.

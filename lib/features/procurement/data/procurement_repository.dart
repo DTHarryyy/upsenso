@@ -232,7 +232,10 @@ class ProcurementRepository implements IProcurementRepository {
     try {
       final id = _uuid.v4();
       final poNumber = _generatePoNumber();
-      final total = lines.fold(0.0, (s, l) => s + l.totalCost);
+      // Round the sum too — adding already-rounded line totals can still
+      // drift by a fraction of a cent after enough lines.
+      final total =
+          (lines.fold(0.0, (s, l) => s + l.totalCost) * 100).round() / 100;
 
       await _purchaseOrdersDao.insert(
         PurchaseOrdersTableCompanion.insert(
@@ -291,7 +294,8 @@ class ProcurementRepository implements IProcurementRepository {
       if (po == null) throw Exception('PO not found: $id');
       _assertStatus(po.status, [PoStatus.draft], 'updatePurchaseOrder');
 
-      final total = lines?.fold(0.0, (s, l) => s + l.totalCost);
+      final rawTotal = lines?.fold(0.0, (s, l) => s + l.totalCost);
+      final total = rawTotal != null ? (rawTotal * 100).round() / 100 : null;
 
       await _purchaseOrdersDao.updatePo(
         id,

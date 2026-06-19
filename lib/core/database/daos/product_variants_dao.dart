@@ -11,20 +11,45 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
     with _$ProductVariantsDaoMixin {
   ProductVariantsDao(super.db);
 
-  /// Insert a single variant (syncStatus=0 = pendingUpload by default).
+  /// Insert a variant, or update it in place if [companion.id] already
+  /// exists — lets callers reuse an existing variant's id on edit instead of
+  /// always minting a new one (syncStatus=0 = pendingUpload for a fresh row).
   Future<void> insertVariant(ProductVariantsTableCompanion companion) {
-    return into(productVariantsTable).insert(companion);
+    return into(productVariantsTable).insertOnConflictUpdate(companion);
   }
 
-  /// Batch insert multiple variants for a product.
+  /// Batch insert/update multiple variants for a product. See [insertVariant].
   Future<void> insertVariants(
     List<ProductVariantsTableCompanion> companions,
   ) async {
     await batch((b) {
-      for (final c in companions) {
-        b.insert(productVariantsTable, c);
-      }
+      b.insertAllOnConflictUpdate(productVariantsTable, companions);
     });
+  }
+
+  /// Offline-first delete of specific variants by id (used when editing: only
+  /// variants the new form data no longer references should be removed —
+  /// ones reused by id must NOT be touched). Mirrors [markDeleteByProductId].
+  Future<void> markDeleteByIds(List<String> ids) async {
+    if (ids.isEmpty) return;
+    final rows = await (select(
+      productVariantsTable,
+    )..where((t) => t.id.isIn(ids))).get();
+    for (final row in rows) {
+      if (row.syncStatus == SyncStatus.pendingUpload.toInt()) {
+        await (delete(
+          productVariantsTable,
+        )..where((t) => t.id.equals(row.id))).go();
+      } else {
+        await (update(
+          productVariantsTable,
+        )..where((t) => t.id.equals(row.id))).write(
+          ProductVariantsTableCompanion(
+            syncStatus: Value(SyncStatus.pendingDelete.toInt()),
+          ),
+        );
+      }
+    }
   }
 
   /// Get a single variant by its ID.
@@ -164,6 +189,9 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
       }
       return;
     }
+    // Carry the device's edit time forward so a LATER local edit on this
+    // device compares against the right baseline (see client_updated_at).
+    final clientUpdatedAt = row['client_updated_at'] as String?;
     await into(productVariantsTable).insertOnConflictUpdate(
       ProductVariantsTableCompanion.insert(
         id: row['id'] as String,
@@ -187,6 +215,9 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
         isActive: Value((row['is_active'] as bool?) ?? true),
         syncStatus: const Value(3), // synced
         lastSyncAttempt: Value(DateTime.now()),
+        localUpdatedAt: clientUpdatedAt != null
+            ? Value(DateTime.parse(clientUpdatedAt))
+            : const Value.absent(),
       ),
     );
   }

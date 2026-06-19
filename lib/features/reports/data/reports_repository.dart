@@ -104,7 +104,9 @@ class ReportsRepository implements IReportsRepository {
           }
         }
       }
-    } catch (_) {}
+    } catch (e, st) {
+      debugPrint('[ReportsRepo] Error reading BranchCubit cache: $e\n$st');
+    }
     return merged;
   }
 
@@ -522,7 +524,10 @@ class ReportsRepository implements IReportsRepository {
       if (entry.sourceType != 'recipe_consumption') continue;
       if (entry.changeType != 'OUT') continue;
       if (entry.createdAt.isBefore(cutoff) ||
-          !entry.createdAt.isBefore(rangeEnd)) continue;
+          // ignore: curly_braces_in_flow_control_structures
+          !entry.createdAt.isBefore(rangeEnd))
+        // ignore: curly_braces_in_flow_control_structures
+        continue;
       if (branchId != null && entry.branchId != branchId) {
         continue;
       }
@@ -552,8 +557,9 @@ class ReportsRepository implements IReportsRepository {
           : (v.stockDecimal ?? v.stock.toDouble());
       final consumedQty = consumedMap[v.id] ?? 0.0;
       final avgDailyConsumption = consumedQty / rangeDays;
-      final daysLeft =
-          avgDailyConsumption > 0 ? currentStock / avgDailyConsumption : null;
+      final daysLeft = avgDailyConsumption > 0
+          ? currentStock / avgDailyConsumption
+          : null;
 
       InventoryStatusType status;
       final threshold = v.lowStockAlert;
@@ -573,16 +579,18 @@ class ReportsRepository implements IReportsRepository {
         ingredientConsumptionCost += consumedQty * v.costPrice!;
       }
 
-      ingredientItems.add(IngredientReportItem(
-        name: name,
-        unit: v.unit,
-        currentStock: currentStock,
-        consumed: consumedQty,
-        avgDailyConsumption: avgDailyConsumption,
-        daysLeft: daysLeft,
-        costPerUnit: v.costPrice,
-        status: status,
-      ));
+      ingredientItems.add(
+        IngredientReportItem(
+          name: name,
+          unit: v.unit,
+          currentStock: currentStock,
+          consumed: consumedQty,
+          avgDailyConsumption: avgDailyConsumption,
+          daysLeft: daysLeft,
+          costPerUnit: v.costPrice,
+          status: status,
+        ),
+      );
     }
 
     ingredientItems.sort(

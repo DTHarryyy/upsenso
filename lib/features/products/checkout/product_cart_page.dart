@@ -35,13 +35,11 @@ class ProductCartPage extends StatelessWidget {
         }
 
         final items = cartService.items;
-        final subtotal = items.fold(0.0, (s, i) => s + i.total);
-        final tax = items.fold(0.0, (s, i) => s + i.taxAmount);
-        final discountAmount = cartService.discountAmount(subtotal);
-        final total = (subtotal - discountAmount + tax).clamp(
-          0.0,
-          double.infinity,
-        );
+        final totals = cartService.computeTotals(items);
+        final subtotal = totals.subtotal;
+        final tax = totals.tax;
+        final discountAmount = totals.discountAmount;
+        final total = totals.total;
 
         return Scaffold(
           backgroundColor: AppColors.background,

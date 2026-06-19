@@ -202,7 +202,7 @@ class AppRouter {
           AppRoutes.inventory: 'inventory',
           AppRoutes.stockLevel: 'inventory',
           AppRoutes.expenses: 'expenses',
-          AppRoutes.saleshistory: 'expenses',
+          AppRoutes.saleshistory: 'pos',
           AppRoutes.heldSales: 'pos',
           AppRoutes.employees: 'employees',
           AppRoutes.employeePermissions: 'employees',

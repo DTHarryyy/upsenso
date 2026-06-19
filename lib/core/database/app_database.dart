@@ -119,7 +119,8 @@ class AppDatabase extends _$AppDatabase {
   Future<void> ensureReady() async {
     try {
       await customSelect('SELECT 1').get();
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[AppDatabase] Error in ensureReady: $e\n$st');
       throw Exception('Database initialization failed: $e');
     }
   }

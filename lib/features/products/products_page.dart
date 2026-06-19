@@ -92,15 +92,7 @@ class _ProductsPageState extends State<ProductsPage> {
           listenable: _cartService,
           builder: (context, _) {
             final cartNotEmpty = _cartService.isNotEmpty;
-            final subtotal = _cartService.items.fold(
-              0.0,
-              (s, i) => s + i.total,
-            );
-            final cartTotal =
-                (subtotal -
-                        _cartService.discountAmount(subtotal) +
-                        _cartService.items.fold(0.0, (s, i) => s + i.taxAmount))
-                    .clamp(0.0, double.infinity);
+            final cartTotal = _cartService.computeTotals().total;
 
             // Derive role once at this level so both the grid and the cart
             // bar can gate on it — the cart bar lives outside BlocBuilder.

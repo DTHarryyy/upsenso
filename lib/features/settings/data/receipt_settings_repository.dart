@@ -228,8 +228,8 @@ class ReceiptSettingsRepository {
     for (final row in pending) {
       try {
         await _pushToRemote(row.id);
-      } catch (e) {
-        debugPrint('[ReceiptSettings] Push failed for ${row.id}: $e');
+      } catch (e, st) {
+        debugPrint('[ReceiptSettings] Push failed for ${row.id}: $e\n$st');
         await _dao.updateSyncStatus(
           id: row.id,
           status: SyncStatus.failed,
@@ -247,8 +247,8 @@ class ReceiptSettingsRepository {
       // The DAO's upsertFromServer guards against clobbering unsynced local
       // edits (e.g. a logo picked offline), so no extra guard is needed here.
       if (data != null) await _dao.upsertFromServer(data);
-    } catch (e) {
-      debugPrint('[ReceiptSettings] Pull failed: $e');
+    } catch (e, st) {
+      debugPrint('[ReceiptSettings] Pull failed: $e\n$st');
     }
   }
 

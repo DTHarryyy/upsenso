@@ -6,6 +6,7 @@ import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
@@ -139,12 +140,13 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
           duration: const Duration(seconds: 3),
         );
       }
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[ReportsPage] Error in _onExportPdf: $e\n$st');
       if (mounted) {
         AppToast.show(
           context,
           'Export Failed',
-          subtitle: e.toString(),
+          subtitle: AppErrorMapper.message(e),
           variant: AppToastVariant.error,
         );
       }
@@ -179,12 +181,13 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
           duration: const Duration(seconds: 4),
         );
       }
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[ReportsPage] Error in _onExportExcel: $e\n$st');
       if (mounted) {
         AppToast.show(
           context,
           'Export Failed',
-          subtitle: e.toString(),
+          subtitle: AppErrorMapper.message(e),
           variant: AppToastVariant.error,
         );
       }
@@ -249,10 +252,15 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
                       if (isLoading && _selectedTab != 1)
                         const _ReportsTabSkeleton()
                       else if (state is ReportsError && _selectedTab != 1)
-                        _ErrorView(
-                          message: state.message,
-                          onRetry: _startWatching,
-                        )
+                        isNetworkErrorMessage(state.message)
+                            ? NetworkErrorView(
+                                message: state.message,
+                                onRetry: _startWatching,
+                              )
+                            : _ErrorView(
+                                message: state.message,
+                                onRetry: _startWatching,
+                              )
                       else
                         _buildTabContent(data, isLoading: isLoading),
                     ],
@@ -340,7 +348,8 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
             ReportStatCard(
               title: 'Total Revenue',
               value: fmtCurrency(data.totalRevenue),
-              changeLabel: '${fmtPct(revChange)} vs prev period',
+              changeLabel:
+                  '${fmtPctChange(data.totalRevenue, data.prevTotalRevenue)} vs prev period',
               isPositive: revChange >= 0,
               icon: IconlyBold.wallet,
               iconBg: AppColors.brandSoft,
@@ -359,7 +368,8 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
             ReportStatCard(
               title: 'Avg. Ticket',
               value: fmtCurrency(data.avgTicket),
-              changeLabel: '${fmtPct(avgChange)} vs prev period',
+              changeLabel:
+                  '${fmtPctChange(data.avgTicket, data.prevAvgTicket)} vs prev period',
               isPositive: avgChange >= 0,
               icon: IconlyBold.activity,
               iconBg: AppColors.successSoft,
@@ -440,7 +450,8 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
             ReportStatCard(
               title: 'Net Profit',
               value: fmtCurrency(data.netProfit),
-              changeLabel: '${fmtPct(netChange)} vs prev period',
+              changeLabel:
+                  '${fmtPctChange(data.netProfit, data.prevNetProfit)} vs prev period',
               isPositive: netChange >= 0,
               icon: IconlyBold.activity,
               iconBg: AppColors.successSoft,

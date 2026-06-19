@@ -23,6 +23,16 @@ double pctChange(double current, double prev) {
   return (current - prev) / prev * 100;
 }
 
+/// Display label for a period-over-period change. Percentage change from a
+/// zero baseline is mathematically undefined — [pctChange] reports a flat
+/// 100 for it (so colour/arrow logic still reads "positive"), but showing
+/// "+100.0%" for $1 and for $1,000,000 of new revenue is misleading, so the
+/// label says "New" instead of a fabricated percentage.
+String fmtPctChange(double current, double prev) {
+  if (prev == 0 && current > 0) return 'New';
+  return fmtPct(pctChange(current, prev));
+}
+
 double chartMaxY(List<double> values) {
   if (values.isEmpty) return 1000;
   final max = values.reduce((a, b) => a > b ? a : b);

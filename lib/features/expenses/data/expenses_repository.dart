@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/expenses_dao.dart';
+import 'package:pos/core/sync/sync_status.dart';
 import 'package:pos/features/expenses/domain/expense_item.dart';
 import 'package:pos/features/expenses/domain/repositories/i_expenses_repository.dart';
 
@@ -84,7 +85,7 @@ class ExpensesRepository implements IExpensesRepository {
         approvedById: Value(approvedById),
         approvedByName: Value(approvedByName),
         updatedAt: Value(DateTime.now()),
-        syncStatus: const Value(1),
+        syncStatus: Value(SyncStatus.pendingUpdate.toInt()),
       ),
     );
   }
@@ -96,7 +97,7 @@ class ExpensesRepository implements IExpensesRepository {
       ExpensesTableCompanion(
         status: const Value('rejected'),
         updatedAt: Value(DateTime.now()),
-        syncStatus: const Value(1),
+        syncStatus: Value(SyncStatus.pendingUpdate.toInt()),
       ),
     );
   }

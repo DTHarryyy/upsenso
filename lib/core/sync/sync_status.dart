@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// Represents the synchronization status of a local record
 enum SyncStatus {
   /// Record exists only locally and needs to be uploaded
@@ -47,6 +49,14 @@ extension SyncStatusExtension on SyncStatus {
       case 4:
         return SyncStatus.failed;
       default:
+        // Corrupted/out-of-range column value. Fall back to pendingUpload
+        // (re-uploading an already-synced row is safe; silently treating a
+        // real pending change as synced and skipping it is not) — but log it
+        // since this should never happen and signals data corruption.
+        debugPrint(
+          '[SyncStatus] Unknown syncStatus value: $value — '
+          'defaulting to pendingUpload',
+        );
         return SyncStatus.pendingUpload;
     }
   }

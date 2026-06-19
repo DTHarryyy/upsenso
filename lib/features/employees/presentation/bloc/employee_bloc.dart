@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:pos/features/employees/domain/entities/employee.dart';
@@ -137,7 +138,8 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
       ));
     } on EmployeeDuplicateException catch (e) {
       emit(EmployeeValidationFailure(fieldErrors: e.fieldErrors, loaded: current));
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[EmployeeBloc] Error: $e\n$st');
       emit(EmployeeError(AppErrorMapper.message(e)));
     }
   }
@@ -172,7 +174,8 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
       }
     } on EmployeeDuplicateException catch (e) {
       emit(EmployeeValidationFailure(fieldErrors: e.fieldErrors, loaded: current));
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[EmployeeBloc] Error: $e\n$st');
       emit(EmployeeError(AppErrorMapper.message(e)));
     }
   }
@@ -206,7 +209,8 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
       await _repository.archiveEmployee(event.id);
     } on EmployeeProtectedException catch (e) {
       emit(EmployeeError(e.message));
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[EmployeeBloc] Error: $e\n$st');
       emit(EmployeeError(AppErrorMapper.message(e)));
     }
   }
@@ -229,7 +233,8 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
       await _repository.suspendEmployee(event.id);
     } on EmployeeProtectedException catch (e) {
       emit(EmployeeError(e.message));
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[EmployeeBloc] Error: $e\n$st');
       emit(EmployeeError(AppErrorMapper.message(e)));
     }
   }
@@ -243,7 +248,8 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
 
     try {
       await _repository.reactivateEmployee(event.id);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[EmployeeBloc] Error: $e\n$st');
       emit(EmployeeError(AppErrorMapper.message(e)));
     }
   }

@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/breakpoint.dart';
@@ -134,6 +135,22 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
       }
     }
 
+    // A missing businessId here means the session lost its tenant context —
+    // letting it fall through as '' would write the invoice/stock-ledger
+    // rows under a fake tenant instead of the real one. Abort with a clear
+    // message rather than silently corrupting cross-table tenant linkage.
+    final businessId = authState.user.businessId;
+    if (businessId == null || businessId.isEmpty) {
+      if (mounted) {
+        AppToast.show(
+          context,
+          'Session error: no business context. Please sign in again.',
+          variant: AppToastVariant.error,
+        );
+      }
+      return;
+    }
+
     setState(() => _confirming = true);
     try {
       final cashierId = authState.user.id;
@@ -143,7 +160,7 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
       final tx = TransactionsTableCompanion.insert(
         id: txId,
         cashierId: cashierId,
-        businessId: Value(authState.user.businessId),
+        businessId: Value(businessId),
         branchId: Value(branchId),
         totalAmount: widget.total,
         taxAmount: widget.tax,
@@ -157,6 +174,12 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
         createdAt: Value(DateTime.now()),
       );
 
+      // widget.tax is already post-discount (see CartTotals); back-derive the
+      // same ratio here so each persisted line's tax sums back to widget.tax
+      // instead of the line's raw pre-discount taxAmount.
+      final preDiscountTax = widget.items.fold(0.0, (s, i) => s + i.taxAmount);
+      final taxRatio = preDiscountTax > 0 ? widget.tax / preDiscountTax : 1.0;
+
       final txItems = widget.items
           .map(
             (item) => TransactionItemsTableCompanion.insert(
@@ -169,7 +192,7 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
               taxRate: Value(item.taxRate),
               qty: item.qty,
               lineTotal: item.total,
-              lineTax: item.taxAmount,
+              lineTax: item.taxAmount * taxRatio,
             ),
           )
           .toList();
@@ -182,7 +205,7 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
         deductions: widget.items
             .map((i) => (variantId: i.variantId, qty: i.qty))
             .toList(),
-        businessId: authState.user.businessId ?? '',
+        businessId: businessId,
         branchId: branchId,
       );
 
@@ -201,7 +224,7 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
             'payment_method': _paymentMethod,
             'item_count': widget.items.length,
           },
-          businessId: authState.user.businessId,
+          businessId: businessId,
           branchId: branchId,
           userId: cashierId,
         ),
@@ -220,7 +243,7 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
             description:
                 'Held sale completed — ${AppFormatters.currency(widget.total)}',
             metadata: {'transaction_id': txId, 'total': widget.total},
-            businessId: authState.user.businessId,
+            businessId: businessId,
             branchId: branchId,
             userId: cashierId,
           ),
@@ -249,7 +272,7 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
             customerName: customerName,
             itemCount: widget.items.length,
             dateTime: DateTime.now(),
-            businessId: authState.user.businessId ?? '',
+            businessId: businessId,
           ),
           transitionsBuilder: (_, animation, _, child) {
             final slide =
@@ -273,11 +296,13 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
           },
         ),
       );
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[ProductCheckoutPage] Error saving transaction: $e\n$st');
       if (mounted) {
         AppToast.show(
           context,
-          'Failed to save transaction: $e',
+          'Failed to save transaction',
+          subtitle: AppErrorMapper.message(e),
           variant: AppToastVariant.error,
         );
       }

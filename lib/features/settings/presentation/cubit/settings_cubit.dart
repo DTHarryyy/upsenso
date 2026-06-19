@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:pos/features/settings/data/receipt_settings_repository.dart';
 import 'package:pos/features/settings/domain/receipt_settings.dart';
 import 'package:pos/features/settings/presentation/cubit/settings_state.dart';
@@ -69,9 +70,9 @@ class SettingsCubit extends Cubit<SettingsState> {
   Future<void> _pullIfOnline(String businessId) async {
     try {
       await _repo.pullFromServer(businessId);
-    } catch (e) {
+    } catch (e, st) {
       // Non-fatal — local data is still shown; log and move on.
-      debugPrint('[SettingsCubit] Remote pull failed: $e');
+      debugPrint('[SettingsCubit] Remote pull failed: $e\n$st');
     }
   }
 
@@ -96,12 +97,13 @@ class SettingsCubit extends Cubit<SettingsState> {
           emit(state.copyWith(saveStatus: SettingsSaveStatus.idle));
         }
       }
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[SettingsCubit] Error in save: $e\n$st');
       if (!isClosed) {
         emit(
           state.copyWith(
             saveStatus: SettingsSaveStatus.error,
-            errorMessage: e.toString(),
+            errorMessage: AppErrorMapper.message(e),
           ),
         );
       }
@@ -133,12 +135,13 @@ class SettingsCubit extends Cubit<SettingsState> {
           ),
         );
       }
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[SettingsCubit] Error in uploadLogo: $e\n$st');
       if (!isClosed) {
         emit(
           state.copyWith(
             isUploadingLogo: false,
-            errorMessage: e.toString(),
+            errorMessage: AppErrorMapper.message(e),
             saveStatus: SettingsSaveStatus.error,
           ),
         );

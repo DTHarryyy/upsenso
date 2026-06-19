@@ -35,7 +35,13 @@ class RolePermissionMatrix {
 
     // ── Branch Manager — operational control over ONE branch ────────────────
     branchManager: {
-      // POS oversight
+      // POS — full till operation in addition to oversight (a manager can
+      // step behind the register, not just approve/oversee).
+      AppPermission.createSale,
+      AppPermission.processPayment,
+      AppPermission.printReceipt,
+      AppPermission.applyDiscount,
+      AppPermission.refundSale,
       AppPermission.viewAllSalesInBranch,
       AppPermission.holdSale,
       AppPermission.approveRefund,
@@ -53,10 +59,13 @@ class RolePermissionMatrix {
       // Products (full management within branch)
       AppPermission.viewProducts,
       AppPermission.viewPriceList,
+      AppPermission.createProduct,
       AppPermission.editProduct,
       AppPermission.changeProductPricing,
+      AppPermission.manageProductCategories,
 
       // Inventory (full management within branch)
+      AppPermission.viewInventory,
       AppPermission.viewAvailableStock,
       AppPermission.updateStockQuantity,
       AppPermission.receiveStock,
@@ -65,6 +74,7 @@ class RolePermissionMatrix {
       AppPermission.transferStockBetweenBranches,
       AppPermission.approveStockTransfer,
       AppPermission.viewStockHistory,
+      AppPermission.manageInventorySuppliers,
 
       // Expenses
       AppPermission.createExpense,
@@ -73,12 +83,15 @@ class RolePermissionMatrix {
       AppPermission.rejectExpense,
 
       // Reports
+      AppPermission.viewOwnReports,
       AppPermission.viewBranchReports,
       AppPermission.viewSalesAnalytics,
       AppPermission.viewInventoryAnalytics,
       AppPermission.viewInventoryReports,
+      AppPermission.exportReports,
 
       // Employees (within branch only)
+      AppPermission.viewEmployees,
       AppPermission.createEmployee,
       AppPermission.editEmployee,
       AppPermission.assignRole,
@@ -100,13 +113,16 @@ class RolePermissionMatrix {
       AppPermission.manageIngredients,
       AppPermission.manageRecipes,
 
-      // Settings (branch-level)
+      // Settings (branch-level only — NOT business-level)
       AppPermission.accessSettings,
+      AppPermission.editBranchSettings,
+      AppPermission.editReceiptSettings,
     },
 
     // ── Cashier — sales operations only ─────────────────────────────────────
     cashier: {
-      // POS
+      // POS — note: no refundSale/voidSale. Refunds and voids are
+      // manager-approved actions (separation of duties at the till).
       AppPermission.createSale,
       AppPermission.processPayment,
       AppPermission.applyDiscount,
@@ -119,6 +135,9 @@ class RolePermissionMatrix {
       AppPermission.closeShift,
       AppPermission.viewOwnShiftSummary,
 
+      // Own performance report (mirrors viewOwnShiftSales, not branch-wide)
+      AppPermission.viewOwnReports,
+
       // Read-only product & stock access
       AppPermission.viewProducts,
       AppPermission.viewPriceList,
@@ -128,14 +147,17 @@ class RolePermissionMatrix {
     // ── Inventory Staff — stock operations only ──────────────────────────────
     inventoryStaff: {
       // Inventory
+      AppPermission.viewInventory,
       AppPermission.viewAvailableStock,
       AppPermission.updateStockQuantity,
       AppPermission.receiveStock,
       AppPermission.recordStockAdjustment,
       AppPermission.transferStockBetweenBranches,
       AppPermission.viewStockHistory,
+      AppPermission.manageInventorySuppliers,
 
-      // Read-only product access
+      // Read-only product access — NOT editProduct: catalogue/pricing edits
+      // belong to managers, this role only moves stock.
       AppPermission.viewProducts,
 
       // Suppliers — inventory staff maintain the directory (not full procurement)
@@ -152,8 +174,8 @@ class RolePermissionMatrix {
       AppPermission.manageIngredients,
       AppPermission.manageRecipes,
 
-      // Limited reports
-      AppPermission.viewInventoryReports,
+      // No reports.view_branch grant: that key carries full branch
+      // sales/revenue reports, out of scope for "inventory + stock only".
     },
   };
 

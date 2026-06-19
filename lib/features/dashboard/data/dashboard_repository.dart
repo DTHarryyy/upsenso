@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/core/database/daos/categories_dao.dart';
 import 'package:pos/core/database/daos/expenses_dao.dart';
@@ -80,7 +81,9 @@ class DashboardRepository implements IDashboardRepository {
           }
         }
       }
-    } catch (_) {}
+    } catch (e, st) {
+      debugPrint('[DashboardRepo] Error reading BranchCubit cache: $e\n$st');
+    }
 
     // Layer 2 — Dashboard's own cache: {"id": "name"}  (wins over layer 1)
     try {
@@ -95,7 +98,9 @@ class DashboardRepository implements IDashboardRepository {
           });
         }
       }
-    } catch (_) {}
+    } catch (e, st) {
+      debugPrint('[DashboardRepo] Error reading dashboard cache: $e\n$st');
+    }
 
     return merged;
   }

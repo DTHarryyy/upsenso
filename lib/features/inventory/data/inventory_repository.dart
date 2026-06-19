@@ -151,7 +151,14 @@ class InventoryRepository implements IInventoryRepository {
       );
     }
 
-    items.sort((a, b) => a.productName.compareTo(b.productName));
+    // Tracked items (in stock / warning / low stock) surface above
+    // not-tracked, recipe, and service items; alphabetical within each group.
+    items.sort((a, b) {
+      final aTracked = a.trackStock && !a.isRecipe && !a.isService;
+      final bTracked = b.trackStock && !b.isRecipe && !b.isService;
+      if (aTracked != bTracked) return aTracked ? -1 : 1;
+      return a.productName.compareTo(b.productName);
+    });
 
     return InventoryData(items: items, branches: branchInfos);
   }

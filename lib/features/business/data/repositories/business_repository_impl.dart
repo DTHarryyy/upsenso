@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import 'package:pos/core/database/daos/business_templates_dao.dart';
 import 'package:pos/core/database/daos/businesses_dao.dart';
@@ -185,7 +186,8 @@ class BusinessRepositoryImpl implements BusinessRepository {
         );
 
         return serverBusiness;
-      } catch (e) {
+      } catch (e, st) {
+        debugPrint('[BusinessRepo] Error syncing business: $e\n$st');
         // Sync failed, but local data is saved
         // Will retry on next sync cycle
         await businessesDao.updateSyncStatus(

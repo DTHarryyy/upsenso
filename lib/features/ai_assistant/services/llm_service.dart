@@ -120,8 +120,8 @@ Return ONLY valid JSON. No explanation. No markdown. No extra text.''';
         );
       }
       return loaded;
-    } catch (e) {
-      debugPrint('LlmService: Initialization error: $e');
+    } catch (e, st) {
+      debugPrint('LlmService: Initialization error: $e\n$st');
       return false;
     }
   }

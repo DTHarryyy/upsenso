@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/widgets/app_field_label.dart';
@@ -87,13 +88,14 @@ class _ProfileViewState extends State<_ProfileView> {
         _dirty = false;
       });
       AppToast.show(context, 'Profile updated');
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[ProfilePage] Error in _save: $e\n$st');
       if (!mounted) return;
       setState(() => _saving = false);
       AppToast.show(
         context,
         'Failed to update',
-        subtitle: '$e',
+        subtitle: AppErrorMapper.message(e),
         variant: AppToastVariant.error,
       );
     }
@@ -128,12 +130,13 @@ class _ProfileViewState extends State<_ProfileView> {
       final updated = await sl<AuthRepository>().uploadAvatar(userId, bytes);
       if (!mounted) return;
       context.read<AuthBloc>().add(AuthUserContextUpdated(updated));
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[ProfilePage] Error in avatar upload: $e\n$st');
       if (mounted) {
         AppToast.show(
           context,
           'Upload failed',
-          subtitle: '$e',
+          subtitle: AppErrorMapper.message(e),
           variant: AppToastVariant.error,
         );
       }
@@ -623,13 +626,14 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
       if (!mounted) return;
       Navigator.pop(context);
       AppToast.show(context, 'Password updated successfully');
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[ProfilePage] Error in change password: $e\n$st');
       if (!mounted) return;
       setState(() => _saving = false);
       AppToast.show(
         context,
         'Failed to update password',
-        subtitle: '$e',
+        subtitle: AppErrorMapper.message(e),
         variant: AppToastVariant.error,
       );
     }
@@ -881,13 +885,14 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
       if (!mounted) return;
       Navigator.pop(context);
       AppToast.show(context, 'Password updated successfully');
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[ProfilePage] Error in change password: $e\n$st');
       if (!mounted) return;
       setState(() => _saving = false);
       AppToast.show(
         context,
         'Failed to update password',
-        subtitle: '$e',
+        subtitle: AppErrorMapper.message(e),
         variant: AppToastVariant.error,
       );
     }

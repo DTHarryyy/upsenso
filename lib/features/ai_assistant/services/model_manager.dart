@@ -63,8 +63,8 @@ class ModelManager {
 
       debugPrint('ModelManager: No .gguf model found in ${modelsDir.path}');
       return null;
-    } catch (e) {
-      debugPrint('ModelManager: Error scanning for models: $e');
+    } catch (e, st) {
+      debugPrint('ModelManager: Error scanning for models: $e\n$st');
       return null;
     }
   }

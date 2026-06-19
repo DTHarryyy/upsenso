@@ -4,6 +4,7 @@ import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:pos/core/widgets/app_date_range_picker.dart';
 import 'package:pos/core/widgets/app_dropdown.dart';
 import 'package:pos/core/widgets/app_toast.dart';
@@ -117,13 +118,14 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
           );
 
       if (mounted) Navigator.pop(context);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[AddExpenseSheet] Error in submit: $e\n$st');
       setState(() => _submitting = false);
       if (mounted) {
         AppToast.show(
           context,
           'Failed to add expense',
-          subtitle: '$e',
+          subtitle: AppErrorMapper.message(e),
           variant: AppToastVariant.error,
         );
       }
@@ -380,13 +382,14 @@ class _AddExpenseDialogState extends State<_AddExpenseDialog> {
           );
 
       if (mounted) Navigator.pop(context);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[AddExpenseSheet] Error in submit: $e\n$st');
       setState(() => _submitting = false);
       if (mounted) {
         AppToast.show(
           context,
           'Failed to add expense',
-          subtitle: '$e',
+          subtitle: AppErrorMapper.message(e),
           variant: AppToastVariant.error,
         );
       }

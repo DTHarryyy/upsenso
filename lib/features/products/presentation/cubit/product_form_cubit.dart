@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart' show Value;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 import 'package:pos/core/audit/audit_log_service.dart';
@@ -12,6 +13,7 @@ import 'package:pos/core/database/daos/inventory_levels_dao.dart';
 import 'package:pos/core/database/daos/products_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
 import 'package:pos/core/database/daos/recipe_lines_dao.dart';
+import 'package:pos/core/sync/sync_status.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pos/core/services/image_service.dart';
 import 'product_form_state.dart';
@@ -120,7 +122,8 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           imagePath: localPath ?? state.imagePath,
         ),
       );
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[ProductFormCubit] Error in pickImage: $e\n$st');
       emit(
         state.copyWith(
           isUploadingImage: false,
@@ -170,6 +173,11 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   /// Load recipe lines for a no-variants product (Default variant → cubit state).
   Future<void> loadRecipeLinesForProduct(String productId) async {
     final variants = await _productVariantsDao.getByProductId(productId);
+    if (variants.isEmpty) {
+      // No variant row yet (e.g. mid-creation) — nothing to load.
+      emit(state.copyWith(recipeLines: []));
+      return;
+    }
     final defaultVariant = variants.firstWhere(
       (v) => v.name == 'Default',
       orElse: () => variants.first,
@@ -292,16 +300,23 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           isActive: Value(!data.isDraft),
           trackingMethod: Value(data.trackingMethod.code),
           syncStatus: const Value(1), // pendingUpdate
+          localUpdatedAt: Value(DateTime.now()),
         ),
       );
 
       // Snapshot existing inventory levels (keyed by variant name) before
-      // deleting variants. This lets us re-link levels to new variant UUIDs
-      // so other branches don't lose their stock when one branch edits.
+      // touching variants. This lets us re-link levels to whichever variant
+      // id ends up representing that name after this edit.
       final oldVariants = await _productVariantsDao.getByProductId(productId);
       // variantName → { branchId → (qty, qtyDecimal) }
       final savedLevels = <String, Map<String, ({int qty, double? qtyDec})>>{};
+      // variantName → existing id. Reusing the id when a name survives the
+      // edit keeps any cart item / recipe line / stock-ledger row pointing at
+      // it valid — regenerating a fresh UUID here used to silently orphan
+      // them (a held cart item's deduction would just no-op at checkout).
+      final oldIdByName = <String, String>{};
       for (final v in oldVariants) {
+        oldIdByName[v.name] = v.id;
         final levels = await _levelsDao.getByVariantId(v.id);
         if (levels.isNotEmpty) {
           savedLevels[v.name] = {
@@ -310,9 +325,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           };
         }
       }
-
-      // Delete all existing variants and re-insert from form data
-      await _productVariantsDao.markDeleteByProductId(productId);
+      final reusedIds = <String>{};
 
       final variantBarcode = data.barcodes
           .map((s) => s.trim())
@@ -326,8 +339,10 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       if (hasVariants) {
         final companions = <ProductVariantsTableCompanion>[];
         for (final v in data.variants) {
-          final id = const Uuid().v4();
           final name = v.name.trim().isEmpty ? 'Default' : v.name.trim();
+          final existingId = oldIdByName[name];
+          final id = existingId ?? const Uuid().v4();
+          if (existingId != null) reusedIds.add(existingId);
           final vPrice = double.tryParse(v.price) ?? 0.0;
           final vCost = (v.costPrice?.trim().isNotEmpty == true)
               ? double.tryParse(v.costPrice!)
@@ -360,6 +375,11 @@ class ProductFormCubit extends Cubit<ProductFormState> {
               trackStock: Value(state.trackInventory),
               trackExpiry: Value(state.trackExpiry),
               expiryDate: Value(state.trackExpiry ? state.expiryDate : null),
+              syncStatus: Value(
+                existingId != null
+                    ? SyncStatus.pendingUpdate.toInt()
+                    : SyncStatus.pendingUpload.toInt(),
+              ),
             ),
           );
           variantNameToNewId[name] = id;
@@ -367,7 +387,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         }
         await _productVariantsDao.insertVariants(companions);
       } else if (isAdvanced) {
-        final id = const Uuid().v4();
+        final existingId = oldIdByName['Default'];
+        final id = existingId ?? const Uuid().v4();
+        if (existingId != null) reusedIds.add(existingId);
         // Store the tax-exclusive price. Tax is applied once at the cart layer
         // via the product's tax rate — storing it inclusive here double-taxes.
         final finalPrice = double.tryParse(data.sellingPrice ?? '') ?? 0.0;
@@ -402,13 +424,20 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             trackStock: Value(state.trackInventory),
             trackExpiry: Value(state.trackExpiry),
             expiryDate: Value(state.trackExpiry ? state.expiryDate : null),
+            syncStatus: Value(
+              existingId != null
+                  ? SyncStatus.pendingUpdate.toInt()
+                  : SyncStatus.pendingUpload.toInt(),
+            ),
           ),
         );
         variantNameToNewId['Default'] = id;
         seeds.add((variantId: id, qty: stockInt, qtyDecimal: stockReal));
       } else {
         // Simple mode — no inventory tracking
-        final id = const Uuid().v4();
+        final existingId = oldIdByName['Default'];
+        final id = existingId ?? const Uuid().v4();
+        if (existingId != null) reusedIds.add(existingId);
         final price = double.tryParse(data.simplePrice ?? '') ?? 0.0;
         final simpleBarcode = data.simpleBarcode?.trim();
         await _productVariantsDao.insertVariant(
@@ -429,10 +458,24 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             trackStock: const Value(false),
             trackExpiry: const Value(false),
             expiryDate: const Value(null),
+            syncStatus: Value(
+              existingId != null
+                  ? SyncStatus.pendingUpdate.toInt()
+                  : SyncStatus.pendingUpload.toInt(),
+            ),
           ),
         );
         variantNameToNewId['Default'] = id;
       }
+
+      // Remove only variants the new data no longer references — ones we
+      // reused above must survive untouched (delete-then-recreate would
+      // defeat the id-reuse and re-introduce the stale-reference bug).
+      final idsToDelete = oldVariants
+          .map((v) => v.id)
+          .where((id) => !reusedIds.contains(id))
+          .toList();
+      await _productVariantsDao.markDeleteByIds(idsToDelete);
 
       // Re-link saved inventory levels to new variant UUIDs.
       // For each new variant, restore all branch levels from before the edit —
@@ -499,7 +542,8 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       );
 
       emit(state.copyWith(isSaving: false, isSavingDraft: false, isSuccess: true));
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[ProductFormCubit] Error in update: $e\n$st');
       emit(state.copyWith(isSaving: false, isSavingDraft: false, error: AppErrorMapper.message(e)));
     }
   }
@@ -759,7 +803,8 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       );
 
       emit(state.copyWith(isSaving: false, isSavingDraft: false, isSuccess: true));
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[ProductFormCubit] Error in save: $e\n$st');
       emit(state.copyWith(isSaving: false, isSavingDraft: false, error: AppErrorMapper.message(e)));
     }
   }

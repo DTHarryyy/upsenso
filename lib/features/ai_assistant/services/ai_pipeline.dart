@@ -73,8 +73,8 @@ class AiPipeline {
         cashierId: cashierId,
         branchId: branchId,
       );
-    } catch (e) {
-      debugPrint('AI Pipeline [Error]: $e');
+    } catch (e, st) {
+      debugPrint('AI Pipeline [Error]: $e\n$st');
       return AiPipelineResult(
         responseText: AiResponseFormatter.formatError(e.toString()),
         type: AiResponseType.error,
@@ -386,7 +386,8 @@ class AiPipeline {
         responseText: AiResponseFormatter.formatTransactionCreated(txId),
         type: AiResponseType.text,
       );
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('AI Pipeline [Error] in createSale: $e\n$st');
       return AiPipelineResult(
         responseText: AiResponseFormatter.formatError(e.toString()),
         type: AiResponseType.error,

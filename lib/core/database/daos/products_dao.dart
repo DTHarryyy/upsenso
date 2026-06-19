@@ -122,6 +122,9 @@ class ProductsDao extends DatabaseAccessor<AppDatabase>
       }
       return;
     }
+    // Carry the device's edit time forward so a LATER local edit on this
+    // device compares against the right baseline (see client_updated_at).
+    final clientUpdatedAt = row['client_updated_at'] as String?;
     await into(productsTable).insertOnConflictUpdate(
       ProductsTableCompanion.insert(
         id: row['id'] as String,
@@ -139,6 +142,9 @@ class ProductsDao extends DatabaseAccessor<AppDatabase>
         isActive: Value((row['is_active'] as bool?) ?? true),
         syncStatus: const Value(3), // synced
         lastSyncAttempt: Value(DateTime.now()),
+        localUpdatedAt: clientUpdatedAt != null
+            ? Value(DateTime.parse(clientUpdatedAt))
+            : const Value.absent(),
       ),
     );
   }

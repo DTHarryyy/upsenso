@@ -144,9 +144,12 @@ class _PoFormPageState extends State<PoFormPage> {
     var count = 0;
     for (final l in _lines) {
       final qty = double.tryParse(l.qtyCtrl.text) ?? 0;
-      if (qty <= 0) continue;
+      final cost = double.tryParse(l.costCtrl.text) ?? 0;
+      // Reject non-finite input (e.g. a literal "Infinity"/"NaN" typed into
+      // the field) so it can't show a garbage preview total.
+      if (qty <= 0 || !qty.isFinite || !cost.isFinite) continue;
       count++;
-      total += qty * (double.tryParse(l.costCtrl.text) ?? 0);
+      total += qty * cost;
     }
     return (count: count, total: total);
   }

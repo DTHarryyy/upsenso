@@ -40,8 +40,8 @@ Future<Widget> bootstrap() async {
         const Duration(seconds: 5),
         onTimeout: () => throw Exception('Database initialization timeout'),
       );
-    } catch (e) {
-      debugPrint('Warning: Database ready check failed: $e');
+    } catch (e, st) {
+      debugPrint('Warning: Database ready check failed: $e\n$st');
       // On web, if database fails to initialize but we have a valid Supabase session,
       // continue anyway — the database will be retried on each operation.
       // Don't fail the entire startup sequence.
@@ -193,9 +193,9 @@ Future<void> _waitForSessionRecovery() async {
       // opens with a stale token that auto-refresh hasn't caught yet.
       try {
         await auth.refreshSession();
-      } catch (e) {
+      } catch (e, st) {
         debugPrint(
-          'Session recovery: refresh token invalid at startup — signing out locally. ($e)',
+          'Session recovery: refresh token invalid at startup — signing out locally. ($e)\n$st',
         );
         await auth.signOut(scope: SignOutScope.local);
       }
@@ -235,7 +235,7 @@ Future<void> _initNobodyWho() async {
   if (kIsWeb) return; // nobodywho has no web support
   try {
     await nobodywho.NobodyWho.init();
-  } catch (e) {
-    debugPrint('NobodyWho init failed: $e — rule-based parser will be used');
+  } catch (e, st) {
+    debugPrint('NobodyWho init failed: $e\n$st — rule-based parser will be used');
   }
 }

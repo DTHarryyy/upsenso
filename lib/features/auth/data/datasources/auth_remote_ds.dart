@@ -51,7 +51,8 @@ class AuthRemoteDs {
       // If user exists, this will succeed; if not, it will throw an error
       await client.auth.signInWithOtp(email: email, shouldCreateUser: false);
       return true; // User exists
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[AuthRemoteDs] checkEmailExists error: $e\n$st');
       if (e is AuthException) {
         final msg = e.message.toLowerCase();
 

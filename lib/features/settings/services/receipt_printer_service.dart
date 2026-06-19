@@ -600,7 +600,9 @@ class ReceiptPrinterService {
         }
       }
       if (s.logoUrl.isNotEmpty) return await networkImage(s.logoUrl);
-    } catch (_) {}
+    } catch (e, st) {
+      debugPrint('[ReceiptPrinterService] Error loading logo: $e\n$st');
+    }
     return null;
   }
 

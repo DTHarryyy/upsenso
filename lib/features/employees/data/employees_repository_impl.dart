@@ -138,8 +138,8 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
     if (branchId.isNotEmpty) {
       try {
         await _permissionRemoteDs.computePermissions(id, branchId);
-      } catch (e) {
-        debugPrint('[EmployeesRepo] Permission snapshot seeding failed: $e');
+      } catch (e, st) {
+        debugPrint('[EmployeesRepo] Permission snapshot seeding failed: $e\n$st');
       }
     }
 

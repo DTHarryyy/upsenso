@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 
@@ -58,7 +59,8 @@ class AiChatBloc extends Bloc<AiChatEvent, AiChatState> {
         // Pipeline still works via rule-based fallback
         await _pipeline.initialize();
       }
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[AiChatBloc] Error initializing pipeline: $e\n$st');
       emit(state.copyWith(modelStatus: AiModelStatus.notDownloaded));
     }
   }
@@ -182,7 +184,8 @@ class AiChatBloc extends Bloc<AiChatEvent, AiChatState> {
         isProcessing: false,
         pendingPreview: result.preview,
       ));
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[AiChatBloc] Error processing message: $e\n$st');
       final errorMsg = AiChatMessage(
         id: _uuid.v4(),
         text: 'Something went wrong. Please try again.',

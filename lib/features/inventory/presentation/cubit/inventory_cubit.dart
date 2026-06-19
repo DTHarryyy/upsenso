@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/audit/audit_log_service.dart';
 import 'package:pos/core/config/di.dart';
@@ -156,7 +157,8 @@ class InventoryCubit extends Cubit<InventoryState> {
           ),
         );
       }
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[InventoryCubit] Error loading inventory: $e\n$st');
       if (!isClosed) emit(InventoryError(AppErrorMapper.message(e)));
     } finally {
       _isLoading = false;

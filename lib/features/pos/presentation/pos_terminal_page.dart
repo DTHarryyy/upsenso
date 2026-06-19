@@ -145,11 +145,11 @@ class _PosTerminalPageState extends State<PosTerminalPage>
     super.dispose();
   }
 
-  double get _subtotal => _cartService.items.fold(0.0, (s, i) => s + i.total);
-  double get _tax => _cartService.items.fold(0.0, (s, i) => s + i.taxAmount);
-  double get _discountAmount => _cartService.discountAmount(_subtotal);
-  double get _grandTotal =>
-      (_subtotal - _discountAmount + _tax).clamp(0.0, double.infinity);
+  CartTotals get _totals => _cartService.computeTotals();
+  double get _subtotal => _totals.subtotal;
+  double get _tax => _totals.tax;
+  double get _discountAmount => _totals.discountAmount;
+  double get _grandTotal => _totals.total;
 
   void _toggleTorch() {
     _scannerController.toggleTorch();
@@ -207,6 +207,9 @@ class _PosTerminalPageState extends State<PosTerminalPage>
           tax: _tax,
           total: _grandTotal,
           discountAmount: _discountAmount,
+          // Carries through a held sale resumed into this cart so checkout
+          // marks that draft converted on success instead of losing it.
+          sourceDraftId: _cartService.sourceDraftId,
           onPaymentConfirmed: () {
             if (mounted) _cartService.clear();
           },
@@ -310,7 +313,9 @@ class _PosTerminalPageState extends State<PosTerminalPage>
     );
     try {
       _audioPlayer.play(AssetSource('sounds/barcodeScanned.mp3'));
-    } catch (_) {}
+    } catch (e, st) {
+      debugPrint('[PosTerminal] Error playing scan sound: $e\n$st');
+    }
     if (_isCollapsed && _sheetController.isAttached) {
       try {
         _sheetController.animateTo(
@@ -318,7 +323,9 @@ class _PosTerminalPageState extends State<PosTerminalPage>
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
-      } catch (_) {}
+      } catch (e, st) {
+        debugPrint('[PosTerminal] Error animating sheet: $e\n$st');
+      }
     }
   }
 
