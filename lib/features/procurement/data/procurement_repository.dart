@@ -11,6 +11,8 @@ import 'package:pos/core/database/daos/product_variants_dao.dart';
 import 'package:pos/core/database/daos/purchase_order_lines_dao.dart';
 import 'package:pos/core/database/daos/purchase_orders_dao.dart';
 import 'package:pos/core/database/daos/suppliers_dao.dart';
+import 'package:pos/core/permissions/app_permission.dart';
+import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/services/stock_movement_service.dart';
 import 'package:pos/core/sync/sync_status.dart';
 import 'package:pos/features/procurement/data/datasources/procurement_remote_ds.dart';
@@ -362,13 +364,27 @@ class ProcurementRepository implements IProcurementRepository {
     required String approvedByName,
   }) async {
     try {
+      // Authorisation belongs in business logic, not just the cubit — a direct
+      // repository call (sync worker, test, future caller) must not bypass it.
+      // guard() resolves the permission key via AppPermission and audit-logs
+      // any denial.
+      final guardResult = await sl<PermissionService>().guard(
+        AppPermission.approvePurchaseOrder,
+        entityType: 'purchase_order',
+        entityId: id,
+      );
+      if (!guardResult.granted) {
+        throw Exception(
+          guardResult.deniedReason ?? 'Not authorised to approve purchase orders',
+        );
+      }
+
       final po = await _purchaseOrdersDao.getById(id);
       if (po == null) throw Exception('PO not found: $id');
-      // Approvers may approve a draft directly (skipping submit) — see the
-      // adaptive create flow. A submitted PO is still the common path.
+      // Only a submitted PO may be approved — matches PoStatus.canApprove.
       _assertStatus(
         po.status,
-        [PoStatus.draft, PoStatus.submitted],
+        [PoStatus.submitted],
         'approvePurchaseOrder',
       );
 
@@ -418,12 +434,22 @@ class ProcurementRepository implements IProcurementRepository {
       // so re-receiving double-counted the goods.
       late final bool allReceived;
       late final String newStatus;
+      var unitsReceived = 0.0;
       await _variantsDao.db.transaction(() async {
         for (final receive in lines) {
           if (receive.quantityToReceive <= 0) continue;
 
           final line = await _purchaseOrderLinesDao.getById(receive.lineId);
           if (line == null) continue;
+
+          // Guard against over-receipt: never accept more than the outstanding
+          // balance. A repeated or oversized receive can't inflate stock past
+          // what was ordered. Clamp here in business logic, not just the UI.
+          final remaining = line.quantityOrdered - line.quantityReceived;
+          if (remaining <= 0) continue;
+          final qtyToReceive = receive.quantityToReceive > remaining
+              ? remaining
+              : receive.quantityToReceive;
 
           // Moving-weighted-average costing.
           // Read current qty BEFORE the stock movement is applied.
@@ -434,10 +460,10 @@ class ProcurementRepository implements IProcurementRepository {
               : 0.0;
           final variant = await _variantsDao.getById(receive.variantId);
           final currentCost = variant?.costPrice ?? 0.0;
-          final totalQtyAfter = currentQty + receive.quantityToReceive;
+          final totalQtyAfter = currentQty + qtyToReceive;
           if (totalQtyAfter > 0) {
             final newCost = (currentQty * currentCost +
-                    receive.quantityToReceive * receive.unitCost) /
+                    qtyToReceive * receive.unitCost) /
                 totalQtyAfter;
             await _variantsDao.updateCostPrice(receive.variantId, newCost);
           }
@@ -448,15 +474,15 @@ class ProcurementRepository implements IProcurementRepository {
             businessId: po.businessId,
             branchId: branchId,
             isIncoming: true,
-            quantity: receive.quantityToReceive,
+            quantity: qtyToReceive,
             reason: 'Purchase',
             note: 'PO ${po.poNumber}',
             sourceType: 'purchase_order',
             sourceId: poId,
           );
 
-          final newReceived =
-              line.quantityReceived + receive.quantityToReceive;
+          unitsReceived += qtyToReceive;
+          final newReceived = line.quantityReceived + qtyToReceive;
           await _purchaseOrderLinesDao.updateLine(
             receive.lineId,
             PurchaseOrderLinesTableCompanion(
@@ -485,8 +511,6 @@ class ProcurementRepository implements IProcurementRepository {
         );
       });
 
-      final unitsReceived =
-          lines.fold(0.0, (s, l) => s + (l.quantityToReceive > 0 ? l.quantityToReceive : 0));
       sl<AuditLogService>().log(
         actionType: AuditLogActionType.purchaseOrderReceived,
         entityType: 'purchase_order',

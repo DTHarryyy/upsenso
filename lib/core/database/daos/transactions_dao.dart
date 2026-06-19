@@ -96,6 +96,9 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
   Future<void> upsertFromServer(Map<String, dynamic> row) async {
     final id = row['id'] as String;
     final paymentMethod = (row['payment_method'] as String?) ?? 'cash';
+    // Carry the server status so reports can filter status=='completed' and
+    // exclude voided/refunded sales pulled from other devices.
+    final status = (row['status'] as String?) ?? 'completed';
     final existing = await (select(
       transactionsTable,
     )..where((t) => t.id.equals(id))).getSingleOrNull();
@@ -116,6 +119,7 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
           shiftId: Value(row['shift_id'] as String?),
           totalAmount: Value((row['total_amount'] as num).toDouble()),
           taxAmount: Value((row['tax_amount'] as num).toDouble()),
+          status: Value(status),
           paymentMethod: Value(paymentMethod),
           invoiceNumber: Value(row['invoice_number'] as String?),
           syncStatus: const Value(3),
@@ -136,6 +140,7 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
           taxAmount: (row['tax_amount'] as num).toDouble(),
           subtotal: (row['total_amount'] as num).toDouble(),
           itemCount: 0,
+          status: Value(status),
           paymentMethod: Value(paymentMethod),
           syncStatus: const Value(3),
           lastSyncAttempt: Value(DateTime.now()),
@@ -188,11 +193,10 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
   }) {
     final query = select(transactionsTable)
       ..where((t) {
-        Expression<bool> cond =
-            t.createdAt.isBiggerOrEqualValue(cutoff) &
-            (t.businessId.equals(businessId) |
-                t.businessId
-                    .isNull()); // null rows = pre-v20 data, include them
+        // Only this business's rows. Null-business rows are excluded — they
+        // would otherwise leak another tenant's sales into reports.
+        Expression<bool> cond = t.createdAt.isBiggerOrEqualValue(cutoff) &
+            t.businessId.equals(businessId);
         if (branchId != null) {
           cond = cond & t.branchId.equals(branchId);
         }
@@ -210,9 +214,11 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
   }) {
     return (select(transactionsTable)
           ..where(
+            // Exclude null-business rows so one tenant's sales never leak into
+            // another business's branch-comparison charts.
             (t) =>
                 t.createdAt.isBiggerOrEqualValue(cutoff) &
-                (t.businessId.equals(businessId) | t.businessId.isNull()),
+                t.businessId.equals(businessId),
           )
           ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
         .get();

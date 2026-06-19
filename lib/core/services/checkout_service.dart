@@ -45,6 +45,17 @@ class CheckoutService {
     );
 
     await _db.transaction(() async {
+      // Validate stock inside the transaction so an oversell aborts the whole
+      // sale rather than relying on adjustQuantity's silent clamp-to-zero,
+      // which would record the sale while quietly under-deducting the ledger.
+      final shortages = await _inventoryRepository.checkStockAvailability(
+        items: deductions,
+        branchId: branchId,
+      );
+      if (shortages.isNotEmpty) {
+        throw InsufficientStockException(shortages);
+      }
+
       await _transactionsDao.insertTransaction(txWithInvoice, items);
       await _inventoryRepository.recordSaleDeductions(
         items: deductions,
@@ -55,4 +66,16 @@ class CheckoutService {
 
     return invoiceNumber;
   }
+}
+
+/// Raised when checkout is attempted with more quantity than available stock.
+/// Carries the per-variant shortage detail so the UI can show a clear message.
+class InsufficientStockException implements Exception {
+  final List<({String variantId, double available, double requested})> shortages;
+
+  const InsufficientStockException(this.shortages);
+
+  @override
+  String toString() =>
+      'InsufficientStockException: ${shortages.length} item(s) short on stock';
 }

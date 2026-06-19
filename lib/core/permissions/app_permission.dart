@@ -77,6 +77,9 @@ enum AppPermission {
   /// View current prices and price lists.
   viewPriceList,
 
+  /// Create a brand-new product in the catalogue.
+  createProduct,
+
   /// Edit an existing product's details.
   editProduct,
 
@@ -86,7 +89,16 @@ enum AppPermission {
   /// Change a product's selling price.
   changeProductPricing,
 
+  /// Manage product categories (create / rename / delete).
+  manageProductCategories,
+
   // ── Inventory ─────────────────────────────────────────────────────────────
+  /// Open the inventory module (top-level inventory access).
+  viewInventory,
+
+  /// Maintain supplier links from within the inventory module.
+  manageInventorySuppliers,
+
   /// View current stock levels (read-only).
   viewAvailableStock,
 
@@ -124,7 +136,16 @@ enum AppPermission {
   /// Reject a pending expense.
   rejectExpense,
 
+  /// Delete an expense entry.
+  deleteExpense,
+
   // ── Reports & Analytics ───────────────────────────────────────────────────
+  /// View only the current user's own reports.
+  viewOwnReports,
+
+  /// Export reports to file (CSV / PDF).
+  exportReports,
+
   /// View standard branch-level reports (daily summary, etc.).
   viewBranchReports,
 
@@ -144,6 +165,9 @@ enum AppPermission {
   viewProfitAnalytics,
 
   // ── Employees ─────────────────────────────────────────────────────────────
+  /// View the employee directory.
+  viewEmployees,
+
   /// Create a new employee account.
   createEmployee,
 
@@ -197,6 +221,18 @@ enum AppPermission {
   /// Access the system settings page.
   accessSettings,
 
+  /// Edit receipt-template settings.
+  editReceiptSettings,
+
+  /// Edit business-level settings.
+  editBusinessSettings,
+
+  /// Edit branch-level settings.
+  editBranchSettings,
+
+  /// View audit log entries.
+  viewAuditLogs,
+
   /// Delete or purge audit log entries.
   deleteAuditLogs,
 
@@ -248,12 +284,20 @@ extension AppPermissionX on AppPermission {
         return 'View Products';
       case AppPermission.viewPriceList:
         return 'View Price List';
+      case AppPermission.createProduct:
+        return 'Create Product';
       case AppPermission.editProduct:
         return 'Edit Product';
       case AppPermission.deleteProduct:
         return 'Delete Product';
       case AppPermission.changeProductPricing:
         return 'Change Product Pricing';
+      case AppPermission.manageProductCategories:
+        return 'Manage Product Categories';
+      case AppPermission.viewInventory:
+        return 'View Inventory';
+      case AppPermission.manageInventorySuppliers:
+        return 'Manage Inventory Suppliers';
       case AppPermission.viewAvailableStock:
         return 'View Available Stock';
       case AppPermission.updateStockQuantity:
@@ -278,6 +322,12 @@ extension AppPermissionX on AppPermission {
         return 'Approve Expense';
       case AppPermission.rejectExpense:
         return 'Reject Expense';
+      case AppPermission.deleteExpense:
+        return 'Delete Expense';
+      case AppPermission.viewOwnReports:
+        return 'View Own Reports';
+      case AppPermission.exportReports:
+        return 'Export Reports';
       case AppPermission.viewBranchReports:
         return 'View Branch Reports';
       case AppPermission.viewSalesAnalytics:
@@ -290,6 +340,8 @@ extension AppPermissionX on AppPermission {
         return 'View Financial Reports';
       case AppPermission.viewProfitAnalytics:
         return 'View Profit Analytics';
+      case AppPermission.viewEmployees:
+        return 'View Employees';
       case AppPermission.createEmployee:
         return 'Create Employee';
       case AppPermission.editEmployee:
@@ -322,6 +374,14 @@ extension AppPermissionX on AppPermission {
         return 'Manage Roles';
       case AppPermission.accessSettings:
         return 'Access Settings';
+      case AppPermission.editReceiptSettings:
+        return 'Edit Receipt Settings';
+      case AppPermission.editBusinessSettings:
+        return 'Edit Business Settings';
+      case AppPermission.editBranchSettings:
+        return 'Edit Branch Settings';
+      case AppPermission.viewAuditLogs:
+        return 'View Audit Logs';
       case AppPermission.deleteAuditLogs:
         return 'Delete Audit Logs';
       case AppPermission.crossBranchAccess:
@@ -371,12 +431,20 @@ extension AppPermissionX on AppPermission {
       case AppPermission.viewProducts:
       case AppPermission.viewPriceList:
         return 'products.view';
+      case AppPermission.createProduct:
+        return 'products.create';
       case AppPermission.editProduct:
         return 'products.edit';
       case AppPermission.deleteProduct:
         return 'products.delete';
       case AppPermission.changeProductPricing:
         return 'products.manage_prices';
+      case AppPermission.manageProductCategories:
+        return 'products.manage_categories';
+      case AppPermission.viewInventory:
+        return 'inventory.view';
+      case AppPermission.manageInventorySuppliers:
+        return 'inventory.manage_suppliers';
       case AppPermission.viewAvailableStock:
       case AppPermission.viewStockHistory:
         return 'inventory.view_levels';
@@ -395,6 +463,12 @@ extension AppPermissionX on AppPermission {
       case AppPermission.approveExpense:
       case AppPermission.rejectExpense:
         return 'expenses.approve';
+      case AppPermission.deleteExpense:
+        return 'expenses.delete';
+      case AppPermission.viewOwnReports:
+        return 'reports.view_own';
+      case AppPermission.exportReports:
+        return 'reports.export';
       case AppPermission.viewBranchReports:
       case AppPermission.viewSalesAnalytics:
       case AppPermission.viewInventoryAnalytics:
@@ -403,6 +477,8 @@ extension AppPermissionX on AppPermission {
       case AppPermission.viewFinancialReports:
       case AppPermission.viewProfitAnalytics:
         return 'reports.view_all';
+      case AppPermission.viewEmployees:
+        return 'employees.view';
       case AppPermission.createEmployee:
         return 'employees.create';
       case AppPermission.editEmployee:
@@ -434,6 +510,14 @@ extension AppPermissionX on AppPermission {
         return 'recipes.manage';
       case AppPermission.accessSettings:
         return 'settings.view';
+      case AppPermission.editReceiptSettings:
+        return 'settings.edit_receipt';
+      case AppPermission.editBusinessSettings:
+        return 'settings.edit_business';
+      case AppPermission.editBranchSettings:
+        return 'settings.edit_branch';
+      case AppPermission.viewAuditLogs:
+        return 'audit_logs.view';
       case AppPermission.deleteAuditLogs:
         return 'audit_logs.delete';
       case AppPermission.crossBranchAccess:

@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 
 import 'connection/connection.dart' as db_connect;
 
@@ -166,36 +167,60 @@ class AppDatabase extends _$AppDatabase {
         if (from < 9) {
           try {
             await customStatement('ALTER TABLE products ADD COLUMN tax REAL');
-          } catch (_) {}
+          } catch (e, st) {
+            // Idempotent migration step: column/table likely already exists.
+            // Log so a genuine schema failure is never silently lost.
+            debugPrint('[AppDatabase] Migration step skipped: $e\n$st');
+          }
           try {
             await customStatement(
               'ALTER TABLE product_variants ADD COLUMN track_expiry INTEGER NOT NULL DEFAULT 0',
             );
-          } catch (_) {}
+          } catch (e, st) {
+            // Idempotent migration step: column/table likely already exists.
+            // Log so a genuine schema failure is never silently lost.
+            debugPrint('[AppDatabase] Migration step skipped: $e\n$st');
+          }
           try {
             await customStatement(
               'ALTER TABLE product_variants ADD COLUMN expiry_date TEXT',
             );
-          } catch (_) {}
+          } catch (e, st) {
+            // Idempotent migration step: column/table likely already exists.
+            // Log so a genuine schema failure is never silently lost.
+            debugPrint('[AppDatabase] Migration step skipped: $e\n$st');
+          }
         }
         if (from < 10) {
           try {
             await customStatement(
               "ALTER TABLE products ADD COLUMN sell_by TEXT NOT NULL DEFAULT 'unit'",
             );
-          } catch (_) {}
+          } catch (e, st) {
+            // Idempotent migration step: column/table likely already exists.
+            // Log so a genuine schema failure is never silently lost.
+            debugPrint('[AppDatabase] Migration step skipped: $e\n$st');
+          }
           try {
             await customStatement(
               'ALTER TABLE product_variants ADD COLUMN stock_decimal REAL',
             );
-          } catch (_) {}
+          } catch (e, st) {
+            // Idempotent migration step: column/table likely already exists.
+            // Log so a genuine schema failure is never silently lost.
+            debugPrint('[AppDatabase] Migration step skipped: $e\n$st');
+          }
         }
         if (from < 11) {
           try {
             await customStatement(
               'ALTER TABLE product_variants ADD COLUMN retail_price REAL',
             );
-          } catch (_) {}
+          } catch (e, st) {
+            // Idempotent migration step: column/table likely already exists.
+            // Log so a genuine schema failure is never silently lost.
+            debugPrint('[AppDatabase] Migration step skipped: $e\n$st');
+          }
         }
         if (from < 12) {
           await m.createTable(transactionsTable);
@@ -206,21 +231,33 @@ class AppDatabase extends _$AppDatabase {
             await customStatement(
               'ALTER TABLE product_variants ADD COLUMN low_stock_alert INTEGER',
             );
-          } catch (_) {}
+          } catch (e, st) {
+            // Idempotent migration step: column/table likely already exists.
+            // Log so a genuine schema failure is never silently lost.
+            debugPrint('[AppDatabase] Migration step skipped: $e\n$st');
+          }
         }
         if (from < 14) {
           try {
             await customStatement(
               'ALTER TABLE products ADD COLUMN image_path TEXT',
             );
-          } catch (_) {}
+          } catch (e, st) {
+            // Idempotent migration step: column/table likely already exists.
+            // Log so a genuine schema failure is never silently lost.
+            debugPrint('[AppDatabase] Migration step skipped: $e\n$st');
+          }
         }
         if (from < 15) {
           try {
             await customStatement(
               'ALTER TABLE product_variants ADD COLUMN track_stock INTEGER NOT NULL DEFAULT 0',
             );
-          } catch (_) {}
+          } catch (e, st) {
+            // Idempotent migration step: column/table likely already exists.
+            // Log so a genuine schema failure is never silently lost.
+            debugPrint('[AppDatabase] Migration step skipped: $e\n$st');
+          }
         }
         if (from < 16) {
           // NOTE: v16 created inventory_levels and stock_ledger with nullable branchId.
@@ -287,7 +324,11 @@ class AppDatabase extends _$AppDatabase {
             await customStatement(
               'ALTER TABLE transactions ADD COLUMN business_id TEXT',
             );
-          } catch (_) {}
+          } catch (e, st) {
+            // Idempotent migration step: column/table likely already exists.
+            // Log so a genuine schema failure is never silently lost.
+            debugPrint('[AppDatabase] Migration step skipped: $e\n$st');
+          }
           try {
             await customStatement('''
               UPDATE transactions
@@ -297,7 +338,11 @@ class AppDatabase extends _$AppDatabase {
               )
               WHERE branch_id IS NOT NULL AND business_id IS NULL
             ''');
-          } catch (_) {}
+          } catch (e, st) {
+            // Idempotent migration step: column/table likely already exists.
+            // Log so a genuine schema failure is never silently lost.
+            debugPrint('[AppDatabase] Migration step skipped: $e\n$st');
+          }
         }
         if (from < 19) {
           // Recreate product_variants:
@@ -359,7 +404,11 @@ class AppDatabase extends _$AppDatabase {
         if (from < 27) {
           try {
             await customStatement('ALTER TABLE branches ADD COLUMN location TEXT');
-          } catch (_) {}
+          } catch (e, st) {
+            // Idempotent migration step: column/table likely already exists.
+            // Log so a genuine schema failure is never silently lost.
+            debugPrint('[AppDatabase] Migration step skipped: $e\n$st');
+          }
         }
         if (from < 28) {
           await m.createTable(businessModulesTable);
@@ -378,7 +427,11 @@ class AppDatabase extends _$AppDatabase {
           ]) {
             try {
               await customStatement(sql);
-            } catch (_) {}
+            } catch (e, st) {
+            // Idempotent migration step: column/table likely already exists.
+            // Log so a genuine schema failure is never silently lost.
+            debugPrint('[AppDatabase] Migration step skipped: $e\n$st');
+          }
           }
         }
         if (from < 30) {
@@ -403,13 +456,21 @@ class AppDatabase extends _$AppDatabase {
           ]) {
             try {
               await customStatement(sql);
-            } catch (_) {}
+            } catch (e, st) {
+            // Idempotent migration step: column/table likely already exists.
+            // Log so a genuine schema failure is never silently lost.
+            debugPrint('[AppDatabase] Migration step skipped: $e\n$st');
+          }
           }
         }
         if (from < 32) {
           try {
             await customStatement('ALTER TABLE employees ADD COLUMN email TEXT');
-          } catch (_) {}
+          } catch (e, st) {
+            // Idempotent migration step: column/table likely already exists.
+            // Log so a genuine schema failure is never silently lost.
+            debugPrint('[AppDatabase] Migration step skipped: $e\n$st');
+          }
         }
         if (from < 31) {
           // The original v25 employees table was created with an employee_code
@@ -466,7 +527,11 @@ class AppDatabase extends _$AppDatabase {
           ]) {
             try {
               await customStatement(sql);
-            } catch (_) {}
+            } catch (e, st) {
+            // Idempotent migration step: column/table likely already exists.
+            // Log so a genuine schema failure is never silently lost.
+            debugPrint('[AppDatabase] Migration step skipped: $e\n$st');
+          }
           }
           // Suppliers table — present unconditionally; rows only written when
           // the `procurement` module is enabled.
@@ -505,7 +570,11 @@ class AppDatabase extends _$AppDatabase {
           ]) {
             try {
               await customStatement(sql);
-            } catch (_) {}
+            } catch (e, st) {
+            // Idempotent migration step: column/table likely already exists.
+            // Log so a genuine schema failure is never silently lost.
+            debugPrint('[AppDatabase] Migration step skipped: $e\n$st');
+          }
           }
           // Recipe lines — present unconditionally; rows only written when the
           // `recipes` module is enabled. Rollback = drop this table.
@@ -528,7 +597,11 @@ class AppDatabase extends _$AppDatabase {
           ]) {
             try {
               await customStatement(sql);
-            } catch (_) {}
+            } catch (e, st) {
+            // Idempotent migration step: column/table likely already exists.
+            // Log so a genuine schema failure is never silently lost.
+            debugPrint('[AppDatabase] Migration step skipped: $e\n$st');
+          }
           }
         }
 
@@ -539,7 +612,11 @@ class AppDatabase extends _$AppDatabase {
           // the duplicate. Guarded so a partially-applied prior run can't wedge it.
           try {
             await m.createTable(syncStateTable);
-          } catch (_) {}
+          } catch (e, st) {
+            // Idempotent migration step: column/table likely already exists.
+            // Log so a genuine schema failure is never silently lost.
+            debugPrint('[AppDatabase] Migration step skipped: $e\n$st');
+          }
         }
 
         if (from < 39) {
@@ -551,7 +628,11 @@ class AppDatabase extends _$AppDatabase {
             await customStatement(
               'ALTER TABLE sync_state ADD COLUMN last_pulled_id TEXT',
             );
-          } catch (_) {}
+          } catch (e, st) {
+            // Idempotent migration step: column/table likely already exists.
+            // Log so a genuine schema failure is never silently lost.
+            debugPrint('[AppDatabase] Migration step skipped: $e\n$st');
+          }
         }
 
         if (from < 40) {
@@ -563,7 +644,11 @@ class AppDatabase extends _$AppDatabase {
             await customStatement(
               'ALTER TABLE transactions ADD COLUMN invoice_number TEXT',
             );
-          } catch (_) {}
+          } catch (e, st) {
+            // Idempotent migration step: column/table likely already exists.
+            // Log so a genuine schema failure is never silently lost.
+            debugPrint('[AppDatabase] Migration step skipped: $e\n$st');
+          }
           try {
             await customStatement('''
               CREATE TABLE IF NOT EXISTS invoice_sequences (
@@ -574,7 +659,11 @@ class AppDatabase extends _$AppDatabase {
                 PRIMARY KEY (business_id, month_key)
               )
             ''');
-          } catch (_) {}
+          } catch (e, st) {
+            // Idempotent migration step: column/table likely already exists.
+            // Log so a genuine schema failure is never silently lost.
+            debugPrint('[AppDatabase] Migration step skipped: $e\n$st');
+          }
         }
       },
     );

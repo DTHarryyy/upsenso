@@ -41,6 +41,10 @@ class AddEmployee extends EmployeeEvent {
   final String? roleId;
   final String? roleName;
 
+  /// Role names the current actor is allowed to assign. When non-null the bloc
+  /// rejects any [roleName] outside this set to stop privilege escalation.
+  final List<String>? allowedRoleNames;
+
   const AddEmployee({
     required this.branchId,
     required this.fullName,
@@ -48,29 +52,38 @@ class AddEmployee extends EmployeeEvent {
     required this.password,
     this.roleId,
     this.roleName,
+    this.allowedRoleNames,
   });
 
   @override
-  List<Object?> get props => [fullName, email, branchId, roleId, roleName];
+  List<Object?> get props =>
+      [fullName, email, branchId, roleId, roleName, allowedRoleNames];
 }
 
 class UpdateEmployee extends EmployeeEvent {
   final String id;
   final String fullName;
   final String? roleId;
+  final String? roleName;
   final String? branchId;
   final bool? isActive;
+
+  /// See [AddEmployee.allowedRoleNames].
+  final List<String>? allowedRoleNames;
 
   const UpdateEmployee({
     required this.id,
     required this.fullName,
     this.roleId,
+    this.roleName,
     this.branchId,
     this.isActive,
+    this.allowedRoleNames,
   });
 
   @override
-  List<Object?> get props => [id, fullName, roleId, branchId, isActive];
+  List<Object?> get props =>
+      [id, fullName, roleId, roleName, branchId, isActive, allowedRoleNames];
 }
 
 class ArchiveEmployee extends EmployeeEvent {

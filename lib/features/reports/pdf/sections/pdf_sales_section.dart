@@ -51,8 +51,10 @@ List<pw.Widget> buildSalesSection(ReportsData data) {
 }
 
 pw.Widget _salesTrendTable(ReportsData data) {
+  // Total spans every bucket; labels are blanked only for axis readability,
+  // so summing the displayed rows would drop most days from the total.
   final pts = data.salesTrend.where((p) => p.label.isNotEmpty).toList();
-  final total = pts.fold(0.0, (s, p) => s + p.total);
+  final total = data.salesTrend.fold(0.0, (s, p) => s + p.total);
 
   return PdfS.financialTable(
     columnWidths: {

@@ -52,9 +52,10 @@ class ReportExcelExporter {
     rows.add(_sectionRow('Sales Trend'));
     rows.add(_headerRow(['Period', 'Revenue']));
     final trend = data.salesTrend.where((p) => p.label.isNotEmpty).toList();
-    double trendTotal = 0;
+    // Total spans every bucket; blank labels are axis-only, so the total must
+    // be summed over the full trend, not just the displayed rows.
+    final trendTotal = data.salesTrend.fold(0.0, (s, p) => s + p.total);
     for (int i = 0; i < trend.length; i++) {
-      trendTotal += trend[i].total;
       rows.add(_Row([
         _Cell(trend[i].label, i.isOdd ? _S.altL : _S.normalL),
         _Cell(_cur(trend[i].total), i.isOdd ? _S.altR : _S.normalR),
@@ -169,10 +170,13 @@ class ReportExcelExporter {
 
     // ① P&L summary
     rows.add(_headerRow(['Metric', 'Amount']));
-    final margin = data.grossRevenue > 0
-        ? '${(data.netProfit / data.grossRevenue * 100).toStringAsFixed(1)}%'
+    // Profit margin excludes collected tax: net revenue is the profit base
+    // (netProfit = netRevenue - COGS), derived without a model change.
+    final netRevenue = data.netProfit + data.costOfGoods;
+    final margin = netRevenue > 0
+        ? '${(data.netProfit / netRevenue * 100).toStringAsFixed(1)}%'
         : '0%';
-    rows.add(_kpiRow(0, 'Gross Revenue', _cur(data.grossRevenue), '', ''));
+    rows.add(_kpiRow(0, 'Net Revenue', _cur(netRevenue), '', ''));
     rows.add(_kpiRow(1, 'Cost of Goods (COGS)', _cur(data.costOfGoods), '', ''));
     rows.add(_kpiRow(2, 'Net Profit', _cur(data.netProfit), '', ''));
     rows.add(_kpiRow(3, 'Profit Margin', margin, '', ''));
@@ -182,12 +186,16 @@ class ReportExcelExporter {
     rows.add(_sectionRow('Period Breakdown'));
     rows.add(_headerRow(['Period', 'Revenue', 'COGS', 'Net Profit', 'Margin %']));
     final trend = data.profitTrend.where((p) => p.label.isNotEmpty).toList();
+    // Totals span every bucket; blank labels are axis-only, so sum over the
+    // full trend rather than just the displayed rows.
     double totRev = 0, totCogs = 0;
+    for (final p in data.profitTrend) {
+      totRev += p.revenue;
+      totCogs += p.cogs;
+    }
     for (int i = 0; i < trend.length; i++) {
       final net = trend[i].revenue - trend[i].cogs;
       final mg = trend[i].revenue > 0 ? '${(net / trend[i].revenue * 100).toStringAsFixed(1)}%' : '0%';
-      totRev += trend[i].revenue;
-      totCogs += trend[i].cogs;
       rows.add(_Row([
         _Cell(trend[i].label, i.isOdd ? _S.altL : _S.normalL),
         _Cell(_cur(trend[i].revenue), i.isOdd ? _S.altR : _S.normalR),

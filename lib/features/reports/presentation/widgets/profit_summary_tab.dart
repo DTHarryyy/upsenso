@@ -189,8 +189,10 @@ class _ProfitTrendTable extends StatelessWidget {
     final rows = trend.where((p) => p.label.isNotEmpty).toList();
     if (rows.isEmpty) return const SizedBox.shrink();
 
+    // Totals span every bucket; labels are blanked only for display, so sum
+    // over the full trend to stay consistent with the KPI cards.
     double totRev = 0, totCogs = 0;
-    for (final p in rows) {
+    for (final p in trend) {
       totRev += p.revenue;
       totCogs += p.cogs;
     }
