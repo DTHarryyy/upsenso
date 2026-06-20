@@ -8,7 +8,10 @@ class InvoiceSequencesTable extends Table {
   String get tableName => 'invoice_sequences';
 
   TextColumn get businessId => text()();
-  TextColumn get monthKey => text()(); // 'YYYYMM', e.g. '202606'
+  // No longer a calendar month — InvoiceNumberService always passes a fixed
+  // bucket key ('seq') so each business gets one continuously-rising counter.
+  // Column name kept as-is to avoid an unnecessary schema migration.
+  TextColumn get monthKey => text()();
   IntColumn get lastValue => integer().withDefault(const Constant(0))();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 

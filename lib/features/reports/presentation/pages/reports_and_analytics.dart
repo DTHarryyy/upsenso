@@ -6,6 +6,8 @@ import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/const/app_typography.dart';
+import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
@@ -19,8 +21,9 @@ import 'package:pos/features/reports/presentation/cubit/reports_state.dart';
 import 'package:pos/features/reports/presentation/widgets/branch_comparison.dart';
 import 'package:pos/features/reports/presentation/widgets/inventory_health_tab.dart';
 import 'package:pos/features/reports/presentation/widgets/profit_summary_tab.dart';
-import 'package:pos/features/reports/presentation/widgets/report_card.dart';
 import 'package:pos/features/reports/presentation/widgets/report_nav_chip.dart';
+import 'package:pos/features/reports/presentation/widgets/reports_header.dart';
+import 'package:pos/features/reports/presentation/widgets/reports_skeleton.dart';
 import 'package:pos/features/reports/presentation/widgets/sales_report_tab.dart';
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -37,16 +40,18 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
   late final ReportsCubit _cubit;
 
   int _selectedTab = 0;
-  ReportPeriod _period = ReportPeriod.last7Days;
+  ReportPeriod _period = ReportPeriod.today;
   DateTimeRange? _customRange;
   bool _exportingPdf = false;
   bool _exportingExcel = false;
 
+  // Short labels keep the segmented nav balanced; full titles live on the
+  // section headers inside each tab.
   static const _tabs = [
-    ReportTab(icon: IconlyLight.chart, label: 'Sales Report'),
-    ReportTab(icon: IconlyLight.category, label: 'Inventory Health'),
-    ReportTab(icon: IconlyLight.wallet, label: 'Profit Summary'),
-    ReportTab(icon: IconlyLight.work, label: 'Branch Comparison'),
+    ReportTab(icon: IconlyLight.chart, label: 'Sales'),
+    ReportTab(icon: IconlyLight.category, label: 'Inventory'),
+    ReportTab(icon: IconlyLight.wallet, label: 'Profit'),
+    ReportTab(icon: IconlyLight.work, label: 'Branches'),
   ];
 
   @override
@@ -118,7 +123,6 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
   // ── Export handlers ──────────────────────────────────────────────────────────
 
   Future<void> _onExportPdf(
-    BuildContext ctx,
     ReportsData data,
     String businessName,
     String branchLabel,
@@ -149,7 +153,6 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
   }
 
   Future<void> _onExportExcel(
-    BuildContext ctx,
     ReportsData data,
     String businessName,
     String branchLabel,
@@ -232,46 +235,66 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
             final branchLabel =
                 ctx.read<BranchCubit>().state.selectedBranch ?? 'All Branches';
 
+            final hp = Breakpoints.horizontalPadding(context);
+            final isPhone = Breakpoints.isPhone(context);
+
+            final navBar = ReportNavChipBar(
+              tabs: _tabs,
+              selectedIndex: _selectedTab,
+              onTabSelected: (i) => setState(() => _selectedTab = i),
+            );
+            final controls = ReportsControls(
+              period: _period,
+              customRangeLabel: _customRangeLabel,
+              onPeriodChanged: _onPeriodDropdownChanged,
+              exportButton: _ExportDropdown(
+                isExportingPdf: _exportingPdf,
+                isExportingExcel: _exportingExcel,
+                onExportPdf: () => _onExportPdf(data, businessName, branchLabel),
+                onExportExcel: () =>
+                    _onExportExcel(data, businessName, branchLabel),
+              ),
+            );
+
             return Scaffold(
               backgroundColor: AppColors.background,
               body: RefreshIndicator(
                 onRefresh: () async => _startWatching(),
-                child: SingleChildScrollView(
+                child: CustomScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildPageSummaryCards(data),
-                      const SizedBox(height: 16),
-                      // ③ Filter row: period picker + export dropdown
-                      _buildFilterRow(ctx, data, businessName, branchLabel),
-                      const SizedBox(height: 12),
-                      // ④ Tab chips
-                      ReportNavChipBar(
-                        tabs: _tabs,
-                        selectedIndex: _selectedTab,
-                        onTabSelected: (i) => setState(() => _selectedTab = i),
+                  slivers: [
+                    // Phone: controls scroll away above the pinned tabs —
+                    // pinning both would permanently eat too much of a
+                    // small screen. Tablet+: tabs and controls share one
+                    // pinned row since there's room for both.
+                    if (isPhone)
+                      SliverPadding(
+                        padding: EdgeInsets.fromLTRB(hp, 16, hp, 12),
+                        sliver: SliverToBoxAdapter(child: controls),
                       ),
-                      const SizedBox(height: 20),
-                      // ⑤ Tab content
-                      // Tab 1 (Inventory Health) handles its own adaptive skeleton.
-                      if (isLoading && _selectedTab != 1)
-                        const _ReportsTabSkeleton()
-                      else if (state is ReportsError && _selectedTab != 1)
-                        isNetworkErrorMessage(state.message)
-                            ? NetworkErrorView(
-                                message: state.message,
-                                onRetry: _startWatching,
-                              )
-                            : _ErrorView(
-                                message: state.message,
-                                onRetry: _startWatching,
-                              )
-                      else
-                        _buildTabContent(data, isLoading: isLoading),
-                    ],
-                  ),
+                    SliverPersistentHeader(
+                      pinned: true,
+                      delegate: _NavBarDelegate(
+                        horizontalPadding: hp,
+                        child: isPhone
+                            ? navBar
+                            : Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Expanded(child: navBar),
+                                  const SizedBox(width: 16),
+                                  controls,
+                                ],
+                              ),
+                      ),
+                    ),
+                    SliverPadding(
+                      padding: EdgeInsets.fromLTRB(hp, 16, hp, 28),
+                      sliver: SliverToBoxAdapter(
+                        child: _buildBody(state, data, isLoading: isLoading),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             );
@@ -281,51 +304,21 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
     );
   }
 
-  String get _customRangeLabel {
-    if (_customRange == null) return 'Custom range...';
-    String fmt(DateTime d) =>
-        '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
-    final s = _customRange!.start;
-    final e = _customRange!.end;
-    final sameDay = s.year == e.year && s.month == e.month && s.day == e.day;
-    return sameDay ? fmt(s) : '${fmt(s)} – ${fmt(e)}';
-  }
-
-  Widget _buildFilterRow(
-    BuildContext ctx,
-    ReportsData data,
-    String businessName,
-    String branchLabel,
-  ) {
-    return Row(
-      children: [
-        Expanded(
-          child: AppDropdown<ReportPeriod>(
-            value: _period,
-            dense: true,
-            items: [
-              ...ReportPeriod.values
-                  .where((p) => p != ReportPeriod.custom)
-                  .map((p) => AppDropdownItem(value: p, label: p.label)),
-              AppDropdownItem(
-                value: ReportPeriod.custom,
-                label: _customRangeLabel,
-                icon: IconlyLight.setting,
-              ),
-            ],
-            onChanged: _onPeriodDropdownChanged,
-          ),
-        ),
-        const SizedBox(width: 8),
-        _ExportDropdown(
-          isExportingPdf: _exportingPdf,
-          isExportingExcel: _exportingExcel,
-          onExportPdf: () => _onExportPdf(ctx, data, businessName, branchLabel),
-          onExportExcel: () =>
-              _onExportExcel(ctx, data, businessName, branchLabel),
-        ),
-      ],
-    );
+  Widget _buildBody(
+    ReportsState state,
+    ReportsData data, {
+    required bool isLoading,
+  }) {
+    // Inventory Health drives its own adaptive skeleton/empty handling.
+    if (_selectedTab != 1) {
+      if (isLoading) return const ReportsTabSkeleton();
+      if (state is ReportsError) {
+        return isNetworkErrorMessage(state.message)
+            ? NetworkErrorView(message: state.message, onRetry: _startWatching)
+            : _ErrorView(message: state.message, onRetry: _startWatching);
+      }
+    }
+    return _buildTabContent(data, isLoading: isLoading);
   }
 
   Widget _buildTabContent(ReportsData data, {bool isLoading = false}) {
@@ -343,179 +336,47 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
     }
   }
 
-  Widget _buildPageSummaryCards(ReportsData data) {
-    switch (_selectedTab) {
-      case 0:
-        final revChange = pctChange(data.totalRevenue, data.prevTotalRevenue);
-        final txnChange = data.totalTransactions - data.prevTotalTransactions;
-        final avgChange = pctChange(data.avgTicket, data.prevAvgTicket);
-        final itemsChange = data.itemsSold - data.prevItemsSold;
-        return ReportStatCardsRow(
-          cards: [
-            ReportStatCard(
-              title: 'Total Revenue',
-              value: fmtCurrency(data.totalRevenue),
-              changeLabel:
-                  '${fmtPctChange(data.totalRevenue, data.prevTotalRevenue)} vs prev period',
-              isPositive: revChange >= 0,
-              icon: IconlyBold.wallet,
-              iconBg: AppColors.brandSoft,
-              iconColor: AppColors.brand,
-            ),
-            ReportStatCard(
-              title: 'Transactions',
-              value: '${data.totalTransactions}',
-              changeLabel:
-                  '${txnChange >= 0 ? '+' : ''}$txnChange vs prev period',
-              isPositive: txnChange >= 0,
-              icon: IconlyBold.chart,
-              iconBg: const Color(0xFFF3E8FF),
-              iconColor: const Color(0xFF7C3AED),
-            ),
-            ReportStatCard(
-              title: 'Avg. Ticket',
-              value: fmtCurrency(data.avgTicket),
-              changeLabel:
-                  '${fmtPctChange(data.avgTicket, data.prevAvgTicket)} vs prev period',
-              isPositive: avgChange >= 0,
-              icon: IconlyBold.activity,
-              iconBg: AppColors.successSoft,
-              iconColor: AppColors.success,
-            ),
-            ReportStatCard(
-              title: 'Items Sold',
-              value: '${data.itemsSold}',
-              changeLabel:
-                  '${itemsChange >= 0 ? '+' : ''}$itemsChange vs prev period',
-              isPositive: itemsChange >= 0,
-              icon: IconlyLight.category,
-              iconBg: AppColors.warningSoft,
-              iconColor: AppColors.warning,
-            ),
-          ],
-        );
-
-      case 1:
-        return ReportStatCardsRow(
-          cards: [
-            ReportStatCard(
-              title: 'Total SKUs',
-              value: '${data.totalSKUs}',
-              icon: IconlyLight.scan,
-              iconBg: AppColors.brandSoft,
-              iconColor: AppColors.brand,
-            ),
-            ReportStatCard(
-              title: 'Low Products',
-              value: '${data.lowStockCount}',
-              icon: IconlyLight.category,
-              iconBg: AppColors.errorSoft,
-              iconColor: AppColors.error,
-            ),
-            ReportStatCard(
-              title: 'Ingredients',
-              value: '${data.totalIngredients}',
-              icon: IconlyLight.buy,
-              iconBg: const Color(0xFFF3E8FF),
-              iconColor: const Color(0xFF7C3AED),
-            ),
-            ReportStatCard(
-              title: 'Low Ingredients',
-              value: '${data.lowIngredientCount}',
-              icon: IconlyLight.time_circle,
-              iconBg: AppColors.warningSoft,
-              iconColor: AppColors.warning,
-            ),
-          ],
-        );
-
-      case 2:
-        final netChange = pctChange(data.netProfit, data.prevNetProfit);
-        return ReportStatCardsRow(
-          cards: [
-            ReportStatCard(
-              title: 'Gross Revenue',
-              value: fmtCurrency(data.grossRevenue),
-              icon: IconlyBold.wallet,
-              iconBg: AppColors.brandSoft,
-              iconColor: AppColors.brand,
-            ),
-            ReportStatCard(
-              title: 'Cost of Goods',
-              value: fmtCurrency(data.costOfGoods),
-              icon: IconlyLight.category,
-              iconBg: AppColors.errorSoft,
-              iconColor: AppColors.error,
-            ),
-            ReportStatCard(
-              title: 'Operating Expenses',
-              value: '₱0',
-              icon: IconlyLight.paper,
-              iconBg: AppColors.warningSoft,
-              iconColor: AppColors.warning,
-            ),
-            ReportStatCard(
-              title: 'Net Profit',
-              value: fmtCurrency(data.netProfit),
-              changeLabel:
-                  '${fmtPctChange(data.netProfit, data.prevNetProfit)} vs prev period',
-              isPositive: netChange >= 0,
-              icon: IconlyBold.activity,
-              iconBg: AppColors.successSoft,
-              iconColor: AppColors.success,
-            ),
-          ],
-        );
-
-      case 3:
-        final branchCount = data.branchStats.length;
-        final totalBranchSales = data.branchStats.fold<double>(
-          0,
-          (s, b) => s + b.totalSales,
-        );
-        final topBranch = data.branchStats.where((b) => b.isTop).firstOrNull;
-        return ReportStatCardsRow(
-          cards: [
-            ReportStatCard(
-              title: 'Active Branches',
-              value: '$branchCount',
-              icon: IconlyBold.work,
-              iconBg: AppColors.brandSoft,
-              iconColor: AppColors.brand,
-            ),
-            ReportStatCard(
-              title: 'Combined Sales',
-              value: fmtCurrency(totalBranchSales),
-              icon: IconlyBold.wallet,
-              iconBg: AppColors.successSoft,
-              iconColor: AppColors.success,
-            ),
-            ReportStatCard(
-              title: 'Top Branch',
-              value: topBranch?.name ?? '—',
-              icon: IconlyBold.ticket_star,
-              iconBg: const Color(0xFFFEF3C7),
-              iconColor: const Color(0xFFD97706),
-            ),
-            ReportStatCard(
-              title: 'Avg. per Branch',
-              value: branchCount > 0
-                  ? fmtCurrency(totalBranchSales / branchCount)
-                  : '—',
-              icon: IconlyLight.swap,
-              iconBg: const Color(0xFFF3E8FF),
-              iconColor: const Color(0xFF7C3AED),
-            ),
-          ],
-        );
-
-      default:
-        return const SizedBox.shrink();
-    }
+  String get _customRangeLabel {
+    if (_customRange == null) return 'Custom range...';
+    String fmt(DateTime d) =>
+        '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+    final s = _customRange!.start;
+    final e = _customRange!.end;
+    final sameDay = s.year == e.year && s.month == e.month && s.day == e.day;
+    return sameDay ? fmt(s) : '${fmt(s)} – ${fmt(e)}';
   }
 }
 
-// Export dropdown
+// ─── Sticky nav delegate ──────────────────────────────────────────────────────
+
+class _NavBarDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+  final double horizontalPadding;
+
+  _NavBarDelegate({required this.child, required this.horizontalPadding});
+
+  static const double _height = 66;
+
+  @override
+  double get minExtent => _height;
+  @override
+  double get maxExtent => _height;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: AppColors.background,
+      padding: EdgeInsets.fromLTRB(horizontalPadding, 4, horizontalPadding, 14),
+      child: child,
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _NavBarDelegate old) =>
+      old.child != child || old.horizontalPadding != horizontalPadding;
+}
+
+// ─── Export dropdown ──────────────────────────────────────────────────────────
 
 enum _ExportType { pdf, excel }
 
@@ -578,165 +439,51 @@ class _ErrorView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 280,
+      height: 320,
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              IconlyLight.danger,
-              size: 40,
-              color: AppColors.textMuted,
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Failed to load reports',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: AppColors.error.withAlpha(18),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(
+                IconlyLight.danger,
+                size: 32,
+                color: AppColors.error,
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              message,
-              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-              textAlign: TextAlign.center,
-            ),
             const SizedBox(height: 16),
-            TextButton(onPressed: onRetry, child: const Text('Retry')),
+            Text(
+              'Failed to load reports',
+              style: AppTextStyles.subtitle(
+                context,
+              ).copyWith(color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                message,
+                textAlign: TextAlign.center,
+                style: AppTextStyles.caption(
+                  context,
+                ).copyWith(color: AppColors.textMuted, height: 1.4),
+              ),
+            ),
+            const SizedBox(height: 20),
+            TextButton(
+              onPressed: onRetry,
+              style: TextButton.styleFrom(foregroundColor: AppColors.brand),
+              child: const Text('Retry'),
+            ),
           ],
         ),
       ),
-    );
-  }
-}
-
-// ── Reports tab skeleton loader ───────────────────────────────────────────────
-
-class _ReportsTabSkeleton extends StatefulWidget {
-  const _ReportsTabSkeleton();
-
-  @override
-  State<_ReportsTabSkeleton> createState() => _ReportsTabSkeletonState();
-}
-
-class _ReportsTabSkeletonState extends State<_ReportsTabSkeleton>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _ctrl,
-      builder: (context, _) {
-        final shimmerPos = -0.3 + 1.6 * _ctrl.value;
-
-        Widget box({double? width, double height = 14, double radius = 8}) {
-          return Container(
-            width: width,
-            height: height,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(radius),
-              gradient: LinearGradient(
-                colors: const [
-                  Color(0xFFE2E8F0),
-                  Color(0xFFECF0F6),
-                  Color(0xFFF5F8FC),
-                  Color(0xFFECF0F6),
-                  Color(0xFFE2E8F0),
-                ],
-                stops: [
-                  (shimmerPos - 0.4).clamp(0.0, 1.0),
-                  (shimmerPos - 0.2).clamp(0.0, 1.0),
-                  shimmerPos.clamp(0.0, 1.0),
-                  (shimmerPos + 0.2).clamp(0.0, 1.0),
-                  (shimmerPos + 0.4).clamp(0.0, 1.0),
-                ],
-              ),
-            ),
-          );
-        }
-
-        Widget skCard(Widget child) => Container(
-          padding: const EdgeInsets.all(16),
-          margin: const EdgeInsets.only(bottom: 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          child: child,
-        );
-
-        Widget dataRow() => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            children: [
-              box(width: 32, height: 32, radius: 8),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    box(height: 13),
-                    const SizedBox(height: 4),
-                    box(width: 100, height: 11, radius: 5),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              box(width: 64, height: 13, radius: 5),
-            ],
-          ),
-        );
-
-        return Column(
-          children: [
-            skCard(
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      box(width: 140, height: 14),
-                      box(width: 60, height: 12, radius: 6),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  box(height: 200, radius: 8),
-                ],
-              ),
-            ),
-            skCard(
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  box(width: 120, height: 14),
-                  const SizedBox(height: 4),
-                  const Divider(color: Color(0xFFE2E8F0)),
-                  ...List.generate(5, (_) => dataRow()),
-                ],
-              ),
-            ),
-          ],
-        );
-      },
     );
   }
 }

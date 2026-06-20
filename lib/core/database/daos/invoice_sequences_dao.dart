@@ -10,7 +10,7 @@ class InvoiceSequencesDao extends DatabaseAccessor<AppDatabase>
   InvoiceSequencesDao(super.db);
 
   /// Atomically increments the local counter and returns the next invoice
-  /// number string in INV-YYYYMM-NNNNNN format.
+  /// number string in INV-NNNNNN format.
   /// Runs inside a DB transaction so concurrent checkout attempts on the
   /// same device never produce the same number.
   Future<String> nextLocalInvoiceNumber(
@@ -44,7 +44,7 @@ class InvoiceSequencesDao extends DatabaseAccessor<AppDatabase>
             .write(companion);
       }
 
-      return 'INV-$monthKey-${next.toString().padLeft(6, '0')}';
+      return 'INV-${next.toString().padLeft(6, '0')}';
     });
   }
 

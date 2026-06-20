@@ -228,21 +228,26 @@ class ReceiptPrinterService {
       );
     }
     // Standard printable dot-widths for 203-DPI thermal heads.
-    // PDF rasters at ~464/638px wide; sending that raw shifts and blurs the
-    // image because the print head is narrower — must scale to exact dot count.
+    final paperWidthMm = settings.paperSize == '58mm' ? 58.0 : 80.0;
     final targetWidth = settings.paperSize == '58mm' ? 384 : 576;
+
+    // Raster at the exact DPI that makes the PDF page width equal targetWidth.
+    // A fixed 203 DPI raster (~464/638px) would need to be downscaled to fit
+    // the print head, and that resize step is what blurs small receipt text —
+    // rastering 1:1 with the dot grid skips the resize entirely.
+    final dpi = targetWidth / (paperWidthMm / 25.4);
 
     try {
       // Use fewer feed lines before the cut on the first copy so the gap
       // between original and duplicate isn't too wide.
       final firstFeed = settings.printDuplicateCopy ? 2 : 6;
-      await for (final raster in Printing.raster(pdfBytes, dpi: 203)) {
+      await for (final raster in Printing.raster(pdfBytes, dpi: dpi)) {
         final escPos = _rasterToEscPos(raster, targetWidth: targetWidth, feedLines: firstFeed);
         final ok = await PrintBluetoothThermal.writeBytes(escPos);
         if (!ok) debugPrint('[ReceiptPrinterService] BT write failed');
       }
       if (settings.printDuplicateCopy) {
-        await for (final raster in Printing.raster(pdfBytes, dpi: 203)) {
+        await for (final raster in Printing.raster(pdfBytes, dpi: dpi)) {
           await PrintBluetoothThermal.writeBytes(
             _rasterToEscPos(raster, targetWidth: targetWidth),
           );
@@ -676,11 +681,12 @@ class ReceiptPrinterService {
               _text(_fmt(item.total, currency), fs, fonts, bold: true),
             ],
           ),
+          // Solid black, not grey — cheap thermal printers threshold to 1-bit
+          // and drop light greys entirely, making this line vanish on paper.
           _text(
             '  $qty x ${_fmt(item.unitPrice, currency)}',
             fs - 1.5,
             fonts,
-            color: PdfColors.grey500,
           ),
         ],
       ),

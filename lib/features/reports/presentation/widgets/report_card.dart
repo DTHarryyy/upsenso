@@ -1,9 +1,6 @@
-import 'package:pos/core/widgets/stat_card.dart';
-
-// Re-export core widgets under legacy report names for backward compatibility.
-typedef ReportCard = AppCard;
-typedef ReportStatCard = AppStatCard;
-typedef ReportStatCardsRow = StatCardsRow;
+// Shared currency / percentage / chart-axis formatters for the reports feature.
+// The reusable card widgets now live in lib/core/widgets (ReportSection,
+// AppStatCard, AppDataTable) — this file is formatters only.
 
 // ─── Report formatters ────────────────────────────────────────────────────────
 

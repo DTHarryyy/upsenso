@@ -24,6 +24,7 @@ export 'network_error_view.dart';
 export 'app_search_bar.dart';
 export 'app_section_card.dart';
 export 'app_status_badge.dart';
+export 'report_section.dart';
 export 'app_switch.dart';
 export 'branch_action_dialog.dart';
 export 'branch_sale_dialog.dart';

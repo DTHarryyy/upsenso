@@ -438,12 +438,19 @@ class _ReceiptBody extends StatelessWidget {
           Text(label,
               style: getOutfitStyle(
                   fontSize: size - 0.5, color: Colors.black45)),
-          const Spacer(),
-          Text(value,
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: getOutfitStyle(
                   fontSize: size - 0.5,
                   fontWeight: FontWeight.w600,
-                  color: Colors.black87)),
+                  color: Colors.black87),
+            ),
+          ),
         ],
       ),
     );
@@ -455,12 +462,15 @@ class _ReceiptBody extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
-          Text(label,
-              style: getOutfitStyle(
-                  fontSize: size,
-                  fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
-                  color: color)),
-          const Spacer(),
+          Expanded(
+            child: Text(label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: getOutfitStyle(
+                    fontSize: size,
+                    fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+                    color: color)),
+          ),
           Text(amount,
               style: getOutfitStyle(
                   fontSize: size,

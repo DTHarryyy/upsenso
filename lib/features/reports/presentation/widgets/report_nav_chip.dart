@@ -1,5 +1,7 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/const/app_typography.dart';
 
 class ReportTab {
   final IconData icon;
@@ -7,8 +9,11 @@ class ReportTab {
   const ReportTab({required this.icon, required this.label});
 }
 
-/// Tab bar where the selected tab is exactly as wide as its content
-/// (icon + label) and unselected tabs are icon-only.
+/// Full-width segmented control. Every tab gets an equal segment with icon +
+/// label; the active segment lifts onto a white card with brand-tinted text.
+/// Built on [CupertinoSlidingSegmentedControl] so the active card glides to
+/// the tapped segment with the native spring animation, instead of each
+/// segment cross-fading its own background independently.
 class ReportNavChipBar extends StatelessWidget {
   final List<ReportTab> tabs;
   final int selectedIndex;
@@ -23,100 +28,73 @@ class ReportNavChipBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final count = tabs.length;
-    if (count == 0) return const SizedBox.shrink();
+    if (tabs.isEmpty) return const SizedBox.shrink();
 
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: AppColors.surfaceAlt,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderSoft),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: List.generate(count, (i) {
-          final isSelected = selectedIndex == i;
-          return GestureDetector(
-            onTap: () => onTabSelected(i),
-            behavior: HitTestBehavior.opaque,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 280),
-              curve: Curves.easeInOut,
-              height: 36,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                color: isSelected ? Colors.white : Colors.transparent,
-                borderRadius: BorderRadius.circular(7),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: Colors.black.withAlpha(18),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ]
-                    : [],
-              ),
-              child: _TabContent(
-                icon: tabs[i].icon,
-                label: tabs[i].label,
-                isSelected: isSelected,
-              ),
-            ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final segmentWidth = constraints.maxWidth / tabs.length;
+          // Fill exactly what the parent hands us (e.g. the pinned header's
+          // fixed extent minus this bar's own border) instead of a hardcoded
+          // height — a mismatch there is a hard overflow, not just a clip.
+          final segmentHeight = constraints.maxHeight.isFinite
+              ? constraints.maxHeight
+              : 40.0;
+          return CupertinoSlidingSegmentedControl<int>(
+            groupValue: selectedIndex,
+            backgroundColor: Colors.transparent,
+            thumbColor: AppColors.surface,
+            padding: EdgeInsets.zero,
+            onValueChanged: (i) {
+              if (i != null) onTabSelected(i);
+            },
+            children: {
+              for (var i = 0; i < tabs.length; i++)
+                i: SizedBox(
+                  width: segmentWidth,
+                  height: segmentHeight,
+                  child: _SegmentContent(
+                    tab: tabs[i],
+                    isSelected: selectedIndex == i,
+                  ),
+                ),
+            },
           );
-        }),
+        },
       ),
     );
   }
 }
 
-class _TabContent extends StatelessWidget {
-  final IconData icon;
-  final String label;
+class _SegmentContent extends StatelessWidget {
+  final ReportTab tab;
   final bool isSelected;
 
-  const _TabContent({
-    required this.icon,
-    required this.label,
-    required this.isSelected,
-  });
+  const _SegmentContent({required this.tab, required this.isSelected});
 
   @override
   Widget build(BuildContext context) {
+    final fg = isSelected ? AppColors.brand : AppColors.textSecondary;
     return Row(
-      mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(
-          icon,
-          size: 15,
-          color: isSelected ? AppColors.brand : AppColors.textSecondary,
-        ),
-        // Label slides in for the selected tab only
-        ClipRect(
-          child: AnimatedSize(
-            duration: const Duration(milliseconds: 280),
-            curve: Curves.easeInOut,
-            child: isSelected
-                ? Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const SizedBox(width: 6),
-                      AnimatedOpacity(
-                        duration: const Duration(milliseconds: 200),
-                        opacity: 1.0,
-                        child: Text(
-                          label,
-                          maxLines: 1,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  )
-                : const SizedBox.shrink(),
+        Icon(tab.icon, size: 16, color: fg),
+        const SizedBox(width: 7),
+        Flexible(
+          child: Text(
+            tab.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.caption(context).copyWith(
+              color: fg,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            ),
           ),
         ),
       ],

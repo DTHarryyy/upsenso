@@ -484,7 +484,7 @@ class _DropdownOptionState<T> extends State<_DropdownOption<T>> {
                 opacity: widget.isSelected ? 1 : 0,
                 duration: const Duration(milliseconds: 150),
                 child: const Icon(
-                  IconlyLight.tick_square,
+                  Icons.check,
                   color: AppColors.brand,
                   size: 16,
                 ),

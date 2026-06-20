@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/const/app_typography.dart';
+import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/widgets/app_data_table.dart';
+import 'package:pos/core/widgets/app_status_badge.dart';
 import 'package:pos/core/widgets/app_view_toggle.dart';
+import 'package:pos/core/widgets/report_section.dart';
+import 'package:pos/core/widgets/stat_card.dart';
 import 'package:pos/features/reports/data/reports_data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -13,24 +19,52 @@ const _kViewPrefKey = 'reports_inventory_view';
 enum _SubView { products, ingredients }
 
 // ─── Column definitions ───────────────────────────────────────────────────────
+//
+// Phone gets fixed pixel widths so AppDataTable scrolls horizontally instead
+// of squeezing every column unreadably narrow. Tablet+ has room to spare, so
+// flex columns fill the width proportionally with no scroll.
 
-const _kProductColumns = [
-  AppTableColumn(label: 'Product', flex: 5),
-  AppTableColumn(label: 'Status', flex: 2),
-  AppTableColumn(label: 'Stock', flex: 2, align: TextAlign.center),
-  AppTableColumn(label: 'Avg/Day', flex: 2, align: TextAlign.center),
-  AppTableColumn(label: 'Days Left', flex: 2, align: TextAlign.center),
-  AppTableColumn(label: 'Notes', flex: 3),
-];
+List<AppTableColumn> _productColumns(BuildContext context) {
+  if (Breakpoints.isPhone(context)) {
+    return const [
+      AppTableColumn(label: 'Product', width: 160),
+      AppTableColumn(label: 'Status', width: 112),
+      AppTableColumn(label: 'Stock', width: 70, align: TextAlign.center),
+      AppTableColumn(label: 'Avg/Day', width: 80, align: TextAlign.center),
+      AppTableColumn(label: 'Days Left', width: 80, align: TextAlign.center),
+      AppTableColumn(label: 'Notes', width: 140),
+    ];
+  }
+  return const [
+    AppTableColumn(label: 'Product', flex: 5),
+    AppTableColumn(label: 'Status', flex: 2),
+    AppTableColumn(label: 'Stock', flex: 2, align: TextAlign.center),
+    AppTableColumn(label: 'Avg/Day', flex: 2, align: TextAlign.center),
+    AppTableColumn(label: 'Days Left', flex: 2, align: TextAlign.center),
+    AppTableColumn(label: 'Notes', flex: 3),
+  ];
+}
 
-const _kIngredientColumns = [
-  AppTableColumn(label: 'Ingredient', flex: 5),
-  AppTableColumn(label: 'Status', flex: 2),
-  AppTableColumn(label: 'Unit', flex: 2),
-  AppTableColumn(label: 'Stock', flex: 2, align: TextAlign.center),
-  AppTableColumn(label: 'Consumed', flex: 2, align: TextAlign.center),
-  AppTableColumn(label: 'Days Left', flex: 2, align: TextAlign.center),
-];
+List<AppTableColumn> _ingredientColumns(BuildContext context) {
+  if (Breakpoints.isPhone(context)) {
+    return const [
+      AppTableColumn(label: 'Ingredient', width: 160),
+      AppTableColumn(label: 'Status', width: 112),
+      AppTableColumn(label: 'Unit', width: 70),
+      AppTableColumn(label: 'Stock', width: 70, align: TextAlign.center),
+      AppTableColumn(label: 'Consumed', width: 90, align: TextAlign.center),
+      AppTableColumn(label: 'Days Left', width: 80, align: TextAlign.center),
+    ];
+  }
+  return const [
+    AppTableColumn(label: 'Ingredient', flex: 5),
+    AppTableColumn(label: 'Status', flex: 2),
+    AppTableColumn(label: 'Unit', flex: 2),
+    AppTableColumn(label: 'Stock', flex: 2, align: TextAlign.center),
+    AppTableColumn(label: 'Consumed', flex: 2, align: TextAlign.center),
+    AppTableColumn(label: 'Days Left', flex: 2, align: TextAlign.center),
+  ];
+}
 
 // ─── Status colour helpers ────────────────────────────────────────────────────
 
@@ -39,13 +73,6 @@ Color _statusFg(InventoryStatusType s) => switch (s) {
   InventoryStatusType.warning => AppColors.warning,
   InventoryStatusType.ok => AppColors.success,
   InventoryStatusType.slowMoving => AppColors.brand,
-};
-
-Color _statusBg(InventoryStatusType s) => switch (s) {
-  InventoryStatusType.low => AppColors.errorSoft,
-  InventoryStatusType.warning => AppColors.warningSoft,
-  InventoryStatusType.ok => AppColors.successSoft,
-  InventoryStatusType.slowMoving => AppColors.brandSoft,
 };
 
 String _fmt(double v) =>
@@ -76,7 +103,18 @@ class _InventoryHealthTabState extends State<InventoryHealthTab>
   void initState() {
     super.initState();
     final saved = sl<SharedPreferences>().getString(_kViewPrefKey);
-    if (saved == AppViewMode.cards.name) _view = AppViewMode.cards;
+    if (saved != null) {
+      // Respect an explicit prior choice on any screen size.
+      _view = saved == AppViewMode.cards.name
+          ? AppViewMode.cards
+          : AppViewMode.table;
+    } else {
+      // First visit: cards read better on phone, table makes better use of
+      // the extra width on tablet/desktop.
+      _view = Breakpoints.isPhone(context)
+          ? AppViewMode.cards
+          : AppViewMode.table;
+    }
     _shimmerCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -92,36 +130,6 @@ class _InventoryHealthTabState extends State<InventoryHealthTab>
   void _setView(AppViewMode v) {
     setState(() => _view = v);
     sl<SharedPreferences>().setString(_kViewPrefKey, v.name);
-  }
-
-  // ── Header ──────────────────────────────────────────────────────────────────
-
-  Widget _buildHeader(int itemCount) {
-    final title = _subView == _SubView.products
-        ? 'Inventory Status'
-        : 'Ingredient Status';
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
-        ),
-        if (itemCount > 0) ...[
-          Text(
-            '$itemCount ${_subView == _SubView.products ? 'items' : 'ingredients'}',
-            style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-          ),
-          const SizedBox(width: 12),
-        ],
-        AppViewToggle(current: _view, onChanged: _setView),
-      ],
-    );
   }
 
   // ── Sub-filter chips (Products | Ingredients) ────────────────────────────────
@@ -161,39 +169,39 @@ class _InventoryHealthTabState extends State<InventoryHealthTab>
     final itemCount = _subView == _SubView.products
         ? productItems.length
         : ingredientItems.length;
+    final noun = _subView == _SubView.products ? 'products' : 'ingredients';
 
+    final Widget content;
     if (widget.isLoading) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeader(0),
-          const SizedBox(height: 10),
-          _buildSubFilter(),
-          const SizedBox(height: 12),
-          AnimatedBuilder(
-            animation: _shimmerCtrl,
-            // ignore: unnecessary_underscores
-            builder: (_, __) => _Skeleton(
-              view: _view,
-              subView: _subView,
-              shimmerPos: -0.3 + 1.6 * _shimmerCtrl.value,
-            ),
-          ),
-        ],
+      content = AnimatedBuilder(
+        animation: _shimmerCtrl,
+        builder: (_, _) => _Skeleton(
+          view: _view,
+          subView: _subView,
+          shimmerPos: -0.3 + 1.6 * _shimmerCtrl.value,
+        ),
       );
+    } else if (_subView == _SubView.products) {
+      content = _buildProductsContent(productItems);
+    } else {
+      content = _buildIngredientsContent(ingredientItems);
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildHeader(itemCount),
-        const SizedBox(height: 10),
+        _InventoryOverview(data: widget.data),
+        const SizedBox(height: 20),
+        ReportSectionHeading(
+          title: 'Stock Health',
+          icon: IconlyLight.scan,
+          subtitle: widget.isLoading ? null : '$itemCount $noun tracked',
+          trailing: AppViewToggle(current: _view, onChanged: _setView),
+        ),
+        const SizedBox(height: 14),
         _buildSubFilter(),
-        const SizedBox(height: 12),
-        if (_subView == _SubView.products)
-          _buildProductsContent(productItems)
-        else
-          _buildIngredientsContent(ingredientItems),
+        const SizedBox(height: 14),
+        content,
       ],
     );
   }
@@ -205,7 +213,7 @@ class _InventoryHealthTabState extends State<InventoryHealthTab>
       return Column(
         children: [
           AppDataTable(
-            columns: _kProductColumns,
+            columns: _productColumns(context),
             rowCount: items.length,
             rowCellsBuilder: (_, i) => _buildProductCells(items[i]),
             emptyState: const _EmptyState(label: 'No tracked inventory items'),
@@ -275,7 +283,7 @@ class _InventoryHealthTabState extends State<InventoryHealthTab>
       return Column(
         children: [
           AppDataTable(
-            columns: _kIngredientColumns,
+            columns: _ingredientColumns(context),
             rowCount: items.length,
             rowCellsBuilder: (_, i) => _buildIngredientCells(items[i]),
             emptyState: const _EmptyState(label: 'No ingredients found'),
@@ -336,6 +344,49 @@ class _InventoryHealthTabState extends State<InventoryHealthTab>
   }
 }
 
+// ─── Overview KPIs ────────────────────────────────────────────────────────────
+
+class _InventoryOverview extends StatelessWidget {
+  final ReportsData data;
+  const _InventoryOverview({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return StatCardsRow(
+      cards: [
+        AppStatCard(
+          title: 'Total SKUs',
+          value: '${data.totalSKUs}',
+          icon: IconlyLight.scan,
+          iconBg: AppColors.brandSoft,
+          iconColor: AppColors.brand,
+        ),
+        AppStatCard(
+          title: 'Low Products',
+          value: '${data.lowStockCount}',
+          icon: IconlyLight.category,
+          iconBg: AppColors.errorSoft,
+          iconColor: AppColors.error,
+        ),
+        AppStatCard(
+          title: 'Ingredients',
+          value: '${data.totalIngredients}',
+          icon: IconlyLight.buy,
+          iconBg: AppColors.infoSoft,
+          iconColor: AppColors.info,
+        ),
+        AppStatCard(
+          title: 'Low Ingredients',
+          value: '${data.lowIngredientCount}',
+          icon: IconlyLight.time_circle,
+          iconBg: AppColors.warningSoft,
+          iconColor: AppColors.warning,
+        ),
+      ],
+    );
+  }
+}
+
 // ─── Sub-filter chip ──────────────────────────────────────────────────────────
 
 class _SubChip extends StatelessWidget {
@@ -372,10 +423,8 @@ class _SubChip extends StatelessWidget {
         ),
         child: Text(
           label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight:
-                isSelected ? FontWeight.w600 : FontWeight.w400,
+          style: AppTextStyles.body(context).copyWith(
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
             color: isSelected ? AppColors.brand : AppColors.textSecondary,
           ),
         ),
@@ -526,6 +575,43 @@ class _IngredientTotalsBar extends StatelessWidget {
   }
 }
 
+// ─── Responsive card grid ─────────────────────────────────────────────────────
+//
+// 1 column on phone, 2 on tablet, 3 on desktop, 4 on large desktop — cards
+// fill their column instead of wrapping at a fixed pixel width, so the grid
+// actually uses the space available on bigger screens.
+
+class _ResponsiveCardGrid extends StatelessWidget {
+  final List<Widget> children;
+  const _ResponsiveCardGrid({required this.children});
+
+  static int _columns(BuildContext context) {
+    if (Breakpoints.isLargeDesktop(context)) return 4;
+    if (Breakpoints.isDesktop(context)) return 3;
+    if (Breakpoints.isTablet(context)) return 2;
+    return 1;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const gap = 12.0;
+    final cols = _columns(context);
+    return LayoutBuilder(
+      builder: (_, constraints) {
+        final cardWidth = (constraints.maxWidth - gap * (cols - 1)) / cols;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final child in children)
+              SizedBox(width: cardWidth, child: child),
+          ],
+        );
+      },
+    );
+  }
+}
+
 // ─── Products — Cards grid ────────────────────────────────────────────────────
 
 class _ProductCardsGrid extends StatelessWidget {
@@ -537,9 +623,7 @@ class _ProductCardsGrid extends StatelessWidget {
     if (items.isEmpty) {
       return const _EmptyState(label: 'No tracked inventory items');
     }
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
+    return _ResponsiveCardGrid(
       children: items.map((item) => _ProductCard(item: item)).toList(),
     );
   }
@@ -559,10 +643,9 @@ class _ProductCard extends StatelessWidget {
     final isLow = item.status == InventoryStatusType.low;
 
     return Container(
-      width: 200,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isLow
@@ -571,9 +654,9 @@ class _ProductCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.textPrimary.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: AppColors.textPrimary.withValues(alpha: 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -586,8 +669,7 @@ class _ProductCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   item.productName,
-                  style: const TextStyle(
-                    fontSize: 13,
+                  style: AppTextStyles.body(context).copyWith(
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,
                   ),
@@ -626,7 +708,9 @@ class _ProductCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               item.notes!,
-              style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+              style: AppTextStyles.caption(
+                context,
+              ).copyWith(color: AppColors.textMuted),
               overflow: TextOverflow.ellipsis,
             ),
           ],
@@ -645,9 +729,7 @@ class _IngredientCardsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) return const _EmptyState(label: 'No ingredients found');
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
+    return _ResponsiveCardGrid(
       children: items.map((item) => _IngredientCard(item: item)).toList(),
     );
   }
@@ -667,10 +749,9 @@ class _IngredientCard extends StatelessWidget {
     final isLow = item.status == InventoryStatusType.low;
 
     return Container(
-      width: 200,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isLow
@@ -679,9 +760,9 @@ class _IngredientCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.textPrimary.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: AppColors.textPrimary.withValues(alpha: 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -694,8 +775,7 @@ class _IngredientCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   item.name,
-                  style: const TextStyle(
-                    fontSize: 13,
+                  style: AppTextStyles.body(context).copyWith(
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,
                   ),
@@ -709,7 +789,9 @@ class _IngredientCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             item.unit ?? 'pcs',
-            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+            style: AppTextStyles.caption(
+              context,
+            ).copyWith(color: AppColors.textMuted),
           ),
           const SizedBox(height: 10),
           const Divider(height: 1, color: AppColors.borderSoft),
@@ -778,21 +860,7 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        color: _statusBg(status),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        status.label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: _statusFg(status),
-        ),
-      ),
-    );
+    return AppStatusBadge(label: status.label, color: _statusFg(status));
   }
 }
 
@@ -901,7 +969,7 @@ class _Skeleton extends StatelessWidget {
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
               decoration: BoxDecoration(
-                color: i.isOdd ? const Color(0xFFF7F9FC) : Colors.white,
+                color: i.isOdd ? AppColors.background : Colors.white,
                 borderRadius: isLast
                     ? const BorderRadius.vertical(bottom: Radius.circular(12))
                     : null,
@@ -941,23 +1009,20 @@ class _Skeleton extends StatelessWidget {
   }
 
   Widget _buildCards() {
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
+    return _ResponsiveCardGrid(
       children: List.generate(
         8,
         (_) => Container(
-          width: 200,
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.borderSoft),
             boxShadow: [
               BoxShadow(
-                color: AppColors.textPrimary.withValues(alpha: 0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+                color: AppColors.textPrimary.withValues(alpha: 0.03),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
