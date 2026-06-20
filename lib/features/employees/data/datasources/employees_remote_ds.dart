@@ -79,7 +79,12 @@ class EmployeesRemoteDs {
   ) async {
     final response = await client
         .from('employees')
-        .select('*, roles(name), employee_branches(branch_id)')
+        // Disambiguate: employees has two paths to roles (direct role_id FK,
+        // and the many-to-many employee_roles junction used by permissions).
+        // We want the single direct role for display, not the junction.
+        .select(
+          '*, roles!employees_role_id_fkey(name), employee_branches(branch_id)',
+        )
         .eq('business_id', businessId)
         .order('full_name');
     return List<Map<String, dynamic>>.from(response as List);
