@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:iconly/iconly.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
@@ -6,12 +7,17 @@ import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
+import 'package:pos/core/permissions/permission_keys.dart';
+import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/utils/formatters.dart';
+import 'package:pos/core/widgets/app_status_badge.dart';
 import 'package:pos/core/widgets/app_sub_page_bar.dart';
+import 'package:pos/core/widgets/app_toast.dart';
 import 'package:pos/features/sales/domain/entities/sale_transaction.dart';
 import 'package:pos/features/sales/domain/repositories/i_sales_repository.dart';
 import 'package:pos/features/sales/presentation/cubit/sales_cubit.dart';
 import 'package:pos/features/sales/presentation/cubit/sales_state.dart';
+import 'package:pos/features/sales/presentation/widgets/refund_sheet.dart';
 
 // ---------------------------------------------------------------------------
 // Entry point — provides [SalesCubit] and bridges BranchCubit changes.
@@ -120,7 +126,7 @@ class _SalesHistoryState extends State<SalesHistory> {
       itemBuilder: (context, groupIdx) {
         final dateLabel = dateKeys[groupIdx];
         final txList = grouped[dateLabel]!;
-        final dailyTotal = txList.fold(0.0, (s, t) => s + t.totalAmount);
+        final dailyTotal = txList.fold(0.0, (s, t) => s + t.netAmount);
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -218,16 +224,33 @@ class _SalesHistoryState extends State<SalesHistory> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            tx.customerName?.isNotEmpty == true
-                                ? tx.customerName!
-                                : 'Walk-in Customer',
-                            style: AppTextStyles.body(context).copyWith(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  tx.customerName?.isNotEmpty == true
+                                      ? tx.customerName!
+                                      : 'Walk-in Customer',
+                                  style: AppTextStyles.body(context).copyWith(
+                                    color: AppColors.textPrimary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (tx.isRefunded || tx.isPartiallyRefunded) ...[
+                                const SizedBox(width: 6),
+                                AppStatusBadge(
+                                  label: tx.isRefunded
+                                      ? 'Refunded'
+                                      : 'Partial Refund',
+                                  color: tx.isRefunded
+                                      ? AppColors.error
+                                      : AppColors.warning,
+                                ),
+                              ],
+                            ],
                           ),
                           const SizedBox(height: 2),
                           Text(
@@ -299,9 +322,9 @@ class _SalesHistoryState extends State<SalesHistory> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    // Amount
+                    // Amount (net of any refunds)
                     Text(
-                      AppFormatters.currency(tx.totalAmount),
+                      AppFormatters.currency(tx.netAmount),
                       style: AppTextStyles.money(
                         context,
                       ).copyWith(color: AppColors.accent),
@@ -379,6 +402,13 @@ class _SalesHistoryState extends State<SalesHistory> {
                                 context,
                               ).copyWith(color: AppColors.textMuted),
                             ),
+                            if (item.refundedQty > 0)
+                              Text(
+                                'Refunded ${AppFormatters.quantity(item.refundedQty)}',
+                                style: AppTextStyles.caption(
+                                  context,
+                                ).copyWith(color: AppColors.error),
+                              ),
                           ],
                         ),
                       ),
@@ -443,6 +473,33 @@ class _SalesHistoryState extends State<SalesHistory> {
                   ),
                 ],
               ),
+              if (tx.refundedAmount > 0) ...[
+                const SizedBox(height: 6),
+                _summaryRow(
+                  context,
+                  'Refunded',
+                  '-${AppFormatters.currency(tx.refundedAmount)}',
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Net Total',
+                      style: AppTextStyles.body(context).copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      AppFormatters.currency(tx.netAmount),
+                      style: AppTextStyles.body(context).copyWith(
+                        color: AppColors.accent,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               if (tx.amountReceived != null) ...[
                 const SizedBox(height: 6),
                 _summaryRow(
@@ -491,11 +548,74 @@ class _SalesHistoryState extends State<SalesHistory> {
                   ],
                 ),
               ],
+              if (_canRefund(tx, state)) ...[
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Divider(height: 1, color: AppColors.borderSoft),
+                ),
+                InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => _openRefundSheet(context, tx, state),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.undo_rounded,
+                          size: 16,
+                          color: AppColors.error,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Refund Items',
+                          style: AppTextStyles.body(context).copyWith(
+                            color: AppColors.error,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
       ],
     );
+  }
+
+  // Hidden UI is not access control — RefundService re-checks the same
+  // permission before writing anything. This only controls visibility.
+  bool _canRefund(SaleTransaction tx, SalesLoaded state) =>
+      tx.status != 'refunded' &&
+      state.expandedItems != null &&
+      sl<PermissionService>().can(PermissionKeys.posRefundSale);
+
+  Future<void> _openRefundSheet(
+    BuildContext context,
+    SaleTransaction tx,
+    SalesLoaded state,
+  ) async {
+    final items = state.expandedItems;
+    if (items == null) return;
+    final refundedAmount = await showRefundSheet(
+      context,
+      transaction: tx,
+      items: items,
+    );
+    if (refundedAmount != null) {
+      HapticFeedback.mediumImpact();
+      if (context.mounted) {
+        AppToast.show(
+          context,
+          'Refunded ${AppFormatters.currency(refundedAmount)}',
+          variant: AppToastVariant.success,
+        );
+      }
+      _cubit.refreshExpandedItems();
+    }
   }
 
   Widget _summaryRow(BuildContext context, String label, String value) {

@@ -51,6 +51,9 @@ import 'package:pos/core/database/tables/sync_state_table.dart';
 import 'package:pos/core/database/daos/sync_state_dao.dart';
 import 'package:pos/core/database/tables/invoice_sequences_table.dart';
 import 'package:pos/core/database/daos/invoice_sequences_dao.dart';
+import 'package:pos/core/database/tables/refunds_table.dart';
+import 'package:pos/core/database/tables/refund_items_table.dart';
+import 'package:pos/core/database/daos/refunds_dao.dart';
 
 part 'app_database.g.dart';
 
@@ -81,6 +84,8 @@ part 'app_database.g.dart';
     RecipeLinesTable,
     SyncStateTable,
     InvoiceSequencesTable,
+    RefundsTable,
+    RefundItemsTable,
   ],
   daos: [
     AuthContextDao,
@@ -106,6 +111,7 @@ part 'app_database.g.dart';
     RecipeLinesDao,
     SyncStateDao,
     InvoiceSequencesDao,
+    RefundsDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -126,7 +132,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 41;
+  int get schemaVersion => 45;
 
   @override
   MigrationStrategy get migration {
@@ -687,6 +693,89 @@ class AppDatabase extends _$AppDatabase {
             await m.alterTable(TableMigration(invoiceSequencesTable));
           } catch (e, st) {
             debugPrint('[AppDatabase] v41 table rebuild failed: $e\n$st');
+            rethrow;
+          }
+        }
+
+        if (from < 42) {
+          // Refund feature: append-only header + lines, purely additive.
+          // Rollback: DROP TABLE refund_items; DROP TABLE refunds;
+          await m.createTable(refundsTable);
+          await m.createTable(refundItemsTable);
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_refunds_transaction '
+            'ON refunds(transaction_id)',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_refunds_business '
+            'ON refunds(business_id)',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_refund_items_refund '
+            'ON refund_items(refund_id)',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_refund_items_transaction_item '
+            'ON refund_items(transaction_item_id)',
+          );
+        }
+
+        if (from < 43) {
+          // Per-line restock choice — lets a refunder mark a damaged/expired
+          // return as NOT going back to sellable stock, instead of every
+          // refund unconditionally restocking. Defaults true so existing
+          // rows (all restocked under the old always-restock behaviour)
+          // keep reading as restocked.
+          try {
+            await customStatement(
+              'ALTER TABLE refund_items ADD COLUMN restocked INTEGER NOT NULL DEFAULT 1',
+            );
+          } catch (e, st) {
+            debugPrint('[AppDatabase] Migration step skipped: $e\n$st');
+          }
+        }
+
+        if (from < 44) {
+          // Devices that reached v42 (refund_items created) before this
+          // class gained the `restocked` column, then jumped straight to a
+          // build with schemaVersion already at 43+ without ever passing
+          // through the v43 step above (e.g. a dev hot-reload session that
+          // never reconnected to the database), ended up permanently at
+          // schema 43 with the column actually missing — the swallowed
+          // catch above let that go unnoticed. Check for real instead of
+          // guessing, and surface a genuine failure loudly instead of
+          // silently leaving the column missing a second time.
+          try {
+            final cols = await customSelect(
+              "SELECT name FROM pragma_table_info('refund_items')",
+            ).get();
+            final hasRestocked = cols.any(
+              (r) => r.data['name'] == 'restocked',
+            );
+            if (!hasRestocked) {
+              await customStatement(
+                'ALTER TABLE refund_items ADD COLUMN restocked INTEGER NOT NULL DEFAULT 1',
+              );
+            }
+          } catch (e, st) {
+            debugPrint('[AppDatabase] v44 restocked backfill failed: $e\n$st');
+            rethrow;
+          }
+        }
+
+        if (from < 45) {
+          // Defense-in-depth mirror of the Postgres-side
+          // UNIQUE(refund_id, transaction_item_id) constraint — blocks a
+          // single refund event from ever recording the same original sale
+          // line twice. Refunding the same line again in a LATER, separate
+          // refund event is unaffected (different refund_id).
+          try {
+            await customStatement(
+              'CREATE UNIQUE INDEX IF NOT EXISTS idx_refund_items_unique_line '
+              'ON refund_items(refund_id, transaction_item_id)',
+            );
+          } catch (e, st) {
+            debugPrint('[AppDatabase] v45 unique index failed: $e\n$st');
             rethrow;
           }
         }

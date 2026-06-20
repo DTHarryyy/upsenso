@@ -109,6 +109,15 @@ class _FakeInventoryRepository implements IInventoryRepository {
           const [];
 
   @override
+  Future<void> reverseSaleDeductions({
+    required List<({String variantId, double qty})> items,
+    required String businessId,
+    required String? branchId,
+    required String sourceId,
+  }) =>
+      throw UnimplementedError();
+
+  @override
   Future<void> adjustStock({
     required String variantId,
     required String productId,

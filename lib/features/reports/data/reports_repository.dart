@@ -7,6 +7,7 @@ import 'package:pos/core/database/daos/categories_dao.dart';
 import 'package:pos/core/database/daos/inventory_levels_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
 import 'package:pos/core/database/daos/products_dao.dart';
+import 'package:pos/core/database/daos/refunds_dao.dart';
 import 'package:pos/core/database/daos/stock_ledger_dao.dart';
 import 'package:pos/core/database/daos/transactions_dao.dart';
 import 'package:pos/core/database/app_database.dart';
@@ -23,6 +24,7 @@ class ReportsRepository implements IReportsRepository {
   final BranchesDao _branchesDao;
   final InventoryLevelsDao _levelsDao;
   final StockLedgerDao _ledgerDao;
+  final RefundsDao _refundsDao;
   final SharedPreferences _prefs;
 
   static const String _branchCubitOptionsKeyPrefix = 'cached_branch_options';
@@ -35,6 +37,7 @@ class ReportsRepository implements IReportsRepository {
     required BranchesDao branchesDao,
     required InventoryLevelsDao levelsDao,
     required StockLedgerDao ledgerDao,
+    required RefundsDao refundsDao,
     required SharedPreferences prefs,
   }) : _txnDao = txnDao,
        _variantsDao = variantsDao,
@@ -43,6 +46,7 @@ class ReportsRepository implements IReportsRepository {
        _branchesDao = branchesDao,
        _levelsDao = levelsDao,
        _ledgerDao = ledgerDao,
+       _refundsDao = refundsDao,
        _prefs = prefs;
 
   // ─── Real-time change stream ─────────────────────────────────────────────
@@ -210,6 +214,19 @@ class ReportsRepository implements IReportsRepository {
         .fold(0.0, (s, t) => s + t.totalAmount);
   }
 
+  /// Refunds are dated by when the refund happened, not the original sale —
+  /// so they reduce the bucket/period they actually occurred in rather than
+  /// retroactively rewriting a past period's chart data.
+  double _sumRefundsInRange(
+    List<RefundsTableData> refunds,
+    DateTime from,
+    DateTime to,
+  ) {
+    return refunds
+        .where((r) => !r.createdAt.isBefore(from) && r.createdAt.isBefore(to))
+        .fold(0.0, (s, r) => s + r.totalAmount);
+  }
+
   static DateTime _addMonths(DateTime date, int months) {
     int year = date.year;
     int month = date.month + months;
@@ -250,9 +267,20 @@ class ReportsRepository implements IReportsRepository {
           )
         : allFiltered;
 
-    // Voided/refunded sales must never count toward money math — only
-    // completed transactions represent real, settled revenue.
-    bool isCompleted(TransactionsTableData t) => t.status == 'completed';
+    // Partially/fully refunded sales still count toward gross — the refund
+    // amounts fetched below are subtracted from the sums afterward, so a
+    // fully refunded sale nets to zero automatically instead of needing a
+    // special case here. Only a (currently unused) 'voided' status excludes.
+    bool isCompleted(TransactionsTableData t) => t.status != 'voided';
+
+    final allRefundsFiltered = await _refundsDao.getRefundsSince(
+      prevCutoff,
+      businessId: businessId,
+      branchId: branchId,
+    );
+    final allRefundsAllBranch = branchId != null
+        ? await _refundsDao.getAllRefundsSince(prevCutoff, businessId: businessId)
+        : allRefundsFiltered;
 
     final currentTxns = allFiltered
         .where(
@@ -287,11 +315,45 @@ class ReportsRepository implements IReportsRepository {
         )
         .toList();
 
+    final currentRefunds = allRefundsFiltered
+        .where(
+          (r) => !r.createdAt.isBefore(cutoff) && r.createdAt.isBefore(rangeEnd),
+        )
+        .toList();
+    final prevRefunds = allRefundsFiltered
+        .where(
+          (r) =>
+              !r.createdAt.isBefore(prevCutoff) && r.createdAt.isBefore(cutoff),
+        )
+        .toList();
+    final currentRefundsAllBranch = allRefundsAllBranch
+        .where(
+          (r) => !r.createdAt.isBefore(cutoff) && r.createdAt.isBefore(rangeEnd),
+        )
+        .toList();
+    final prevRefundsAllBranch = allRefundsAllBranch
+        .where(
+          (r) =>
+              !r.createdAt.isBefore(prevCutoff) && r.createdAt.isBefore(cutoff),
+        )
+        .toList();
+
     // ── 2. Fetch transaction items ─────────────────────────────────────────
     final currentIds = currentTxns.map((t) => t.id).toList();
     final prevIds = prevTxns.map((t) => t.id).toList();
     final currentItems = await _txnDao.getItemsForTransactions(currentIds);
     final prevItems = await _txnDao.getItemsForTransactions(prevIds);
+
+    // Refund lines for the current/previous windows — used to reverse COGS
+    // for refunded items so net profit isn't double-penalized (revenue is
+    // credited back AND the original cost is un-counted, same as the sale
+    // never having shipped that unit).
+    final currentRefundItems = await _refundsDao.getItemsForRefunds(
+      currentRefunds.map((r) => r.id).toList(),
+    );
+    final prevRefundItems = await _refundsDao.getItemsForRefunds(
+      prevRefunds.map((r) => r.id).toList(),
+    );
 
     // ── 3. Fetch product/variant/category data ─────────────────────────────
     final variants = await _variantsDao.getByBusinessId(businessId);
@@ -305,14 +367,22 @@ class ReportsRepository implements IReportsRepository {
     final categoryName = {for (final c in categories) c.id: c.name};
 
     // ── 4. Sales Report ───────────────────────────────────────────────────
-    final totalRevenue = currentTxns.fold(0.0, (s, t) => s + t.totalAmount);
+    final currentRefundTotal = currentRefunds.fold(
+      0.0,
+      (s, r) => s + r.totalAmount,
+    );
+    final prevRefundTotal = prevRefunds.fold(0.0, (s, r) => s + r.totalAmount);
+
+    final totalRevenue =
+        currentTxns.fold(0.0, (s, t) => s + t.totalAmount) - currentRefundTotal;
     final totalTransactions = currentTxns.length;
     final avgTicket = totalTransactions > 0
         ? totalRevenue / totalTransactions
         : 0.0;
     final itemsSold = currentItems.fold<double>(0, (s, i) => s + i.qty).round();
 
-    final prevRevenue = prevTxns.fold(0.0, (s, t) => s + t.totalAmount);
+    final prevRevenue =
+        prevTxns.fold(0.0, (s, t) => s + t.totalAmount) - prevRefundTotal;
     final prevTransactions = prevTxns.length;
     final prevAvgTicket = prevTransactions > 0
         ? prevRevenue / prevTransactions
@@ -321,13 +391,16 @@ class ReportsRepository implements IReportsRepository {
         .fold<double>(0, (s, i) => s + i.qty)
         .round();
 
-    // Sales trend
+    // Sales trend — refunds are credited to the bucket the refund happened
+    // in, not the original sale's bucket (see _sumRefundsInRange).
     final buckets = _buildBuckets(effectiveRange, period);
     final salesTrend = buckets
         .map(
           (b) => SalesTrendPoint(
             label: b.label,
-            total: _sumInRange(currentTxns, b.start, b.end),
+            total:
+                _sumInRange(currentTxns, b.start, b.end) -
+                _sumRefundsInRange(currentRefunds, b.start, b.end),
           ),
         )
         .toList();
@@ -420,16 +493,43 @@ class ReportsRepository implements IReportsRepository {
       final cp = variantMap[item.variantId]?.costPrice;
       if (cp != null) costOfGoods += cp * item.qty;
     }
+
+    // Refunded items reverse both the revenue AND the cost they originally
+    // contributed — otherwise a refund would dent profit by the full sale
+    // amount instead of just the margin the sale actually contributed.
+    final refundCogsByRefundId = <String, double>{};
+    var currentRefundCogs = 0.0;
+    for (final item in currentRefundItems) {
+      final cp = variantMap[item.variantId]?.costPrice;
+      if (cp == null) continue;
+      final cost = cp * item.qty;
+      currentRefundCogs += cost;
+      refundCogsByRefundId[item.refundId] =
+          (refundCogsByRefundId[item.refundId] ?? 0) + cost;
+    }
+    var prevRefundCogs = 0.0;
+    for (final item in prevRefundItems) {
+      final cp = variantMap[item.variantId]?.costPrice;
+      if (cp != null) prevRefundCogs += cp * item.qty;
+    }
+    costOfGoods -= currentRefundCogs;
+
     // Collected tax is not merchant revenue — exclude it from profit math.
     // Gross revenue displays stay tax-inclusive; profit/margin use net revenue.
-    final netRevenue = currentTxns.fold(
+    final currentRefundNet = currentRefunds.fold(
       0.0,
-      (s, t) => s + (t.totalAmount - t.taxAmount),
+      (s, r) => s + (r.totalAmount - r.taxAmount),
     );
-    final prevNetRevenue = prevTxns.fold(
+    final prevRefundNet = prevRefunds.fold(
       0.0,
-      (s, t) => s + (t.totalAmount - t.taxAmount),
+      (s, r) => s + (r.totalAmount - r.taxAmount),
     );
+    final netRevenue =
+        currentTxns.fold(0.0, (s, t) => s + (t.totalAmount - t.taxAmount)) -
+        currentRefundNet;
+    final prevNetRevenue =
+        prevTxns.fold(0.0, (s, t) => s + (t.totalAmount - t.taxAmount)) -
+        prevRefundNet;
     final netProfit = netRevenue - costOfGoods;
 
     var prevCogs = 0.0;
@@ -437,9 +537,11 @@ class ReportsRepository implements IReportsRepository {
       final cp = variantMap[item.variantId]?.costPrice;
       if (cp != null) prevCogs += cp * item.qty;
     }
+    prevCogs -= prevRefundCogs;
     final prevNetProfit = prevNetRevenue - prevCogs;
 
-    // Profit trend (revenue + COGS per bucket)
+    // Profit trend (revenue + COGS per bucket). Refunds are netted into the
+    // bucket the refund happened in, mirroring the sales trend above.
     final txnCogs = <String, double>{};
     for (final item in currentItems) {
       final cp = variantMap[item.variantId]?.costPrice ?? 0.0;
@@ -451,8 +553,15 @@ class ReportsRepository implements IReportsRepository {
       final bTxns = currentTxns.where(
         (t) => !t.createdAt.isBefore(b.start) && t.createdAt.isBefore(b.end),
       );
-      final rev = bTxns.fold(0.0, (s, t) => s + (t.totalAmount - t.taxAmount));
-      final cogs = bTxns.fold(0.0, (s, t) => s + (txnCogs[t.id] ?? 0));
+      final bRefunds = currentRefunds.where(
+        (r) => !r.createdAt.isBefore(b.start) && r.createdAt.isBefore(b.end),
+      );
+      final rev =
+          bTxns.fold(0.0, (s, t) => s + (t.totalAmount - t.taxAmount)) -
+          bRefunds.fold(0.0, (s, r) => s + (r.totalAmount - r.taxAmount));
+      final cogs =
+          bTxns.fold(0.0, (s, t) => s + (txnCogs[t.id] ?? 0)) -
+          bRefunds.fold(0.0, (s, r) => s + (refundCogsByRefundId[r.id] ?? 0));
       return ProfitTrendPoint(label: b.label, revenue: rev, cogs: cogs);
     }).toList();
 
@@ -481,11 +590,20 @@ class ReportsRepository implements IReportsRepository {
       agg.txnCount++;
       agg.revenue += txn.totalAmount;
     }
+    for (final refund in currentRefundsAllBranch) {
+      final key = refund.branchId ?? '__none__';
+      final agg = branchAgg[key];
+      if (agg != null) agg.revenue -= refund.totalAmount;
+    }
 
     final prevBranchRev = <String, double>{};
     for (final txn in prevAllBranch) {
       final key = txn.branchId ?? '__none__';
       prevBranchRev[key] = (prevBranchRev[key] ?? 0) + txn.totalAmount;
+    }
+    for (final refund in prevRefundsAllBranch) {
+      final key = refund.branchId ?? '__none__';
+      prevBranchRev[key] = (prevBranchRev[key] ?? 0) - refund.totalAmount;
     }
 
     final branchList = branchAgg.entries.toList()
