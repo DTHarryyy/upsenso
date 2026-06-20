@@ -1,20 +1,25 @@
 import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
-Future<String> saveAndShareExcel(List<int> bytes, String filename) async {
-  final dir = await _targetDir();
-  await File('${dir.path}/$filename').writeAsBytes(bytes);
-  return filename;
+// Writes the workbook to a temp file then hands it to the OS share sheet so the
+// user picks where it lands (Files → on-device Downloads, Drive, email, …).
+// Returns true only when the user actually completed the share — a sandbox
+// write alone is invisible to the user and must not be reported as success.
+Future<bool> saveAndShareExcel(List<int> bytes, String filename) async {
+  final dir = await getTemporaryDirectory();
+  final file = File('${dir.path}/$filename');
+  await file.writeAsBytes(bytes);
+
+  final result = await SharePlus.instance.share(
+    ShareParams(
+      files: [XFile(file.path, mimeType: _xlsxMime, name: filename)],
+      subject: filename,
+    ),
+  );
+  return result.status == ShareResultStatus.success;
 }
 
-Future<Directory> _targetDir() async {
-  if (Platform.isAndroid) {
-    // getDownloadsDirectory() → /storage/emulated/0/Download on Android 10+
-    // No WRITE_EXTERNAL_STORAGE permission needed on API 29+.
-    final dl = await getDownloadsDirectory();
-    if (dl != null) return dl;
-  }
-  // iOS: Documents folder is visible in Files app when UIFileSharingEnabled = true
-  return getApplicationDocumentsDirectory();
-}
+const _xlsxMime =
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';

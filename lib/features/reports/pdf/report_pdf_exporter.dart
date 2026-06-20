@@ -5,7 +5,9 @@ import 'package:pos/features/reports/pdf/_pdf_saver_stub.dart'
     if (dart.library.html) 'package:pos/features/reports/pdf/_pdf_saver_web.dart';
 
 class ReportPdfExporter {
-  static Future<String> export({
+  /// Returns true when the user completed the save/share, false if they
+  /// dismissed the share sheet.
+  static Future<bool> export({
     required ReportsData data,
     required ReportPeriod period,
     required String businessName,
@@ -18,8 +20,7 @@ class ReportPdfExporter {
       branchLabel: branchLabel,
     );
     final filename = _buildFilename(period);
-    await sharePdfBytes(bytes, filename);
-    return filename;
+    return sharePdfBytes(bytes, filename);
   }
 
   static String _buildFilename(ReportPeriod period) {

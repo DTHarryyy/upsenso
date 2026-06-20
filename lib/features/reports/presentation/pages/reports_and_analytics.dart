@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:iconly/iconly.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -126,20 +126,13 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
     if (_exportingPdf || _exportingExcel) return;
     setState(() => _exportingPdf = true);
     try {
-      await ReportPdfExporter.export(
+      final delivered = await ReportPdfExporter.export(
         data: data,
         period: _period,
         businessName: businessName,
         branchLabel: branchLabel,
       );
-      if (mounted) {
-        AppToast.show(
-          context,
-          'PDF Saved',
-          subtitle: 'Check your Downloads folder.',
-          duration: const Duration(seconds: 3),
-        );
-      }
+      if (mounted) _showExportResult(delivered, 'PDF');
     } catch (e, st) {
       debugPrint('[ReportsPage] Error in _onExportPdf: $e\n$st');
       if (mounted) {
@@ -164,23 +157,13 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
     if (_exportingPdf || _exportingExcel) return;
     setState(() => _exportingExcel = true);
     try {
-      final result = await ReportExcelExporter.export(
+      final delivered = await ReportExcelExporter.export(
         data: data,
         period: _period,
         businessName: businessName,
         branchLabel: branchLabel,
       );
-      if (mounted) {
-        final msg = kIsWeb
-            ? 'Download started.'
-            : 'Saved to Downloads: $result';
-        AppToast.show(
-          context,
-          'Excel Saved',
-          subtitle: msg,
-          duration: const Duration(seconds: 4),
-        );
-      }
+      if (mounted) _showExportResult(delivered, 'Excel');
     } catch (e, st) {
       debugPrint('[ReportsPage] Error in _onExportExcel: $e\n$st');
       if (mounted) {
@@ -193,6 +176,30 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
       }
     } finally {
       if (mounted) setState(() => _exportingExcel = false);
+    }
+  }
+
+  // Honest feedback: success only when the file actually left the app. On the
+  // web the browser download is immediate; on mobile the user picks a target
+  // and may dismiss the share sheet — that's a cancel, not a success.
+  void _showExportResult(bool delivered, String kind) {
+    if (delivered) {
+      AppToast.show(
+        context,
+        '$kind report ready',
+        subtitle: kIsWeb
+            ? 'Your download has started.'
+            : 'Saved to the location you chose.',
+        duration: const Duration(seconds: 3),
+      );
+    } else {
+      AppToast.show(
+        context,
+        'Export cancelled',
+        subtitle: 'No file was saved. Tap export to try again.',
+        variant: AppToastVariant.info,
+        duration: const Duration(seconds: 3),
+      );
     }
   }
 
@@ -529,9 +536,9 @@ class _ExportDropdown extends StatelessWidget {
   Widget build(BuildContext context) {
     final busy = isExportingPdf || isExportingExcel;
     final hint = isExportingPdf
-        ? 'Exporting PDF…'
+        ? 'Preparing PDF…'
         : isExportingExcel
-        ? 'Exporting…'
+        ? 'Preparing Excel…'
         : 'Export';
 
     return AppPopupMenu<_ExportType>(

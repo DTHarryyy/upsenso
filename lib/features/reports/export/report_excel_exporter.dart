@@ -9,9 +9,9 @@ import 'package:pos/features/reports/export/_excel_saver_stub.dart'
 // ─── Public entry-point ───────────────────────────────────────────────────────
 
 class ReportExcelExporter {
-  /// Builds an .xlsx workbook and saves / downloads it.
-  /// Returns the filename (web) or full path (mobile/desktop).
-  static Future<String> export({
+  /// Builds an .xlsx workbook and hands it to the OS share/download flow.
+  /// Returns true when the user completed the save/share, false if dismissed.
+  static Future<bool> export({
     required ReportsData data,
     required ReportPeriod period,
     required String businessName,

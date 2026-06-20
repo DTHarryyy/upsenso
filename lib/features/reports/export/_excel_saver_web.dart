@@ -3,7 +3,9 @@ import 'dart:typed_data';
 
 import 'package:web/web.dart' as web;
 
-Future<String> saveAndShareExcel(List<int> bytes, String filename) async {
+// Browser download via an object-URL anchor; the file lands in the browser's
+// Downloads automatically, so it always counts as delivered.
+Future<bool> saveAndShareExcel(List<int> bytes, String filename) async {
   final data = bytes is Uint8List ? bytes : Uint8List.fromList(bytes);
   final blob = web.Blob(
     [data.toJS].toJS,
@@ -18,5 +20,5 @@ Future<String> saveAndShareExcel(List<int> bytes, String filename) async {
   anchor.download = filename;
   anchor.click();
   web.URL.revokeObjectURL(url);
-  return filename;
+  return true;
 }
