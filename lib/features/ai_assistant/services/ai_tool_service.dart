@@ -2,9 +2,8 @@ import 'package:drift/drift.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/products_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
-import 'package:pos/core/database/daos/transactions_dao.dart';
+import 'package:pos/core/services/checkout_service.dart';
 import 'package:pos/features/ai_assistant/models/ai_models.dart';
-import 'package:pos/features/inventory/domain/repositories/i_inventory_repository.dart';
 import 'package:uuid/uuid.dart';
 
 /// Layer 5 — Tool / Action Layer: All database operations for the AI assistant.
@@ -17,20 +16,17 @@ import 'package:uuid/uuid.dart';
 class AiToolService {
   final ProductsDao _productsDao;
   final ProductVariantsDao _variantsDao;
-  final TransactionsDao _transactionsDao;
-  final IInventoryRepository _inventoryRepository;
+  final CheckoutService _checkoutService;
   final AppDatabase _db;
 
   AiToolService({
     required ProductsDao productsDao,
     required ProductVariantsDao variantsDao,
-    required TransactionsDao transactionsDao,
-    required IInventoryRepository inventoryRepository,
+    required CheckoutService checkoutService,
     required AppDatabase db,
   })  : _productsDao = productsDao,
         _variantsDao = variantsDao,
-        _transactionsDao = transactionsDao,
-        _inventoryRepository = inventoryRepository,
+        _checkoutService = checkoutService,
         _db = db;
 
   /// Returns the SQL WHERE clause and variables for branch filtering.
@@ -399,6 +395,14 @@ class AiToolService {
     required String? branchId,
     required List<TransactionLineItem> lineItems,
   }) async {
+    // Tenant is mandatory: an AI sale with no business would write a null-tenant
+    // row (invisible to reports) and leak stock deductions across tenants.
+    if (businessId == null || businessId.trim().isEmpty) {
+      throw const AiSaleException(
+        'No active business — sign in to a business before completing a sale.',
+      );
+    }
+
     final uuid = const Uuid();
     final txId = uuid.v4();
 
@@ -442,22 +446,31 @@ class AiToolService {
       syncStatus: const Value(0), // pendingUpload
     );
 
-    // Record the sale and move inventory in one atomic unit. Previously the AI
-    // path inserted the transaction but never deducted stock, so AI-completed
-    // sales silently inflated inventory versus reality.
-    await _db.transaction(() async {
-      await _transactionsDao.insertTransaction(txCompanion, itemCompanions);
-      await _inventoryRepository.recordSaleDeductions(
-        items: lineItems
-            .map((l) => (variantId: l.variantId, qty: l.quantity))
-            .toList(),
-        businessId: businessId ?? '',
-        branchId: branchId,
-      );
-    });
+    // Go through the same single entry point as POS checkout so the AI path
+    // gets the invoice number, stock-availability check, and atomic deduction
+    // for free — previously it skipped the invoice claim and could oversell.
+    await _checkoutService.completeSale(
+      transaction: txCompanion,
+      items: itemCompanions,
+      deductions: lineItems
+          .map((l) => (variantId: l.variantId, qty: l.quantity))
+          .toList(),
+      businessId: businessId,
+      branchId: branchId,
+    );
 
     return txId;
   }
+}
+
+/// Raised when an AI-driven sale cannot be completed (e.g. no active business).
+/// Carries a user-facing message the assistant surface can show directly.
+class AiSaleException implements Exception {
+  final String message;
+  const AiSaleException(this.message);
+
+  @override
+  String toString() => message;
 }
 
 // ─── RESULT MODELS ──────────────────────────────────────────────────────────

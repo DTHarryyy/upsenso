@@ -126,7 +126,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 40;
+  int get schemaVersion => 41;
 
   @override
   MigrationStrategy get migration {
@@ -664,6 +664,30 @@ class AppDatabase extends _$AppDatabase {
             // Idempotent migration step: column/table likely already exists.
             // Log so a genuine schema failure is never silently lost.
             debugPrint('[AppDatabase] Migration step skipped: $e\n$st');
+          }
+        }
+
+        if (from < 41) {
+          // Bring three tables physically in line with the generated schema so
+          // the in-app schema validator stops reporting drift:
+          //   • transactions / product_variants — invoice_number & unit were
+          //     added by raw ALTER (appended out of declared order)
+          //   • invoice_sequences.updated_at — created with a milliseconds
+          //     default; Drift expects seconds (updated_at is always written
+          //     explicitly and never read, so existing values are harmless)
+          // alterTable rebuilds each table from the current Dart schema and
+          // copies all rows; transactions also sheds the dead, never-written
+          // transaction_hash column.
+          // Rollback: re-add the column with
+          //   ALTER TABLE transactions ADD COLUMN transaction_hash TEXT
+          // The product_variants/invoice_sequences rebuilds are non-destructive.
+          try {
+            await m.alterTable(TableMigration(transactionsTable));
+            await m.alterTable(TableMigration(productVariantsTable));
+            await m.alterTable(TableMigration(invoiceSequencesTable));
+          } catch (e, st) {
+            debugPrint('[AppDatabase] v41 table rebuild failed: $e\n$st');
+            rethrow;
           }
         }
       },

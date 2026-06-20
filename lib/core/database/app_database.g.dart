@@ -6326,17 +6326,6 @@ class $TransactionsTableTable extends TransactionsTable
     requiredDuringInsert: false,
     defaultValue: const Constant('completed'),
   );
-  static const VerificationMeta _transactionHashMeta = const VerificationMeta(
-    'transactionHash',
-  );
-  @override
-  late final GeneratedColumn<String> transactionHash = GeneratedColumn<String>(
-    'transaction_hash',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -6473,7 +6462,6 @@ class $TransactionsTableTable extends TransactionsTable
     discountAmount,
     taxAmount,
     status,
-    transactionHash,
     createdAt,
     invoiceNumber,
     customerName,
@@ -6561,15 +6549,6 @@ class $TransactionsTableTable extends TransactionsTable
       context.handle(
         _statusMeta,
         status.isAcceptableOrUnknown(data['status']!, _statusMeta),
-      );
-    }
-    if (data.containsKey('transaction_hash')) {
-      context.handle(
-        _transactionHashMeta,
-        transactionHash.isAcceptableOrUnknown(
-          data['transaction_hash']!,
-          _transactionHashMeta,
-        ),
       );
     }
     if (data.containsKey('created_at')) {
@@ -6702,10 +6681,6 @@ class $TransactionsTableTable extends TransactionsTable
         DriftSqlType.string,
         data['${effectivePrefix}status'],
       )!,
-      transactionHash: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}transaction_hash'],
-      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -6770,7 +6745,6 @@ class TransactionsTableData extends DataClass
   final double discountAmount;
   final double taxAmount;
   final String status;
-  final String? transactionHash;
   final DateTime createdAt;
   final String? invoiceNumber;
   final String? customerName;
@@ -6794,7 +6768,6 @@ class TransactionsTableData extends DataClass
     required this.discountAmount,
     required this.taxAmount,
     required this.status,
-    this.transactionHash,
     required this.createdAt,
     this.invoiceNumber,
     this.customerName,
@@ -6825,9 +6798,6 @@ class TransactionsTableData extends DataClass
     map['discount_amount'] = Variable<double>(discountAmount);
     map['tax_amount'] = Variable<double>(taxAmount);
     map['status'] = Variable<String>(status);
-    if (!nullToAbsent || transactionHash != null) {
-      map['transaction_hash'] = Variable<String>(transactionHash);
-    }
     map['created_at'] = Variable<DateTime>(createdAt);
     if (!nullToAbsent || invoiceNumber != null) {
       map['invoice_number'] = Variable<String>(invoiceNumber);
@@ -6871,9 +6841,6 @@ class TransactionsTableData extends DataClass
       discountAmount: Value(discountAmount),
       taxAmount: Value(taxAmount),
       status: Value(status),
-      transactionHash: transactionHash == null && nullToAbsent
-          ? const Value.absent()
-          : Value(transactionHash),
       createdAt: Value(createdAt),
       invoiceNumber: invoiceNumber == null && nullToAbsent
           ? const Value.absent()
@@ -6915,7 +6882,6 @@ class TransactionsTableData extends DataClass
       discountAmount: serializer.fromJson<double>(json['discountAmount']),
       taxAmount: serializer.fromJson<double>(json['taxAmount']),
       status: serializer.fromJson<String>(json['status']),
-      transactionHash: serializer.fromJson<String?>(json['transactionHash']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       invoiceNumber: serializer.fromJson<String?>(json['invoiceNumber']),
       customerName: serializer.fromJson<String?>(json['customerName']),
@@ -6942,7 +6908,6 @@ class TransactionsTableData extends DataClass
       'discountAmount': serializer.toJson<double>(discountAmount),
       'taxAmount': serializer.toJson<double>(taxAmount),
       'status': serializer.toJson<String>(status),
-      'transactionHash': serializer.toJson<String?>(transactionHash),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'invoiceNumber': serializer.toJson<String?>(invoiceNumber),
       'customerName': serializer.toJson<String?>(customerName),
@@ -6967,7 +6932,6 @@ class TransactionsTableData extends DataClass
     double? discountAmount,
     double? taxAmount,
     String? status,
-    Value<String?> transactionHash = const Value.absent(),
     DateTime? createdAt,
     Value<String?> invoiceNumber = const Value.absent(),
     Value<String?> customerName = const Value.absent(),
@@ -6989,9 +6953,6 @@ class TransactionsTableData extends DataClass
     discountAmount: discountAmount ?? this.discountAmount,
     taxAmount: taxAmount ?? this.taxAmount,
     status: status ?? this.status,
-    transactionHash: transactionHash.present
-        ? transactionHash.value
-        : this.transactionHash,
     createdAt: createdAt ?? this.createdAt,
     invoiceNumber: invoiceNumber.present
         ? invoiceNumber.value
@@ -7027,9 +6988,6 @@ class TransactionsTableData extends DataClass
           : this.discountAmount,
       taxAmount: data.taxAmount.present ? data.taxAmount.value : this.taxAmount,
       status: data.status.present ? data.status.value : this.status,
-      transactionHash: data.transactionHash.present
-          ? data.transactionHash.value
-          : this.transactionHash,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       invoiceNumber: data.invoiceNumber.present
           ? data.invoiceNumber.value
@@ -7068,7 +7026,6 @@ class TransactionsTableData extends DataClass
           ..write('discountAmount: $discountAmount, ')
           ..write('taxAmount: $taxAmount, ')
           ..write('status: $status, ')
-          ..write('transactionHash: $transactionHash, ')
           ..write('createdAt: $createdAt, ')
           ..write('invoiceNumber: $invoiceNumber, ')
           ..write('customerName: $customerName, ')
@@ -7085,7 +7042,7 @@ class TransactionsTableData extends DataClass
   }
 
   @override
-  int get hashCode => Object.hashAll([
+  int get hashCode => Object.hash(
     id,
     businessId,
     branchId,
@@ -7095,7 +7052,6 @@ class TransactionsTableData extends DataClass
     discountAmount,
     taxAmount,
     status,
-    transactionHash,
     createdAt,
     invoiceNumber,
     customerName,
@@ -7107,7 +7063,7 @@ class TransactionsTableData extends DataClass
     syncStatus,
     lastSyncAttempt,
     syncError,
-  ]);
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -7121,7 +7077,6 @@ class TransactionsTableData extends DataClass
           other.discountAmount == this.discountAmount &&
           other.taxAmount == this.taxAmount &&
           other.status == this.status &&
-          other.transactionHash == this.transactionHash &&
           other.createdAt == this.createdAt &&
           other.invoiceNumber == this.invoiceNumber &&
           other.customerName == this.customerName &&
@@ -7146,7 +7101,6 @@ class TransactionsTableCompanion
   final Value<double> discountAmount;
   final Value<double> taxAmount;
   final Value<String> status;
-  final Value<String?> transactionHash;
   final Value<DateTime> createdAt;
   final Value<String?> invoiceNumber;
   final Value<String?> customerName;
@@ -7169,7 +7123,6 @@ class TransactionsTableCompanion
     this.discountAmount = const Value.absent(),
     this.taxAmount = const Value.absent(),
     this.status = const Value.absent(),
-    this.transactionHash = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.invoiceNumber = const Value.absent(),
     this.customerName = const Value.absent(),
@@ -7193,7 +7146,6 @@ class TransactionsTableCompanion
     this.discountAmount = const Value.absent(),
     required double taxAmount,
     this.status = const Value.absent(),
-    this.transactionHash = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.invoiceNumber = const Value.absent(),
     this.customerName = const Value.absent(),
@@ -7222,7 +7174,6 @@ class TransactionsTableCompanion
     Expression<double>? discountAmount,
     Expression<double>? taxAmount,
     Expression<String>? status,
-    Expression<String>? transactionHash,
     Expression<DateTime>? createdAt,
     Expression<String>? invoiceNumber,
     Expression<String>? customerName,
@@ -7246,7 +7197,6 @@ class TransactionsTableCompanion
       if (discountAmount != null) 'discount_amount': discountAmount,
       if (taxAmount != null) 'tax_amount': taxAmount,
       if (status != null) 'status': status,
-      if (transactionHash != null) 'transaction_hash': transactionHash,
       if (createdAt != null) 'created_at': createdAt,
       if (invoiceNumber != null) 'invoice_number': invoiceNumber,
       if (customerName != null) 'customer_name': customerName,
@@ -7272,7 +7222,6 @@ class TransactionsTableCompanion
     Value<double>? discountAmount,
     Value<double>? taxAmount,
     Value<String>? status,
-    Value<String?>? transactionHash,
     Value<DateTime>? createdAt,
     Value<String?>? invoiceNumber,
     Value<String?>? customerName,
@@ -7296,7 +7245,6 @@ class TransactionsTableCompanion
       discountAmount: discountAmount ?? this.discountAmount,
       taxAmount: taxAmount ?? this.taxAmount,
       status: status ?? this.status,
-      transactionHash: transactionHash ?? this.transactionHash,
       createdAt: createdAt ?? this.createdAt,
       invoiceNumber: invoiceNumber ?? this.invoiceNumber,
       customerName: customerName ?? this.customerName,
@@ -7341,9 +7289,6 @@ class TransactionsTableCompanion
     }
     if (status.present) {
       map['status'] = Variable<String>(status.value);
-    }
-    if (transactionHash.present) {
-      map['transaction_hash'] = Variable<String>(transactionHash.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -7396,7 +7341,6 @@ class TransactionsTableCompanion
           ..write('discountAmount: $discountAmount, ')
           ..write('taxAmount: $taxAmount, ')
           ..write('status: $status, ')
-          ..write('transactionHash: $transactionHash, ')
           ..write('createdAt: $createdAt, ')
           ..write('invoiceNumber: $invoiceNumber, ')
           ..write('customerName: $customerName, ')
@@ -23577,7 +23521,6 @@ typedef $$TransactionsTableTableCreateCompanionBuilder =
       Value<double> discountAmount,
       required double taxAmount,
       Value<String> status,
-      Value<String?> transactionHash,
       Value<DateTime> createdAt,
       Value<String?> invoiceNumber,
       Value<String?> customerName,
@@ -23602,7 +23545,6 @@ typedef $$TransactionsTableTableUpdateCompanionBuilder =
       Value<double> discountAmount,
       Value<double> taxAmount,
       Value<String> status,
-      Value<String?> transactionHash,
       Value<DateTime> createdAt,
       Value<String?> invoiceNumber,
       Value<String?> customerName,
@@ -23668,11 +23610,6 @@ class $$TransactionsTableTableFilterComposer
 
   ColumnFilters<String> get status => $composableBuilder(
     column: $table.status,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get transactionHash => $composableBuilder(
-    column: $table.transactionHash,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -23786,11 +23723,6 @@ class $$TransactionsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get transactionHash => $composableBuilder(
-    column: $table.transactionHash,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -23889,11 +23821,6 @@ class $$TransactionsTableTableAnnotationComposer
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
 
-  GeneratedColumn<String> get transactionHash => $composableBuilder(
-    column: $table.transactionHash,
-    builder: (column) => column,
-  );
-
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -23989,7 +23916,6 @@ class $$TransactionsTableTableTableManager
                 Value<double> discountAmount = const Value.absent(),
                 Value<double> taxAmount = const Value.absent(),
                 Value<String> status = const Value.absent(),
-                Value<String?> transactionHash = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<String?> invoiceNumber = const Value.absent(),
                 Value<String?> customerName = const Value.absent(),
@@ -24012,7 +23938,6 @@ class $$TransactionsTableTableTableManager
                 discountAmount: discountAmount,
                 taxAmount: taxAmount,
                 status: status,
-                transactionHash: transactionHash,
                 createdAt: createdAt,
                 invoiceNumber: invoiceNumber,
                 customerName: customerName,
@@ -24037,7 +23962,6 @@ class $$TransactionsTableTableTableManager
                 Value<double> discountAmount = const Value.absent(),
                 required double taxAmount,
                 Value<String> status = const Value.absent(),
-                Value<String?> transactionHash = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<String?> invoiceNumber = const Value.absent(),
                 Value<String?> customerName = const Value.absent(),
@@ -24060,7 +23984,6 @@ class $$TransactionsTableTableTableManager
                 discountAmount: discountAmount,
                 taxAmount: taxAmount,
                 status: status,
-                transactionHash: transactionHash,
                 createdAt: createdAt,
                 invoiceNumber: invoiceNumber,
                 customerName: customerName,

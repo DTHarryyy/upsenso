@@ -134,6 +134,10 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
         TransactionsTableCompanion.insert(
           id: id,
           cashierId: row['cashier_id'] as String,
+          // Carry tenant + invoice from the server row. Omitting business_id
+          // here is what left synced sales with a null tenant and made them
+          // invisible to the business-scoped report queries below.
+          businessId: Value(row['business_id'] as String?),
           branchId: Value(row['branch_id'] as String?),
           shiftId: Value(row['shift_id'] as String?),
           totalAmount: (row['total_amount'] as num).toDouble(),
@@ -142,12 +146,28 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
           itemCount: 0,
           status: Value(status),
           paymentMethod: Value(paymentMethod),
+          invoiceNumber: Value(row['invoice_number'] as String?),
           syncStatus: const Value(3),
           lastSyncAttempt: Value(DateTime.now()),
           createdAt: Value(createdAt),
         ),
       );
     }
+  }
+
+  /// One-time repair for rows pulled before the upsert fix above, which were
+  /// stored with a null business_id and so vanished from the business-scoped
+  /// report queries. Pull is always per-business, so every synced row on this
+  /// device belongs to the active business — pass it in explicitly (never read
+  /// session here; the DAO must stay tenant-agnostic). Returns rows repaired.
+  Future<int> backfillNullBusinessId(String businessId) {
+    return (update(transactionsTable)
+          ..where(
+            (t) =>
+                t.businessId.isNull() &
+                t.syncStatus.equals(SyncStatus.synced.toInt()),
+          ))
+        .write(TransactionsTableCompanion(businessId: Value(businessId)));
   }
 
   /// Reactive count of transactions that need syncing (for status bar).

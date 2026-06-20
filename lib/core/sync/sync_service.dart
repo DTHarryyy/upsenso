@@ -1504,6 +1504,18 @@ class SyncService {
     }
 
     try {
+      // Repair rows pulled before the upsert fix that landed with a null
+      // business_id (and were therefore missing from reports). No-op once clean.
+      final repaired =
+          await _transactionsDao.backfillNullBusinessId(businessId);
+      if (repaired > 0) {
+        debugPrint('[SYNC] Backfilled business_id on $repaired transaction(s)');
+      }
+    } catch (e, st) {
+      debugPrint('[SYNC] Backfill transaction business_id failed: $e\n$st');
+    }
+
+    try {
       final expenses = await _expensesRemoteDs.getExpensesByBusiness(
         businessId,
       );

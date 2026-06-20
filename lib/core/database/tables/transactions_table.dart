@@ -20,8 +20,6 @@ class TransactionsTable extends Table {
   RealColumn get taxAmount => real()(); // → tax_amount
   TextColumn get status =>
       text().withDefault(const Constant('completed'))(); // → status
-  TextColumn get transactionHash =>
-      text().nullable()(); // → transaction_hash (null)
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
   TextColumn get invoiceNumber => text().nullable()(); // → invoice_number (synced)

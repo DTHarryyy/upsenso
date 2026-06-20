@@ -343,8 +343,7 @@ Future<void> initDI() async {
     () => AiToolService(
       productsDao: sl<ProductsDao>(),
       variantsDao: sl<ProductVariantsDao>(),
-      transactionsDao: sl<TransactionsDao>(),
-      inventoryRepository: sl<IInventoryRepository>(),
+      checkoutService: sl<CheckoutService>(),
       db: sl<AppDatabase>(),
     ),
   );
