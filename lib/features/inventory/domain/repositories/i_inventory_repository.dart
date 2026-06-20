@@ -24,6 +24,16 @@ abstract class IInventoryRepository {
     required String? branchId,
   });
 
+  /// Reverses [recordSaleDeductions] for refunded items — restocks tracked
+  /// product stock and recipe ingredients. [sourceId] (the refund's id) is
+  /// stamped on the stock ledger entries for traceability.
+  Future<void> reverseSaleDeductions({
+    required List<({String variantId, double qty})> items,
+    required String businessId,
+    required String? branchId,
+    required String sourceId,
+  });
+
   /// Returns the subset of [items] whose tracked stock is below the requested
   /// quantity (e.g. a held sale where stock sold out while parked). Untracked
   /// variants are ignored. Empty list = everything is in stock.

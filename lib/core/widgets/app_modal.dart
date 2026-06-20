@@ -39,8 +39,12 @@ Future<T?> showAppModal<T>({
   bool isScrollControlled = true,
   bool isDismissible = true,
   bool useRootNavigator = false,
+  /// When true, always present as the centred dialog — even on phone width.
+  /// For flows where a bottom sheet's edge-to-edge feel is wrong regardless
+  /// of screen size (e.g. a focused review/confirm step).
+  bool forceDialog = false,
 }) {
-  if (Breakpoints.isPhone(context)) {
+  if (!forceDialog && Breakpoints.isPhone(context)) {
     return showModalBottomSheet<T>(
       context: context,
       isScrollControlled: isScrollControlled,

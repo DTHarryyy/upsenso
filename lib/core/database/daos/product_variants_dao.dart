@@ -59,6 +59,14 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
     )..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
+  /// Batch lookup for a set of variant ids (e.g. Sales History line items).
+  Future<List<ProductVariantsTableData>> getByIds(List<String> ids) {
+    if (ids.isEmpty) return Future.value([]);
+    return (select(
+      productVariantsTable,
+    )..where((t) => t.id.isIn(ids))).get();
+  }
+
   /// Get all variants for a product.
   Future<List<ProductVariantsTableData>> getByProductId(String productId) {
     return (select(productVariantsTable)..where(

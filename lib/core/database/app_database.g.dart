@@ -20418,6 +20418,1348 @@ class InvoiceSequencesTableCompanion
   }
 }
 
+class $RefundsTableTable extends RefundsTable
+    with TableInfo<$RefundsTableTable, RefundsTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RefundsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _transactionIdMeta = const VerificationMeta(
+    'transactionId',
+  );
+  @override
+  late final GeneratedColumn<String> transactionId = GeneratedColumn<String>(
+    'transaction_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _refundedByMeta = const VerificationMeta(
+    'refundedBy',
+  );
+  @override
+  late final GeneratedColumn<String> refundedBy = GeneratedColumn<String>(
+    'refunded_by',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _totalAmountMeta = const VerificationMeta(
+    'totalAmount',
+  );
+  @override
+  late final GeneratedColumn<double> totalAmount = GeneratedColumn<double>(
+    'total_amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _taxAmountMeta = const VerificationMeta(
+    'taxAmount',
+  );
+  @override
+  late final GeneratedColumn<double> taxAmount = GeneratedColumn<double>(
+    'tax_amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0.0),
+  );
+  static const VerificationMeta _reasonMeta = const VerificationMeta('reason');
+  @override
+  late final GeneratedColumn<String> reason = GeneratedColumn<String>(
+    'reason',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _clientUpdatedAtMeta = const VerificationMeta(
+    'clientUpdatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> clientUpdatedAt =
+      GeneratedColumn<DateTime>(
+        'client_updated_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+        defaultValue: currentDateAndTime,
+      );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+    'syncStatus',
+  );
+  @override
+  late final GeneratedColumn<int> syncStatus = GeneratedColumn<int>(
+    'sync_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastSyncAttemptMeta = const VerificationMeta(
+    'lastSyncAttempt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastSyncAttempt =
+      GeneratedColumn<DateTime>(
+        'last_sync_attempt',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _syncErrorMeta = const VerificationMeta(
+    'syncError',
+  );
+  @override
+  late final GeneratedColumn<String> syncError = GeneratedColumn<String>(
+    'sync_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    transactionId,
+    businessId,
+    branchId,
+    refundedBy,
+    totalAmount,
+    taxAmount,
+    reason,
+    createdAt,
+    updatedAt,
+    clientUpdatedAt,
+    deletedAt,
+    syncStatus,
+    lastSyncAttempt,
+    syncError,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'refunds';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RefundsTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('transaction_id')) {
+      context.handle(
+        _transactionIdMeta,
+        transactionId.isAcceptableOrUnknown(
+          data['transaction_id']!,
+          _transactionIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_transactionIdMeta);
+    }
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    }
+    if (data.containsKey('refunded_by')) {
+      context.handle(
+        _refundedByMeta,
+        refundedBy.isAcceptableOrUnknown(data['refunded_by']!, _refundedByMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_refundedByMeta);
+    }
+    if (data.containsKey('total_amount')) {
+      context.handle(
+        _totalAmountMeta,
+        totalAmount.isAcceptableOrUnknown(
+          data['total_amount']!,
+          _totalAmountMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_totalAmountMeta);
+    }
+    if (data.containsKey('tax_amount')) {
+      context.handle(
+        _taxAmountMeta,
+        taxAmount.isAcceptableOrUnknown(data['tax_amount']!, _taxAmountMeta),
+      );
+    }
+    if (data.containsKey('reason')) {
+      context.handle(
+        _reasonMeta,
+        reason.isAcceptableOrUnknown(data['reason']!, _reasonMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('client_updated_at')) {
+      context.handle(
+        _clientUpdatedAtMeta,
+        clientUpdatedAt.isAcceptableOrUnknown(
+          data['client_updated_at']!,
+          _clientUpdatedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('sync_status')) {
+      context.handle(
+        _syncStatusMeta,
+        syncStatus.isAcceptableOrUnknown(data['sync_status']!, _syncStatusMeta),
+      );
+    }
+    if (data.containsKey('last_sync_attempt')) {
+      context.handle(
+        _lastSyncAttemptMeta,
+        lastSyncAttempt.isAcceptableOrUnknown(
+          data['last_sync_attempt']!,
+          _lastSyncAttemptMeta,
+        ),
+      );
+    }
+    if (data.containsKey('sync_error')) {
+      context.handle(
+        _syncErrorMeta,
+        syncError.isAcceptableOrUnknown(data['sync_error']!, _syncErrorMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RefundsTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RefundsTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      transactionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}transaction_id'],
+      )!,
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      ),
+      refundedBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}refunded_by'],
+      )!,
+      totalAmount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}total_amount'],
+      )!,
+      taxAmount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}tax_amount'],
+      )!,
+      reason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reason'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      clientUpdatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}client_updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      syncStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sync_status'],
+      )!,
+      lastSyncAttempt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_sync_attempt'],
+      ),
+      syncError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_error'],
+      ),
+    );
+  }
+
+  @override
+  $RefundsTableTable createAlias(String alias) {
+    return $RefundsTableTable(attachedDatabase, alias);
+  }
+}
+
+class RefundsTableData extends DataClass
+    implements Insertable<RefundsTableData> {
+  final String id;
+  final String transactionId;
+  final String businessId;
+  final String? branchId;
+  final String refundedBy;
+  final double totalAmount;
+  final double taxAmount;
+  final String? reason;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime clientUpdatedAt;
+  final DateTime? deletedAt;
+
+  /// 0=pendingUpload, 1=pendingUpdate, 2=pendingDelete, 3=synced, 4=failed
+  final int syncStatus;
+  final DateTime? lastSyncAttempt;
+  final String? syncError;
+  const RefundsTableData({
+    required this.id,
+    required this.transactionId,
+    required this.businessId,
+    this.branchId,
+    required this.refundedBy,
+    required this.totalAmount,
+    required this.taxAmount,
+    this.reason,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.clientUpdatedAt,
+    this.deletedAt,
+    required this.syncStatus,
+    this.lastSyncAttempt,
+    this.syncError,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['transaction_id'] = Variable<String>(transactionId);
+    map['business_id'] = Variable<String>(businessId);
+    if (!nullToAbsent || branchId != null) {
+      map['branch_id'] = Variable<String>(branchId);
+    }
+    map['refunded_by'] = Variable<String>(refundedBy);
+    map['total_amount'] = Variable<double>(totalAmount);
+    map['tax_amount'] = Variable<double>(taxAmount);
+    if (!nullToAbsent || reason != null) {
+      map['reason'] = Variable<String>(reason);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['client_updated_at'] = Variable<DateTime>(clientUpdatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    map['sync_status'] = Variable<int>(syncStatus);
+    if (!nullToAbsent || lastSyncAttempt != null) {
+      map['last_sync_attempt'] = Variable<DateTime>(lastSyncAttempt);
+    }
+    if (!nullToAbsent || syncError != null) {
+      map['sync_error'] = Variable<String>(syncError);
+    }
+    return map;
+  }
+
+  RefundsTableCompanion toCompanion(bool nullToAbsent) {
+    return RefundsTableCompanion(
+      id: Value(id),
+      transactionId: Value(transactionId),
+      businessId: Value(businessId),
+      branchId: branchId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(branchId),
+      refundedBy: Value(refundedBy),
+      totalAmount: Value(totalAmount),
+      taxAmount: Value(taxAmount),
+      reason: reason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reason),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      clientUpdatedAt: Value(clientUpdatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      syncStatus: Value(syncStatus),
+      lastSyncAttempt: lastSyncAttempt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSyncAttempt),
+      syncError: syncError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncError),
+    );
+  }
+
+  factory RefundsTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RefundsTableData(
+      id: serializer.fromJson<String>(json['id']),
+      transactionId: serializer.fromJson<String>(json['transactionId']),
+      businessId: serializer.fromJson<String>(json['businessId']),
+      branchId: serializer.fromJson<String?>(json['branchId']),
+      refundedBy: serializer.fromJson<String>(json['refundedBy']),
+      totalAmount: serializer.fromJson<double>(json['totalAmount']),
+      taxAmount: serializer.fromJson<double>(json['taxAmount']),
+      reason: serializer.fromJson<String?>(json['reason']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      clientUpdatedAt: serializer.fromJson<DateTime>(json['clientUpdatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      syncStatus: serializer.fromJson<int>(json['syncStatus']),
+      lastSyncAttempt: serializer.fromJson<DateTime?>(json['lastSyncAttempt']),
+      syncError: serializer.fromJson<String?>(json['syncError']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'transactionId': serializer.toJson<String>(transactionId),
+      'businessId': serializer.toJson<String>(businessId),
+      'branchId': serializer.toJson<String?>(branchId),
+      'refundedBy': serializer.toJson<String>(refundedBy),
+      'totalAmount': serializer.toJson<double>(totalAmount),
+      'taxAmount': serializer.toJson<double>(taxAmount),
+      'reason': serializer.toJson<String?>(reason),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'clientUpdatedAt': serializer.toJson<DateTime>(clientUpdatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'syncStatus': serializer.toJson<int>(syncStatus),
+      'lastSyncAttempt': serializer.toJson<DateTime?>(lastSyncAttempt),
+      'syncError': serializer.toJson<String?>(syncError),
+    };
+  }
+
+  RefundsTableData copyWith({
+    String? id,
+    String? transactionId,
+    String? businessId,
+    Value<String?> branchId = const Value.absent(),
+    String? refundedBy,
+    double? totalAmount,
+    double? taxAmount,
+    Value<String?> reason = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    DateTime? clientUpdatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+    int? syncStatus,
+    Value<DateTime?> lastSyncAttempt = const Value.absent(),
+    Value<String?> syncError = const Value.absent(),
+  }) => RefundsTableData(
+    id: id ?? this.id,
+    transactionId: transactionId ?? this.transactionId,
+    businessId: businessId ?? this.businessId,
+    branchId: branchId.present ? branchId.value : this.branchId,
+    refundedBy: refundedBy ?? this.refundedBy,
+    totalAmount: totalAmount ?? this.totalAmount,
+    taxAmount: taxAmount ?? this.taxAmount,
+    reason: reason.present ? reason.value : this.reason,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    clientUpdatedAt: clientUpdatedAt ?? this.clientUpdatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    syncStatus: syncStatus ?? this.syncStatus,
+    lastSyncAttempt: lastSyncAttempt.present
+        ? lastSyncAttempt.value
+        : this.lastSyncAttempt,
+    syncError: syncError.present ? syncError.value : this.syncError,
+  );
+  RefundsTableData copyWithCompanion(RefundsTableCompanion data) {
+    return RefundsTableData(
+      id: data.id.present ? data.id.value : this.id,
+      transactionId: data.transactionId.present
+          ? data.transactionId.value
+          : this.transactionId,
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      refundedBy: data.refundedBy.present
+          ? data.refundedBy.value
+          : this.refundedBy,
+      totalAmount: data.totalAmount.present
+          ? data.totalAmount.value
+          : this.totalAmount,
+      taxAmount: data.taxAmount.present ? data.taxAmount.value : this.taxAmount,
+      reason: data.reason.present ? data.reason.value : this.reason,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      clientUpdatedAt: data.clientUpdatedAt.present
+          ? data.clientUpdatedAt.value
+          : this.clientUpdatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      syncStatus: data.syncStatus.present
+          ? data.syncStatus.value
+          : this.syncStatus,
+      lastSyncAttempt: data.lastSyncAttempt.present
+          ? data.lastSyncAttempt.value
+          : this.lastSyncAttempt,
+      syncError: data.syncError.present ? data.syncError.value : this.syncError,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RefundsTableData(')
+          ..write('id: $id, ')
+          ..write('transactionId: $transactionId, ')
+          ..write('businessId: $businessId, ')
+          ..write('branchId: $branchId, ')
+          ..write('refundedBy: $refundedBy, ')
+          ..write('totalAmount: $totalAmount, ')
+          ..write('taxAmount: $taxAmount, ')
+          ..write('reason: $reason, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('clientUpdatedAt: $clientUpdatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncAttempt: $lastSyncAttempt, ')
+          ..write('syncError: $syncError')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    transactionId,
+    businessId,
+    branchId,
+    refundedBy,
+    totalAmount,
+    taxAmount,
+    reason,
+    createdAt,
+    updatedAt,
+    clientUpdatedAt,
+    deletedAt,
+    syncStatus,
+    lastSyncAttempt,
+    syncError,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RefundsTableData &&
+          other.id == this.id &&
+          other.transactionId == this.transactionId &&
+          other.businessId == this.businessId &&
+          other.branchId == this.branchId &&
+          other.refundedBy == this.refundedBy &&
+          other.totalAmount == this.totalAmount &&
+          other.taxAmount == this.taxAmount &&
+          other.reason == this.reason &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.clientUpdatedAt == this.clientUpdatedAt &&
+          other.deletedAt == this.deletedAt &&
+          other.syncStatus == this.syncStatus &&
+          other.lastSyncAttempt == this.lastSyncAttempt &&
+          other.syncError == this.syncError);
+}
+
+class RefundsTableCompanion extends UpdateCompanion<RefundsTableData> {
+  final Value<String> id;
+  final Value<String> transactionId;
+  final Value<String> businessId;
+  final Value<String?> branchId;
+  final Value<String> refundedBy;
+  final Value<double> totalAmount;
+  final Value<double> taxAmount;
+  final Value<String?> reason;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime> clientUpdatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<int> syncStatus;
+  final Value<DateTime?> lastSyncAttempt;
+  final Value<String?> syncError;
+  final Value<int> rowid;
+  const RefundsTableCompanion({
+    this.id = const Value.absent(),
+    this.transactionId = const Value.absent(),
+    this.businessId = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.refundedBy = const Value.absent(),
+    this.totalAmount = const Value.absent(),
+    this.taxAmount = const Value.absent(),
+    this.reason = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.clientUpdatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.lastSyncAttempt = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RefundsTableCompanion.insert({
+    required String id,
+    required String transactionId,
+    required String businessId,
+    this.branchId = const Value.absent(),
+    required String refundedBy,
+    required double totalAmount,
+    this.taxAmount = const Value.absent(),
+    this.reason = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.clientUpdatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.lastSyncAttempt = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       transactionId = Value(transactionId),
+       businessId = Value(businessId),
+       refundedBy = Value(refundedBy),
+       totalAmount = Value(totalAmount);
+  static Insertable<RefundsTableData> custom({
+    Expression<String>? id,
+    Expression<String>? transactionId,
+    Expression<String>? businessId,
+    Expression<String>? branchId,
+    Expression<String>? refundedBy,
+    Expression<double>? totalAmount,
+    Expression<double>? taxAmount,
+    Expression<String>? reason,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? clientUpdatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? syncStatus,
+    Expression<DateTime>? lastSyncAttempt,
+    Expression<String>? syncError,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (transactionId != null) 'transaction_id': transactionId,
+      if (businessId != null) 'business_id': businessId,
+      if (branchId != null) 'branch_id': branchId,
+      if (refundedBy != null) 'refunded_by': refundedBy,
+      if (totalAmount != null) 'total_amount': totalAmount,
+      if (taxAmount != null) 'tax_amount': taxAmount,
+      if (reason != null) 'reason': reason,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (clientUpdatedAt != null) 'client_updated_at': clientUpdatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (lastSyncAttempt != null) 'last_sync_attempt': lastSyncAttempt,
+      if (syncError != null) 'sync_error': syncError,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RefundsTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? transactionId,
+    Value<String>? businessId,
+    Value<String?>? branchId,
+    Value<String>? refundedBy,
+    Value<double>? totalAmount,
+    Value<double>? taxAmount,
+    Value<String?>? reason,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime>? clientUpdatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<int>? syncStatus,
+    Value<DateTime?>? lastSyncAttempt,
+    Value<String?>? syncError,
+    Value<int>? rowid,
+  }) {
+    return RefundsTableCompanion(
+      id: id ?? this.id,
+      transactionId: transactionId ?? this.transactionId,
+      businessId: businessId ?? this.businessId,
+      branchId: branchId ?? this.branchId,
+      refundedBy: refundedBy ?? this.refundedBy,
+      totalAmount: totalAmount ?? this.totalAmount,
+      taxAmount: taxAmount ?? this.taxAmount,
+      reason: reason ?? this.reason,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      clientUpdatedAt: clientUpdatedAt ?? this.clientUpdatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      syncStatus: syncStatus ?? this.syncStatus,
+      lastSyncAttempt: lastSyncAttempt ?? this.lastSyncAttempt,
+      syncError: syncError ?? this.syncError,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (transactionId.present) {
+      map['transaction_id'] = Variable<String>(transactionId.value);
+    }
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
+    }
+    if (refundedBy.present) {
+      map['refunded_by'] = Variable<String>(refundedBy.value);
+    }
+    if (totalAmount.present) {
+      map['total_amount'] = Variable<double>(totalAmount.value);
+    }
+    if (taxAmount.present) {
+      map['tax_amount'] = Variable<double>(taxAmount.value);
+    }
+    if (reason.present) {
+      map['reason'] = Variable<String>(reason.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (clientUpdatedAt.present) {
+      map['client_updated_at'] = Variable<DateTime>(clientUpdatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<int>(syncStatus.value);
+    }
+    if (lastSyncAttempt.present) {
+      map['last_sync_attempt'] = Variable<DateTime>(lastSyncAttempt.value);
+    }
+    if (syncError.present) {
+      map['sync_error'] = Variable<String>(syncError.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RefundsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('transactionId: $transactionId, ')
+          ..write('businessId: $businessId, ')
+          ..write('branchId: $branchId, ')
+          ..write('refundedBy: $refundedBy, ')
+          ..write('totalAmount: $totalAmount, ')
+          ..write('taxAmount: $taxAmount, ')
+          ..write('reason: $reason, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('clientUpdatedAt: $clientUpdatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncAttempt: $lastSyncAttempt, ')
+          ..write('syncError: $syncError, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $RefundItemsTableTable extends RefundItemsTable
+    with TableInfo<$RefundItemsTableTable, RefundItemsTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RefundItemsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _refundIdMeta = const VerificationMeta(
+    'refundId',
+  );
+  @override
+  late final GeneratedColumn<String> refundId = GeneratedColumn<String>(
+    'refund_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _transactionItemIdMeta = const VerificationMeta(
+    'transactionItemId',
+  );
+  @override
+  late final GeneratedColumn<String> transactionItemId =
+      GeneratedColumn<String>(
+        'transaction_item_id',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _variantIdMeta = const VerificationMeta(
+    'variantId',
+  );
+  @override
+  late final GeneratedColumn<String> variantId = GeneratedColumn<String>(
+    'variant_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _qtyMeta = const VerificationMeta('qty');
+  @override
+  late final GeneratedColumn<double> qty = GeneratedColumn<double>(
+    'qty',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<double> amount = GeneratedColumn<double>(
+    'amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _restockedMeta = const VerificationMeta(
+    'restocked',
+  );
+  @override
+  late final GeneratedColumn<bool> restocked = GeneratedColumn<bool>(
+    'restocked',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("restocked" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    refundId,
+    transactionItemId,
+    variantId,
+    qty,
+    amount,
+    restocked,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'refund_items';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RefundItemsTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('refund_id')) {
+      context.handle(
+        _refundIdMeta,
+        refundId.isAcceptableOrUnknown(data['refund_id']!, _refundIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_refundIdMeta);
+    }
+    if (data.containsKey('transaction_item_id')) {
+      context.handle(
+        _transactionItemIdMeta,
+        transactionItemId.isAcceptableOrUnknown(
+          data['transaction_item_id']!,
+          _transactionItemIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_transactionItemIdMeta);
+    }
+    if (data.containsKey('variant_id')) {
+      context.handle(
+        _variantIdMeta,
+        variantId.isAcceptableOrUnknown(data['variant_id']!, _variantIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_variantIdMeta);
+    }
+    if (data.containsKey('qty')) {
+      context.handle(
+        _qtyMeta,
+        qty.isAcceptableOrUnknown(data['qty']!, _qtyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_qtyMeta);
+    }
+    if (data.containsKey('amount')) {
+      context.handle(
+        _amountMeta,
+        amount.isAcceptableOrUnknown(data['amount']!, _amountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_amountMeta);
+    }
+    if (data.containsKey('restocked')) {
+      context.handle(
+        _restockedMeta,
+        restocked.isAcceptableOrUnknown(data['restocked']!, _restockedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RefundItemsTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RefundItemsTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      refundId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}refund_id'],
+      )!,
+      transactionItemId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}transaction_item_id'],
+      )!,
+      variantId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}variant_id'],
+      )!,
+      qty: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}qty'],
+      )!,
+      amount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}amount'],
+      )!,
+      restocked: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}restocked'],
+      )!,
+    );
+  }
+
+  @override
+  $RefundItemsTableTable createAlias(String alias) {
+    return $RefundItemsTableTable(attachedDatabase, alias);
+  }
+}
+
+class RefundItemsTableData extends DataClass
+    implements Insertable<RefundItemsTableData> {
+  final String id;
+  final String refundId;
+  final String transactionItemId;
+  final String variantId;
+  final double qty;
+  final double amount;
+  final bool restocked;
+  const RefundItemsTableData({
+    required this.id,
+    required this.refundId,
+    required this.transactionItemId,
+    required this.variantId,
+    required this.qty,
+    required this.amount,
+    required this.restocked,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['refund_id'] = Variable<String>(refundId);
+    map['transaction_item_id'] = Variable<String>(transactionItemId);
+    map['variant_id'] = Variable<String>(variantId);
+    map['qty'] = Variable<double>(qty);
+    map['amount'] = Variable<double>(amount);
+    map['restocked'] = Variable<bool>(restocked);
+    return map;
+  }
+
+  RefundItemsTableCompanion toCompanion(bool nullToAbsent) {
+    return RefundItemsTableCompanion(
+      id: Value(id),
+      refundId: Value(refundId),
+      transactionItemId: Value(transactionItemId),
+      variantId: Value(variantId),
+      qty: Value(qty),
+      amount: Value(amount),
+      restocked: Value(restocked),
+    );
+  }
+
+  factory RefundItemsTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RefundItemsTableData(
+      id: serializer.fromJson<String>(json['id']),
+      refundId: serializer.fromJson<String>(json['refundId']),
+      transactionItemId: serializer.fromJson<String>(json['transactionItemId']),
+      variantId: serializer.fromJson<String>(json['variantId']),
+      qty: serializer.fromJson<double>(json['qty']),
+      amount: serializer.fromJson<double>(json['amount']),
+      restocked: serializer.fromJson<bool>(json['restocked']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'refundId': serializer.toJson<String>(refundId),
+      'transactionItemId': serializer.toJson<String>(transactionItemId),
+      'variantId': serializer.toJson<String>(variantId),
+      'qty': serializer.toJson<double>(qty),
+      'amount': serializer.toJson<double>(amount),
+      'restocked': serializer.toJson<bool>(restocked),
+    };
+  }
+
+  RefundItemsTableData copyWith({
+    String? id,
+    String? refundId,
+    String? transactionItemId,
+    String? variantId,
+    double? qty,
+    double? amount,
+    bool? restocked,
+  }) => RefundItemsTableData(
+    id: id ?? this.id,
+    refundId: refundId ?? this.refundId,
+    transactionItemId: transactionItemId ?? this.transactionItemId,
+    variantId: variantId ?? this.variantId,
+    qty: qty ?? this.qty,
+    amount: amount ?? this.amount,
+    restocked: restocked ?? this.restocked,
+  );
+  RefundItemsTableData copyWithCompanion(RefundItemsTableCompanion data) {
+    return RefundItemsTableData(
+      id: data.id.present ? data.id.value : this.id,
+      refundId: data.refundId.present ? data.refundId.value : this.refundId,
+      transactionItemId: data.transactionItemId.present
+          ? data.transactionItemId.value
+          : this.transactionItemId,
+      variantId: data.variantId.present ? data.variantId.value : this.variantId,
+      qty: data.qty.present ? data.qty.value : this.qty,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      restocked: data.restocked.present ? data.restocked.value : this.restocked,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RefundItemsTableData(')
+          ..write('id: $id, ')
+          ..write('refundId: $refundId, ')
+          ..write('transactionItemId: $transactionItemId, ')
+          ..write('variantId: $variantId, ')
+          ..write('qty: $qty, ')
+          ..write('amount: $amount, ')
+          ..write('restocked: $restocked')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    refundId,
+    transactionItemId,
+    variantId,
+    qty,
+    amount,
+    restocked,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RefundItemsTableData &&
+          other.id == this.id &&
+          other.refundId == this.refundId &&
+          other.transactionItemId == this.transactionItemId &&
+          other.variantId == this.variantId &&
+          other.qty == this.qty &&
+          other.amount == this.amount &&
+          other.restocked == this.restocked);
+}
+
+class RefundItemsTableCompanion extends UpdateCompanion<RefundItemsTableData> {
+  final Value<String> id;
+  final Value<String> refundId;
+  final Value<String> transactionItemId;
+  final Value<String> variantId;
+  final Value<double> qty;
+  final Value<double> amount;
+  final Value<bool> restocked;
+  final Value<int> rowid;
+  const RefundItemsTableCompanion({
+    this.id = const Value.absent(),
+    this.refundId = const Value.absent(),
+    this.transactionItemId = const Value.absent(),
+    this.variantId = const Value.absent(),
+    this.qty = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.restocked = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RefundItemsTableCompanion.insert({
+    required String id,
+    required String refundId,
+    required String transactionItemId,
+    required String variantId,
+    required double qty,
+    required double amount,
+    this.restocked = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       refundId = Value(refundId),
+       transactionItemId = Value(transactionItemId),
+       variantId = Value(variantId),
+       qty = Value(qty),
+       amount = Value(amount);
+  static Insertable<RefundItemsTableData> custom({
+    Expression<String>? id,
+    Expression<String>? refundId,
+    Expression<String>? transactionItemId,
+    Expression<String>? variantId,
+    Expression<double>? qty,
+    Expression<double>? amount,
+    Expression<bool>? restocked,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (refundId != null) 'refund_id': refundId,
+      if (transactionItemId != null) 'transaction_item_id': transactionItemId,
+      if (variantId != null) 'variant_id': variantId,
+      if (qty != null) 'qty': qty,
+      if (amount != null) 'amount': amount,
+      if (restocked != null) 'restocked': restocked,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RefundItemsTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? refundId,
+    Value<String>? transactionItemId,
+    Value<String>? variantId,
+    Value<double>? qty,
+    Value<double>? amount,
+    Value<bool>? restocked,
+    Value<int>? rowid,
+  }) {
+    return RefundItemsTableCompanion(
+      id: id ?? this.id,
+      refundId: refundId ?? this.refundId,
+      transactionItemId: transactionItemId ?? this.transactionItemId,
+      variantId: variantId ?? this.variantId,
+      qty: qty ?? this.qty,
+      amount: amount ?? this.amount,
+      restocked: restocked ?? this.restocked,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (refundId.present) {
+      map['refund_id'] = Variable<String>(refundId.value);
+    }
+    if (transactionItemId.present) {
+      map['transaction_item_id'] = Variable<String>(transactionItemId.value);
+    }
+    if (variantId.present) {
+      map['variant_id'] = Variable<String>(variantId.value);
+    }
+    if (qty.present) {
+      map['qty'] = Variable<double>(qty.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<double>(amount.value);
+    }
+    if (restocked.present) {
+      map['restocked'] = Variable<bool>(restocked.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RefundItemsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('refundId: $refundId, ')
+          ..write('transactionItemId: $transactionItemId, ')
+          ..write('variantId: $variantId, ')
+          ..write('qty: $qty, ')
+          ..write('amount: $amount, ')
+          ..write('restocked: $restocked, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -20470,6 +21812,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SyncStateTableTable syncStateTable = $SyncStateTableTable(this);
   late final $InvoiceSequencesTableTable invoiceSequencesTable =
       $InvoiceSequencesTableTable(this);
+  late final $RefundsTableTable refundsTable = $RefundsTableTable(this);
+  late final $RefundItemsTableTable refundItemsTable = $RefundItemsTableTable(
+    this,
+  );
   late final AuthContextDao authContextDao = AuthContextDao(
     this as AppDatabase,
   );
@@ -20517,6 +21863,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final InvoiceSequencesDao invoiceSequencesDao = InvoiceSequencesDao(
     this as AppDatabase,
   );
+  late final RefundsDao refundsDao = RefundsDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -20547,6 +21894,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     recipeLinesTable,
     syncStateTable,
     invoiceSequencesTable,
+    refundsTable,
+    refundItemsTable,
   ];
 }
 
@@ -30248,6 +31597,660 @@ typedef $$InvoiceSequencesTableTableProcessedTableManager =
       InvoiceSequencesTableData,
       PrefetchHooks Function()
     >;
+typedef $$RefundsTableTableCreateCompanionBuilder =
+    RefundsTableCompanion Function({
+      required String id,
+      required String transactionId,
+      required String businessId,
+      Value<String?> branchId,
+      required String refundedBy,
+      required double totalAmount,
+      Value<double> taxAmount,
+      Value<String?> reason,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime> clientUpdatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> syncStatus,
+      Value<DateTime?> lastSyncAttempt,
+      Value<String?> syncError,
+      Value<int> rowid,
+    });
+typedef $$RefundsTableTableUpdateCompanionBuilder =
+    RefundsTableCompanion Function({
+      Value<String> id,
+      Value<String> transactionId,
+      Value<String> businessId,
+      Value<String?> branchId,
+      Value<String> refundedBy,
+      Value<double> totalAmount,
+      Value<double> taxAmount,
+      Value<String?> reason,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime> clientUpdatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> syncStatus,
+      Value<DateTime?> lastSyncAttempt,
+      Value<String?> syncError,
+      Value<int> rowid,
+    });
+
+class $$RefundsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $RefundsTableTable> {
+  $$RefundsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get transactionId => $composableBuilder(
+    column: $table.transactionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get refundedBy => $composableBuilder(
+    column: $table.refundedBy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get totalAmount => $composableBuilder(
+    column: $table.totalAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get taxAmount => $composableBuilder(
+    column: $table.taxAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get clientUpdatedAt => $composableBuilder(
+    column: $table.clientUpdatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RefundsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $RefundsTableTable> {
+  $$RefundsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get transactionId => $composableBuilder(
+    column: $table.transactionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get refundedBy => $composableBuilder(
+    column: $table.refundedBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get totalAmount => $composableBuilder(
+    column: $table.totalAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get taxAmount => $composableBuilder(
+    column: $table.taxAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get clientUpdatedAt => $composableBuilder(
+    column: $table.clientUpdatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RefundsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RefundsTableTable> {
+  $$RefundsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get transactionId => $composableBuilder(
+    column: $table.transactionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
+
+  GeneratedColumn<String> get refundedBy => $composableBuilder(
+    column: $table.refundedBy,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get totalAmount => $composableBuilder(
+    column: $table.totalAmount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get taxAmount =>
+      $composableBuilder(column: $table.taxAmount, builder: (column) => column);
+
+  GeneratedColumn<String> get reason =>
+      $composableBuilder(column: $table.reason, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get clientUpdatedAt => $composableBuilder(
+    column: $table.clientUpdatedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get syncError =>
+      $composableBuilder(column: $table.syncError, builder: (column) => column);
+}
+
+class $$RefundsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RefundsTableTable,
+          RefundsTableData,
+          $$RefundsTableTableFilterComposer,
+          $$RefundsTableTableOrderingComposer,
+          $$RefundsTableTableAnnotationComposer,
+          $$RefundsTableTableCreateCompanionBuilder,
+          $$RefundsTableTableUpdateCompanionBuilder,
+          (
+            RefundsTableData,
+            BaseReferences<_$AppDatabase, $RefundsTableTable, RefundsTableData>,
+          ),
+          RefundsTableData,
+          PrefetchHooks Function()
+        > {
+  $$RefundsTableTableTableManager(_$AppDatabase db, $RefundsTableTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RefundsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RefundsTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RefundsTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> transactionId = const Value.absent(),
+                Value<String> businessId = const Value.absent(),
+                Value<String?> branchId = const Value.absent(),
+                Value<String> refundedBy = const Value.absent(),
+                Value<double> totalAmount = const Value.absent(),
+                Value<double> taxAmount = const Value.absent(),
+                Value<String?> reason = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime> clientUpdatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> syncStatus = const Value.absent(),
+                Value<DateTime?> lastSyncAttempt = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RefundsTableCompanion(
+                id: id,
+                transactionId: transactionId,
+                businessId: businessId,
+                branchId: branchId,
+                refundedBy: refundedBy,
+                totalAmount: totalAmount,
+                taxAmount: taxAmount,
+                reason: reason,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                clientUpdatedAt: clientUpdatedAt,
+                deletedAt: deletedAt,
+                syncStatus: syncStatus,
+                lastSyncAttempt: lastSyncAttempt,
+                syncError: syncError,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String transactionId,
+                required String businessId,
+                Value<String?> branchId = const Value.absent(),
+                required String refundedBy,
+                required double totalAmount,
+                Value<double> taxAmount = const Value.absent(),
+                Value<String?> reason = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime> clientUpdatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> syncStatus = const Value.absent(),
+                Value<DateTime?> lastSyncAttempt = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RefundsTableCompanion.insert(
+                id: id,
+                transactionId: transactionId,
+                businessId: businessId,
+                branchId: branchId,
+                refundedBy: refundedBy,
+                totalAmount: totalAmount,
+                taxAmount: taxAmount,
+                reason: reason,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                clientUpdatedAt: clientUpdatedAt,
+                deletedAt: deletedAt,
+                syncStatus: syncStatus,
+                lastSyncAttempt: lastSyncAttempt,
+                syncError: syncError,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RefundsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RefundsTableTable,
+      RefundsTableData,
+      $$RefundsTableTableFilterComposer,
+      $$RefundsTableTableOrderingComposer,
+      $$RefundsTableTableAnnotationComposer,
+      $$RefundsTableTableCreateCompanionBuilder,
+      $$RefundsTableTableUpdateCompanionBuilder,
+      (
+        RefundsTableData,
+        BaseReferences<_$AppDatabase, $RefundsTableTable, RefundsTableData>,
+      ),
+      RefundsTableData,
+      PrefetchHooks Function()
+    >;
+typedef $$RefundItemsTableTableCreateCompanionBuilder =
+    RefundItemsTableCompanion Function({
+      required String id,
+      required String refundId,
+      required String transactionItemId,
+      required String variantId,
+      required double qty,
+      required double amount,
+      Value<bool> restocked,
+      Value<int> rowid,
+    });
+typedef $$RefundItemsTableTableUpdateCompanionBuilder =
+    RefundItemsTableCompanion Function({
+      Value<String> id,
+      Value<String> refundId,
+      Value<String> transactionItemId,
+      Value<String> variantId,
+      Value<double> qty,
+      Value<double> amount,
+      Value<bool> restocked,
+      Value<int> rowid,
+    });
+
+class $$RefundItemsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $RefundItemsTableTable> {
+  $$RefundItemsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get refundId => $composableBuilder(
+    column: $table.refundId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get transactionItemId => $composableBuilder(
+    column: $table.transactionItemId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get variantId => $composableBuilder(
+    column: $table.variantId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get qty => $composableBuilder(
+    column: $table.qty,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get restocked => $composableBuilder(
+    column: $table.restocked,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RefundItemsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $RefundItemsTableTable> {
+  $$RefundItemsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get refundId => $composableBuilder(
+    column: $table.refundId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get transactionItemId => $composableBuilder(
+    column: $table.transactionItemId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get variantId => $composableBuilder(
+    column: $table.variantId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get qty => $composableBuilder(
+    column: $table.qty,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get restocked => $composableBuilder(
+    column: $table.restocked,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RefundItemsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RefundItemsTableTable> {
+  $$RefundItemsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get refundId =>
+      $composableBuilder(column: $table.refundId, builder: (column) => column);
+
+  GeneratedColumn<String> get transactionItemId => $composableBuilder(
+    column: $table.transactionItemId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get variantId =>
+      $composableBuilder(column: $table.variantId, builder: (column) => column);
+
+  GeneratedColumn<double> get qty =>
+      $composableBuilder(column: $table.qty, builder: (column) => column);
+
+  GeneratedColumn<double> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<bool> get restocked =>
+      $composableBuilder(column: $table.restocked, builder: (column) => column);
+}
+
+class $$RefundItemsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RefundItemsTableTable,
+          RefundItemsTableData,
+          $$RefundItemsTableTableFilterComposer,
+          $$RefundItemsTableTableOrderingComposer,
+          $$RefundItemsTableTableAnnotationComposer,
+          $$RefundItemsTableTableCreateCompanionBuilder,
+          $$RefundItemsTableTableUpdateCompanionBuilder,
+          (
+            RefundItemsTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $RefundItemsTableTable,
+              RefundItemsTableData
+            >,
+          ),
+          RefundItemsTableData,
+          PrefetchHooks Function()
+        > {
+  $$RefundItemsTableTableTableManager(
+    _$AppDatabase db,
+    $RefundItemsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RefundItemsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RefundItemsTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RefundItemsTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> refundId = const Value.absent(),
+                Value<String> transactionItemId = const Value.absent(),
+                Value<String> variantId = const Value.absent(),
+                Value<double> qty = const Value.absent(),
+                Value<double> amount = const Value.absent(),
+                Value<bool> restocked = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RefundItemsTableCompanion(
+                id: id,
+                refundId: refundId,
+                transactionItemId: transactionItemId,
+                variantId: variantId,
+                qty: qty,
+                amount: amount,
+                restocked: restocked,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String refundId,
+                required String transactionItemId,
+                required String variantId,
+                required double qty,
+                required double amount,
+                Value<bool> restocked = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RefundItemsTableCompanion.insert(
+                id: id,
+                refundId: refundId,
+                transactionItemId: transactionItemId,
+                variantId: variantId,
+                qty: qty,
+                amount: amount,
+                restocked: restocked,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RefundItemsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RefundItemsTableTable,
+      RefundItemsTableData,
+      $$RefundItemsTableTableFilterComposer,
+      $$RefundItemsTableTableOrderingComposer,
+      $$RefundItemsTableTableAnnotationComposer,
+      $$RefundItemsTableTableCreateCompanionBuilder,
+      $$RefundItemsTableTableUpdateCompanionBuilder,
+      (
+        RefundItemsTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $RefundItemsTableTable,
+          RefundItemsTableData
+        >,
+      ),
+      RefundItemsTableData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -30311,4 +32314,8 @@ class $AppDatabaseManager {
       $$SyncStateTableTableTableManager(_db, _db.syncStateTable);
   $$InvoiceSequencesTableTableTableManager get invoiceSequencesTable =>
       $$InvoiceSequencesTableTableTableManager(_db, _db.invoiceSequencesTable);
+  $$RefundsTableTableTableManager get refundsTable =>
+      $$RefundsTableTableTableManager(_db, _db.refundsTable);
+  $$RefundItemsTableTableTableManager get refundItemsTable =>
+      $$RefundItemsTableTableTableManager(_db, _db.refundItemsTable);
 }

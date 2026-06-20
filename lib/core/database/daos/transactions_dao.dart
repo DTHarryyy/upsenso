@@ -45,11 +45,43 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
     )..where((t) => t.transactionId.equals(transactionId))).get();
   }
 
-  /// Records pending upload or retry (transactions are immutable).
+  /// Records pending upload/retry, plus pendingUpdate(1) — the latter is
+  /// status-only changes written by a refund (transactions are otherwise
+  /// immutable once created).
   Future<List<TransactionsTableData>> getPendingSync() {
     return (select(
       transactionsTable,
-    )..where((t) => t.syncStatus.isIn([0, 4]))).get();
+    )..where((t) => t.syncStatus.isIn([0, 1, 4]))).get();
+  }
+
+  /// Recomputes and writes `status` after a refund. Queues a status-only
+  /// push (`pendingUpdate`) rather than re-uploading the whole row — the
+  /// sale itself never changes, only this derived flag.
+  /// Does nothing to a row that is still `pendingUpload` (0): an unsynced
+  /// local row's full create payload already carries the new status, so a
+  /// separate status-only push would race the initial upload.
+  Future<void> updateStatus(String id, String status) async {
+    final existing = await getById(id);
+    if (existing == null) return;
+    final nextSyncStatus = existing.syncStatus == SyncStatus.pendingUpload.toInt()
+        ? existing.syncStatus
+        : SyncStatus.pendingUpdate.toInt();
+    await (update(transactionsTable)..where((t) => t.id.equals(id))).write(
+      TransactionsTableCompanion(
+        status: Value(status),
+        syncStatus: Value(nextSyncStatus),
+      ),
+    );
+  }
+
+  /// Reconciles `status` from pulled refund rows during sync — a self-heal
+  /// path, not a new local change, so it never touches `syncStatus`. Pushing
+  /// the same status right back would just create pointless push/pull churn
+  /// between devices.
+  Future<void> updateStatusFromServer(String id, String status) {
+    return (update(transactionsTable)..where((t) => t.id.equals(id))).write(
+      TransactionsTableCompanion(status: Value(status)),
+    );
   }
 
   /// Update sync status after a sync attempt.

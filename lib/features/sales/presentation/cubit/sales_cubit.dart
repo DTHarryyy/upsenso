@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:pos/features/sales/domain/entities/sale_transaction.dart';
@@ -78,11 +79,31 @@ class SalesCubit extends Cubit<SalesState> {
       if (s is SalesLoaded && s.expandedTxId == txId) {
         emit(s.copyWith(expandedItems: items, isLoadingItems: false));
       }
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[SalesCubit] Error in toggleExpand: $e\n$st');
       if (!isClosed) {
         final s = state;
         if (s is SalesLoaded) emit(s.copyWith(isLoadingItems: false));
       }
+    }
+  }
+
+  /// Re-fetches line items for the currently expanded transaction without
+  /// toggling it closed — called after a refund so the sheet's "refunded so
+  /// far" amounts reflect the change immediately rather than waiting for the
+  /// next expand tap.
+  Future<void> refreshExpandedItems() async {
+    final current = state;
+    if (current is! SalesLoaded || current.expandedTxId == null) return;
+    try {
+      final items = await _repository.getTransactionItems(
+        current.expandedTxId!,
+      );
+      if (isClosed) return;
+      final s = state;
+      if (s is SalesLoaded) emit(s.copyWith(expandedItems: items));
+    } catch (e, st) {
+      debugPrint('[SalesCubit] Error in refreshExpandedItems: $e\n$st');
     }
   }
 

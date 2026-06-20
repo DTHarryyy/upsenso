@@ -36,6 +36,12 @@ class TransactionsRemoteDs {
     await client.from('transaction_items').upsert(items);
   }
 
+  /// Status-only push for a refund. Sales are otherwise immutable, so this
+  /// never re-sends totals/items — only the derived `status` flag changes.
+  Future<void> updateTransactionStatus(String id, String status) async {
+    await client.from('transactions').update({'status': status}).eq('id', id);
+  }
+
   /// Transactions for a business, ordered by (updated_at, id) ascending so the
   /// incremental pull can page forward with a keyset cursor. Pass the last
   /// pulled (afterTs, afterId) to fetch only changed rows; omit for a full pull.
