@@ -676,6 +676,27 @@ class SyncService {
     );
   }
 
+  // Best-effort: persist a discarded local change after an LWW supersede. Must
+  // never throw into the sync loop — conflict logging can't be allowed to fail
+  // a sync. CLAUDE.md: never silently discard.
+  Future<void> _logSupersededConflict(
+    String table,
+    String recordId,
+    String businessId,
+    Map<String, dynamic> localData,
+  ) async {
+    try {
+      await _productsRemoteDs.logSyncConflict(
+        businessId: businessId,
+        tableName: table,
+        recordId: recordId,
+        localData: localData,
+      );
+    } catch (e, st) {
+      debugPrint('[SYNC] conflict log failed for $table $recordId: $e\n$st');
+    }
+  }
+
   // i sync namn yung mga products
 
   Future<SyncResult> _syncProducts() async {
@@ -751,6 +772,8 @@ class SyncService {
                 '[SYNC] Product ${record.id} push superseded by a newer '
                 'edit elsewhere — discarding local change',
               );
+              await _logSupersededConflict(
+                'products', record.id, record.businessId, record.toJson());
             }
             await _productsDao.updateSyncStatus(
               id: record.id,
@@ -845,6 +868,8 @@ class SyncService {
                 '[SYNC] Variant ${record.id} push superseded by a newer '
                 'edit elsewhere — discarding local change',
               );
+              await _logSupersededConflict(
+                'product_variants', record.id, record.businessId, record.toJson());
             }
             await _productVariantsDao.updateSyncStatus(
               id: record.id,
@@ -968,6 +993,10 @@ class SyncService {
                   (i) => {
                     'id': i.id,
                     'transaction_id': i.transactionId,
+                    // Tenant scope + sale time mirrored from the parent so the
+                    // server columns are populated without a join.
+                    'business_id': tx.businessId,
+                    'created_at': tx.createdAt.toUtc().toIso8601String(),
                     'variant_id': i.variantId,
                     'product_name': i.productName,
                     'variant_name': i.variantName,
@@ -1130,6 +1159,8 @@ class SyncService {
                   (i) => {
                     'id': i.id,
                     'refund_id': i.refundId,
+                    'business_id': refund.businessId,
+                    'created_at': refund.createdAt.toUtc().toIso8601String(),
                     'transaction_item_id': i.transactionItemId,
                     'variant_id': i.variantId,
                     'qty': i.qty,

@@ -302,6 +302,23 @@ class ProductsRemoteDs {
       _pullByBusiness('inventory_levels', businessId, 'updated_at',
           afterTs: afterTs, afterId: afterId, limit: limit);
 
+  /// Record a discarded local change after a Last-Write-Wins supersede so the
+  /// loss is never silent (CLAUDE.md: never silently discard).
+  Future<void> logSyncConflict({
+    required String businessId,
+    required String tableName,
+    required String recordId,
+    required Map<String, dynamic> localData,
+  }) async {
+    await client.from('sync_conflicts').insert({
+      'business_id': businessId,
+      'table_name': tableName,
+      'record_id': recordId,
+      'local_data': localData,
+      'resolution': 'lww_remote_wins',
+    });
+  }
+
   // ── STOCK LEDGER ─────────────────────────────────────────────────────────────
 
   Future<void> insertStockLedgerEntry({
