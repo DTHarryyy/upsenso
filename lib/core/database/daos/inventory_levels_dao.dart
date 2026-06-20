@@ -5,14 +5,6 @@ import 'package:pos/core/sync/sync_status.dart';
 
 part 'inventory_levels_dao.g.dart';
 
-extension InventoryLevelQuantity on InventoryLevelsTableData {
-  // A 0 decimal means "unset" — never let it mask the integer quantity.
-  double get effectiveQuantity =>
-      (quantityDecimal != null && quantityDecimal != 0)
-          ? quantityDecimal!
-          : quantity.toDouble();
-}
-
 @DriftAccessor(tables: [InventoryLevelsTable])
 class InventoryLevelsDao extends DatabaseAccessor<AppDatabase>
     with _$InventoryLevelsDaoMixin {
@@ -77,8 +69,7 @@ class InventoryLevelsDao extends DatabaseAccessor<AppDatabase>
     required String variantId,
     required String branchId,
     required String businessId,
-    required int quantity,
-    double? quantityDecimal,
+    required double quantity,
   }) {
     final id = makeId(variantId, branchId);
     return into(inventoryLevelsTable).insertOnConflictUpdate(
@@ -88,7 +79,6 @@ class InventoryLevelsDao extends DatabaseAccessor<AppDatabase>
         branchId: branchId,
         businessId: businessId,
         quantity: Value(quantity),
-        quantityDecimal: Value(quantityDecimal),
         syncStatus: const Value(1), // pendingUpdate
         localUpdatedAt: Value(DateTime.now()),
       ),
@@ -97,9 +87,8 @@ class InventoryLevelsDao extends DatabaseAccessor<AppDatabase>
 
   /// Atomically adjust the quantity for a variant+branch by [delta].
   ///
-  /// For unit products, pass [delta] (integer delta).
-  /// For fractional products (sellBy='fraction'), pass [deltaDecimal] instead;
-  /// [delta] should be 0 in that case.
+  /// [delta] is a signed decimal — positive for stock-in, negative for
+  /// stock-out — and holds whole units and fractions alike.
   ///
   /// A branch with no existing row starts from 0 — there is no global-stock
   /// seeding. Callers must NOT pass product_variants.stock as a seed.
@@ -107,32 +96,15 @@ class InventoryLevelsDao extends DatabaseAccessor<AppDatabase>
     required String variantId,
     required String branchId,
     required String businessId,
-    required int delta,
-    double? deltaDecimal,
+    required double delta,
   }) async {
     final id = makeId(variantId, branchId);
     final existing = await (select(inventoryLevelsTable)
           ..where((t) => t.id.equals(id)))
         .getSingleOrNull();
 
-    final int nextQty;
-    final double? nextDecimal;
-
-    if (deltaDecimal != null) {
-      // Fractional product path. Seed from the EFFECTIVE quantity so a row that
-      // until now tracked whole units (quantityDecimal still null) doesn't lose
-      // its existing stock the first time it receives a fractional movement.
-      final currentDecimal = existing?.effectiveQuantity ?? 0.0;
-      nextDecimal = (currentDecimal + deltaDecimal).clamp(0.0, 999999.0);
-      // Keep the integer column as a rounded mirror so int-only readers and the
-      // variant-total recompute stay consistent with the decimal source.
-      nextQty = nextDecimal.round().clamp(0, 999999);
-    } else {
-      // Unit product path
-      final current = existing?.quantity ?? 0;
-      nextQty = (current + delta).clamp(0, 999999);
-      nextDecimal = existing?.quantityDecimal;
-    }
+    final current = existing?.quantity ?? 0.0;
+    final next = (current + delta).clamp(0.0, 999999.0);
 
     await into(inventoryLevelsTable).insertOnConflictUpdate(
       InventoryLevelsTableCompanion.insert(
@@ -140,8 +112,7 @@ class InventoryLevelsDao extends DatabaseAccessor<AppDatabase>
         variantId: variantId,
         branchId: branchId,
         businessId: businessId,
-        quantity: Value(nextQty),
-        quantityDecimal: Value(nextDecimal),
+        quantity: Value(next),
         syncStatus: const Value(1),
         localUpdatedAt: Value(DateTime.now()),
       ),
@@ -218,9 +189,12 @@ class InventoryLevelsDao extends DatabaseAccessor<AppDatabase>
       return;
     }
 
-    // 0 means "no decimal" — legacy unit rows pushed 0.0; keep it from masking quantity.
+    // Server `quantity` is the single source of truth. Fall back to a legacy
+    // quantity_decimal only if an older server row still carries a non-zero one.
     final rawDecimal = (row['quantity_decimal'] as num?)?.toDouble();
-    final decimal = (rawDecimal == null || rawDecimal == 0) ? null : rawDecimal;
+    final qty = (rawDecimal != null && rawDecimal != 0)
+        ? rawDecimal
+        : ((row['quantity'] as num?)?.toDouble() ?? 0.0);
 
     await into(inventoryLevelsTable).insertOnConflictUpdate(
       InventoryLevelsTableCompanion.insert(
@@ -228,8 +202,7 @@ class InventoryLevelsDao extends DatabaseAccessor<AppDatabase>
         variantId: variantId,
         branchId: branchId,
         businessId: row['business_id'] as String,
-        quantity: Value((row['quantity'] as int?) ?? 0),
-        quantityDecimal: Value(decimal),
+        quantity: Value(qty),
         lowStockAlertOverride: Value(row['low_stock_alert_override'] as int?),
         syncStatus: Value(SyncStatus.synced.toInt()),
         localUpdatedAt: Value(DateTime.now()),

@@ -28,7 +28,7 @@ class ProductMatcher {
                   variantId: pw.variant.id,
                   variantName: pw.variant.name,
                   price: pw.variant.price,
-                  stock: pw.variant.stock,
+                  stock: pw.variant.stock.round(),
                   trackStock: pw.variant.trackStock,
                 ))
             .toList();
@@ -60,7 +60,7 @@ class ProductMatcher {
             unitPrice: best.variant.price,
             taxRate: best.product.tax,
             quantity: item.quantity,
-            availableStock: best.variant.stock,
+            availableStock: best.variant.stock.round(),
             trackStock: best.variant.trackStock,
             availableVariants: allVariants,
           ));

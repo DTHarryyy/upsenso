@@ -228,13 +228,13 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   ///   Variants with no rows are absent; callers fall back to
   ///   [ProductVariantsTableData.stock] in that case.
   /// - Specific branch: returns that branch's exact quantity (absent = 0 to caller).
-  Future<Map<String, int>> loadBranchStockMap(List<String> variantIds) async {
-    final result = <String, int>{};
+  Future<Map<String, double>> loadBranchStockMap(List<String> variantIds) async {
+    final result = <String, double>{};
     if (selectedBranchId == null) {
       for (final id in variantIds) {
         final levels = await _levelsDao.getByVariantId(id);
         if (levels.isNotEmpty) {
-          result[id] = levels.fold(0, (sum, l) => sum + l.quantity);
+          result[id] = levels.fold(0.0, (sum, l) => sum + l.quantity);
         }
       }
       return result;
@@ -277,7 +277,6 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     }
     try {
       final isAdvanced = state.mode == ProductFormMode.advanced;
-      final isFraction = data.sellBy == 'fraction';
       final hasVariants = isAdvanced && state.hasVariants;
 
       final tax = (data.taxPercent?.trim().isNotEmpty == true)
@@ -309,7 +308,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       // id ends up representing that name after this edit.
       final oldVariants = await _productVariantsDao.getByProductId(productId);
       // variantName → { branchId → (qty, qtyDecimal) }
-      final savedLevels = <String, Map<String, ({int qty, double? qtyDec})>>{};
+      final savedLevels = <String, Map<String, double>>{};
       // variantName → existing id. Reusing the id when a name survives the
       // edit keeps any cart item / recipe line / stock-ledger row pointing at
       // it valid — regenerating a fresh UUID here used to silently orphan
@@ -320,8 +319,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         final levels = await _levelsDao.getByVariantId(v.id);
         if (levels.isNotEmpty) {
           savedLevels[v.name] = {
-            for (final l in levels)
-              l.branchId: (qty: l.quantity, qtyDec: l.quantityDecimal),
+            for (final l in levels) l.branchId: l.quantity,
           };
         }
       }
@@ -334,7 +332,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
       // variantName → newId — used to restore saved levels after insert.
       final variantNameToNewId = <String, String>{};
-      final seeds = <({String variantId, int qty, double? qtyDecimal})>[];
+      final seeds = <({String variantId, double qty})>[];
 
       if (hasVariants) {
         final companions = <ProductVariantsTableCompanion>[];
@@ -347,12 +345,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           final vCost = (v.costPrice?.trim().isNotEmpty == true)
               ? double.tryParse(v.costPrice!)
               : null;
-          final vStockInt = (state.trackInventory && !isFraction)
-              ? (int.tryParse(v.stock ?? '') ?? 0)
-              : 0;
-          final vStockReal = (state.trackInventory && isFraction)
-              ? double.tryParse(v.stock ?? '')
-              : null;
+          final vStock = state.trackInventory
+              ? (double.tryParse(v.stock ?? '') ?? 0.0)
+              : 0.0;
           final vLowAlert = (v.lowStockAlert?.trim().isNotEmpty == true)
               ? int.tryParse(v.lowStockAlert!)
               : null;
@@ -369,8 +364,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
               costPrice: Value(vCost),
               retailPrice: const Value(null),
               barcode: Value(vBarcode),
-              stock: Value(vStockInt),
-              stockDecimal: Value(vStockReal),
+              stock: Value(vStock),
               lowStockAlert: Value(vLowAlert),
               trackStock: Value(state.trackInventory),
               trackExpiry: Value(state.trackExpiry),
@@ -383,7 +377,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             ),
           );
           variantNameToNewId[name] = id;
-          seeds.add((variantId: id, qty: vStockInt, qtyDecimal: vStockReal));
+          seeds.add((variantId: id, qty: vStock));
         }
         await _productVariantsDao.insertVariants(companions);
       } else if (isAdvanced) {
@@ -399,12 +393,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         final retail = (data.retailPrice?.trim().isNotEmpty == true)
             ? double.tryParse(data.retailPrice!)
             : null;
-        final stockInt = (state.trackInventory && !isFraction)
-            ? (int.tryParse(data.stock ?? '') ?? 0)
-            : 0;
-        final stockReal = (state.trackInventory && isFraction)
-            ? double.tryParse(data.stock ?? '')
-            : null;
+        final stockValue = state.trackInventory
+            ? (double.tryParse(data.stock ?? '') ?? 0.0)
+            : 0.0;
         final lowAlert = (data.lowStockAlert?.trim().isNotEmpty == true)
             ? int.tryParse(data.lowStockAlert!)
             : null;
@@ -418,8 +409,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             costPrice: Value(cost),
             retailPrice: Value(retail),
             barcode: Value(variantBarcode.isNotEmpty ? variantBarcode : null),
-            stock: Value(stockInt),
-            stockDecimal: Value(stockReal),
+            stock: Value(stockValue),
             lowStockAlert: Value(lowAlert),
             trackStock: Value(state.trackInventory),
             trackExpiry: Value(state.trackExpiry),
@@ -432,7 +422,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           ),
         );
         variantNameToNewId['Default'] = id;
-        seeds.add((variantId: id, qty: stockInt, qtyDecimal: stockReal));
+        seeds.add((variantId: id, qty: stockValue));
       } else {
         // Simple mode — no inventory tracking
         final existingId = oldIdByName['Default'];
@@ -449,8 +439,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             price: Value(price),
             costPrice: const Value(null),
             retailPrice: const Value(null),
-            stock: const Value(0),
-            stockDecimal: const Value(null),
+            stock: const Value(0.0),
             lowStockAlert: const Value(null),
             barcode: Value(
               simpleBarcode?.isNotEmpty == true ? simpleBarcode : null,
@@ -492,8 +481,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             variantId: newId,
             branchId: branchId,
             businessId: businessId,
-            quantity: branchEntry.value.qty,
-            quantityDecimal: branchEntry.value.qtyDec,
+            quantity: branchEntry.value,
           );
         }
       }
@@ -501,7 +489,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       // Seed/update inventory_levels for the selected branch with the
       // quantities from the form. No-op when selectedBranchId is null.
       if (state.trackInventory && seeds.isNotEmpty) {
-        await _seedInventoryLevels(seeds, isFraction);
+        await _seedInventoryLevels(seeds);
       }
 
       // Reconcile product_variants.stock with the real inventory_levels sum so
@@ -510,7 +498,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       if (state.trackInventory) {
         for (final newId in variantNameToNewId.values) {
           final levels = await _levelsDao.getByVariantId(newId);
-          final total = levels.fold(0, (sum, l) => sum + l.quantity);
+          final total = levels.fold(0.0, (sum, l) => sum + l.quantity);
           await _productVariantsDao.updateVariantStock(newId, total);
         }
       }
@@ -640,7 +628,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       );
 
       // Collects (variantId, initialQty, initialQtyDecimal) for inventory seeding.
-      final seeds = <({String variantId, int qty, double? qtyDecimal})>[];
+      final seeds = <({String variantId, double qty})>[];
 
       if (hasVariants) {
         // Advanced + variants ON: one row per variant with per-variant barcode.
@@ -651,12 +639,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           final vCost = (v.costPrice?.trim().isNotEmpty == true)
               ? double.tryParse(v.costPrice!)
               : null;
-          final vStockInt = (state.trackInventory && !isFraction)
-              ? (int.tryParse(v.stock ?? '') ?? 0)
-              : 0;
-          final vStockReal = (state.trackInventory && isFraction)
-              ? double.tryParse(v.stock ?? '')
-              : null;
+          final vStock = state.trackInventory
+              ? (double.tryParse(v.stock ?? '') ?? 0.0)
+              : 0.0;
           final vLowAlert = (v.lowStockAlert?.trim().isNotEmpty == true)
               ? int.tryParse(v.lowStockAlert!)
               : null;
@@ -673,15 +658,14 @@ class ProductFormCubit extends Cubit<ProductFormState> {
               costPrice: Value(vCost),
               retailPrice: const Value(null),
               barcode: Value(vBarcode),
-              stock: Value(vStockInt),
-              stockDecimal: Value(vStockReal),
+              stock: Value(vStock),
               lowStockAlert: Value(vLowAlert),
               trackStock: Value(state.trackInventory),
               trackExpiry: Value(state.trackExpiry),
               expiryDate: Value(state.trackExpiry ? state.expiryDate : null),
             ),
           );
-          seeds.add((variantId: id, qty: vStockInt, qtyDecimal: vStockReal));
+          seeds.add((variantId: id, qty: vStock));
         }
         await _productVariantsDao.insertVariants(companions);
       } else if (isAdvanced) {
@@ -696,12 +680,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         final retail = (data.retailPrice?.trim().isNotEmpty == true)
             ? double.tryParse(data.retailPrice!)
             : null;
-        final stockInt = (state.trackInventory && !isFraction)
-            ? (int.tryParse(data.stock ?? '') ?? 0)
-            : 0;
-        final stockReal = (state.trackInventory && isFraction)
-            ? double.tryParse(data.stock ?? '')
-            : null;
+        final stockValue = state.trackInventory
+            ? (double.tryParse(data.stock ?? '') ?? 0.0)
+            : 0.0;
         final lowAlert = (data.lowStockAlert?.trim().isNotEmpty == true)
             ? int.tryParse(data.lowStockAlert!)
             : null;
@@ -715,15 +696,14 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             costPrice: Value(cost),
             retailPrice: Value(retail),
             barcode: Value(variantBarcode.isNotEmpty ? variantBarcode : null),
-            stock: Value(stockInt),
-            stockDecimal: Value(stockReal),
+            stock: Value(stockValue),
             lowStockAlert: Value(lowAlert),
             trackStock: Value(state.trackInventory),
             trackExpiry: Value(state.trackExpiry),
             expiryDate: Value(state.trackExpiry ? state.expiryDate : null),
           ),
         );
-        seeds.add((variantId: id, qty: stockInt, qtyDecimal: stockReal));
+        seeds.add((variantId: id, qty: stockValue));
       } else {
         // Simple mode: no inventory tracking — skip seeding entirely.
         final price = double.tryParse(data.simplePrice ?? '') ?? 0.0;
@@ -737,8 +717,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             price: Value(price),
             costPrice: const Value(null),
             retailPrice: const Value(null),
-            stock: const Value(0),
-            stockDecimal: const Value(null),
+            stock: const Value(0.0),
             lowStockAlert: const Value(null),
             barcode: Value(
               simpleBarcode?.isNotEmpty == true ? simpleBarcode : null,
@@ -752,9 +731,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
       // Seed inventory_levels for tracked variants after product creation.
       if (state.trackInventory && seeds.isNotEmpty) {
-        final hasActualStock = seeds.any(
-          (s) => s.qty > 0 || (s.qtyDecimal != null && s.qtyDecimal! > 0),
-        );
+        final hasActualStock = seeds.any((s) => s.qty > 0);
 
         if (selectedBranchId == null && hasActualStock) {
           // All Branches + real opening stock → defer seeding; show dialog so
@@ -773,7 +750,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           return;
         }
 
-        await _seedInventoryLevels(seeds, isFraction);
+        await _seedInventoryLevels(seeds);
       }
 
       // Save recipe lines per variant (variants mode) or for the single
@@ -815,8 +792,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   /// When [selectedBranchId] is null (All Branches), this is a no-op — the
   /// branch assignment dialog handles seeding via [assignInventoryToBranch].
   Future<void> _seedInventoryLevels(
-    List<({String variantId, int qty, double? qtyDecimal})> variants,
-    bool isFraction,
+    List<({String variantId, double qty})> variants,
   ) async {
     if (selectedBranchId == null) return;
 
@@ -826,7 +802,6 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         branchId: selectedBranchId!,
         businessId: businessId,
         quantity: v.qty,
-        quantityDecimal: isFraction ? v.qtyDecimal : null,
       );
     }
   }
@@ -843,7 +818,6 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         branchId: branchId,
         businessId: businessId,
         quantity: v.qty,
-        quantityDecimal: pending.isFraction ? v.qtyDecimal : null,
       );
     }
     emit(state.copyWith(clearPendingBranchAssignment: true));

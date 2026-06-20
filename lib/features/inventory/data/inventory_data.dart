@@ -20,11 +20,12 @@ class InventoryItem extends Equatable {
   final String? sku;
 
   /// Stock keyed by branchId. A null key means "global / no branch".
-  final Map<String, int> stockByBranch;
+  /// Decimal — holds whole units and fractional quantities alike.
+  final Map<String, double> stockByBranch;
 
   /// Total stock across all branches (or from product_variants.stock when
-  /// no per-branch entries exist yet).
-  final int totalStock;
+  /// no per-branch entries exist yet). Decimal (unit + fractional products).
+  final double totalStock;
 
   /// Reorder threshold from product_variants.lowStockAlert (0 when unset).
   final int reorderLevel;

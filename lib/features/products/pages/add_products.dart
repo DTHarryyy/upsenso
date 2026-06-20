@@ -182,7 +182,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
       }
     }
 
-    int stockFor(ProductVariantsTableData v) => branchStock[v.id] ?? v.stock;
+    double stockFor(ProductVariantsTableData v) => branchStock[v.id] ?? v.stock;
 
     if (product.hasVariants) {
       _variants.clear();

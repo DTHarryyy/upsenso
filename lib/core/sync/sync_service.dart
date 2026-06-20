@@ -814,7 +814,6 @@ class SyncService {
               stock: record.stock,
               sku: record.sku,
               barcode: record.barcode,
-              stockDecimal: record.stockDecimal,
               trackExpiry: record.trackExpiry,
               expiryDate: record.expiryDate?.millisecondsSinceEpoch,
               isActive: record.isActive,
@@ -1284,7 +1283,6 @@ class SyncService {
           branchId: record.branchId,
           businessId: record.businessId,
           quantity: record.quantity,
-          quantityDecimal: record.quantityDecimal,
           lowStockAlertOverride: record.lowStockAlertOverride,
         );
         await _inventoryLevelsDao.updateSyncStatus(

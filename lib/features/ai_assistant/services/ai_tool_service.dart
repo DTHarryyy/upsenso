@@ -280,7 +280,8 @@ class AiToolService {
         name: pw.product.name,
         variantName: pw.variant.name,
         price: pw.variant.price,
-        stock: pw.variant.stock,
+        // Display/hint surface — round the decimal stock for the AI model.
+        stock: pw.variant.stock.round(),
       );
     }).toList();
   }

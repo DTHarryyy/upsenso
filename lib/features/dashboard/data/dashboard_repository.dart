@@ -287,7 +287,7 @@ class DashboardRepository implements IDashboardRepository {
       final display = v.name == 'Default' ? pName : '$pName (${v.name})';
       return LowStockItem(
         displayName: display,
-        currentStock: v.stock,
+        currentStock: v.stock.round(),
         reorderAt: v.lowStockAlert,
       );
     }).toList()..sort((a, b) => a.currentStock.compareTo(b.currentStock)));

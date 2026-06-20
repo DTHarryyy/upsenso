@@ -440,7 +440,7 @@ class ReportsRepository implements IReportsRepository {
       final displayName = v.name == 'Default' ? pName : '$pName (${v.name})';
       final totalQty = variantQty[v.id] ?? 0;
       final avgDailySale = totalQty / rangeDays;
-      final currentStock = v.stockDecimal ?? v.stock.toDouble();
+      final currentStock = v.stock;
       final daysLeft = avgDailySale > 0 ? currentStock / avgDailySale : null;
 
       // Determine status
@@ -660,7 +660,7 @@ class ReportsRepository implements IReportsRepository {
       branchLevelMap = {};
       for (final level in levels) {
         if (level.branchId != branchId) continue;
-        branchLevelMap[level.variantId] = level.effectiveQuantity;
+        branchLevelMap[level.variantId] = level.quantity;
       }
     }
 
@@ -672,7 +672,7 @@ class ReportsRepository implements IReportsRepository {
       final name = productToName[v.productId] ?? 'Unknown';
       final currentStock = branchLevelMap != null
           ? (branchLevelMap[v.id] ?? 0.0)
-          : (v.stockDecimal ?? v.stock.toDouble());
+          : v.stock;
       final consumedQty = consumedMap[v.id] ?? 0.0;
       final avgDailyConsumption = consumedQty / rangeDays;
       final daysLeft = avgDailyConsumption > 0

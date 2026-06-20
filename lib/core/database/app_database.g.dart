@@ -5111,13 +5111,13 @@ class $ProductVariantsTableTable extends ProductVariantsTable
   );
   static const VerificationMeta _stockMeta = const VerificationMeta('stock');
   @override
-  late final GeneratedColumn<int> stock = GeneratedColumn<int>(
+  late final GeneratedColumn<double> stock = GeneratedColumn<double>(
     'stock',
     aliasedName,
     false,
-    type: DriftSqlType.int,
+    type: DriftSqlType.double,
     requiredDuringInsert: false,
-    defaultValue: const Constant(0),
+    defaultValue: const Constant(0.0),
   );
   static const VerificationMeta _skuMeta = const VerificationMeta('sku');
   @override
@@ -5146,17 +5146,6 @@ class $ProductVariantsTableTable extends ProductVariantsTable
     aliasedName,
     true,
     type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _stockDecimalMeta = const VerificationMeta(
-    'stockDecimal',
-  );
-  @override
-  late final GeneratedColumn<double> stockDecimal = GeneratedColumn<double>(
-    'stock_decimal',
-    aliasedName,
-    true,
-    type: DriftSqlType.double,
     requiredDuringInsert: false,
   );
   static const VerificationMeta _lowStockAlertMeta = const VerificationMeta(
@@ -5287,7 +5276,6 @@ class $ProductVariantsTableTable extends ProductVariantsTable
     sku,
     barcode,
     unit,
-    stockDecimal,
     lowStockAlert,
     trackStock,
     trackExpiry,
@@ -5382,15 +5370,6 @@ class $ProductVariantsTableTable extends ProductVariantsTable
       context.handle(
         _unitMeta,
         unit.isAcceptableOrUnknown(data['unit']!, _unitMeta),
-      );
-    }
-    if (data.containsKey('stock_decimal')) {
-      context.handle(
-        _stockDecimalMeta,
-        stockDecimal.isAcceptableOrUnknown(
-          data['stock_decimal']!,
-          _stockDecimalMeta,
-        ),
       );
     }
     if (data.containsKey('low_stock_alert')) {
@@ -5500,7 +5479,7 @@ class $ProductVariantsTableTable extends ProductVariantsTable
         data['${effectivePrefix}retail_price'],
       ),
       stock: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.double,
         data['${effectivePrefix}stock'],
       )!,
       sku: attachedDatabase.typeMapping.read(
@@ -5514,10 +5493,6 @@ class $ProductVariantsTableTable extends ProductVariantsTable
       unit: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}unit'],
-      ),
-      stockDecimal: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
-        data['${effectivePrefix}stock_decimal'],
       ),
       lowStockAlert: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
@@ -5577,14 +5552,17 @@ class ProductVariantsTableData extends DataClass
 
   /// Suggested retail price / SRP. Optional on all product types.
   final double? retailPrice;
-  final int stock;
+
+  /// On-hand total across all branches. Single decimal column — holds whole
+  /// units and fractional quantities alike (sellBy='fraction'). Replaced the
+  /// old int `stock` + `stock_decimal` pair in schema v46.
+  final double stock;
   final String? sku;
   final String? barcode;
 
   /// Unit of measure for stock quantities (g, kg, ml, L, pcs). Null = 'pcs'.
   /// Used by ingredients and recipe lines; harmless for normal stock products.
   final String? unit;
-  final double? stockDecimal;
 
   /// Optional threshold below which a low-stock alert should be triggered.
   final int? lowStockAlert;
@@ -5613,7 +5591,6 @@ class ProductVariantsTableData extends DataClass
     this.sku,
     this.barcode,
     this.unit,
-    this.stockDecimal,
     this.lowStockAlert,
     required this.trackStock,
     required this.trackExpiry,
@@ -5638,7 +5615,7 @@ class ProductVariantsTableData extends DataClass
     if (!nullToAbsent || retailPrice != null) {
       map['retail_price'] = Variable<double>(retailPrice);
     }
-    map['stock'] = Variable<int>(stock);
+    map['stock'] = Variable<double>(stock);
     if (!nullToAbsent || sku != null) {
       map['sku'] = Variable<String>(sku);
     }
@@ -5647,9 +5624,6 @@ class ProductVariantsTableData extends DataClass
     }
     if (!nullToAbsent || unit != null) {
       map['unit'] = Variable<String>(unit);
-    }
-    if (!nullToAbsent || stockDecimal != null) {
-      map['stock_decimal'] = Variable<double>(stockDecimal);
     }
     if (!nullToAbsent || lowStockAlert != null) {
       map['low_stock_alert'] = Variable<int>(lowStockAlert);
@@ -5690,9 +5664,6 @@ class ProductVariantsTableData extends DataClass
           ? const Value.absent()
           : Value(barcode),
       unit: unit == null && nullToAbsent ? const Value.absent() : Value(unit),
-      stockDecimal: stockDecimal == null && nullToAbsent
-          ? const Value.absent()
-          : Value(stockDecimal),
       lowStockAlert: lowStockAlert == null && nullToAbsent
           ? const Value.absent()
           : Value(lowStockAlert),
@@ -5726,11 +5697,10 @@ class ProductVariantsTableData extends DataClass
       price: serializer.fromJson<double>(json['price']),
       costPrice: serializer.fromJson<double?>(json['costPrice']),
       retailPrice: serializer.fromJson<double?>(json['retailPrice']),
-      stock: serializer.fromJson<int>(json['stock']),
+      stock: serializer.fromJson<double>(json['stock']),
       sku: serializer.fromJson<String?>(json['sku']),
       barcode: serializer.fromJson<String?>(json['barcode']),
       unit: serializer.fromJson<String?>(json['unit']),
-      stockDecimal: serializer.fromJson<double?>(json['stockDecimal']),
       lowStockAlert: serializer.fromJson<int?>(json['lowStockAlert']),
       trackStock: serializer.fromJson<bool>(json['trackStock']),
       trackExpiry: serializer.fromJson<bool>(json['trackExpiry']),
@@ -5753,11 +5723,10 @@ class ProductVariantsTableData extends DataClass
       'price': serializer.toJson<double>(price),
       'costPrice': serializer.toJson<double?>(costPrice),
       'retailPrice': serializer.toJson<double?>(retailPrice),
-      'stock': serializer.toJson<int>(stock),
+      'stock': serializer.toJson<double>(stock),
       'sku': serializer.toJson<String?>(sku),
       'barcode': serializer.toJson<String?>(barcode),
       'unit': serializer.toJson<String?>(unit),
-      'stockDecimal': serializer.toJson<double?>(stockDecimal),
       'lowStockAlert': serializer.toJson<int?>(lowStockAlert),
       'trackStock': serializer.toJson<bool>(trackStock),
       'trackExpiry': serializer.toJson<bool>(trackExpiry),
@@ -5778,11 +5747,10 @@ class ProductVariantsTableData extends DataClass
     double? price,
     Value<double?> costPrice = const Value.absent(),
     Value<double?> retailPrice = const Value.absent(),
-    int? stock,
+    double? stock,
     Value<String?> sku = const Value.absent(),
     Value<String?> barcode = const Value.absent(),
     Value<String?> unit = const Value.absent(),
-    Value<double?> stockDecimal = const Value.absent(),
     Value<int?> lowStockAlert = const Value.absent(),
     bool? trackStock,
     bool? trackExpiry,
@@ -5804,7 +5772,6 @@ class ProductVariantsTableData extends DataClass
     sku: sku.present ? sku.value : this.sku,
     barcode: barcode.present ? barcode.value : this.barcode,
     unit: unit.present ? unit.value : this.unit,
-    stockDecimal: stockDecimal.present ? stockDecimal.value : this.stockDecimal,
     lowStockAlert: lowStockAlert.present
         ? lowStockAlert.value
         : this.lowStockAlert,
@@ -5838,9 +5805,6 @@ class ProductVariantsTableData extends DataClass
       sku: data.sku.present ? data.sku.value : this.sku,
       barcode: data.barcode.present ? data.barcode.value : this.barcode,
       unit: data.unit.present ? data.unit.value : this.unit,
-      stockDecimal: data.stockDecimal.present
-          ? data.stockDecimal.value
-          : this.stockDecimal,
       lowStockAlert: data.lowStockAlert.present
           ? data.lowStockAlert.value
           : this.lowStockAlert,
@@ -5881,7 +5845,6 @@ class ProductVariantsTableData extends DataClass
           ..write('sku: $sku, ')
           ..write('barcode: $barcode, ')
           ..write('unit: $unit, ')
-          ..write('stockDecimal: $stockDecimal, ')
           ..write('lowStockAlert: $lowStockAlert, ')
           ..write('trackStock: $trackStock, ')
           ..write('trackExpiry: $trackExpiry, ')
@@ -5896,7 +5859,7 @@ class ProductVariantsTableData extends DataClass
   }
 
   @override
-  int get hashCode => Object.hashAll([
+  int get hashCode => Object.hash(
     id,
     productId,
     businessId,
@@ -5908,7 +5871,6 @@ class ProductVariantsTableData extends DataClass
     sku,
     barcode,
     unit,
-    stockDecimal,
     lowStockAlert,
     trackStock,
     trackExpiry,
@@ -5918,7 +5880,7 @@ class ProductVariantsTableData extends DataClass
     lastSyncAttempt,
     syncError,
     localUpdatedAt,
-  ]);
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -5934,7 +5896,6 @@ class ProductVariantsTableData extends DataClass
           other.sku == this.sku &&
           other.barcode == this.barcode &&
           other.unit == this.unit &&
-          other.stockDecimal == this.stockDecimal &&
           other.lowStockAlert == this.lowStockAlert &&
           other.trackStock == this.trackStock &&
           other.trackExpiry == this.trackExpiry &&
@@ -5955,11 +5916,10 @@ class ProductVariantsTableCompanion
   final Value<double> price;
   final Value<double?> costPrice;
   final Value<double?> retailPrice;
-  final Value<int> stock;
+  final Value<double> stock;
   final Value<String?> sku;
   final Value<String?> barcode;
   final Value<String?> unit;
-  final Value<double?> stockDecimal;
   final Value<int?> lowStockAlert;
   final Value<bool> trackStock;
   final Value<bool> trackExpiry;
@@ -5982,7 +5942,6 @@ class ProductVariantsTableCompanion
     this.sku = const Value.absent(),
     this.barcode = const Value.absent(),
     this.unit = const Value.absent(),
-    this.stockDecimal = const Value.absent(),
     this.lowStockAlert = const Value.absent(),
     this.trackStock = const Value.absent(),
     this.trackExpiry = const Value.absent(),
@@ -6006,7 +5965,6 @@ class ProductVariantsTableCompanion
     this.sku = const Value.absent(),
     this.barcode = const Value.absent(),
     this.unit = const Value.absent(),
-    this.stockDecimal = const Value.absent(),
     this.lowStockAlert = const Value.absent(),
     this.trackStock = const Value.absent(),
     this.trackExpiry = const Value.absent(),
@@ -6029,11 +5987,10 @@ class ProductVariantsTableCompanion
     Expression<double>? price,
     Expression<double>? costPrice,
     Expression<double>? retailPrice,
-    Expression<int>? stock,
+    Expression<double>? stock,
     Expression<String>? sku,
     Expression<String>? barcode,
     Expression<String>? unit,
-    Expression<double>? stockDecimal,
     Expression<int>? lowStockAlert,
     Expression<bool>? trackStock,
     Expression<bool>? trackExpiry,
@@ -6057,7 +6014,6 @@ class ProductVariantsTableCompanion
       if (sku != null) 'sku': sku,
       if (barcode != null) 'barcode': barcode,
       if (unit != null) 'unit': unit,
-      if (stockDecimal != null) 'stock_decimal': stockDecimal,
       if (lowStockAlert != null) 'low_stock_alert': lowStockAlert,
       if (trackStock != null) 'track_stock': trackStock,
       if (trackExpiry != null) 'track_expiry': trackExpiry,
@@ -6079,11 +6035,10 @@ class ProductVariantsTableCompanion
     Value<double>? price,
     Value<double?>? costPrice,
     Value<double?>? retailPrice,
-    Value<int>? stock,
+    Value<double>? stock,
     Value<String?>? sku,
     Value<String?>? barcode,
     Value<String?>? unit,
-    Value<double?>? stockDecimal,
     Value<int?>? lowStockAlert,
     Value<bool>? trackStock,
     Value<bool>? trackExpiry,
@@ -6107,7 +6062,6 @@ class ProductVariantsTableCompanion
       sku: sku ?? this.sku,
       barcode: barcode ?? this.barcode,
       unit: unit ?? this.unit,
-      stockDecimal: stockDecimal ?? this.stockDecimal,
       lowStockAlert: lowStockAlert ?? this.lowStockAlert,
       trackStock: trackStock ?? this.trackStock,
       trackExpiry: trackExpiry ?? this.trackExpiry,
@@ -6146,7 +6100,7 @@ class ProductVariantsTableCompanion
       map['retail_price'] = Variable<double>(retailPrice.value);
     }
     if (stock.present) {
-      map['stock'] = Variable<int>(stock.value);
+      map['stock'] = Variable<double>(stock.value);
     }
     if (sku.present) {
       map['sku'] = Variable<String>(sku.value);
@@ -6156,9 +6110,6 @@ class ProductVariantsTableCompanion
     }
     if (unit.present) {
       map['unit'] = Variable<String>(unit.value);
-    }
-    if (stockDecimal.present) {
-      map['stock_decimal'] = Variable<double>(stockDecimal.value);
     }
     if (lowStockAlert.present) {
       map['low_stock_alert'] = Variable<int>(lowStockAlert.value);
@@ -6207,7 +6158,6 @@ class ProductVariantsTableCompanion
           ..write('sku: $sku, ')
           ..write('barcode: $barcode, ')
           ..write('unit: $unit, ')
-          ..write('stockDecimal: $stockDecimal, ')
           ..write('lowStockAlert: $lowStockAlert, ')
           ..write('trackStock: $trackStock, ')
           ..write('trackExpiry: $trackExpiry, ')
@@ -9792,24 +9742,13 @@ class $InventoryLevelsTableTable extends InventoryLevelsTable
     'quantity',
   );
   @override
-  late final GeneratedColumn<int> quantity = GeneratedColumn<int>(
+  late final GeneratedColumn<double> quantity = GeneratedColumn<double>(
     'quantity',
     aliasedName,
     false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(0),
-  );
-  static const VerificationMeta _quantityDecimalMeta = const VerificationMeta(
-    'quantityDecimal',
-  );
-  @override
-  late final GeneratedColumn<double> quantityDecimal = GeneratedColumn<double>(
-    'quantity_decimal',
-    aliasedName,
-    true,
     type: DriftSqlType.double,
     requiredDuringInsert: false,
+    defaultValue: const Constant(0.0),
   );
   static const VerificationMeta _lowStockAlertOverrideMeta =
       const VerificationMeta('lowStockAlertOverride');
@@ -9853,7 +9792,6 @@ class $InventoryLevelsTableTable extends InventoryLevelsTable
     branchId,
     businessId,
     quantity,
-    quantityDecimal,
     lowStockAlertOverride,
     syncStatus,
     localUpdatedAt,
@@ -9903,15 +9841,6 @@ class $InventoryLevelsTableTable extends InventoryLevelsTable
       context.handle(
         _quantityMeta,
         quantity.isAcceptableOrUnknown(data['quantity']!, _quantityMeta),
-      );
-    }
-    if (data.containsKey('quantity_decimal')) {
-      context.handle(
-        _quantityDecimalMeta,
-        quantityDecimal.isAcceptableOrUnknown(
-          data['quantity_decimal']!,
-          _quantityDecimalMeta,
-        ),
       );
     }
     if (data.containsKey('low_stock_alert_override')) {
@@ -9967,13 +9896,9 @@ class $InventoryLevelsTableTable extends InventoryLevelsTable
         data['${effectivePrefix}business_id'],
       )!,
       quantity: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.double,
         data['${effectivePrefix}quantity'],
       )!,
-      quantityDecimal: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
-        data['${effectivePrefix}quantity_decimal'],
-      ),
       lowStockAlertOverride: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}low_stock_alert_override'],
@@ -10005,11 +9930,10 @@ class InventoryLevelsTableData extends DataClass
   final String branchId;
   final String businessId;
 
-  /// Integer quantity for unit products (sellBy='unit').
-  final int quantity;
-
-  /// Decimal quantity for fractional products (sellBy='fraction'). Null for unit products.
-  final double? quantityDecimal;
+  /// On-hand quantity for this variant+branch. Single decimal column — holds
+  /// whole units and fractional quantities alike. Replaced the old int
+  /// `quantity` + `quantity_decimal` pair in schema v46.
+  final double quantity;
 
   /// Per-branch low stock alert threshold.
   /// NULL means fall back to [product_variants.lowStockAlert] as the global default.
@@ -10024,7 +9948,6 @@ class InventoryLevelsTableData extends DataClass
     required this.branchId,
     required this.businessId,
     required this.quantity,
-    this.quantityDecimal,
     this.lowStockAlertOverride,
     required this.syncStatus,
     required this.localUpdatedAt,
@@ -10036,10 +9959,7 @@ class InventoryLevelsTableData extends DataClass
     map['variant_id'] = Variable<String>(variantId);
     map['branch_id'] = Variable<String>(branchId);
     map['business_id'] = Variable<String>(businessId);
-    map['quantity'] = Variable<int>(quantity);
-    if (!nullToAbsent || quantityDecimal != null) {
-      map['quantity_decimal'] = Variable<double>(quantityDecimal);
-    }
+    map['quantity'] = Variable<double>(quantity);
     if (!nullToAbsent || lowStockAlertOverride != null) {
       map['low_stock_alert_override'] = Variable<int>(lowStockAlertOverride);
     }
@@ -10055,9 +9975,6 @@ class InventoryLevelsTableData extends DataClass
       branchId: Value(branchId),
       businessId: Value(businessId),
       quantity: Value(quantity),
-      quantityDecimal: quantityDecimal == null && nullToAbsent
-          ? const Value.absent()
-          : Value(quantityDecimal),
       lowStockAlertOverride: lowStockAlertOverride == null && nullToAbsent
           ? const Value.absent()
           : Value(lowStockAlertOverride),
@@ -10076,8 +9993,7 @@ class InventoryLevelsTableData extends DataClass
       variantId: serializer.fromJson<String>(json['variantId']),
       branchId: serializer.fromJson<String>(json['branchId']),
       businessId: serializer.fromJson<String>(json['businessId']),
-      quantity: serializer.fromJson<int>(json['quantity']),
-      quantityDecimal: serializer.fromJson<double?>(json['quantityDecimal']),
+      quantity: serializer.fromJson<double>(json['quantity']),
       lowStockAlertOverride: serializer.fromJson<int?>(
         json['lowStockAlertOverride'],
       ),
@@ -10093,8 +10009,7 @@ class InventoryLevelsTableData extends DataClass
       'variantId': serializer.toJson<String>(variantId),
       'branchId': serializer.toJson<String>(branchId),
       'businessId': serializer.toJson<String>(businessId),
-      'quantity': serializer.toJson<int>(quantity),
-      'quantityDecimal': serializer.toJson<double?>(quantityDecimal),
+      'quantity': serializer.toJson<double>(quantity),
       'lowStockAlertOverride': serializer.toJson<int?>(lowStockAlertOverride),
       'syncStatus': serializer.toJson<int>(syncStatus),
       'localUpdatedAt': serializer.toJson<DateTime>(localUpdatedAt),
@@ -10106,8 +10021,7 @@ class InventoryLevelsTableData extends DataClass
     String? variantId,
     String? branchId,
     String? businessId,
-    int? quantity,
-    Value<double?> quantityDecimal = const Value.absent(),
+    double? quantity,
     Value<int?> lowStockAlertOverride = const Value.absent(),
     int? syncStatus,
     DateTime? localUpdatedAt,
@@ -10117,9 +10031,6 @@ class InventoryLevelsTableData extends DataClass
     branchId: branchId ?? this.branchId,
     businessId: businessId ?? this.businessId,
     quantity: quantity ?? this.quantity,
-    quantityDecimal: quantityDecimal.present
-        ? quantityDecimal.value
-        : this.quantityDecimal,
     lowStockAlertOverride: lowStockAlertOverride.present
         ? lowStockAlertOverride.value
         : this.lowStockAlertOverride,
@@ -10137,9 +10048,6 @@ class InventoryLevelsTableData extends DataClass
           ? data.businessId.value
           : this.businessId,
       quantity: data.quantity.present ? data.quantity.value : this.quantity,
-      quantityDecimal: data.quantityDecimal.present
-          ? data.quantityDecimal.value
-          : this.quantityDecimal,
       lowStockAlertOverride: data.lowStockAlertOverride.present
           ? data.lowStockAlertOverride.value
           : this.lowStockAlertOverride,
@@ -10160,7 +10068,6 @@ class InventoryLevelsTableData extends DataClass
           ..write('branchId: $branchId, ')
           ..write('businessId: $businessId, ')
           ..write('quantity: $quantity, ')
-          ..write('quantityDecimal: $quantityDecimal, ')
           ..write('lowStockAlertOverride: $lowStockAlertOverride, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('localUpdatedAt: $localUpdatedAt')
@@ -10175,7 +10082,6 @@ class InventoryLevelsTableData extends DataClass
     branchId,
     businessId,
     quantity,
-    quantityDecimal,
     lowStockAlertOverride,
     syncStatus,
     localUpdatedAt,
@@ -10189,7 +10095,6 @@ class InventoryLevelsTableData extends DataClass
           other.branchId == this.branchId &&
           other.businessId == this.businessId &&
           other.quantity == this.quantity &&
-          other.quantityDecimal == this.quantityDecimal &&
           other.lowStockAlertOverride == this.lowStockAlertOverride &&
           other.syncStatus == this.syncStatus &&
           other.localUpdatedAt == this.localUpdatedAt);
@@ -10201,8 +10106,7 @@ class InventoryLevelsTableCompanion
   final Value<String> variantId;
   final Value<String> branchId;
   final Value<String> businessId;
-  final Value<int> quantity;
-  final Value<double?> quantityDecimal;
+  final Value<double> quantity;
   final Value<int?> lowStockAlertOverride;
   final Value<int> syncStatus;
   final Value<DateTime> localUpdatedAt;
@@ -10213,7 +10117,6 @@ class InventoryLevelsTableCompanion
     this.branchId = const Value.absent(),
     this.businessId = const Value.absent(),
     this.quantity = const Value.absent(),
-    this.quantityDecimal = const Value.absent(),
     this.lowStockAlertOverride = const Value.absent(),
     this.syncStatus = const Value.absent(),
     this.localUpdatedAt = const Value.absent(),
@@ -10225,7 +10128,6 @@ class InventoryLevelsTableCompanion
     required String branchId,
     required String businessId,
     this.quantity = const Value.absent(),
-    this.quantityDecimal = const Value.absent(),
     this.lowStockAlertOverride = const Value.absent(),
     this.syncStatus = const Value.absent(),
     this.localUpdatedAt = const Value.absent(),
@@ -10239,8 +10141,7 @@ class InventoryLevelsTableCompanion
     Expression<String>? variantId,
     Expression<String>? branchId,
     Expression<String>? businessId,
-    Expression<int>? quantity,
-    Expression<double>? quantityDecimal,
+    Expression<double>? quantity,
     Expression<int>? lowStockAlertOverride,
     Expression<int>? syncStatus,
     Expression<DateTime>? localUpdatedAt,
@@ -10252,7 +10153,6 @@ class InventoryLevelsTableCompanion
       if (branchId != null) 'branch_id': branchId,
       if (businessId != null) 'business_id': businessId,
       if (quantity != null) 'quantity': quantity,
-      if (quantityDecimal != null) 'quantity_decimal': quantityDecimal,
       if (lowStockAlertOverride != null)
         'low_stock_alert_override': lowStockAlertOverride,
       if (syncStatus != null) 'sync_status': syncStatus,
@@ -10266,8 +10166,7 @@ class InventoryLevelsTableCompanion
     Value<String>? variantId,
     Value<String>? branchId,
     Value<String>? businessId,
-    Value<int>? quantity,
-    Value<double?>? quantityDecimal,
+    Value<double>? quantity,
     Value<int?>? lowStockAlertOverride,
     Value<int>? syncStatus,
     Value<DateTime>? localUpdatedAt,
@@ -10279,7 +10178,6 @@ class InventoryLevelsTableCompanion
       branchId: branchId ?? this.branchId,
       businessId: businessId ?? this.businessId,
       quantity: quantity ?? this.quantity,
-      quantityDecimal: quantityDecimal ?? this.quantityDecimal,
       lowStockAlertOverride:
           lowStockAlertOverride ?? this.lowStockAlertOverride,
       syncStatus: syncStatus ?? this.syncStatus,
@@ -10304,10 +10202,7 @@ class InventoryLevelsTableCompanion
       map['business_id'] = Variable<String>(businessId.value);
     }
     if (quantity.present) {
-      map['quantity'] = Variable<int>(quantity.value);
-    }
-    if (quantityDecimal.present) {
-      map['quantity_decimal'] = Variable<double>(quantityDecimal.value);
+      map['quantity'] = Variable<double>(quantity.value);
     }
     if (lowStockAlertOverride.present) {
       map['low_stock_alert_override'] = Variable<int>(
@@ -10334,7 +10229,6 @@ class InventoryLevelsTableCompanion
           ..write('branchId: $branchId, ')
           ..write('businessId: $businessId, ')
           ..write('quantity: $quantity, ')
-          ..write('quantityDecimal: $quantityDecimal, ')
           ..write('lowStockAlertOverride: $lowStockAlertOverride, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('localUpdatedAt: $localUpdatedAt, ')
@@ -24328,11 +24222,10 @@ typedef $$ProductVariantsTableTableCreateCompanionBuilder =
       Value<double> price,
       Value<double?> costPrice,
       Value<double?> retailPrice,
-      Value<int> stock,
+      Value<double> stock,
       Value<String?> sku,
       Value<String?> barcode,
       Value<String?> unit,
-      Value<double?> stockDecimal,
       Value<int?> lowStockAlert,
       Value<bool> trackStock,
       Value<bool> trackExpiry,
@@ -24353,11 +24246,10 @@ typedef $$ProductVariantsTableTableUpdateCompanionBuilder =
       Value<double> price,
       Value<double?> costPrice,
       Value<double?> retailPrice,
-      Value<int> stock,
+      Value<double> stock,
       Value<String?> sku,
       Value<String?> barcode,
       Value<String?> unit,
-      Value<double?> stockDecimal,
       Value<int?> lowStockAlert,
       Value<bool> trackStock,
       Value<bool> trackExpiry,
@@ -24414,7 +24306,7 @@ class $$ProductVariantsTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get stock => $composableBuilder(
+  ColumnFilters<double> get stock => $composableBuilder(
     column: $table.stock,
     builder: (column) => ColumnFilters(column),
   );
@@ -24431,11 +24323,6 @@ class $$ProductVariantsTableTableFilterComposer
 
   ColumnFilters<String> get unit => $composableBuilder(
     column: $table.unit,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<double> get stockDecimal => $composableBuilder(
-    column: $table.stockDecimal,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -24529,7 +24416,7 @@ class $$ProductVariantsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get stock => $composableBuilder(
+  ColumnOrderings<double> get stock => $composableBuilder(
     column: $table.stock,
     builder: (column) => ColumnOrderings(column),
   );
@@ -24546,11 +24433,6 @@ class $$ProductVariantsTableTableOrderingComposer
 
   ColumnOrderings<String> get unit => $composableBuilder(
     column: $table.unit,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<double> get stockDecimal => $composableBuilder(
-    column: $table.stockDecimal,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -24634,7 +24516,7 @@ class $$ProductVariantsTableTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get stock =>
+  GeneratedColumn<double> get stock =>
       $composableBuilder(column: $table.stock, builder: (column) => column);
 
   GeneratedColumn<String> get sku =>
@@ -24645,11 +24527,6 @@ class $$ProductVariantsTableTableAnnotationComposer
 
   GeneratedColumn<String> get unit =>
       $composableBuilder(column: $table.unit, builder: (column) => column);
-
-  GeneratedColumn<double> get stockDecimal => $composableBuilder(
-    column: $table.stockDecimal,
-    builder: (column) => column,
-  );
 
   GeneratedColumn<int> get lowStockAlert => $composableBuilder(
     column: $table.lowStockAlert,
@@ -24743,11 +24620,10 @@ class $$ProductVariantsTableTableTableManager
                 Value<double> price = const Value.absent(),
                 Value<double?> costPrice = const Value.absent(),
                 Value<double?> retailPrice = const Value.absent(),
-                Value<int> stock = const Value.absent(),
+                Value<double> stock = const Value.absent(),
                 Value<String?> sku = const Value.absent(),
                 Value<String?> barcode = const Value.absent(),
                 Value<String?> unit = const Value.absent(),
-                Value<double?> stockDecimal = const Value.absent(),
                 Value<int?> lowStockAlert = const Value.absent(),
                 Value<bool> trackStock = const Value.absent(),
                 Value<bool> trackExpiry = const Value.absent(),
@@ -24770,7 +24646,6 @@ class $$ProductVariantsTableTableTableManager
                 sku: sku,
                 barcode: barcode,
                 unit: unit,
-                stockDecimal: stockDecimal,
                 lowStockAlert: lowStockAlert,
                 trackStock: trackStock,
                 trackExpiry: trackExpiry,
@@ -24791,11 +24666,10 @@ class $$ProductVariantsTableTableTableManager
                 Value<double> price = const Value.absent(),
                 Value<double?> costPrice = const Value.absent(),
                 Value<double?> retailPrice = const Value.absent(),
-                Value<int> stock = const Value.absent(),
+                Value<double> stock = const Value.absent(),
                 Value<String?> sku = const Value.absent(),
                 Value<String?> barcode = const Value.absent(),
                 Value<String?> unit = const Value.absent(),
-                Value<double?> stockDecimal = const Value.absent(),
                 Value<int?> lowStockAlert = const Value.absent(),
                 Value<bool> trackStock = const Value.absent(),
                 Value<bool> trackExpiry = const Value.absent(),
@@ -24818,7 +24692,6 @@ class $$ProductVariantsTableTableTableManager
                 sku: sku,
                 barcode: barcode,
                 unit: unit,
-                stockDecimal: stockDecimal,
                 lowStockAlert: lowStockAlert,
                 trackStock: trackStock,
                 trackExpiry: trackExpiry,
@@ -26527,8 +26400,7 @@ typedef $$InventoryLevelsTableTableCreateCompanionBuilder =
       required String variantId,
       required String branchId,
       required String businessId,
-      Value<int> quantity,
-      Value<double?> quantityDecimal,
+      Value<double> quantity,
       Value<int?> lowStockAlertOverride,
       Value<int> syncStatus,
       Value<DateTime> localUpdatedAt,
@@ -26540,8 +26412,7 @@ typedef $$InventoryLevelsTableTableUpdateCompanionBuilder =
       Value<String> variantId,
       Value<String> branchId,
       Value<String> businessId,
-      Value<int> quantity,
-      Value<double?> quantityDecimal,
+      Value<double> quantity,
       Value<int?> lowStockAlertOverride,
       Value<int> syncStatus,
       Value<DateTime> localUpdatedAt,
@@ -26577,13 +26448,8 @@ class $$InventoryLevelsTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get quantity => $composableBuilder(
+  ColumnFilters<double> get quantity => $composableBuilder(
     column: $table.quantity,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<double> get quantityDecimal => $composableBuilder(
-    column: $table.quantityDecimal,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -26632,13 +26498,8 @@ class $$InventoryLevelsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get quantity => $composableBuilder(
+  ColumnOrderings<double> get quantity => $composableBuilder(
     column: $table.quantity,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<double> get quantityDecimal => $composableBuilder(
-    column: $table.quantityDecimal,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -26681,13 +26542,8 @@ class $$InventoryLevelsTableTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get quantity =>
+  GeneratedColumn<double> get quantity =>
       $composableBuilder(column: $table.quantity, builder: (column) => column);
-
-  GeneratedColumn<double> get quantityDecimal => $composableBuilder(
-    column: $table.quantityDecimal,
-    builder: (column) => column,
-  );
 
   GeneratedColumn<int> get lowStockAlertOverride => $composableBuilder(
     column: $table.lowStockAlertOverride,
@@ -26752,8 +26608,7 @@ class $$InventoryLevelsTableTableTableManager
                 Value<String> variantId = const Value.absent(),
                 Value<String> branchId = const Value.absent(),
                 Value<String> businessId = const Value.absent(),
-                Value<int> quantity = const Value.absent(),
-                Value<double?> quantityDecimal = const Value.absent(),
+                Value<double> quantity = const Value.absent(),
                 Value<int?> lowStockAlertOverride = const Value.absent(),
                 Value<int> syncStatus = const Value.absent(),
                 Value<DateTime> localUpdatedAt = const Value.absent(),
@@ -26764,7 +26619,6 @@ class $$InventoryLevelsTableTableTableManager
                 branchId: branchId,
                 businessId: businessId,
                 quantity: quantity,
-                quantityDecimal: quantityDecimal,
                 lowStockAlertOverride: lowStockAlertOverride,
                 syncStatus: syncStatus,
                 localUpdatedAt: localUpdatedAt,
@@ -26776,8 +26630,7 @@ class $$InventoryLevelsTableTableTableManager
                 required String variantId,
                 required String branchId,
                 required String businessId,
-                Value<int> quantity = const Value.absent(),
-                Value<double?> quantityDecimal = const Value.absent(),
+                Value<double> quantity = const Value.absent(),
                 Value<int?> lowStockAlertOverride = const Value.absent(),
                 Value<int> syncStatus = const Value.absent(),
                 Value<DateTime> localUpdatedAt = const Value.absent(),
@@ -26788,7 +26641,6 @@ class $$InventoryLevelsTableTableTableManager
                 branchId: branchId,
                 businessId: businessId,
                 quantity: quantity,
-                quantityDecimal: quantityDecimal,
                 lowStockAlertOverride: lowStockAlertOverride,
                 syncStatus: syncStatus,
                 localUpdatedAt: localUpdatedAt,

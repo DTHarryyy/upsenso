@@ -70,35 +70,24 @@ class StockMovementService {
         ),
       );
 
-      // A movement is fractional when the variant tracks decimals or the
-      // quantity itself is not a whole number. Routing those through the int
-      // path truncates the fraction and silently drops stock (e.g. selling
-      // 0.5 kg deducts nothing). Whole-unit movements keep the int path so
-      // existing unit-product behaviour is unchanged.
-      final variant = await _variantsDao.getById(variantId);
-      final bool fractional =
-          variant?.stockDecimal != null || delta != delta.roundToDouble();
-
+      // Single decimal quantity — holds whole units and fractions alike, so
+      // there's no int path to truncate a fractional movement (e.g. 0.5 kg).
       await _levelsDao.adjustQuantity(
         variantId: variantId,
         branchId: branchId,
         businessId: businessId,
-        delta: delta.round(),
-        deltaDecimal: fractional ? delta : null,
+        delta: delta,
       );
 
-      // Recompute variant-level total from the sum of all branch levels using
-      // the effective (decimal-aware) quantity, not the raw int column.
+      // Recompute the variant-level total from the sum of all branch levels.
       final allLevels = await _levelsDao.getByVariantId(variantId);
-      final double newTotal =
-          allLevels.fold(0.0, (s, l) => s + l.effectiveQuantity);
+      final double newTotal = allLevels.fold(0.0, (s, l) => s + l.quantity);
 
       await _variantsDao.db.customUpdate(
-        'UPDATE product_variants SET stock = ?, stock_decimal = ?, '
+        'UPDATE product_variants SET stock = ?, '
         'sync_status = 1, local_updated_at = ? WHERE id = ?',
         variables: [
-          Variable.withInt(newTotal.round()),
-          Variable<double>(fractional ? newTotal : null),
+          Variable<double>(newTotal),
           Variable.withDateTime(DateTime.now()),
           Variable.withString(variantId),
         ],
@@ -133,6 +122,6 @@ class StockMovementService {
       );
 
   double _effectiveQty(InventoryLevelsTableData? level) {
-    return level?.effectiveQuantity ?? 0.0;
+    return level?.quantity ?? 0.0;
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/const/qty_format.dart';
 import 'package:pos/features/inventory/data/inventory_data.dart';
 import 'package:pos/features/inventory/presentation/widgets/stock_status_badge.dart';
 
@@ -108,7 +109,7 @@ class _StackedLayout extends StatelessWidget {
                 if (branches.isNotEmpty)
                   ...branches.map((b) => _StockChip(
                         label: b.name,
-                        qty: item.stockByBranch[b.id] ?? 0,
+                        qty: item.stockByBranch[b.id] ?? 0.0,
                         reorderLevel: item.reorderLevel,
                       )),
                 _StockChip(
@@ -229,7 +230,7 @@ class _HorizontalLayout extends StatelessWidget {
                       if (branches.isNotEmpty)
                         ...branches.map((b) => _StockChip(
                               label: b.name,
-                              qty: item.stockByBranch[b.id] ?? 0,
+                              qty: item.stockByBranch[b.id] ?? 0.0,
                               reorderLevel: item.reorderLevel,
                             )),
                       _StockChip(
@@ -291,7 +292,7 @@ class _HorizontalLayout extends StatelessWidget {
 
 class _StockChip extends StatelessWidget {
   final String label;
-  final int qty;
+  final double qty;
   final int reorderLevel;
   final bool isHighlighted;
 
@@ -338,7 +339,7 @@ class _StockChip extends StatelessWidget {
             ),
           ),
           Text(
-            '$qty',
+            qtyLabel(qty),
             style: getOutfitStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,

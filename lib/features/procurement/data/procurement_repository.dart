@@ -459,9 +459,7 @@ class ProcurementRepository implements IProcurementRepository {
           // Read current qty BEFORE the stock movement is applied.
           final levelRow =
               await _levelsDao.getLevel(receive.variantId, branchId);
-          final currentQty = levelRow != null
-              ? (levelRow.quantityDecimal ?? levelRow.quantity.toDouble())
-              : 0.0;
+          final currentQty = levelRow?.quantity ?? 0.0;
           final variant = await _variantsDao.getById(receive.variantId);
           final currentCost = variant?.costPrice ?? 0.0;
           final totalQtyAfter = currentQty + qtyToReceive;

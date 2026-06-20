@@ -5,7 +5,7 @@ class InventoryLevel extends Equatable {
   final String variantId;
   final String branchId;
   final String businessId;
-  final int quantity;
+  final double quantity;
 
   const InventoryLevel({
     required this.variantId,

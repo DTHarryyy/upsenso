@@ -14,7 +14,7 @@ class ProductGrid extends StatelessWidget {
   final void Function(Product product)? onEditProduct;
 
   /// variantId → branch-filtered stock (built from inventory_levels).
-  final Map<String, int> variantStock;
+  final Map<String, double> variantStock;
 
   const ProductGrid({
     super.key,

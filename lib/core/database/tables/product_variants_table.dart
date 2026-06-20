@@ -18,7 +18,11 @@ class ProductVariantsTable extends Table {
   RealColumn get costPrice => real().nullable()();
   /// Suggested retail price / SRP. Optional on all product types.
   RealColumn get retailPrice => real().nullable()();
-  IntColumn get stock => integer().withDefault(const Constant(0))();
+
+  /// On-hand total across all branches. Single decimal column — holds whole
+  /// units and fractional quantities alike (sellBy='fraction'). Replaced the
+  /// old int `stock` + `stock_decimal` pair in schema v46.
+  RealColumn get stock => real().withDefault(const Constant(0.0))();
   TextColumn get sku => text().nullable()();
   TextColumn get barcode => text().nullable()();
 
@@ -26,7 +30,6 @@ class ProductVariantsTable extends Table {
   /// Used by ingredients and recipe lines; harmless for normal stock products.
   TextColumn get unit => text().nullable()();
 
-  RealColumn get stockDecimal => real().nullable()(); // used when sellBy == 'fraction'
   /// Optional threshold below which a low-stock alert should be triggered.
   IntColumn get lowStockAlert => integer().nullable()();
   BoolColumn get trackStock =>

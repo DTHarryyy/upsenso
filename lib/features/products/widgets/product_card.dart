@@ -18,7 +18,7 @@ class ProductCard extends StatelessWidget {
   /// variantId → branch-filtered stock quantity.
   /// Built by ProductsPage from inventory_levels for the selected branch.
   /// Empty map = no inventory data loaded yet (no badge shown).
-  final Map<String, int> variantStock;
+  final Map<String, double> variantStock;
 
   const ProductCard({
     super.key,
@@ -181,8 +181,8 @@ class ProductCard extends StatelessWidget {
                                   return const SizedBox.shrink();
                                 }
                                 final total = tracked.fold(
-                                  0,
-                                  (s, v) => s + (variantStock[v.id] ?? 0),
+                                  0.0,
+                                  (s, v) => s + (variantStock[v.id] ?? 0.0),
                                 );
                                 final inStock = total > 0;
                                 const green = Color(0xFF2E7D32);

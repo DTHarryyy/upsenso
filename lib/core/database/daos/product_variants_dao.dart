@@ -209,7 +209,7 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
         price: Value((row['price'] as num?)?.toDouble() ?? 0.0),
         costPrice: Value((row['cost_price'] as num?)?.toDouble()),
         retailPrice: Value((row['retail_price'] as num?)?.toDouble()),
-        stock: Value((row['stock'] as int?) ?? 0),
+        stock: Value((row['stock'] as num?)?.toDouble() ?? 0.0),
         sku: Value(row['sku'] as String?),
         barcode: Value(row['barcode'] as String?),
         trackExpiry: Value((row['track_expiry'] as bool?) ?? false),
@@ -250,9 +250,8 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Deduct [qty] from the variant's stock if stock tracking is enabled.
-  /// - Unit products: deducts from [stock] (integer), clamped at 0.
-  /// - Fraction products (stockDecimal != null): deducts from [stockDecimal].
-  /// Marks the variant as pendingUpdate so it syncs to the server.
+  /// Single decimal column — handles whole units and fractions alike,
+  /// clamped at 0. Marks the variant as pendingUpdate so it syncs.
   Future<void> decrementStockIfTracked(String variantId, double qty) async {
     final variant = await (select(
       productVariantsTable,
@@ -260,34 +259,16 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
 
     if (variant == null || !variant.trackStock) return;
 
-    if (variant.stockDecimal != null) {
-      // Fraction / weight product
-      final newStock = (variant.stockDecimal! - qty).clamp(
-        0.0,
-        double.maxFinite,
-      );
-      await (update(
-        productVariantsTable,
-      )..where((v) => v.id.equals(variantId))).write(
-        ProductVariantsTableCompanion(
-          stockDecimal: Value(newStock),
-          syncStatus: const Value(1), // pendingUpdate
-          localUpdatedAt: Value(DateTime.now()),
-        ),
-      );
-    } else {
-      // Unit product — clamp to [0, current stock]
-      final newStock = (variant.stock - qty.round()).clamp(0, variant.stock);
-      await (update(
-        productVariantsTable,
-      )..where((v) => v.id.equals(variantId))).write(
-        ProductVariantsTableCompanion(
-          stock: Value(newStock),
-          syncStatus: const Value(1), // pendingUpdate
-          localUpdatedAt: Value(DateTime.now()),
-        ),
-      );
-    }
+    final newStock = (variant.stock - qty).clamp(0.0, double.maxFinite);
+    await (update(
+      productVariantsTable,
+    )..where((v) => v.id.equals(variantId))).write(
+      ProductVariantsTableCompanion(
+        stock: Value(newStock),
+        syncStatus: const Value(1), // pendingUpdate
+        localUpdatedAt: Value(DateTime.now()),
+      ),
+    );
   }
 
   /// Get variants that are tracked and at or below their low-stock threshold.
@@ -365,7 +346,7 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
   /// Update the global stock total for a variant to [stock].
   /// Used after editing to keep product_variants.stock in sync with
   /// the authoritative sum from inventory_levels.
-  Future<void> updateVariantStock(String variantId, int stock) {
+  Future<void> updateVariantStock(String variantId, double stock) {
     return (update(
       productVariantsTable,
     )..where((t) => t.id.equals(variantId))).write(

@@ -58,11 +58,11 @@ class ProductsLoaded extends ProductsState {
   }
 
   /// Total stock per variant, optionally scoped to [branchId].
-  Map<String, int> get variantStock {
-    final map = <String, int>{};
+  Map<String, double> get variantStock {
+    final map = <String, double>{};
     for (final level in levels) {
       if (branchId == null || level.branchId == branchId) {
-        map[level.variantId] = (map[level.variantId] ?? 0) + level.quantity;
+        map[level.variantId] = (map[level.variantId] ?? 0.0) + level.quantity;
       }
     }
     return map;

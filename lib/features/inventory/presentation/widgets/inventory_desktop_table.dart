@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/const/qty_format.dart';
 import 'package:pos/features/inventory/data/inventory_data.dart';
 import 'package:pos/features/inventory/presentation/widgets/stock_status_badge.dart';
 
@@ -199,7 +200,7 @@ class _TableRow extends StatelessWidget {
     required this.tableWidth,
   });
 
-  Color _stockColor(int qty, int reorder) {
+  Color _stockColor(num qty, int reorder) {
     if (reorder <= 0) return qty <= 0 ? AppColors.error : AppColors.textPrimary;
     if (qty <= reorder) return AppColors.error;
     if (qty <= (reorder * 1.5).ceil()) return AppColors.warning;
@@ -274,9 +275,9 @@ class _TableRow extends StatelessWidget {
                   ),
                 );
               }
-              final qty = item.stockByBranch[b.id] ?? 0;
+              final qty = item.stockByBranch[b.id] ?? 0.0;
               return Text(
-                '$qty',
+                qtyLabel(qty),
                 style: getOutfitStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -287,7 +288,7 @@ class _TableRow extends StatelessWidget {
           // Total
           cell(
             Text(
-              item.trackStock ? '${item.totalStock}' : '—',
+              item.trackStock ? qtyLabel(item.totalStock) : '—',
               style: getOutfitStyle(
                 fontSize: 13,
                 fontWeight: item.trackStock ? FontWeight.w600 : FontWeight.w400,

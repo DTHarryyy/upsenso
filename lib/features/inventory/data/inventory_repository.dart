@@ -62,11 +62,11 @@ class InventoryRepository implements IInventoryRepository {
     // The branches actually used for computing per-item stock columns.
     // Build a lookup: variantId -> { branchId -> quantity }
     // branchId is now non-nullable (no "global" rows exist post-v17).
-    final levelMap = <String, Map<String, int>>{};
+    final levelMap = <String, Map<String, double>>{};
     for (final level in levels) {
       levelMap.putIfAbsent(
         level.variantId,
-        () => <String, int>{},
+        () => <String, double>{},
       )[level.branchId] = level.quantity;
     }
 
@@ -101,19 +101,19 @@ class InventoryRepository implements IInventoryRepository {
       // Always include ALL branches in stockByBranch so per-branch columns in
       // the table show accurate data regardless of which branch is filtered.
       // A missing inventory_levels row means 0 for that branch.
-      final stockByBranch = <String, int>{};
+      final stockByBranch = <String, double>{};
       for (final b in branches) {
-        stockByBranch[b.id] = branchStock[b.id] ?? 0;
+        stockByBranch[b.id] = branchStock[b.id] ?? 0.0;
       }
 
       // Total stock: sum inventory_levels rows. A branch with no rows is 0.
       // product_variants.stock is NOT used as a fallback — it is a sync/seed
       // value only and must not be assigned as a branch's starting stock.
-      final int total;
+      final double total;
       if (branchId != null) {
-        total = branchStock[branchId] ?? 0;
+        total = branchStock[branchId] ?? 0.0;
       } else {
-        total = branchStock.values.fold(0, (s, q) => s + q);
+        total = branchStock.values.fold(0.0, (s, q) => s + q);
       }
 
       // Per-branch low stock threshold: check for override on the level row,
@@ -233,9 +233,9 @@ class InventoryRepository implements IInventoryRepository {
       final double available;
       if (branchId != null) {
         final level = await _levelsDao.getLevel(item.variantId, branchId);
-        available = level?.effectiveQuantity ?? 0.0;
+        available = level?.quantity ?? 0.0;
       } else {
-        available = variant.stockDecimal ?? variant.stock.toDouble();
+        available = variant.stock;
       }
       if (available < item.qty) {
         shortages.add((

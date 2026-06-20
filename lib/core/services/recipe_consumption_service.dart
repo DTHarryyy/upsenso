@@ -50,7 +50,7 @@ class RecipeConsumptionService {
       await _ledgerDao.db.transaction(() async {
         final levelBefore =
             await _levelsDao.getLevel(line.ingredientVariantId, branchId);
-        final double qtyBefore = levelBefore?.effectiveQuantity ?? 0.0;
+        final double qtyBefore = levelBefore?.quantity ?? 0.0;
         final double qtyAfter = (qtyBefore - needed).clamp(0.0, 999999.0);
 
         await _ledgerDao.insertEntry(
@@ -71,16 +71,11 @@ class RecipeConsumptionService {
           ),
         );
 
-        // Ingredients are UOM-tracked (g/kg/ml/L) and almost always fractional;
-        // routing them through the int path truncated the deduction.
-        final bool fractional = ingredientVariant.stockDecimal != null ||
-            needed != needed.roundToDouble();
         await _levelsDao.adjustQuantity(
           variantId: line.ingredientVariantId,
           branchId: branchId,
           businessId: businessId,
-          delta: -needed.round(),
-          deltaDecimal: fractional ? -needed : null,
+          delta: -needed,
         );
 
         await _variantsDao.decrementStockIfTracked(
@@ -119,7 +114,7 @@ class RecipeConsumptionService {
           line.ingredientVariantId,
           branchId,
         );
-        final double qtyBefore = levelBefore?.effectiveQuantity ?? 0.0;
+        final double qtyBefore = levelBefore?.quantity ?? 0.0;
         final double qtyAfter = (qtyBefore + returned).clamp(0.0, 999999.0);
 
         await _ledgerDao.insertEntry(
@@ -140,15 +135,11 @@ class RecipeConsumptionService {
           ),
         );
 
-        final bool fractional =
-            ingredientVariant.stockDecimal != null ||
-            returned != returned.roundToDouble();
         await _levelsDao.adjustQuantity(
           variantId: line.ingredientVariantId,
           branchId: branchId,
           businessId: businessId,
-          delta: returned.round(),
-          deltaDecimal: fractional ? returned : null,
+          delta: returned,
         );
 
         // Recompute the variant-level total from the sum of all branch
@@ -160,14 +151,13 @@ class RecipeConsumptionService {
         );
         final double newTotal = allLevels.fold(
           0.0,
-          (s, l) => s + l.effectiveQuantity,
+          (s, l) => s + l.quantity,
         );
         await _variantsDao.db.customUpdate(
-          'UPDATE product_variants SET stock = ?, stock_decimal = ?, '
+          'UPDATE product_variants SET stock = ?, '
           'sync_status = 1, local_updated_at = ? WHERE id = ?',
           variables: [
-            Variable.withInt(newTotal.round()),
-            Variable<double>(fractional ? newTotal : null),
+            Variable<double>(newTotal),
             Variable.withDateTime(DateTime.now()),
             Variable.withString(line.ingredientVariantId),
           ],
@@ -191,7 +181,7 @@ class RecipeConsumptionService {
       if (line.quantity <= 0) continue;
       final level =
           await _levelsDao.getLevel(line.ingredientVariantId, branchId);
-      final available = level?.effectiveQuantity ?? 0.0;
+      final available = level?.quantity ?? 0.0;
       final units = available / line.quantity;
       if (minUnits == null || units < minUnits) minUnits = units;
     }

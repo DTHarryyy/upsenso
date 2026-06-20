@@ -106,7 +106,6 @@ class ProductsRepository implements IProductsRepository {
         price: row.price,
         costPrice: row.costPrice,
         stock: row.stock,
-        stockDecimal: row.stockDecimal,
         sku: row.sku,
         barcode: row.barcode,
         isActive: row.isActive,

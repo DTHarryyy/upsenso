@@ -132,7 +132,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 45;
+  int get schemaVersion => 46;
 
   @override
   MigrationStrategy get migration {
@@ -777,6 +777,35 @@ class AppDatabase extends _$AppDatabase {
           } catch (e, st) {
             debugPrint('[AppDatabase] v45 unique index failed: $e\n$st');
             rethrow;
+          }
+        }
+        if (from < 46) {
+          // Phase 5b — collapse the dual int/decimal stock & quantity columns
+          // into a single decimal column (the "fractional footgun"). Preserve
+          // any fractional value from the *_decimal mirror before dropping it;
+          // SQLite's INTEGER affinity stores the non-integral result as REAL,
+          // so fractions survive and the surviving column now holds doubles.
+          try {
+            await customStatement(
+              'UPDATE product_variants SET stock = stock_decimal '
+              'WHERE stock_decimal IS NOT NULL AND stock_decimal != 0',
+            );
+            await customStatement(
+              'ALTER TABLE product_variants DROP COLUMN stock_decimal',
+            );
+          } catch (e, st) {
+            debugPrint('[AppDatabase] v46 stock collapse skipped: $e\n$st');
+          }
+          try {
+            await customStatement(
+              'UPDATE inventory_levels SET quantity = quantity_decimal '
+              'WHERE quantity_decimal IS NOT NULL AND quantity_decimal != 0',
+            );
+            await customStatement(
+              'ALTER TABLE inventory_levels DROP COLUMN quantity_decimal',
+            );
+          } catch (e, st) {
+            debugPrint('[AppDatabase] v46 quantity collapse skipped: $e\n$st');
           }
         }
       },

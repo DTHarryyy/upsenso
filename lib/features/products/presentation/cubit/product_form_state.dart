@@ -76,7 +76,7 @@ class ProductFormState {
   /// and the user entered opening stock > 0. The UI shows a branch-selection
   /// dialog so the user can nominate which branch receives the stock.
   final ({
-    List<({String variantId, int qty, double? qtyDecimal})> variants,
+    List<({String variantId, double qty})> variants,
     bool isFraction,
   })? pendingBranchAssignment;
 
@@ -142,7 +142,7 @@ class ProductFormState {
     String? imagePath,
     bool clearImagePath = false,
     ({
-      List<({String variantId, int qty, double? qtyDecimal})> variants,
+      List<({String variantId, double qty})> variants,
       bool isFraction,
     })? pendingBranchAssignment,
     bool clearPendingBranchAssignment = false,

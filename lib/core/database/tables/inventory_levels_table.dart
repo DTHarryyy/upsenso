@@ -15,11 +15,10 @@ class InventoryLevelsTable extends Table {
   TextColumn get branchId => text()();
   TextColumn get businessId => text()();
 
-  /// Integer quantity for unit products (sellBy='unit').
-  IntColumn get quantity => integer().withDefault(const Constant(0))();
-
-  /// Decimal quantity for fractional products (sellBy='fraction'). Null for unit products.
-  RealColumn get quantityDecimal => real().nullable()();
+  /// On-hand quantity for this variant+branch. Single decimal column — holds
+  /// whole units and fractional quantities alike. Replaced the old int
+  /// `quantity` + `quantity_decimal` pair in schema v46.
+  RealColumn get quantity => real().withDefault(const Constant(0.0))();
 
   /// Per-branch low stock alert threshold.
   /// NULL means fall back to [product_variants.lowStockAlert] as the global default.

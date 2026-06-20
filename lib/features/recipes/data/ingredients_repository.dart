@@ -107,7 +107,7 @@ class IngredientsRepository implements IIngredientsRepository {
       if (v == null) continue;
 
       final levels = await _levelsDao.getByVariantId(v.id);
-      final stock = levels.fold(0.0, (s, l) => s + l.effectiveQuantity);
+      final stock = levels.fold(0.0, (s, l) => s + l.quantity);
 
       result.add(Ingredient(
         id: v.id,
@@ -133,7 +133,7 @@ class IngredientsRepository implements IIngredientsRepository {
     if (p == null || p.type != 'ingredient') return null;
 
     final levels = await _levelsDao.getByVariantId(variantId);
-    final stock = levels.fold(0.0, (s, l) => s + l.effectiveQuantity);
+    final stock = levels.fold(0.0, (s, l) => s + l.quantity);
 
     return Ingredient(
       id: v.id,
