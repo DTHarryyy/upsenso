@@ -1,3 +1,5 @@
+import 'package:pos/core/utils/business_clock.dart';
+
 // Models for the AI Assistant pipeline.
 
 /// All supported actions the AI can detect from user input.
@@ -47,7 +49,7 @@ class AiDateFilter {
   /// Resolve the effective start/end for database queries.
   /// All resolved dates are start-of-day inclusive.
   ({DateTime start, DateTime end}) resolve() {
-    final now = DateTime.now();
+    final now = BusinessClock.now();
     switch (type) {
       case AiDateType.today:
         final sod = DateTime(now.year, now.month, now.day);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pos/core/utils/business_clock.dart';
 import 'package:pos/features/dashboard/data/dashboard_data.dart';
 
 // ─── Period enum ──────────────────────────────────────────────────────────────
@@ -25,8 +26,8 @@ extension ReportPeriodX on ReportPeriod {
   }[this]!;
 
   DateTimeRange get dateRange {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
+    final now = BusinessClock.now();
+    final today = BusinessClock.today();
     return switch (this) {
       ReportPeriod.today => DateTimeRange(start: today, end: today),
       ReportPeriod.yesterday => DateTimeRange(

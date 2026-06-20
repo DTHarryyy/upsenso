@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/utils/business_clock.dart';
 
 // ── Quick-select presets ─────────────────────────────────────────────────────
 
@@ -18,8 +19,8 @@ enum _Preset {
   final String label;
 
   DateTimeRange get range {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
+    final now = BusinessClock.now();
+    final today = BusinessClock.today();
     return switch (this) {
       _Preset.today => DateTimeRange(start: today, end: today),
       _Preset.yesterday => DateTimeRange(

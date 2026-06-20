@@ -3,6 +3,7 @@ import 'package:iconly/iconly.dart';
 
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/utils/business_clock.dart';
 import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/core/widgets/app_progress_bar.dart';
 import 'package:pos/features/procurement/domain/entities/po_status.dart';
@@ -286,8 +287,7 @@ class _DeliveryChip extends StatelessWidget {
 
   // Whole-day difference from today (date-only) so "due today" is exact.
   int _daysUntil(DateTime due) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
+    final today = BusinessClock.today();
     final target = DateTime(due.year, due.month, due.day);
     return target.difference(today).inDays;
   }

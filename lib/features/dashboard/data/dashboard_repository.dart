@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
+import 'package:pos/core/utils/business_clock.dart';
 import 'package:pos/core/database/daos/categories_dao.dart';
 import 'package:pos/core/database/daos/expenses_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
@@ -137,8 +138,7 @@ class DashboardRepository implements IDashboardRepository {
     required String businessId,
     String? branchId,
   }) async {
-    final now = DateTime.now().toUtc();
-    final today = DateTime.utc(now.year, now.month, now.day);
+    final today = BusinessClock.today();
     final yesterday = today.subtract(const Duration(days: 1));
     final sevenDaysAgo = today.subtract(const Duration(days: 7));
     final fourteenDaysAgo = today.subtract(const Duration(days: 14));
@@ -156,23 +156,22 @@ class DashboardRepository implements IDashboardRepository {
     );
 
     final todayTxns = monthTxns
-        .where((t) => !t.createdAt.toUtc().isBefore(today))
+        .where((t) => !t.createdAt.isBefore(today))
         .toList();
     final yesterdayTxns = monthTxns
         .where(
           (t) =>
-              !t.createdAt.toUtc().isBefore(yesterday) &&
-              t.createdAt.toUtc().isBefore(today),
+              !t.createdAt.isBefore(yesterday) && t.createdAt.isBefore(today),
         )
         .toList();
     final weekTxns = monthTxns
-        .where((t) => !t.createdAt.toUtc().isBefore(sevenDaysAgo))
+        .where((t) => !t.createdAt.isBefore(sevenDaysAgo))
         .toList();
     final lastWeekTxns = monthTxns
         .where(
           (t) =>
-              !t.createdAt.toUtc().isBefore(fourteenDaysAgo) &&
-              t.createdAt.toUtc().isBefore(sevenDaysAgo),
+              !t.createdAt.isBefore(fourteenDaysAgo) &&
+              t.createdAt.isBefore(sevenDaysAgo),
         )
         .toList();
 
@@ -196,17 +195,11 @@ class DashboardRepository implements IDashboardRepository {
     final sevenDayLabels = <String>[];
     const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     for (int i = 6; i >= 0; i--) {
-      final day = DateTime.utc(
-        today.year,
-        today.month,
-        today.day,
-      ).subtract(Duration(days: i));
+      final day = today.subtract(Duration(days: i));
       final next = day.add(const Duration(days: 1));
       final total = monthTxns
           .where(
-            (t) =>
-                !t.createdAt.toUtc().isBefore(day) &&
-                t.createdAt.toUtc().isBefore(next),
+            (t) => !t.createdAt.isBefore(day) && t.createdAt.isBefore(next),
           )
           .fold(0.0, (s, t) => s + t.totalAmount);
       sevenDayTotals.add(total);
@@ -217,17 +210,11 @@ class DashboardRepository implements IDashboardRepository {
     final thirtyDayTotals = <double>[];
     final thirtyDayLabels = <String>[];
     for (int i = 29; i >= 0; i--) {
-      final day = DateTime.utc(
-        today.year,
-        today.month,
-        today.day,
-      ).subtract(Duration(days: i));
+      final day = today.subtract(Duration(days: i));
       final next = day.add(const Duration(days: 1));
       final total = monthTxns
           .where(
-            (t) =>
-                !t.createdAt.toUtc().isBefore(day) &&
-                t.createdAt.toUtc().isBefore(next),
+            (t) => !t.createdAt.isBefore(day) && t.createdAt.isBefore(next),
           )
           .fold(0.0, (s, t) => s + t.totalAmount);
       thirtyDayTotals.add(total);
