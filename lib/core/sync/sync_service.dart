@@ -39,6 +39,8 @@ import 'package:pos/core/services/image_service.dart';
 import 'package:pos/core/services/invoice_number_service.dart';
 import 'package:pos/core/database/daos/invoice_sequences_dao.dart';
 import 'package:pos/features/procurement/data/datasources/procurement_remote_ds.dart';
+import 'package:pos/core/database/daos/refunds_dao.dart';
+import 'package:pos/features/pos/data/datasources/refunds_remote_ds.dart';
 
 /// Service to handle synchronization between local Drift DB and Supabase
 class SyncService {
@@ -71,6 +73,8 @@ class SyncService {
   final RecipeLinesDao _recipeLinesDao;
   final SyncStateDao _syncStateDao;
   final ImageService _imageService;
+  final RefundsDao _refundsDao;
+  final RefundsRemoteDs _refundsRemoteDs;
 
   // Built lazily from existing deps (no DI change) so duplicate-invoice
   // recovery can re-claim a fresh server number on a 23505 conflict.
@@ -121,6 +125,8 @@ class SyncService {
     required RecipeLinesDao recipeLinesDao,
     required SyncStateDao syncStateDao,
     required ImageService imageService,
+    required RefundsDao refundsDao,
+    required RefundsRemoteDs refundsRemoteDs,
   }) : _authContextDao = authContextDao,
        _activeBusinessContext = activeBusinessContext,
        _branchesDao = branchesDao,
@@ -149,7 +155,9 @@ class SyncService {
        _procurementRemoteDs = procurementRemoteDs,
        _recipeLinesDao = recipeLinesDao,
        _syncStateDao = syncStateDao,
-       _imageService = imageService;
+       _imageService = imageService,
+       _refundsDao = refundsDao,
+       _refundsRemoteDs = refundsRemoteDs;
 
   /// Resolves the businessId a sync should operate on.
   ///
@@ -232,6 +240,7 @@ class SyncService {
       await _inventoryLevelsDao.clearAll();
       await _stockLedgerDao.clearAll();
       await _expensesDao.clearAll();
+      await _refundsDao.clearAll();
       await _transactionsDao.clearAll();
       await _draftSalesDao.clearAll();
       await _productVariantsDao.clearAll();
@@ -264,6 +273,7 @@ class SyncService {
       _productsDao.getPendingSync().then<int>((r) => r.length),
       _productVariantsDao.getPendingSync().then<int>((r) => r.length),
       _transactionsDao.getPendingSync().then<int>((r) => r.length),
+      _refundsDao.getPendingSync().then<int>((r) => r.length),
       _expensesDao.getPendingSync().then<int>((r) => r.length),
       _inventoryLevelsDao.getPendingSync().then<int>((r) => r.length),
       _stockLedgerDao.getPendingSync().then<int>((r) => r.length),
@@ -294,13 +304,14 @@ class SyncService {
         sup = 0,
         po = 0,
         pol = 0,
-        rcp = 0;
+        rcp = 0,
+        rfnd = 0;
     final controller = StreamController<int>.broadcast();
 
     void emit() {
       if (!controller.isClosed) {
         controller.add(
-          cat + prod + vars + orders + exp + inv + led + rcpt + audit + emp + sup + po + pol + rcp,
+          cat + prod + vars + orders + exp + inv + led + rcpt + audit + emp + sup + po + pol + rcp + rfnd,
         );
       }
     }
@@ -362,6 +373,10 @@ class SyncService {
       rcp = n;
       emit();
     });
+    final s15 = _refundsDao.watchPendingSyncCount().listen((n) {
+      rfnd = n;
+      emit();
+    });
 
     controller.onCancel = () {
       s1.cancel();
@@ -378,6 +393,7 @@ class SyncService {
       s12.cancel();
       s13.cancel();
       s14.cancel();
+      s15.cancel();
       controller.close();
     };
 
@@ -417,6 +433,9 @@ class SyncService {
       final productResult = await _syncProducts();
       final variantResult = await _syncProductVariants();
       final orderResult = await _syncTransactions();
+      // Refunds push after transactions so the FK parent already exists
+      // on the server when the refund row is inserted.
+      final refundResult = await _syncRefunds();
       final expenseResult = await _syncExpenses();
       final inventoryResult = await _syncInventoryLevels();
       final ledgerResult = await _syncStockLedger();
@@ -435,6 +454,7 @@ class SyncService {
           productResult.syncedCount +
           variantResult.syncedCount +
           orderResult.syncedCount +
+          refundResult.syncedCount +
           expenseResult.syncedCount +
           inventoryResult.syncedCount +
           ledgerResult.syncedCount +
@@ -450,6 +470,7 @@ class SyncService {
           productResult.failedCount +
           variantResult.failedCount +
           orderResult.failedCount +
+          refundResult.failedCount +
           expenseResult.failedCount +
           inventoryResult.failedCount +
           ledgerResult.failedCount +
@@ -477,6 +498,7 @@ class SyncService {
             productResult.success &&
             variantResult.success &&
             orderResult.success &&
+            refundResult.success &&
             expenseResult.success &&
             inventoryResult.success &&
             ledgerResult.success &&
@@ -487,7 +509,7 @@ class SyncService {
             recipeResult.success &&
             pullResult.success,
         message:
-            '${branchResult.message}; ${businessResult.message}; ${categoryResult.message}; ${productResult.message}; ${variantResult.message}; ${orderResult.message}; ${expenseResult.message}; ${inventoryResult.message}; ${ledgerResult.message}; ${employeeResult.message}; ${supplierResult.message}; ${poResult.message}; ${polResult.message}; ${recipeResult.message}; ${pullResult.message}',
+            '${branchResult.message}; ${businessResult.message}; ${categoryResult.message}; ${productResult.message}; ${variantResult.message}; ${orderResult.message}; ${refundResult.message}; ${expenseResult.message}; ${inventoryResult.message}; ${ledgerResult.message}; ${employeeResult.message}; ${supplierResult.message}; ${poResult.message}; ${polResult.message}; ${recipeResult.message}; ${pullResult.message}',
         syncedCount: totalSynced + pullResult.syncedCount,
         failedCount: totalFailed + pullResult.failedCount,
         errors: [
@@ -497,6 +519,7 @@ class SyncService {
           ...productResult.errors,
           ...variantResult.errors,
           ...orderResult.errors,
+          ...refundResult.errors,
           ...expenseResult.errors,
           ...inventoryResult.errors,
           ...ledgerResult.errors,
@@ -896,6 +919,34 @@ class SyncService {
       if (_shouldSkipForBackoff(tx.syncStatus, tx.lastSyncAttempt)) {
         continue;
       }
+
+      // Status-only push: a refund flips this flag without touching the rest
+      // of the (otherwise immutable) sale, so it skips the full create+items
+      // upload below entirely.
+      if (tx.syncStatus == SyncStatus.pendingUpdate.toInt()) {
+        try {
+          await _transactionsRemoteDs.updateTransactionStatus(
+            tx.id,
+            tx.status,
+          );
+          await _transactionsDao.updateSyncStatus(
+            id: tx.id,
+            status: SyncStatus.synced,
+          );
+          synced++;
+        } catch (e, st) {
+          failed++;
+          debugPrint('[SYNC] Transaction ${tx.id} status update FAILED: $e\n$st');
+          errors.add('Transaction ${tx.id} status: ${e.toString()}');
+          await _transactionsDao.updateSyncStatus(
+            id: tx.id,
+            status: SyncStatus.failed,
+            error: e.toString(),
+          );
+        }
+        continue;
+      }
+
       var invoiceNumber = tx.invoiceNumber;
       try {
         await _transactionsRemoteDs.createTransaction(
@@ -1043,6 +1094,101 @@ class SyncService {
       failedCount: failed,
       errors: errors,
     );
+  }
+
+  // Refunds are append-only (header + lines) — same upload-only shape as
+  // transactions, pushed after them so the FK parent already exists.
+  Future<SyncResult> _syncRefunds() async {
+    final pending = await _refundsDao.getPendingSync();
+    int synced = 0;
+    int failed = 0;
+    final errors = <String>[];
+
+    for (final refund in pending) {
+      if (_shouldSkipForBackoff(refund.syncStatus, refund.lastSyncAttempt)) {
+        continue;
+      }
+      try {
+        await _refundsRemoteDs.upsertRefund({
+          'id': refund.id,
+          'transaction_id': refund.transactionId,
+          'business_id': refund.businessId,
+          'branch_id': refund.branchId,
+          'refunded_by': refund.refundedBy,
+          'total_amount': refund.totalAmount,
+          'tax_amount': refund.taxAmount,
+          'reason': refund.reason,
+          'created_at': refund.createdAt.toUtc().toIso8601String(),
+          'updated_at': refund.updatedAt.toUtc().toIso8601String(),
+          'client_updated_at': refund.clientUpdatedAt.toUtc().toIso8601String(),
+          'deleted_at': refund.deletedAt?.toUtc().toIso8601String(),
+        });
+        final items = await _refundsDao.getItemsByRefundId(refund.id);
+        if (items.isNotEmpty) {
+          await _refundsRemoteDs.upsertRefundItems(
+            items
+                .map(
+                  (i) => {
+                    'id': i.id,
+                    'refund_id': i.refundId,
+                    'transaction_item_id': i.transactionItemId,
+                    'variant_id': i.variantId,
+                    'qty': i.qty,
+                    'amount': i.amount,
+                    'restocked': i.restocked,
+                  },
+                )
+                .toList(),
+          );
+        }
+        await _refundsDao.updateSyncStatus(
+          id: refund.id,
+          status: SyncStatus.synced,
+        );
+        synced++;
+      } catch (e, st) {
+        failed++;
+        debugPrint('[SYNC] Refund ${refund.id} FAILED: $e\n$st');
+        errors.add('Refund ${refund.id}: ${e.toString()}');
+        await _refundsDao.updateSyncStatus(
+          id: refund.id,
+          status: SyncStatus.failed,
+          error: e.toString(),
+        );
+      }
+    }
+
+    return SyncResult(
+      success: failed == 0,
+      message: 'Refunds: synced $synced, failed $failed',
+      syncedCount: synced,
+      failedCount: failed,
+      errors: errors,
+    );
+  }
+
+  /// Recomputes a transaction's derived `status` from ALL refund rows now
+  /// present locally (after a pull). Self-heals the status even if the
+  /// status-only push above was lost, duplicated, or raced by another
+  /// device — refund qty sums are the source of truth, status is derived.
+  Future<void> _recomputeTransactionStatusFromRefunds(
+    String transactionId,
+  ) async {
+    final items = await _transactionsDao.getItemsByTransactionId(
+      transactionId,
+    );
+    if (items.isEmpty) return;
+    final refundedQty = await _refundsDao.getRefundedQtyByTransactionId(
+      transactionId,
+    );
+    final allFullyRefunded = items.every(
+      (i) => (refundedQty[i.id] ?? 0.0) >= i.qty - 1e-6,
+    );
+    final anyRefunded = refundedQty.values.any((q) => q > 0);
+    final status = allFullyRefunded
+        ? 'refunded'
+        : (anyRefunded ? 'partially_refunded' : 'completed');
+    await _transactionsDao.updateStatusFromServer(transactionId, status);
   }
 
   Future<SyncResult> _syncExpenses() async {
@@ -1501,6 +1647,44 @@ class SyncService {
       failed++;
       debugPrint('[SYNC] Pull transactions failed: $e\n$st');
       errors.add('Pull transactions: ${e.toString()}');
+    }
+
+    try {
+      // Incremental by refunds.created_at (append-only, like stock_ledger).
+      // Each page's lines are fetched by refund_id and applied, then every
+      // affected transaction's derived `status` is recomputed locally — a
+      // self-heal so a lost/duplicated status push from another device
+      // still converges on this one.
+      pulled += await _pullIncremental(
+        entity: 'refunds',
+        businessId: businessId,
+        timestampField: 'created_at',
+        fetchPage: (after, id, lim) => _refundsRemoteDs.getRefundsByBusiness(
+          businessId,
+          afterTs: after,
+          afterId: id,
+          limit: lim,
+        ),
+        applyRow: (row) => _refundsDao.upsertFromServer(row),
+        afterPage: (page) async {
+          if (page.isEmpty) return;
+          final refundIds = page.map((r) => r['id'] as String).toList();
+          final items = await _refundsRemoteDs.getItemsByRefundIds(refundIds);
+          for (final item in items) {
+            await _refundsDao.upsertItemFromServer(item);
+          }
+          final transactionIds = page
+              .map((r) => r['transaction_id'] as String)
+              .toSet();
+          for (final txId in transactionIds) {
+            await _recomputeTransactionStatusFromRefunds(txId);
+          }
+        },
+      );
+    } catch (e, st) {
+      failed++;
+      debugPrint('[SYNC] Pull refunds failed: $e\n$st');
+      errors.add('Pull refunds: ${e.toString()}');
     }
 
     try {

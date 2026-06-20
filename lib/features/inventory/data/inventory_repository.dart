@@ -301,4 +301,53 @@ class InventoryRepository implements IInventoryRepository {
       }
     }
   }
+
+  /// Mirrors [recordSaleDeductions] in reverse — restocks refunded items.
+  @override
+  Future<void> reverseSaleDeductions({
+    required List<({String variantId, double qty})> items,
+    required String businessId,
+    required String? branchId,
+    required String sourceId,
+  }) async {
+    if (branchId == null) {
+      assert(false, 'reverseSaleDeductions called without branchId');
+      return;
+    }
+
+    for (final item in items) {
+      if (item.qty <= 0) continue;
+      final variant = await _variantsDao.getById(item.variantId);
+      if (variant == null) continue;
+
+      final product = await _productsDao.getById(variant.productId);
+      final method = product?.trackingMethod ?? 'product_stock';
+
+      switch (method) {
+        case 'recipe':
+          await _recipeConsumption.restore(
+            productVariantId: item.variantId,
+            qty: item.qty.round(),
+            businessId: businessId,
+            branchId: branchId,
+            sourceId: sourceId,
+          );
+        case 'service':
+          break; // no stock impact
+        default:
+          if (!variant.trackStock) break;
+          await _stockMovement.apply(
+            variantId: item.variantId,
+            productId: variant.productId,
+            businessId: businessId,
+            branchId: branchId,
+            isIncoming: true,
+            quantity: item.qty,
+            reason: 'Refund',
+            sourceType: 'refund',
+            sourceId: sourceId,
+          );
+      }
+    }
+  }
 }

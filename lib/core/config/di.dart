@@ -80,6 +80,9 @@ import 'package:pos/features/recipes/data/ingredients_repository.dart';
 import 'package:pos/features/recipes/domain/repositories/i_ingredients_repository.dart';
 import 'package:pos/core/database/daos/invoice_sequences_dao.dart';
 import 'package:pos/core/services/invoice_number_service.dart';
+import 'package:pos/core/database/daos/refunds_dao.dart';
+import 'package:pos/core/services/refund_service.dart';
+import 'package:pos/features/pos/data/datasources/refunds_remote_ds.dart';
 import 'package:pos/core/database/daos/audit_logs_dao.dart';
 import 'package:pos/core/audit/audit_log_service.dart';
 import 'package:pos/features/audit_logs/data/datasources/audit_log_remote_ds.dart';
@@ -167,6 +170,7 @@ Future<void> initDI() async {
   sl.registerLazySingleton<InvoiceNumberService>(
     () => InvoiceNumberService(sl<SupabaseClient>(), sl<InvoiceSequencesDao>()),
   );
+  sl.registerLazySingleton<RefundsDao>(() => RefundsDao(sl<AppDatabase>()));
   sl.registerLazySingleton<DraftSalesDao>(
     () => DraftSalesDao(sl<AppDatabase>()),
   );
@@ -273,6 +277,7 @@ Future<void> initDI() async {
   sl.registerLazySingleton(() => ExpensesRemoteDs(sl<SupabaseClient>()));
   sl.registerLazySingleton(() => ProductsRemoteDs(sl<SupabaseClient>()));
   sl.registerLazySingleton(() => TransactionsRemoteDs(sl<SupabaseClient>()));
+  sl.registerLazySingleton(() => RefundsRemoteDs(sl<SupabaseClient>()));
 
   sl.registerLazySingleton<BusinessRepository>(
     () => BusinessRepositoryImpl(
@@ -327,6 +332,8 @@ Future<void> initDI() async {
       recipeLinesDao: sl<RecipeLinesDao>(),
       syncStateDao: sl<SyncStateDao>(),
       imageService: sl<ImageService>(),
+      refundsDao: sl<RefundsDao>(),
+      refundsRemoteDs: sl<RefundsRemoteDs>(),
     ),
   );
 
@@ -473,6 +480,17 @@ Future<void> initDI() async {
     ),
   );
 
+  sl.registerLazySingleton<RefundService>(
+    () => RefundService(
+      db: sl<AppDatabase>(),
+      transactionsDao: sl<TransactionsDao>(),
+      refundsDao: sl<RefundsDao>(),
+      inventoryRepository: sl<IInventoryRepository>(),
+      permissionService: sl<PermissionService>(),
+      auditLogService: sl<AuditLogService>(),
+    ),
+  );
+
   sl.registerLazySingleton<IProductsRepository>(
     () => ProductsRepository(
       productsDao: sl<ProductsDao>(),
@@ -487,6 +505,9 @@ Future<void> initDI() async {
       sl<TransactionsDao>(),
       sl<EmployeesDao>(),
       sl<AuthContextDao>(),
+      sl<RefundsDao>(),
+      sl<ProductVariantsDao>(),
+      sl<ProductsDao>(),
     ),
   );
 
@@ -515,6 +536,7 @@ Future<void> initDI() async {
       branchesDao: sl<BranchesDao>(),
       levelsDao: sl<InventoryLevelsDao>(),
       ledgerDao: sl<StockLedgerDao>(),
+      refundsDao: sl<RefundsDao>(),
       prefs: sl<SharedPreferences>(),
     ),
   );

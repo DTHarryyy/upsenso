@@ -18,6 +18,8 @@ class SaleTransaction extends Equatable {
   final String? cashierName;
   final String? branchId;
   final int itemCount;
+  final String status;
+  final double refundedAmount;
 
   const SaleTransaction({
     required this.id,
@@ -35,7 +37,13 @@ class SaleTransaction extends Equatable {
     this.cashierName,
     this.branchId,
     required this.itemCount,
+    this.status = 'completed',
+    this.refundedAmount = 0.0,
   });
+
+  bool get isRefunded => status == 'refunded';
+  bool get isPartiallyRefunded => status == 'partially_refunded';
+  double get netAmount => totalAmount - refundedAmount;
 
   @override
   List<Object?> get props => [
@@ -54,5 +62,7 @@ class SaleTransaction extends Equatable {
     cashierName,
     branchId,
     itemCount,
+    status,
+    refundedAmount,
   ];
 }

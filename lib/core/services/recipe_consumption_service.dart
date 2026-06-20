@@ -91,6 +91,91 @@ class RecipeConsumptionService {
     }
   }
 
+  /// Restores ingredient stock for [qty] units refunded of [productVariantId].
+  /// Inverse of [consume] — same recipe lines, opposite direction.
+  Future<void> restore({
+    required String productVariantId,
+    required int qty,
+    required String businessId,
+    required String branchId,
+    String? sourceId,
+  }) async {
+    final lines = await _recipeLinesDao.getByVariantId(productVariantId);
+    for (final line in lines) {
+      if (line.quantity <= 0) continue;
+      final returned = line.quantity * qty;
+      final ingredientVariant = await _variantsDao.getById(
+        line.ingredientVariantId,
+      );
+      if (ingredientVariant == null) {
+        debugPrint(
+          '[Recipe] restore: ingredient variant ${line.ingredientVariantId} not found — skipping',
+        );
+        continue;
+      }
+
+      await _ledgerDao.db.transaction(() async {
+        final levelBefore = await _levelsDao.getLevel(
+          line.ingredientVariantId,
+          branchId,
+        );
+        final double qtyBefore = levelBefore?.effectiveQuantity ?? 0.0;
+        final double qtyAfter = (qtyBefore + returned).clamp(0.0, 999999.0);
+
+        await _ledgerDao.insertEntry(
+          StockLedgerTableCompanion.insert(
+            id: _uuid.v4(),
+            variantId: line.ingredientVariantId,
+            productId: ingredientVariant.productId,
+            branchId: branchId,
+            businessId: businessId,
+            changeType: 'IN',
+            quantity: returned,
+            quantityBefore: Value(qtyBefore),
+            quantityAfter: Value(qtyAfter),
+            reason: 'Refund',
+            sourceType: const Value('refund'),
+            sourceId: Value(sourceId ?? productVariantId),
+            createdAt: Value(DateTime.now()),
+          ),
+        );
+
+        final bool fractional =
+            ingredientVariant.stockDecimal != null ||
+            returned != returned.roundToDouble();
+        await _levelsDao.adjustQuantity(
+          variantId: line.ingredientVariantId,
+          branchId: branchId,
+          businessId: businessId,
+          delta: returned.round(),
+          deltaDecimal: fractional ? returned : null,
+        );
+
+        // Recompute the variant-level total from the sum of all branch
+        // levels (decimal-aware), same as StockMovementService.apply —
+        // keeps the denormalized variant total from drifting out of sync
+        // with the per-branch ledger it's derived from.
+        final allLevels = await _levelsDao.getByVariantId(
+          line.ingredientVariantId,
+        );
+        final double newTotal = allLevels.fold(
+          0.0,
+          (s, l) => s + l.effectiveQuantity,
+        );
+        await _variantsDao.db.customUpdate(
+          'UPDATE product_variants SET stock = ?, stock_decimal = ?, '
+          'sync_status = 1, local_updated_at = ? WHERE id = ?',
+          variables: [
+            Variable.withInt(newTotal.round()),
+            Variable<double>(fractional ? newTotal : null),
+            Variable.withDateTime(DateTime.now()),
+            Variable.withString(line.ingredientVariantId),
+          ],
+        );
+      });
+    }
+  }
+
   /// Returns how many units of [productVariantId] can currently be made,
   /// limited by whichever ingredient is most constrained.
   /// Returns null when there are no recipe lines (treat as unlimited).

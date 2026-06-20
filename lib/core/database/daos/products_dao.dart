@@ -155,6 +155,12 @@ class ProductsDao extends DatabaseAccessor<AppDatabase>
         .getSingleOrNull();
   }
 
+  /// Batch lookup for a set of product ids (e.g. Sales History line items).
+  Future<List<ProductsTableData>> getByIds(List<String> ids) {
+    if (ids.isEmpty) return Future.value([]);
+    return (select(productsTable)..where((t) => t.id.isIn(ids))).get();
+  }
+
   /// Find a product by barcode within a business (fallback for simple products
   /// whose barcode is stored at product level rather than variant level).
   Future<ProductsTableData?> getByBarcode(String barcode, String businessId) {
