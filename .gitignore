@@ -14,6 +14,10 @@ migrate_working_dir/
 .env
 flavors/
 
+# Database backups (created by scripts/backup_db.*) — never commit DB dumps
+/backups/
+*.dump
+
 # Signing material & secrets — must never be committed
 *.jks
 *.keystore
