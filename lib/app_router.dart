@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pos/core/const/app_key.dart';
@@ -11,6 +12,7 @@ import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/permissions/role_permission_matrix.dart';
 import 'package:pos/core/routes/app_routes.dart';
+import 'package:pos/core/session/active_business_context.dart';
 import 'package:pos/features/ai_assistant/pages/ai_chat_page.dart';
 import 'package:pos/features/ai_assistant/bloc/ai_chat_bloc.dart';
 import 'package:pos/features/ai_assistant/services/ai_pipeline.dart';
@@ -461,13 +463,12 @@ class AppRouter {
               GoRoute(
                 path: AppRoutes.suppliers,
                 builder: (context, _) {
-                  final authRepo = sl<AuthRepository>();
-                  final currentUser = authRepo.getCurrentUser();
+                  final businessId = _activeBusinessId();
                   return BlocProvider(
                     create: (_) => SupplierCubit(
                       repository: sl<IProcurementRepository>(),
                       permissions: sl<PermissionService>(),
-                      businessId: currentUser?.businessId ?? '',
+                      businessId: businessId,
                     )..watch(),
                     child: const SuppliersPage(),
                   );
@@ -476,9 +477,7 @@ class AppRouter {
                   GoRoute(
                     path: 'detail',
                     builder: (context, state) {
-                      final authRepo = sl<AuthRepository>();
-                      final currentUser = authRepo.getCurrentUser();
-                      final businessId = currentUser?.businessId ?? '';
+                      final businessId = _activeBusinessId();
                       final supplier = state.extra as Supplier;
                       return MultiBlocProvider(
                         providers: [
@@ -494,8 +493,9 @@ class AppRouter {
                               repository: sl<IProcurementRepository>(),
                               permissions: sl<PermissionService>(),
                               businessId: businessId,
-                              userId: currentUser?.id ?? '',
-                              userName: currentUser?.fullName ?? '',
+                              userId: _activeUserId(),
+                              userName: _activeUserName(),
+                              branchId: _activeBranchId(context),
                             )..watch(),
                           ),
                         ],
@@ -514,15 +514,14 @@ class AppRouter {
               GoRoute(
                 path: AppRoutes.purchaseOrders,
                 builder: (context, _) {
-                  final authRepo = sl<AuthRepository>();
-                  final currentUser = authRepo.getCurrentUser();
                   return BlocProvider(
                     create: (_) => PoCubit(
                       repository: sl<IProcurementRepository>(),
                       permissions: sl<PermissionService>(),
-                      businessId: currentUser?.businessId ?? '',
-                      userId: currentUser?.id ?? '',
-                      userName: currentUser?.fullName ?? '',
+                      businessId: _activeBusinessId(),
+                      userId: _activeUserId(),
+                      userName: _activeUserName(),
+                      branchId: _activeBranchId(context),
                     )..watch(),
                     child: const PurchaseOrdersPage(),
                   );
@@ -531,8 +530,7 @@ class AppRouter {
                   GoRoute(
                     path: 'form',
                     builder: (context, state) {
-                      final authRepo = sl<AuthRepository>();
-                      final currentUser = authRepo.getCurrentUser();
+                      final businessId = _activeBusinessId();
                       // Extra is a PurchaseOrder when editing, or a Supplier
                       // when pre-filling a new PO for that supplier.
                       final extra = state.extra;
@@ -543,14 +541,15 @@ class AppRouter {
                         create: (_) => PoCubit(
                           repository: sl<IProcurementRepository>(),
                           permissions: sl<PermissionService>(),
-                          businessId: currentUser?.businessId ?? '',
-                          userId: currentUser?.id ?? '',
-                          userName: currentUser?.fullName ?? '',
+                          businessId: businessId,
+                          userId: _activeUserId(),
+                          userName: _activeUserName(),
+                          branchId: _activeBranchId(context),
                         )..watch(),
                         child: PoFormPage(
                           po: po,
                           initialSupplier: initialSupplier,
-                          businessId: currentUser?.businessId ?? '',
+                          businessId: businessId,
                         ),
                       );
                     },
@@ -558,16 +557,15 @@ class AppRouter {
                   GoRoute(
                     path: 'detail',
                     builder: (context, state) {
-                      final authRepo = sl<AuthRepository>();
-                      final currentUser = authRepo.getCurrentUser();
                       final poId = state.extra as String;
                       return BlocProvider(
                         create: (_) => PoCubit(
                           repository: sl<IProcurementRepository>(),
                           permissions: sl<PermissionService>(),
-                          businessId: currentUser?.businessId ?? '',
-                          userId: currentUser?.id ?? '',
-                          userName: currentUser?.fullName ?? '',
+                          businessId: _activeBusinessId(),
+                          userId: _activeUserId(),
+                          userName: _activeUserName(),
+                          branchId: _activeBranchId(context),
                         )..watch(),
                         child: PoDetailPage(poId: poId),
                       );
@@ -593,6 +591,37 @@ class AppRouter {
       ),
     ],
   );
+
+  // Tenant identity for procurement routes must come from the active session
+  // (ActiveBusinessContext), not a freshly-fetched user that may not be hydrated
+  // yet — an empty businessId silently queries the wrong (empty) tenant.
+  // getCurrentUser() is only a fallback for fields the session doesn't carry.
+  static String _activeBusinessId() {
+    final active = sl<ActiveBusinessContext>();
+    if (active.hasBusiness) return active.businessId!;
+    return sl<AuthRepository>().getCurrentUser()?.businessId ?? '';
+  }
+
+  static String _activeUserId() {
+    final active = sl<ActiveBusinessContext>();
+    return active.userId ?? sl<AuthRepository>().getCurrentUser()?.id ?? '';
+  }
+
+  static String _activeUserName() {
+    final active = sl<ActiveBusinessContext>();
+    return active.fullName ??
+        sl<AuthRepository>().getCurrentUser()?.fullName ??
+        '';
+  }
+
+  // Operating branch a new PO is tagged with: the user's currently-selected
+  // branch, falling back to the session branch. Captured at PO creation so
+  // received stock lands in the correct branch (never an empty branch id).
+  static String? _activeBranchId(BuildContext context) {
+    final selected = context.read<BranchCubit>().state.selectedBranchId;
+    if (selected != null && selected.trim().isNotEmpty) return selected;
+    return sl<ActiveBusinessContext>().branchId;
+  }
 }
 
 class ReceiptPreviewArgs {

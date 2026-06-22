@@ -7,7 +7,8 @@ enum PoStatus {
   approved,
   partiallyReceived,
   received,
-  cancelled;
+  cancelled,
+  closed;
 
   static PoStatus fromString(String s) => switch (s) {
     'submitted' => submitted,
@@ -15,6 +16,7 @@ enum PoStatus {
     'partially_received' => partiallyReceived,
     'received' => received,
     'cancelled' => cancelled,
+    'closed' => closed,
     _ => draft,
   };
 
@@ -25,6 +27,7 @@ enum PoStatus {
     partiallyReceived => 'partially_received',
     received => 'received',
     cancelled => 'cancelled',
+    closed => 'closed',
   };
 
   String get label => switch (this) {
@@ -34,6 +37,7 @@ enum PoStatus {
     partiallyReceived => 'Partial',
     received => 'Received',
     cancelled => 'Cancelled',
+    closed => 'Closed',
   };
 
   Color get color => switch (this) {
@@ -43,6 +47,7 @@ enum PoStatus {
     partiallyReceived => Colors.purple,
     received => AppColors.success,
     cancelled => AppColors.error,
+    closed => AppColors.textSecondary,
   };
 
   bool get canSubmit => this == draft;
@@ -50,5 +55,8 @@ enum PoStatus {
   bool get canReceive => this == approved || this == partiallyReceived;
   bool get canCancel =>
       this == draft || this == submitted || this == approved;
-  bool get isClosed => this == received || this == cancelled;
+  // Short-close: finalise a PO with outstanding qty (supplier won't deliver the
+  // rest). Only meaningful once it can receive but isn't fully received.
+  bool get canClose => this == approved || this == partiallyReceived;
+  bool get isClosed => this == received || this == cancelled || this == closed;
 }

@@ -8,16 +8,20 @@ import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/inventory_levels_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
+import 'package:pos/core/database/daos/procurement_settings_dao.dart';
 import 'package:pos/core/database/daos/purchase_order_lines_dao.dart';
 import 'package:pos/core/database/daos/purchase_orders_dao.dart';
 import 'package:pos/core/database/daos/suppliers_dao.dart';
 import 'package:pos/core/permissions/app_permission.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/services/stock_movement_service.dart';
+import 'package:pos/core/services/po_number_service.dart';
 import 'package:pos/core/sync/sync_status.dart';
 import 'package:pos/features/procurement/data/datasources/procurement_remote_ds.dart';
+import 'package:pos/features/procurement/domain/entities/approval_policy.dart';
 import 'package:pos/features/procurement/domain/entities/po_input.dart';
 import 'package:pos/features/procurement/domain/entities/po_status.dart';
+import 'package:pos/features/procurement/domain/entities/procurement_settings.dart';
 import 'package:pos/features/procurement/domain/entities/purchase_order.dart';
 import 'package:pos/features/procurement/domain/entities/purchase_order_line.dart';
 import 'package:pos/features/procurement/domain/entities/supplier.dart';
@@ -30,6 +34,8 @@ class ProcurementRepository implements IProcurementRepository {
   final ProductVariantsDao _variantsDao;
   final InventoryLevelsDao _levelsDao;
   final StockMovementService _stockMovement;
+  final PoNumberService _poNumberService;
+  final ProcurementSettingsDao _settingsDao;
   // ignore: unused_field
   final ProcurementRemoteDs? _remoteDs;
 
@@ -42,6 +48,8 @@ class ProcurementRepository implements IProcurementRepository {
     required ProductVariantsDao variantsDao,
     required InventoryLevelsDao levelsDao,
     required StockMovementService stockMovement,
+    required PoNumberService poNumberService,
+    required ProcurementSettingsDao settingsDao,
     ProcurementRemoteDs? remoteDs,
   }) : _suppliersDao = suppliersDao,
        _purchaseOrdersDao = purchaseOrdersDao,
@@ -49,7 +57,56 @@ class ProcurementRepository implements IProcurementRepository {
        _variantsDao = variantsDao,
        _levelsDao = levelsDao,
        _stockMovement = stockMovement,
+       _poNumberService = poNumberService,
+       _settingsDao = settingsDao,
        _remoteDs = remoteDs;
+
+  // ── Settings ──────────────────────────────────────────────────────────────
+
+  @override
+  Future<ProcurementSettings> getSettings(String businessId) async {
+    final row = await _settingsDao.getByBusinessId(businessId);
+    return ProcurementSettings(
+      businessId: businessId,
+      approvalThreshold: row?.approvalThreshold,
+    );
+  }
+
+  @override
+  Future<void> updateApprovalThreshold(
+    String businessId,
+    double? threshold,
+  ) async {
+    try {
+      await _settingsDao.upsert(
+        ProcurementSettingsTableCompanion.insert(
+          businessId: businessId,
+          approvalThreshold: Value(threshold),
+          syncStatus: Value(SyncStatus.pendingUpload.toInt()),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+      // Best-effort remote write so the server RLS check sees the same threshold.
+      // Offline failures are non-fatal — local stays the source of truth.
+      try {
+        await _remoteDs?.upsertApprovalThreshold(businessId, threshold);
+      } catch (e, st) {
+        debugPrint('[Procurement] threshold remote upsert deferred: $e\n$st');
+      }
+      sl<AuditLogService>().log(
+        actionType: AuditLogActionType.businessModuleChanged,
+        entityType: 'procurement_settings',
+        entityId: businessId,
+        description: threshold == null
+            ? 'PO approval threshold cleared'
+            : 'PO approval threshold set to $threshold',
+        businessId: businessId,
+      );
+    } catch (e, st) {
+      debugPrint('[Procurement] Error in updateApprovalThreshold: $e\n$st');
+      rethrow;
+    }
+  }
 
   // ── Suppliers ───────────────────────────────────────────────────────────────
 
@@ -225,17 +282,19 @@ class ProcurementRepository implements IProcurementRepository {
     String? supplierName,
     String? notes,
     DateTime? expectedDelivery,
+    double discount = 0,
+    double shipping = 0,
     required String createdById,
     required String createdByName,
     required List<PoLineInput> lines,
   }) async {
     try {
       final id = _uuid.v4();
-      final poNumber = _generatePoNumber();
-      // Round the sum too — adding already-rounded line totals can still
-      // drift by a fraction of a cent after enough lines.
-      final total =
-          (lines.fold(0.0, (s, l) => s + l.totalCost) * 100).round() / 100;
+      // Sequential, gapless per-business number (online RPC; offline local
+      // counter) — replaces the old random suffix.
+      final poNumber = await _poNumberService.claimNext(businessId);
+      // Total = subtotal - discount + shipping, rounded to cents.
+      final total = _orderTotal(lines, discount, shipping);
 
       await _purchaseOrdersDao.insert(
         PurchaseOrdersTableCompanion.insert(
@@ -247,6 +306,8 @@ class ProcurementRepository implements IProcurementRepository {
           poNumber: poNumber,
           notes: Value(notes),
           expectedDelivery: Value(expectedDelivery),
+          discount: Value(discount),
+          shipping: Value(shipping),
           totalAmount: Value(total),
           createdById: Value(createdById),
           createdByName: Value(createdByName),
@@ -287,6 +348,8 @@ class ProcurementRepository implements IProcurementRepository {
     DateTime? expectedDelivery,
     String? supplierId,
     String? supplierName,
+    double? discount,
+    double? shipping,
     List<PoLineInput>? lines,
   }) async {
     try {
@@ -294,8 +357,17 @@ class ProcurementRepository implements IProcurementRepository {
       if (po == null) throw Exception('PO not found: $id');
       _assertStatus(po.status, [PoStatus.draft], 'updatePurchaseOrder');
 
-      final rawTotal = lines?.fold(0.0, (s, l) => s + l.totalCost);
-      final total = rawTotal != null ? (rawTotal * 100).round() / 100 : null;
+      final effDiscount = discount ?? po.discount;
+      final effShipping = shipping ?? po.shipping;
+      // Recompute the total when lines, discount, or shipping change. Without new
+      // lines, reconstruct the subtotal from the stored total.
+      double? total;
+      if (lines != null) {
+        total = _orderTotal(lines, effDiscount, effShipping);
+      } else if (discount != null || shipping != null) {
+        final subtotal = po.totalAmount + po.discount - po.shipping;
+        total = ((subtotal - effDiscount + effShipping) * 100).round() / 100;
+      }
 
       await _purchaseOrdersDao.updatePo(
         id,
@@ -306,6 +378,8 @@ class ProcurementRepository implements IProcurementRepository {
           supplierName: supplierName != null
               ? Value(supplierName)
               : const Value.absent(),
+          discount: discount != null ? Value(discount) : const Value.absent(),
+          shipping: shipping != null ? Value(shipping) : const Value.absent(),
           totalAmount: total != null ? Value(total) : const Value.absent(),
           syncStatus: Value(SyncStatus.pendingUpdate.toInt()),
           localUpdatedAt: Value(DateTime.now()),
@@ -392,6 +466,24 @@ class ProcurementRepository implements IProcurementRepository {
         'approvePurchaseOrder',
       );
 
+      // Separation of duties: above the business threshold, a non-owner cannot
+      // approve their own PO — a different approver is required. Owners and
+      // below-threshold (or unset) orders are exempt. App-level backstop; the
+      // RLS policy mirrors this server-side.
+      if (approvedById == po.createdById) {
+        final settings = await getSettings(po.businessId);
+        if (ApprovalPolicy.requiresSeparateApprover(
+          total: po.totalAmount,
+          threshold: settings.approvalThreshold,
+          actorIsOwner: sl<PermissionService>().isOwnerRole,
+        )) {
+          throw Exception(
+            'This purchase order is above the approval threshold and must be '
+            'approved by a different person.',
+          );
+        }
+      }
+
       await _purchaseOrdersDao.updatePo(
         id,
         PurchaseOrdersTableCompanion(
@@ -424,6 +516,11 @@ class ProcurementRepository implements IProcurementRepository {
     required List<ReceiveLineInput> lines,
   }) async {
     try {
+      // A blank branch would write stock to an empty branch id — orphan
+      // inventory that shows in no real branch. Refuse it outright.
+      if (branchId.trim().isEmpty) {
+        throw Exception('Cannot receive goods without a branch.');
+      }
       final po = await _purchaseOrdersDao.getById(poId);
       if (po == null) throw Exception('PO not found: $poId');
       _assertStatus(
@@ -440,6 +537,16 @@ class ProcurementRepository implements IProcurementRepository {
       late final String newStatus;
       var unitsReceived = 0.0;
       await _variantsDao.db.transaction(() async {
+        // Landed-cost basis: spread order-level shipping (raises cost) and
+        // discount (lowers it) across lines by value share, so the moving-average
+        // reflects the true cost per unit. Computed once for the whole order.
+        final orderLines = await _purchaseOrderLinesDao.getByPoId(poId);
+        final orderSubtotal = orderLines.fold<double>(
+          0,
+          (s, l) => s + l.quantityOrdered * l.unitCost,
+        );
+        final netAdjust = po.shipping - po.discount;
+
         for (final receive in lines) {
           if (receive.quantityToReceive <= 0) continue;
 
@@ -455,7 +562,17 @@ class ProcurementRepository implements IProcurementRepository {
               ? remaining
               : receive.quantityToReceive;
 
-          // Moving-weighted-average costing.
+          // Landed unit cost for this line = unit cost + its share of
+          // (shipping - discount) spread over the line's ordered units.
+          final lineSubtotal = line.quantityOrdered * line.unitCost;
+          final lineShare =
+              orderSubtotal > 0 ? lineSubtotal / orderSubtotal : 0.0;
+          final perUnitAdjust = line.quantityOrdered > 0
+              ? (netAdjust * lineShare) / line.quantityOrdered
+              : 0.0;
+          final landedUnitCost = line.unitCost + perUnitAdjust;
+
+          // Moving-weighted-average costing on the landed unit cost.
           // Read current qty BEFORE the stock movement is applied.
           final levelRow =
               await _levelsDao.getLevel(receive.variantId, branchId);
@@ -465,7 +582,7 @@ class ProcurementRepository implements IProcurementRepository {
           final totalQtyAfter = currentQty + qtyToReceive;
           if (totalQtyAfter > 0) {
             final newCost = (currentQty * currentCost +
-                    qtyToReceive * receive.unitCost) /
+                    qtyToReceive * landedUnitCost) /
                 totalQtyAfter;
             await _variantsDao.updateCostPrice(receive.variantId, newCost);
           }
@@ -565,13 +682,11 @@ class ProcurementRepository implements IProcurementRepository {
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
 
-  String _generatePoNumber() {
-    final now = DateTime.now();
-    final date =
-        '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
-    final suffix =
-        _uuid.v4().replaceAll('-', '').substring(0, 4).toUpperCase();
-    return 'PO-$date-$suffix';
+  // Order total = subtotal - discount + shipping, rounded to cents. Rounding the
+  // sum (not just line totals) avoids fractional-cent drift across many lines.
+  double _orderTotal(List<PoLineInput> lines, double discount, double shipping) {
+    final subtotal = lines.fold(0.0, (s, l) => s + l.totalCost);
+    return ((subtotal - discount + shipping) * 100).round() / 100;
   }
 
   PurchaseOrderLinesTableCompanion _lineCompanion(

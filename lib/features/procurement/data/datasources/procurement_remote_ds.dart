@@ -69,4 +69,19 @@ class ProcurementRemoteDs {
   Future<void> deletePurchaseOrderLine(String id) async {
     await _client.from('purchase_order_lines').delete().eq('id', id);
   }
+
+  // ── Settings ──────────────────────────────────────────────────────────────
+
+  /// Upserts the per-business approval threshold so the server-side RLS check
+  /// can read it. [threshold] null clears the limit.
+  Future<void> upsertApprovalThreshold(
+    String businessId,
+    double? threshold,
+  ) async {
+    await _client.from('procurement_settings').upsert({
+      'business_id': businessId,
+      'approval_threshold': threshold,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    });
+  }
 }

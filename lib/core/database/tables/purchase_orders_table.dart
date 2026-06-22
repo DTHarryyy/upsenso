@@ -18,6 +18,11 @@ class PurchaseOrdersTable extends Table {
   TextColumn get poNumber => text()();
   TextColumn get notes => text().nullable()();
   DateTimeColumn get expectedDelivery => dateTime().nullable()();
+  // Order-level landed-cost adjustments. totalAmount = subtotal - discount +
+  // shipping. Both are distributed across received units into the moving-average
+  // cost on receipt.
+  RealColumn get discount => real().withDefault(const Constant(0.0))();
+  RealColumn get shipping => real().withDefault(const Constant(0.0))();
   RealColumn get totalAmount => real().withDefault(const Constant(0.0))();
 
   TextColumn get createdById => text().nullable()();

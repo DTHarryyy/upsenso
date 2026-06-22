@@ -18,6 +18,10 @@ class PoCubit extends Cubit<PoState> {
   final String userId;
   final String userName;
 
+  /// The operating branch a new PO is tagged with so received stock lands in the
+  /// right branch. Sourced from the active session/selected branch at construction.
+  final String? branchId;
+
   StreamSubscription? _subscription;
 
   PoCubit({
@@ -26,6 +30,7 @@ class PoCubit extends Cubit<PoState> {
     required this.businessId,
     required this.userId,
     required this.userName,
+    this.branchId,
   }) : _repository = repository,
        _permissions = permissions,
        super(PoInitial());
@@ -81,6 +86,8 @@ class PoCubit extends Cubit<PoState> {
     String? branchId,
     String? notes,
     DateTime? expectedDelivery,
+    double discount = 0,
+    double shipping = 0,
     required List<PoLineInput> lines,
   }) async {
     if (!await _allowed(AppPermission.createPurchaseOrder)) return null;
@@ -89,11 +96,15 @@ class PoCubit extends Cubit<PoState> {
     try {
       final id = await _repository.createPurchaseOrder(
         businessId: businessId,
-        branchId: branchId,
+        // Tag the PO with the explicit branch if given, else the cubit's
+        // operating branch — so receiving lands stock in the right branch.
+        branchId: branchId ?? this.branchId,
         supplierId: supplierId,
         supplierName: supplierName,
         notes: notes,
         expectedDelivery: expectedDelivery,
+        discount: discount,
+        shipping: shipping,
         createdById: userId,
         createdByName: userName,
         lines: lines,
@@ -113,6 +124,8 @@ class PoCubit extends Cubit<PoState> {
     String? supplierName,
     String? notes,
     DateTime? expectedDelivery,
+    double? discount,
+    double? shipping,
     List<PoLineInput>? lines,
   }) async {
     if (!await _allowed(AppPermission.createPurchaseOrder, entityId: id)) return;
@@ -125,6 +138,8 @@ class PoCubit extends Cubit<PoState> {
         supplierName: supplierName,
         notes: notes,
         expectedDelivery: expectedDelivery,
+        discount: discount,
+        shipping: shipping,
         lines: lines,
       );
     } catch (e, st) {
@@ -186,6 +201,27 @@ class PoCubit extends Cubit<PoState> {
       debugPrint('[PoCubit] Error in receiveGoods: $e\n$st');
       emit(PoError('Failed to receive goods.'));
       emit(PoLoaded(orders: currentOrders));
+    }
+  }
+
+  /// Current PO approval threshold for the business (null = unset).
+  Future<double?> loadApprovalThreshold() async {
+    final settings = await _repository.getSettings(businessId);
+    return settings.approvalThreshold;
+  }
+
+  /// Sets (or clears, with null) the PO approval threshold. Guarded — managing
+  /// procurement configuration requires the manage permission.
+  Future<bool> setApprovalThreshold(double? threshold) async {
+    if (!await _allowed(AppPermission.manageProcurement)) return false;
+    try {
+      await _repository.updateApprovalThreshold(businessId, threshold);
+      return true;
+    } catch (e, st) {
+      debugPrint('[PoCubit] Error in setApprovalThreshold: $e\n$st');
+      emit(PoError('Failed to update approval threshold.'));
+      emit(PoLoaded(orders: _currentOrders()));
+      return false;
     }
   }
 

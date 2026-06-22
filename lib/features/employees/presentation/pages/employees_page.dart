@@ -13,6 +13,7 @@ import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/widgets/app_filled_button.dart';
+import 'package:pos/core/widgets/app_toast.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/business/domain/entities/branch.dart';
@@ -208,8 +209,21 @@ class _EmployeesViewState extends State<_EmployeesView> {
       PermissionKeys.employeesSuspend,
     );
 
-    return BlocListener<BranchCubit, BranchState>(
-      listener: (ctx, _) => _initialize(),
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<BranchCubit, BranchState>(
+          listener: (ctx, _) => _initialize(),
+        ),
+        // Success toast for add/update. Errors stay inline in the form.
+        BlocListener<EmployeeBloc, EmployeeState>(
+          listenWhen: (prev, curr) => curr is EmployeeOperationSuccess,
+          listener: (ctx, state) {
+            if (state is EmployeeOperationSuccess) {
+              AppToast.show(ctx, '${state.message} successfully');
+            }
+          },
+        ),
+      ],
       child: Scaffold(
         backgroundColor: AppColors.background,
         floatingActionButton: canCreate

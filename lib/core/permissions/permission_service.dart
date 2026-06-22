@@ -118,6 +118,15 @@ class PermissionService {
   /// Current normalised role key.  `null` means no session / not logged in.
   String? get currentRoleKey => _roleKey;
 
+  /// True for the unrestricted owner-level roles. Procurement approval
+  /// governance exempts owners from separation-of-duties — they hold ultimate
+  /// authority and must never be dead-ended on their own POs.
+  bool get isOwnerRole => const {
+        RolePermissionMatrix.superAdmin,
+        RolePermissionMatrix.owner,
+        RolePermissionMatrix.businessOwner,
+      }.contains(_roleKey);
+
   // ── NEW: per-employee permission map ──────────────────────────────────────
 
   /// Check a permission by its dot-notation key.

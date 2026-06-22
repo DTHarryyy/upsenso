@@ -291,7 +291,7 @@ class _HeaderCard extends StatelessWidget {
               ],
             ),
           ),
-          // Emphasised total band so the order value stands out at a glance.
+          // Emphasised total band with the landed-cost breakdown when present.
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -301,24 +301,36 @@ class _HeaderCard extends StatelessWidget {
                 bottom: Radius.circular(8),
               ),
             ),
-            child: Row(
+            child: Column(
               children: [
-                Text(
-                  'Total',
-                  style: getOutfitStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  AppFormatters.currency(po.totalAmount),
-                  style: getOutfitStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.brand,
-                  ),
+                if (po.discount > 0 || po.shipping > 0) ...[
+                  _amountLine('Subtotal',
+                      po.totalAmount + po.discount - po.shipping),
+                  if (po.discount > 0)
+                    _amountLine('Discount', -po.discount),
+                  if (po.shipping > 0) _amountLine('Shipping', po.shipping),
+                  const SizedBox(height: 6),
+                ],
+                Row(
+                  children: [
+                    Text(
+                      'Total',
+                      style: getOutfitStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      AppFormatters.currency(po.totalAmount),
+                      style: getOutfitStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.brand,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -348,6 +360,24 @@ class _HeaderCard extends StatelessWidget {
               color: AppColors.textPrimary,
             ),
           ),
+        ),
+      ],
+    ),
+  );
+
+  // A subtotal/discount/shipping line in the total band.
+  Widget _amountLine(String label, double amount) => Padding(
+    padding: const EdgeInsets.only(bottom: 4),
+    child: Row(
+      children: [
+        Text(
+          label,
+          style: getOutfitStyle(fontSize: 12, color: AppColors.textMuted),
+        ),
+        const Spacer(),
+        Text(
+          AppFormatters.currency(amount),
+          style: getOutfitStyle(fontSize: 12, color: AppColors.textSecondary),
         ),
       ],
     ),
@@ -646,14 +676,27 @@ class _ReceiveGoodsDialogState extends State<_ReceiveGoodsDialog> {
       return;
     }
 
+    // Stock must land in a real branch — prefer the PO's own branch, fall back to
+    // the currently-selected branch. If neither resolves, stop with a clear
+    // message rather than creating orphan inventory under an empty branch id.
+    final branchId = (widget.po.branchId?.trim().isNotEmpty ?? false)
+        ? widget.po.branchId!
+        : context.read<BranchCubit>().state.selectedBranchId;
+    if (branchId == null || branchId.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Select a branch before receiving goods.'),
+        ),
+      );
+      return;
+    }
+
     setState(() => _saving = true);
     try {
       final cubit = context.read<PoCubit>();
       await cubit.receiveGoods(
         poId: widget.po.id,
-        branchId: widget.po.branchId ??
-            context.read<BranchCubit>().state.selectedBranchId ??
-            '',
+        branchId: branchId,
         lines: inputs,
       );
       if (mounted) Navigator.pop(context);

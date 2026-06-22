@@ -1,9 +1,19 @@
 import 'package:pos/features/procurement/domain/entities/po_input.dart';
+import 'package:pos/features/procurement/domain/entities/procurement_settings.dart';
 import 'package:pos/features/procurement/domain/entities/purchase_order.dart';
 import 'package:pos/features/procurement/domain/entities/purchase_order_line.dart';
 import 'package:pos/features/procurement/domain/entities/supplier.dart';
 
 abstract interface class IProcurementRepository {
+  // ── Settings ──────────────────────────────────────────────────────────────
+
+  /// Per-business procurement settings (approval threshold). Defaults to an
+  /// unset threshold when no row exists yet.
+  Future<ProcurementSettings> getSettings(String businessId);
+
+  /// Sets the PO approval threshold (null clears it → self-approve any amount).
+  Future<void> updateApprovalThreshold(String businessId, double? threshold);
+
   // ── Suppliers ───────────────────────────────────────────────────────────────
 
   Stream<List<Supplier>> watchSuppliers(String businessId);
@@ -51,6 +61,8 @@ abstract interface class IProcurementRepository {
     String? supplierName,
     String? notes,
     DateTime? expectedDelivery,
+    double discount,
+    double shipping,
     required String createdById,
     required String createdByName,
     required List<PoLineInput> lines,
@@ -62,6 +74,8 @@ abstract interface class IProcurementRepository {
     DateTime? expectedDelivery,
     String? supplierId,
     String? supplierName,
+    double? discount,
+    double? shipping,
     List<PoLineInput>? lines,
   });
 

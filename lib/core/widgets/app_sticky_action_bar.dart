@@ -51,7 +51,13 @@ class AppStickyActionBar extends StatelessWidget {
             ),
           ],
         ),
-        child: Center(
+        // Center horizontally only. `heightFactor: 1.0` makes the Align
+        // shrink-wrap vertically — without it, Align/Center fills the bounded
+        // maxHeight the Scaffold hands the bottomNavigationBar slot, so the bar
+        // expands to the full screen and squeezes the page body to zero height.
+        child: Align(
+          alignment: Alignment.center,
+          heightFactor: 1.0,
           child: ConstrainedBox(
             // Keep the actions aligned with the centred page body instead of
             // stretching edge-to-edge on tablet/desktop.

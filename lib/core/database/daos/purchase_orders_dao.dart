@@ -166,6 +166,8 @@ class PurchaseOrdersDao extends DatabaseAccessor<AppDatabase>
               ? DateTime.parse(row['expected_delivery'] as String)
               : null,
         ),
+        discount: Value((row['discount'] as num?)?.toDouble() ?? 0.0),
+        shipping: Value((row['shipping'] as num?)?.toDouble() ?? 0.0),
         totalAmount: Value((row['total_amount'] as num?)?.toDouble() ?? 0.0),
         createdById: Value(row['created_by_id'] as String?),
         createdByName: Value(row['created_by_name'] as String?),

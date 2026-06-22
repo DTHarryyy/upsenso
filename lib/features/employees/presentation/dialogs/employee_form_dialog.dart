@@ -246,7 +246,7 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
         AddEmployee(
           branchId: _selectedBranchId!,
           fullName: _nameCtrl.text.trim(),
-          email: _emailCtrl.text.trim(),
+          email: _emailCtrl.text.trim().toLowerCase(),
           password: _passwordCtrl.text,
           roleName: _role.displayName,
           allowedRoleNames: allowedRoleNames,

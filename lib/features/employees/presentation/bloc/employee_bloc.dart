@@ -108,8 +108,12 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
     final current = _currentLoaded;
 
     if (!_roleAllowed(event.allowedRoleNames, event.roleName)) {
-      emit(EmployeeError(
-        'You are not allowed to assign the ${event.roleName ?? 'selected'} role.',
+      emit(EmployeeValidationFailure(
+        fieldErrors: {
+          'form':
+              'You are not allowed to assign the ${event.roleName ?? 'selected'} role.',
+        },
+        loaded: current,
       ));
       return;
     }
@@ -140,7 +144,12 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
       emit(EmployeeValidationFailure(fieldErrors: e.fieldErrors, loaded: current));
     } catch (e, st) {
       debugPrint('[EmployeeBloc] Error: $e\n$st');
-      emit(EmployeeError(AppErrorMapper.message(e)));
+      // Surface inline in the form (and keep the list) rather than as a
+      // full-screen error that loses the loaded employees.
+      emit(EmployeeValidationFailure(
+        fieldErrors: {'form': AppErrorMapper.message(e)},
+        loaded: current,
+      ));
     }
   }
 
@@ -151,8 +160,12 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
     final current = _currentLoaded;
 
     if (!_roleAllowed(event.allowedRoleNames, event.roleName)) {
-      emit(EmployeeError(
-        'You are not allowed to assign the ${event.roleName ?? 'selected'} role.',
+      emit(EmployeeValidationFailure(
+        fieldErrors: {
+          'form':
+              'You are not allowed to assign the ${event.roleName ?? 'selected'} role.',
+        },
+        loaded: current,
       ));
       return;
     }
@@ -176,7 +189,10 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
       emit(EmployeeValidationFailure(fieldErrors: e.fieldErrors, loaded: current));
     } catch (e, st) {
       debugPrint('[EmployeeBloc] Error: $e\n$st');
-      emit(EmployeeError(AppErrorMapper.message(e)));
+      emit(EmployeeValidationFailure(
+        fieldErrors: {'form': AppErrorMapper.message(e)},
+        loaded: current,
+      ));
     }
   }
 

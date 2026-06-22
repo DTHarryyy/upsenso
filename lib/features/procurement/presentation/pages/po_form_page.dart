@@ -14,12 +14,14 @@ import 'package:pos/core/database/daos/product_variants_dao.dart';
 import 'package:pos/core/database/daos/products_dao.dart';
 import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/core/widgets/app_bottom_sheet_scaffold.dart';
+import 'package:pos/core/widgets/app_empty_state.dart';
 import 'package:pos/core/widgets/app_filled_button.dart';
 import 'package:pos/core/widgets/app_filter_chip.dart';
 import 'package:pos/core/widgets/app_search_bar.dart';
 import 'package:pos/core/widgets/app_section_card.dart';
 import 'package:pos/core/widgets/app_sticky_action_bar.dart';
 import 'package:pos/core/widgets/app_sub_page_bar.dart';
+import 'package:pos/features/procurement/domain/entities/approval_policy.dart';
 import 'package:pos/features/procurement/domain/entities/po_input.dart';
 import 'package:pos/features/procurement/domain/entities/purchase_order.dart';
 import 'package:pos/features/procurement/domain/entities/supplier.dart';
@@ -62,6 +64,8 @@ class _PoFormPageState extends State<PoFormPage> {
   String? _supplierId;
   String? _supplierName;
   final _notesCtrl = TextEditingController();
+  final _discountCtrl = TextEditingController();
+  final _shippingCtrl = TextEditingController();
   DateTime? _expectedDelivery;
   final List<_LineEntry> _lines = [];
   bool _saving = false;
@@ -70,10 +74,22 @@ class _PoFormPageState extends State<PoFormPage> {
   List<ProductVariantsTableData> _variants = [];
   Map<String, ProductsTableData> _productsById = {};
   bool _loadingData = true;
+  // A load failure must not silently leave a blank form — it flips this so the
+  // body shows a graceful error with a retry instead.
+  bool _loadError = false;
+  // PO approval threshold for this business (null = unset). Decides whether the
+  // creator can instant-approve or must route for a separate approver.
+  double? _approvalThreshold;
 
   bool get _isEdit => widget.po != null;
 
   Future<void> _loadFormData() async {
+    if (mounted) {
+      setState(() {
+        _loadingData = true;
+        _loadError = false;
+      });
+    }
     try {
       final repo = sl<IProcurementRepository>();
       final variantsDao = sl<ProductVariantsDao>();
@@ -81,17 +97,24 @@ class _PoFormPageState extends State<PoFormPage> {
       final suppliers = await repo.getSuppliers(widget.businessId);
       final variants = await variantsDao.getByBusinessId(widget.businessId);
       final products = await productsDao.getByBusinessId(widget.businessId);
+      final settings = await repo.getSettings(widget.businessId);
       if (mounted) {
         setState(() {
           _suppliers = suppliers;
           _variants = variants;
           _productsById = {for (final p in products) p.id: p};
+          _approvalThreshold = settings.approvalThreshold;
           _loadingData = false;
         });
       }
     } catch (e, st) {
       debugPrint('[PoFormPage] Error in _loadFormData: $e\n$st');
-      if (mounted) setState(() => _loadingData = false);
+      if (mounted) {
+        setState(() {
+          _loadingData = false;
+          _loadError = true;
+        });
+      }
     }
   }
 
@@ -99,11 +122,16 @@ class _PoFormPageState extends State<PoFormPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadFormData());
+    // Discount/shipping change the live order total, same as line edits.
+    _discountCtrl.addListener(_onLineChanged);
+    _shippingCtrl.addListener(_onLineChanged);
     if (_isEdit) {
       final po = widget.po!;
       _supplierId = po.supplierId;
       _supplierName = po.supplierName;
       _notesCtrl.text = po.notes ?? '';
+      if (po.discount > 0) _discountCtrl.text = po.discount.toStringAsFixed(2);
+      if (po.shipping > 0) _shippingCtrl.text = po.shipping.toStringAsFixed(2);
       _expectedDelivery = po.expectedDelivery;
       for (final l in po.lines) {
         _addEntry(
@@ -157,10 +185,28 @@ class _PoFormPageState extends State<PoFormPage> {
   @override
   void dispose() {
     _notesCtrl.dispose();
+    _discountCtrl.dispose();
+    _shippingCtrl.dispose();
     for (final l in _lines) {
       l.dispose();
     }
     super.dispose();
+  }
+
+  double get _discountValue {
+    final v = double.tryParse(_discountCtrl.text) ?? 0;
+    return v.isFinite && v > 0 ? v : 0;
+  }
+
+  double get _shippingValue {
+    final v = double.tryParse(_shippingCtrl.text) ?? 0;
+    return v.isFinite && v > 0 ? v : 0;
+  }
+
+  // Order total shown on the action bar: subtotal − discount + shipping.
+  double get _orderTotal {
+    final t = _summary.total - _discountValue + _shippingValue;
+    return t < 0 ? 0 : t;
   }
 
   List<PoLineInput> _buildLineInputs() {
@@ -203,6 +249,8 @@ class _PoFormPageState extends State<PoFormPage> {
           supplierName: _supplierName,
           notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
           expectedDelivery: _expectedDelivery,
+          discount: _discountValue,
+          shipping: _shippingValue,
           lines: lines,
         );
         if (mounted) Navigator.pop(context);
@@ -214,15 +262,19 @@ class _PoFormPageState extends State<PoFormPage> {
         supplierName: _supplierName,
         notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
         expectedDelivery: _expectedDelivery,
+        discount: _discountValue,
+        shipping: _shippingValue,
         lines: lines,
       );
       // Null id = the cubit blocked or failed it and already surfaced the error.
       if (id == null) return;
-      // Chain the lifecycle move so the user lands on the right state in one go:
-      // creators submit for approval; approvers approve the draft immediately.
+      // Chain the lifecycle move so the user lands on the right state in one go.
+      // A PO is created as draft, so the approve path must submit first
+      // (approvePurchaseOrder only accepts a submitted PO).
       if (mode == _SaveMode.submit) {
         await cubit.submitPurchaseOrder(id);
       } else if (mode == _SaveMode.approve) {
+        await cubit.submitPurchaseOrder(id);
         await cubit.approvePurchaseOrder(id);
       }
       if (mounted) Navigator.pop(context);
@@ -237,9 +289,9 @@ class _PoFormPageState extends State<PoFormPage> {
       listenWhen: (_, s) => s is PoError,
       listener: (_, s) {
         if (s is PoError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(s.message)),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(s.message)));
         }
       },
       child: Scaffold(
@@ -253,73 +305,104 @@ class _PoFormPageState extends State<PoFormPage> {
             ? const Center(
                 child: CircularProgressIndicator(color: AppColors.brand),
               )
+            : _loadError
+            ? AppEmptyState(
+                icon: IconlyLight.danger,
+                title: "Couldn't load the form",
+                message:
+                    'Something went wrong loading suppliers and products. '
+                    'Please try again.',
+                actionLabel: 'Retry',
+                onAction: _loadFormData,
+              )
             : Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
-            children: [
-              AppSectionCard(
-                title: 'Supplier',
-                icon: Icons.storefront_outlined,
-                children: [
-                  _SupplierPicker(
-                    suppliers: _suppliers,
-                    selectedId: _supplierId,
-                    selectedName: _supplierName,
-                    onChanged: (id, name) => setState(() {
-                      _supplierId = id;
-                      _supplierName = name;
-                    }),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              AppSectionCard(
-                title: 'Details',
-                icon: IconlyLight.document,
-                children: [
-                  _inputField(
-                    controller: _notesCtrl,
-                    label: 'Notes (optional)',
-                    maxLines: 2,
-                  ),
-                  const SizedBox(height: 12),
-                  _DateField(
-                    label: 'Expected Delivery',
-                    value: _expectedDelivery,
-                    onChanged: (d) => setState(() => _expectedDelivery = d),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              AppSectionCard(
-                title: 'Products',
-                icon: IconlyLight.bag,
-                trailing: _lines.isEmpty
-                    ? null
-                    : _AddProductsChip(
-                        onTap: () => _showProductPicker(context),
-                      ),
-                children: [
-                  if (_lines.isEmpty)
-                    _ProductsEmptyState(
-                      onAdd: () => _showProductPicker(context),
-                    )
-                  else
-                    ..._lines.asMap().entries.map(
-                      (e) => _LineRow(
-                        entry: e.value,
-                        index: e.key,
-                        onRemove: () =>
-                            setState(() => _lines.removeAt(e.key)),
-                      ),
+                key: _formKey,
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+                  children: [
+                    AppSectionCard(
+                      title: 'Supplier',
+                      icon: Icons.storefront_outlined,
+                      children: [
+                        _SupplierPicker(
+                          suppliers: _suppliers,
+                          selectedId: _supplierId,
+                          selectedName: _supplierName,
+                          onChanged: (id, name) => setState(() {
+                            _supplierId = id;
+                            _supplierName = name;
+                          }),
+                        ),
+                      ],
                     ),
-                ],
+                    const SizedBox(height: 12),
+                    AppSectionCard(
+                      title: 'Details',
+                      icon: IconlyLight.document,
+                      children: [
+                        _inputField(
+                          controller: _notesCtrl,
+                          label: 'Notes (optional)',
+                          maxLines: 2,
+                        ),
+                        const SizedBox(height: 12),
+                        _DateField(
+                          label: 'Expected Delivery',
+                          value: _expectedDelivery,
+                          onChanged: (d) =>
+                              setState(() => _expectedDelivery = d),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _amountField(
+                                controller: _discountCtrl,
+                                label: 'Discount',
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _amountField(
+                                controller: _shippingCtrl,
+                                label: 'Shipping',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    AppSectionCard(
+                      title: 'Products',
+                      icon: IconlyLight.bag,
+                      trailing: _lines.isEmpty
+                          ? null
+                          : _AddProductsChip(
+                              onTap: () => _showProductPicker(context),
+                            ),
+                      children: [
+                        if (_lines.isEmpty)
+                          _ProductsEmptyState(
+                            onAdd: () => _showProductPicker(context),
+                          )
+                        else
+                          ..._lines.asMap().entries.map(
+                            (e) => _LineRow(
+                              entry: e.value,
+                              index: e.key,
+                              onRemove: () =>
+                                  setState(() => _lines.removeAt(e.key)),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
-        ),
-        bottomNavigationBar: _loadingData ? null : _buildActionBar(),
+        bottomNavigationBar: (_loadingData || _loadError)
+            ? null
+            : _buildActionBar(),
       ),
     );
   }
@@ -334,7 +417,7 @@ class _PoFormPageState extends State<PoFormPage> {
         ),
         const Spacer(),
         Text(
-          AppFormatters.currency(s.total),
+          AppFormatters.currency(_orderTotal),
           style: getOutfitStyle(
             fontSize: 16,
             fontWeight: FontWeight.w700,
@@ -356,41 +439,46 @@ class _PoFormPageState extends State<PoFormPage> {
       );
     }
 
-    // Creating: an approver finishes in one tap (Create & Approve); a creator
-    // routes it for approval. Either way "Save as Draft" stays available.
-    final canApprove =
-        sl<PermissionService>().can(PermissionKeys.procurementApprovePo);
+    // Creating: the creator finishes in one tap (Create & Approve) only when
+    // they're authorized to instant-approve this order — owners always, and
+    // approvers for amounts at/under the business threshold (or when unset).
+    // Above the threshold a non-owner routes it to a different approver.
+    final perms = sl<PermissionService>();
+    final instant = ApprovalPolicy.canInstantApprove(
+      canApprove: perms.can(PermissionKeys.procurementApprovePo),
+      total: _orderTotal,
+      threshold: _approvalThreshold,
+      actorIsOwner: perms.isOwnerRole,
+    );
     return AppStickyActionBar(
       summary: summary,
       secondary: _draftButton(),
       primary: AppFilledButton(
-        label: canApprove ? 'Create & Approve' : 'Submit for Approval',
+        label: instant ? 'Create & Approve' : 'Submit for Approval',
         loading: _saving,
         onPressed: _saving
             ? null
-            : () => _save(canApprove ? _SaveMode.approve : _SaveMode.submit),
+            : () => _save(instant ? _SaveMode.approve : _SaveMode.submit),
       ),
     );
   }
 
   Widget _draftButton() => OutlinedButton(
-        onPressed: _saving ? null : () => _save(_SaveMode.draft),
-        style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: AppColors.brand),
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: Text(
-          'Save as Draft',
-          style: getOutfitStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: AppColors.brand,
-          ),
-        ),
-      );
+    onPressed: _saving ? null : () => _save(_SaveMode.draft),
+    style: OutlinedButton.styleFrom(
+      side: const BorderSide(color: AppColors.brand),
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ),
+    child: Text(
+      'Save as Draft',
+      style: getOutfitStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: AppColors.brand,
+      ),
+    ),
+  );
 
   Widget _inputField({
     required TextEditingController controller,
@@ -403,6 +491,20 @@ class _PoFormPageState extends State<PoFormPage> {
     style: getOutfitStyle(fontSize: 14, color: AppColors.textPrimary),
     decoration: _inputDeco(label),
     validator: validator,
+  );
+
+  // Optional order-level amount (discount / shipping). Decimal, ₱-prefixed.
+  Widget _amountField({
+    required TextEditingController controller,
+    required String label,
+  }) => TextFormField(
+    controller: controller,
+    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+    inputFormatters: [
+      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+    ],
+    style: getOutfitStyle(fontSize: 14, color: AppColors.textPrimary),
+    decoration: _inputDeco(label).copyWith(prefixText: '₱ '),
   );
 
   InputDecoration _inputDeco(String label) => InputDecoration(
@@ -473,16 +575,19 @@ class _PoFormPageState extends State<PoFormPage> {
         .where((v) => !existing.contains(v.id) && _isPurchasable(v))
         .toList();
     final available = _collapseSimpleDuplicates(purchasable);
-    final items = available
-        .map(
-          (v) => _PickerItem(
-            variant: v,
-            label: _variantLabel(v),
-            isIngredient: _productsById[v.productId]?.type == 'ingredient',
-          ),
-        )
-        .toList()
-      ..sort((a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()));
+    final items =
+        available
+            .map(
+              (v) => _PickerItem(
+                variant: v,
+                label: _variantLabel(v),
+                isIngredient: _productsById[v.productId]?.type == 'ingredient',
+              ),
+            )
+            .toList()
+          ..sort(
+            (a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()),
+          );
     showModalBottomSheet<List<ProductVariantsTableData>>(
       context: context,
       isScrollControlled: true,
@@ -562,10 +667,8 @@ class _SupplierPicker extends StatelessWidget {
   void _pick(BuildContext context) {
     showDialog<_SupplierChoice>(
       context: context,
-      builder: (_) => _SupplierPickerDialog(
-        suppliers: suppliers,
-        selectedId: selectedId,
-      ),
+      builder: (_) =>
+          _SupplierPickerDialog(suppliers: suppliers, selectedId: selectedId),
     ).then((choice) {
       // Null = dismissed (barrier/back) — keep the current selection untouched.
       // A returned choice carries either a supplier or an explicit "no supplier".
@@ -708,8 +811,7 @@ class _SupplierPickerDialogState extends State<_SupplierPickerDialog> {
                       title: s.name,
                       subtitle: s.phone,
                       isSelected: s.id == widget.selectedId,
-                      onTap: () =>
-                          Navigator.pop(context, _SupplierChoice(s)),
+                      onTap: () => Navigator.pop(context, _SupplierChoice(s)),
                     ),
                   if (filtered.isEmpty)
                     Padding(
@@ -762,7 +864,9 @@ class _SupplierTile extends StatelessWidget {
             duration: const Duration(milliseconds: 140),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: isSelected ? AppColors.brand.withAlpha(12) : AppColors.background,
+              color: isSelected
+                  ? AppColors.brand.withAlpha(12)
+                  : AppColors.background,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isSelected ? AppColors.brand : AppColors.borderSoft,
@@ -783,8 +887,8 @@ class _SupplierTile extends StatelessWidget {
                           color: isNone && !isSelected
                               ? AppColors.textMuted
                               : isSelected
-                                  ? AppColors.brand
-                                  : AppColors.textPrimary,
+                              ? AppColors.brand
+                              : AppColors.textPrimary,
                         ),
                       ),
                       if (subtitle != null && subtitle!.isNotEmpty) ...[
@@ -843,11 +947,7 @@ class _DateField extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(
-              IconlyLight.calendar,
-              size: 16,
-              color: AppColors.textMuted,
-            ),
+            Icon(IconlyLight.calendar, size: 16, color: AppColors.textMuted),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -997,13 +1097,9 @@ class _LineRow extends StatelessWidget {
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(
-                  child: _numField(entry.qtyCtrl, 'Qty'),
-                ),
+                Expanded(child: _numField(entry.qtyCtrl, 'Qty')),
                 const SizedBox(width: 10),
-                Expanded(
-                  child: _numField(entry.costCtrl, 'Unit Cost'),
-                ),
+                Expanded(child: _numField(entry.costCtrl, 'Unit Cost')),
               ],
             ),
             const SizedBox(height: 10),
@@ -1042,45 +1138,36 @@ class _LineRow extends StatelessWidget {
     );
   }
 
-  Widget _numField(TextEditingController ctrl, String hint) =>
-      TextFormField(
-        controller: ctrl,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-        ],
-        style: getOutfitStyle(fontSize: 13, color: AppColors.textPrimary),
-        decoration: InputDecoration(
-          labelText: hint,
-          labelStyle: getOutfitStyle(
-            fontSize: 12,
-            color: AppColors.textMuted,
-          ),
-          filled: true,
-          fillColor: AppColors.surface,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 10,
-            vertical: 10,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: AppColors.borderSoft),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: AppColors.borderSoft),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: AppColors.brand, width: 1.5),
-          ),
-        ),
-        validator: (v) {
-          if (v == null || v.isEmpty) return 'Required';
-          if ((double.tryParse(v) ?? 0) <= 0) return '>0';
-          return null;
-        },
-      );
+  Widget _numField(TextEditingController ctrl, String hint) => TextFormField(
+    controller: ctrl,
+    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+    style: getOutfitStyle(fontSize: 13, color: AppColors.textPrimary),
+    decoration: InputDecoration(
+      labelText: hint,
+      labelStyle: getOutfitStyle(fontSize: 12, color: AppColors.textMuted),
+      filled: true,
+      fillColor: AppColors.surface,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: AppColors.borderSoft),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: AppColors.borderSoft),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: AppColors.brand, width: 1.5),
+      ),
+    ),
+    validator: (v) {
+      if (v == null || v.isEmpty) return 'Required';
+      if ((double.tryParse(v) ?? 0) <= 0) return '>0';
+      return null;
+    },
+  );
 }
 
 /// Compact brand "Add" pill shown in the Products section header once at least
@@ -1183,11 +1270,7 @@ class _ProductsEmptyState extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
-                    IconlyLight.plus,
-                    size: 16,
-                    color: AppColors.textInverse,
-                  ),
+                  const Icon(Icons.add, size: 16, color: AppColors.textInverse),
                   const SizedBox(width: 6),
                   Text(
                     'Add products',
@@ -1240,10 +1323,12 @@ class _ProductPickerSheetState extends State<_ProductPickerSheet> {
   _ItemFilter _filter = _ItemFilter.all;
   final Set<String> _selected = {};
 
-  late final int _productCount =
-      widget.items.where((i) => !i.isIngredient).length;
-  late final int _ingredientCount =
-      widget.items.where((i) => i.isIngredient).length;
+  late final int _productCount = widget.items
+      .where((i) => !i.isIngredient)
+      .length;
+  late final int _ingredientCount = widget.items
+      .where((i) => i.isIngredient)
+      .length;
 
   // The type filter only earns its place when both kinds are present.
   bool get _showFilter => _productCount > 0 && _ingredientCount > 0;
@@ -1564,9 +1649,7 @@ class _EmptyResults extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Text(
-          searching
-              ? 'No items match your search'
-              : 'Nothing here to purchase',
+          searching ? 'No items match your search' : 'Nothing here to purchase',
           style: getOutfitStyle(fontSize: 13, color: AppColors.textMuted),
         ),
       ),

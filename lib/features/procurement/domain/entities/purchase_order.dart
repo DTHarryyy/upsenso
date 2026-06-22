@@ -12,6 +12,8 @@ class PurchaseOrder {
   final String poNumber;
   final String? notes;
   final DateTime? expectedDelivery;
+  final double discount;
+  final double shipping;
   final double totalAmount;
   final String? createdById;
   final String? createdByName;
@@ -38,6 +40,8 @@ class PurchaseOrder {
     required this.poNumber,
     this.notes,
     this.expectedDelivery,
+    this.discount = 0,
+    this.shipping = 0,
     required this.totalAmount,
     this.createdById,
     this.createdByName,
@@ -71,6 +75,8 @@ class PurchaseOrder {
     poNumber: row.poNumber,
     notes: row.notes,
     expectedDelivery: row.expectedDelivery,
+    discount: row.discount,
+    shipping: row.shipping,
     totalAmount: row.totalAmount,
     createdById: row.createdById,
     createdByName: row.createdByName,
@@ -98,6 +104,8 @@ class PurchaseOrder {
     poNumber: poNumber,
     notes: notes,
     expectedDelivery: expectedDelivery,
+    discount: discount,
+    shipping: shipping,
     totalAmount: totalAmount ?? this.totalAmount,
     createdById: createdById,
     createdByName: createdByName,

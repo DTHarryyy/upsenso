@@ -95,6 +95,18 @@ class SyncService {
   // with this id so no data is missed.
   String? _pendingBusinessId;
 
+  /// Set by AuthBloc (the sole owner of tenant identity — see
+  /// ActiveBusinessContext). Invoked when a push is rejected by RLS (42501)
+  /// in a way that points at a stale active business_id — e.g. the cached
+  /// tenant was deleted/recreated server-side while this device was offline.
+  /// AuthBloc re-resolves identity against the server and, if confirmed,
+  /// wipes the orphaned local data and resyncs. This is the mechanism that
+  /// actually guarantees convergence: proactive revalidation on app
+  /// resume/login can still lose the race against this service's own
+  /// immediate/connectivity-triggered syncAll() in [init], but reacting to
+  /// the real failure can't lose that race — it only fires after it happens.
+  void Function(String staleBusinessId)? onTenantRejected;
+
   SyncService({
     required AuthContextDao authContextDao,
     required ActiveBusinessContext activeBusinessContext,
@@ -223,12 +235,18 @@ class SyncService {
   /// starts with a clean slate. Called before emitting AuthUnauthenticated.
   ///
   /// Refuses to run while unsynced changes still exist locally — wiping them
-  /// would silently discard sales/inventory that never reached the server. The
-  /// wipe runs inside one DB transaction so a crash can't leave a half-cleared
-  /// (partially-orphaned) local database.
-  Future<void> clearLocalData() async {
+  /// would silently discard sales/inventory that never reached the server —
+  /// unless [force] is set. [force] exists for the one case where "unsynced"
+  /// rows can never become synced: AuthBloc has confirmed via the server that
+  /// this device's cached business_id no longer resolves for the signed-in
+  /// user (business deleted/recreated, e.g. a test-data purge), so every
+  /// locally-pending row for it is permanently orphaned, not just delayed.
+  /// Callers passing force: true must log why first — this never discards
+  /// silently. The wipe runs inside one DB transaction so a crash can't leave
+  /// a half-cleared (partially-orphaned) local database.
+  Future<void> clearLocalData({bool force = false}) async {
     final pending = await pendingSyncCount();
-    if (pending > 0) {
+    if (pending > 0 && !force) {
       debugPrint(
         '[SYNC] clearLocalData aborted: $pending unsynced record(s) remain',
       );
@@ -482,6 +500,35 @@ class SyncService {
 
       // pull kapag may businessId (either provided or from auth context)
       final effectiveBusinessId = _resolveBusinessId(businessId);
+
+      // A 42501 among this pass's push errors means the active business_id
+      // was rejected by RLS for the signed-in user — the cached tenant no
+      // longer resolves server-side. Self-healing that is AuthBloc's job (it
+      // owns ActiveBusinessContext); just hand off which businessId was
+      // rejected.
+      if (effectiveBusinessId != null) {
+        final pushErrors = [
+          ...branchResult.errors,
+          ...businessResult.errors,
+          ...categoryResult.errors,
+          ...productResult.errors,
+          ...variantResult.errors,
+          ...orderResult.errors,
+          ...refundResult.errors,
+          ...expenseResult.errors,
+          ...inventoryResult.errors,
+          ...ledgerResult.errors,
+          ...employeeResult.errors,
+          ...supplierResult.errors,
+          ...poResult.errors,
+          ...polResult.errors,
+          ...recipeResult.errors,
+        ];
+        if (containsTenantRejection(pushErrors)) {
+          onTenantRejected?.call(effectiveBusinessId);
+        }
+      }
+
       SyncResult pullResult = SyncResult(
         success: true,
         message: 'Pull skipped (no businessId)',
@@ -2004,6 +2051,12 @@ class SyncService {
           status: SyncStatus.failed,
           error: e.toString(),
         );
+        // Not covered by syncAll()'s push-error scan (this method returns
+        // void), so flag a stale tenant directly — same signal as every
+        // other tenant-scoped table.
+        if (e is PostgrestException && e.code == '42501') {
+          onTenantRejected?.call(r.businessId);
+        }
       }
     }
 
@@ -2175,6 +2228,8 @@ class SyncService {
               'po_number': record.poNumber,
               'notes': record.notes,
               'expected_delivery': record.expectedDelivery?.toUtc().toIso8601String(),
+              'discount': record.discount,
+              'shipping': record.shipping,
               'total_amount': record.totalAmount,
               'created_by_id': record.createdById,
               'created_by_name': record.createdByName,
@@ -2386,6 +2441,17 @@ String? resolveSyncBusinessId({String? provided, String? active}) {
   if (a != null && candidate != a) return null;
   return candidate;
 }
+
+/// True when [errors] contains a Postgres 42501 (RLS) rejection — the
+/// signature of a stale active business_id (deleted/recreated server-side
+/// while the device was offline) rather than a transient network error.
+/// Matches against PostgrestException's toString() shape (`code: 42501`)
+/// since the per-table sync loops only keep the stringified error. Pulled
+/// out as a pure function so the detection rule behind the tenant
+/// self-heal is regression-tested without spinning up SyncService's full
+/// dependency graph.
+bool containsTenantRejection(List<String> errors) =>
+    errors.any((e) => e.contains('code: 42501'));
 
 /// Result of a sync operation
 class SyncResult {

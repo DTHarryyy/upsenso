@@ -61,8 +61,11 @@ class EmployeesDao extends DatabaseAccessor<AppDatabase>
     return result;
   }
 
+  // Idempotent local cache write. A background sync pull can race the create
+  // flow and cache this row first; a plain insert would then throw a spurious
+  // unique-constraint error even though the employee was created fine.
   Future<void> insertEmployee(EmployeesTableCompanion companion) {
-    return into(employeesTable).insert(companion);
+    return into(employeesTable).insertOnConflictUpdate(companion);
   }
 
   Future<void> updateEmployee(String id, EmployeesTableCompanion companion) {

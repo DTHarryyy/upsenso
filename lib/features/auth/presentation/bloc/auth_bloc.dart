@@ -118,6 +118,77 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     await syncService?.clearLocalData();
   }
 
+  /// SyncService detected an RLS rejection (42501) on a push for
+  /// [staleBusinessId] — the strongest possible signal that the active
+  /// business no longer resolves for this user server-side. Re-checks
+  /// identity and self-heals via [_revalidateBusinessContextInBackground].
+  /// This is what actually guarantees convergence: the proactive checks
+  /// below race against SyncService.init()'s own immediate/connectivity
+  /// triggered syncAll() and can lose, but this fires off the real failure
+  /// instead of trying to out-race it. Guarded against acting on a stale
+  /// signal (e.g. a previous heal already changed the active business by
+  /// the time this arrives) by requiring the cached business to still match.
+  void _onTenantRejected(String staleBusinessId) {
+    final current = getCurrentUser();
+    if (current == null || current.businessId != staleBusinessId) return;
+    unawaited(_revalidateBusinessContextInBackground(current));
+  }
+
+  /// The fast paths above (cached-context login/resume) trust the local cache
+  /// for instant UI. That cache goes stale if the business is deleted or
+  /// recreated server-side while this device was offline (e.g. a test-data
+  /// purge) — without this check the device keeps pushing/pulling against a
+  /// business_id that no longer resolves for this user, failing every write
+  /// with RLS 42501 forever. Re-validate against the server in the
+  /// background and self-heal if the resolved tenant differs from cache.
+  Future<void> _revalidateBusinessContextInBackground(AppUser cachedUser) async {
+    try {
+      if (!await connectivityService.isConnected) return;
+      final resolved = await getUserBusinessContext(cachedUser.id);
+      if (resolved == null) return;
+      if (!businessContextChanged(
+        cached: cachedUser.businessId,
+        resolved: resolved.businessId,
+      )) {
+        return;
+      }
+      await _handleBusinessMismatch(cachedUser, resolved);
+    } catch (e, st) {
+      debugPrint('[AuthBloc] Business context revalidation failed: $e\n$st');
+    }
+  }
+
+  /// The server-resolved business no longer matches what's cached on this
+  /// device. Every locally-pending row stamped with the stale business_id is
+  /// permanently orphaned (that tenant doesn't resolve for this user
+  /// anymore), so it's safe to discard — but only after logging what's being
+  /// thrown away, never silently. Mirrors the wipe-then-resync sequence
+  /// [_onLogin] already uses for an account switch.
+  Future<void> _handleBusinessMismatch(AppUser cachedUser, AppUser resolved) async {
+    final pending = await syncService?.pendingSyncCount() ?? 0;
+    debugPrint(
+      '[AuthBloc] Tenant mismatch for ${cachedUser.id}: cached business '
+      '${cachedUser.businessId} no longer resolves on server '
+      '(now: ${resolved.businessId ?? "none"}). Discarding $pending '
+      'orphaned local record(s) and resyncing.',
+    );
+    sl<PermissionService>().clearPermissions();
+    sl<ActiveBusinessContext>().clear();
+    try {
+      await syncService?.clearLocalData(force: true);
+    } catch (e, st) {
+      debugPrint(
+        '[AuthBloc] clearLocalData(force: true) failed during tenant-mismatch '
+        'recovery: $e\n$st',
+      );
+      return;
+    }
+    await _initialSync(resolved);
+    await _loadPermissionsFromCache(resolved);
+    add(AuthUserContextUpdated(resolved));
+    _syncPermissionsBackground(resolved);
+  }
+
   // ── Permission helpers ────────────────────────────────────────────────────
 
   /// Sets the in-memory role/branch/user context on [PermissionService].
@@ -181,6 +252,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     if (current != null &&
         current.id == userId &&
         _hasCompleteContext(current)) {
+      unawaited(_revalidateBusinessContextInBackground(current));
       return current;
     }
 
@@ -236,6 +308,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required this.connectivityService,
     this.syncService,
   }) : super(AuthUnknown()) {
+    syncService?.onTenantRejected = _onTenantRejected;
     on<AuthStarted>(_onStarted);
     on<AuthUserContextUpdated>(_onUserContextUpdated);
     on<AuthLoginRequested>(_onLogin);
@@ -272,6 +345,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       _emitAuthenticated(emit, user);
       _backgroundSync(user);
       _syncPermissionsBackground(user);
+      unawaited(_revalidateBusinessContextInBackground(user));
       return;
     }
 
@@ -682,4 +756,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     _sub?.cancel();
     return super.close();
   }
+}
+
+/// True when the server-resolved business differs from what's cached on this
+/// device. Blank/null is normalised to "no business" on both sides, so a
+/// blank-vs-blank pair never falsely reads as changed. Pulled out as a pure
+/// function so the comparison rule behind the tenant self-heal is
+/// regression-tested without spinning up the whole AuthBloc dependency graph.
+bool businessContextChanged({required String? cached, required String? resolved}) {
+  String? normalize(String? value) =>
+      (value == null || value.trim().isEmpty) ? null : value.trim();
+  return normalize(cached) != normalize(resolved);
 }

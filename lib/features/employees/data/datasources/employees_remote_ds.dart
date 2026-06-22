@@ -90,6 +90,26 @@ class EmployeesRemoteDs {
     return List<Map<String, dynamic>>.from(response as List);
   }
 
+  /// Emails the new employee their login credentials via the
+  /// `send-employee-credentials` edge function. Best-effort: callers should
+  /// treat a failure as non-fatal since the account already exists.
+  Future<void> sendCredentialsEmail({
+    required String email,
+    required String password,
+    required String fullName,
+    String? businessName,
+  }) async {
+    await client.functions.invoke(
+      'send-employee-credentials',
+      body: {
+        'email': email,
+        'password': password,
+        'fullName': fullName,
+        'businessName': ?businessName,
+      },
+    );
+  }
+
   /// Creates a Supabase Auth user for the employee and returns the new UUID.
   ///
   /// Throws on any error (duplicate email, network failure, auth failure).

@@ -51,6 +51,10 @@ import 'package:pos/core/database/tables/sync_state_table.dart';
 import 'package:pos/core/database/daos/sync_state_dao.dart';
 import 'package:pos/core/database/tables/invoice_sequences_table.dart';
 import 'package:pos/core/database/daos/invoice_sequences_dao.dart';
+import 'package:pos/core/database/tables/po_number_sequences_table.dart';
+import 'package:pos/core/database/daos/po_number_sequences_dao.dart';
+import 'package:pos/core/database/tables/procurement_settings_table.dart';
+import 'package:pos/core/database/daos/procurement_settings_dao.dart';
 import 'package:pos/core/database/tables/refunds_table.dart';
 import 'package:pos/core/database/tables/refund_items_table.dart';
 import 'package:pos/core/database/daos/refunds_dao.dart';
@@ -84,6 +88,8 @@ part 'app_database.g.dart';
     RecipeLinesTable,
     SyncStateTable,
     InvoiceSequencesTable,
+    PoNumberSequencesTable,
+    ProcurementSettingsTable,
     RefundsTable,
     RefundItemsTable,
   ],
@@ -111,6 +117,8 @@ part 'app_database.g.dart';
     RecipeLinesDao,
     SyncStateDao,
     InvoiceSequencesDao,
+    PoNumberSequencesDao,
+    ProcurementSettingsDao,
     RefundsDao,
   ],
 )
@@ -132,7 +140,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 46;
+  int get schemaVersion => 49;
 
   @override
   MigrationStrategy get migration {
@@ -806,6 +814,36 @@ class AppDatabase extends _$AppDatabase {
             );
           } catch (e, st) {
             debugPrint('[AppDatabase] v46 quantity collapse skipped: $e\n$st');
+          }
+        }
+        if (from < 47) {
+          // Local counter for offline-safe sequential PO numbers
+          // (PO-YYYYMM-NNNN), mirroring invoice_sequences. Additive.
+          try {
+            await m.createTable(poNumberSequencesTable);
+          } catch (e, st) {
+            debugPrint('[AppDatabase] v47 po_number_sequences create skipped: $e\n$st');
+          }
+        }
+        if (from < 48) {
+          // Per-business procurement settings (PO approval threshold). Additive.
+          try {
+            await m.createTable(procurementSettingsTable);
+          } catch (e, st) {
+            debugPrint('[AppDatabase] v48 procurement_settings create skipped: $e\n$st');
+          }
+        }
+        if (from < 49) {
+          // Landed-cost columns on purchase_orders (order-level discount +
+          // shipping). Additive; default 0 so existing POs are unaffected.
+          for (final col in ['discount', 'shipping']) {
+            try {
+              await customStatement(
+                'ALTER TABLE purchase_orders ADD COLUMN $col REAL NOT NULL DEFAULT 0.0',
+              );
+            } catch (e, st) {
+              debugPrint('[AppDatabase] v49 add $col skipped: $e\n$st');
+            }
           }
         }
       },

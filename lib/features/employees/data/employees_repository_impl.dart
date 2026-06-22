@@ -104,7 +104,11 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
         roleId: roleId,
       );
     } on PostgrestException catch (e) {
-      if (e.message.contains('DUPLICATE_EMAIL') ||
+      // The RPC's own RAISE EXCEPTION is the normal path; the raw Postgres
+      // unique-violation code (23505) is a backstop for the rare race where
+      // two creates for the same email hit auth.users' unique index at once.
+      if (e.code == '23505' ||
+          e.message.contains('DUPLICATE_EMAIL') ||
           e.message.toLowerCase().contains('email already') ||
           e.message.toLowerCase().contains('already registered')) {
         throw EmployeeDuplicateException({
@@ -132,6 +136,15 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
 
     // Step 3: Derive role-default permissions for local cache seeding.
     final permissions = DefaultPermissionMatrix.forRole(roleName);
+    // A non-standard role has no offline default set — make that visible rather
+    // than silently caching nothing. The employee still resolves real grants
+    // from the server snapshot below / get_my_permissions() on first login.
+    if (permissions.isEmpty) {
+      debugPrint(
+        '[EmployeesRepo] No offline default permissions for role "$roleName" — '
+        'employee $id will resolve permissions from the server on first login.',
+      );
+    }
 
     // Step 4: Trigger server-side permission snapshot for the new employee
     // (best-effort — the snapshot will be rebuilt on next login if this fails).
@@ -141,6 +154,13 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
       } catch (e, st) {
         debugPrint('[EmployeesRepo] Permission snapshot seeding failed: $e\n$st');
       }
+    } else {
+      // No branch yet → the snapshot RPC (branch-scoped) can't run now. First
+      // login bootstraps it via get_my_permissions(); flag it so it's not silent.
+      debugPrint(
+        '[EmployeesRepo] Employee $id created without a branch — server '
+        'permission snapshot deferred to first login.',
+      );
     }
 
     // Step 5: Persist the employee locally as already-synced.
@@ -178,6 +198,18 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
       description: 'Employee $fullName created',
       metadata: {'role': roleName, 'branch_id': branchId},
     );
+
+    // Step 7: Email the employee their login credentials. Best-effort — the
+    // account already exists, so a delivery failure must not fail creation.
+    try {
+      await _remoteDs.sendCredentialsEmail(
+        email: email,
+        password: password,
+        fullName: fullName,
+      );
+    } catch (e, st) {
+      debugPrint('[EmployeesRepo] Credential email failed: $e\n$st');
+    }
   }
 
   @override

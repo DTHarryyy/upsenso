@@ -80,6 +80,9 @@ import 'package:pos/features/recipes/data/ingredients_repository.dart';
 import 'package:pos/features/recipes/domain/repositories/i_ingredients_repository.dart';
 import 'package:pos/core/database/daos/invoice_sequences_dao.dart';
 import 'package:pos/core/services/invoice_number_service.dart';
+import 'package:pos/core/database/daos/po_number_sequences_dao.dart';
+import 'package:pos/core/database/daos/procurement_settings_dao.dart';
+import 'package:pos/core/services/po_number_service.dart';
 import 'package:pos/core/database/daos/refunds_dao.dart';
 import 'package:pos/core/services/refund_service.dart';
 import 'package:pos/features/pos/data/datasources/refunds_remote_ds.dart';
@@ -169,6 +172,15 @@ Future<void> initDI() async {
   );
   sl.registerLazySingleton<InvoiceNumberService>(
     () => InvoiceNumberService(sl<SupabaseClient>(), sl<InvoiceSequencesDao>()),
+  );
+  sl.registerLazySingleton<PoNumberSequencesDao>(
+    () => PoNumberSequencesDao(sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<PoNumberService>(
+    () => PoNumberService(sl<SupabaseClient>(), sl<PoNumberSequencesDao>()),
+  );
+  sl.registerLazySingleton<ProcurementSettingsDao>(
+    () => ProcurementSettingsDao(sl<AppDatabase>()),
   );
   sl.registerLazySingleton<RefundsDao>(() => RefundsDao(sl<AppDatabase>()));
   sl.registerLazySingleton<DraftSalesDao>(
@@ -418,6 +430,8 @@ Future<void> initDI() async {
       variantsDao: sl<ProductVariantsDao>(),
       levelsDao: sl<InventoryLevelsDao>(),
       stockMovement: sl<StockMovementService>(),
+      poNumberService: sl<PoNumberService>(),
+      settingsDao: sl<ProcurementSettingsDao>(),
       remoteDs: sl<ProcurementRemoteDs>(),
     ),
   );

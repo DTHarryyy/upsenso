@@ -16727,6 +16727,30 @@ class $PurchaseOrdersTableTable extends PurchaseOrdersTable
         type: DriftSqlType.dateTime,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _discountMeta = const VerificationMeta(
+    'discount',
+  );
+  @override
+  late final GeneratedColumn<double> discount = GeneratedColumn<double>(
+    'discount',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0.0),
+  );
+  static const VerificationMeta _shippingMeta = const VerificationMeta(
+    'shipping',
+  );
+  @override
+  late final GeneratedColumn<double> shipping = GeneratedColumn<double>(
+    'shipping',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0.0),
+  );
   static const VerificationMeta _totalAmountMeta = const VerificationMeta(
     'totalAmount',
   );
@@ -16902,6 +16926,8 @@ class $PurchaseOrdersTableTable extends PurchaseOrdersTable
     poNumber,
     notes,
     expectedDelivery,
+    discount,
+    shipping,
     totalAmount,
     createdById,
     createdByName,
@@ -16990,6 +17016,18 @@ class $PurchaseOrdersTableTable extends PurchaseOrdersTable
           data['expected_delivery']!,
           _expectedDeliveryMeta,
         ),
+      );
+    }
+    if (data.containsKey('discount')) {
+      context.handle(
+        _discountMeta,
+        discount.isAcceptableOrUnknown(data['discount']!, _discountMeta),
+      );
+    }
+    if (data.containsKey('shipping')) {
+      context.handle(
+        _shippingMeta,
+        shipping.isAcceptableOrUnknown(data['shipping']!, _shippingMeta),
       );
     }
     if (data.containsKey('total_amount')) {
@@ -17145,6 +17183,14 @@ class $PurchaseOrdersTableTable extends PurchaseOrdersTable
         DriftSqlType.dateTime,
         data['${effectivePrefix}expected_delivery'],
       ),
+      discount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}discount'],
+      )!,
+      shipping: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}shipping'],
+      )!,
       totalAmount: attachedDatabase.typeMapping.read(
         DriftSqlType.double,
         data['${effectivePrefix}total_amount'],
@@ -17221,6 +17267,8 @@ class PurchaseOrderRow extends DataClass
   final String poNumber;
   final String? notes;
   final DateTime? expectedDelivery;
+  final double discount;
+  final double shipping;
   final double totalAmount;
   final String? createdById;
   final String? createdByName;
@@ -17245,6 +17293,8 @@ class PurchaseOrderRow extends DataClass
     required this.poNumber,
     this.notes,
     this.expectedDelivery,
+    required this.discount,
+    required this.shipping,
     required this.totalAmount,
     this.createdById,
     this.createdByName,
@@ -17282,6 +17332,8 @@ class PurchaseOrderRow extends DataClass
     if (!nullToAbsent || expectedDelivery != null) {
       map['expected_delivery'] = Variable<DateTime>(expectedDelivery);
     }
+    map['discount'] = Variable<double>(discount);
+    map['shipping'] = Variable<double>(shipping);
     map['total_amount'] = Variable<double>(totalAmount);
     if (!nullToAbsent || createdById != null) {
       map['created_by_id'] = Variable<String>(createdById);
@@ -17338,6 +17390,8 @@ class PurchaseOrderRow extends DataClass
       expectedDelivery: expectedDelivery == null && nullToAbsent
           ? const Value.absent()
           : Value(expectedDelivery),
+      discount: Value(discount),
+      shipping: Value(shipping),
       totalAmount: Value(totalAmount),
       createdById: createdById == null && nullToAbsent
           ? const Value.absent()
@@ -17390,6 +17444,8 @@ class PurchaseOrderRow extends DataClass
       expectedDelivery: serializer.fromJson<DateTime?>(
         json['expectedDelivery'],
       ),
+      discount: serializer.fromJson<double>(json['discount']),
+      shipping: serializer.fromJson<double>(json['shipping']),
       totalAmount: serializer.fromJson<double>(json['totalAmount']),
       createdById: serializer.fromJson<String?>(json['createdById']),
       createdByName: serializer.fromJson<String?>(json['createdByName']),
@@ -17419,6 +17475,8 @@ class PurchaseOrderRow extends DataClass
       'poNumber': serializer.toJson<String>(poNumber),
       'notes': serializer.toJson<String?>(notes),
       'expectedDelivery': serializer.toJson<DateTime?>(expectedDelivery),
+      'discount': serializer.toJson<double>(discount),
+      'shipping': serializer.toJson<double>(shipping),
       'totalAmount': serializer.toJson<double>(totalAmount),
       'createdById': serializer.toJson<String?>(createdById),
       'createdByName': serializer.toJson<String?>(createdByName),
@@ -17446,6 +17504,8 @@ class PurchaseOrderRow extends DataClass
     String? poNumber,
     Value<String?> notes = const Value.absent(),
     Value<DateTime?> expectedDelivery = const Value.absent(),
+    double? discount,
+    double? shipping,
     double? totalAmount,
     Value<String?> createdById = const Value.absent(),
     Value<String?> createdByName = const Value.absent(),
@@ -17472,6 +17532,8 @@ class PurchaseOrderRow extends DataClass
     expectedDelivery: expectedDelivery.present
         ? expectedDelivery.value
         : this.expectedDelivery,
+    discount: discount ?? this.discount,
+    shipping: shipping ?? this.shipping,
     totalAmount: totalAmount ?? this.totalAmount,
     createdById: createdById.present ? createdById.value : this.createdById,
     createdByName: createdByName.present
@@ -17512,6 +17574,8 @@ class PurchaseOrderRow extends DataClass
       expectedDelivery: data.expectedDelivery.present
           ? data.expectedDelivery.value
           : this.expectedDelivery,
+      discount: data.discount.present ? data.discount.value : this.discount,
+      shipping: data.shipping.present ? data.shipping.value : this.shipping,
       totalAmount: data.totalAmount.present
           ? data.totalAmount.value
           : this.totalAmount,
@@ -17561,6 +17625,8 @@ class PurchaseOrderRow extends DataClass
           ..write('poNumber: $poNumber, ')
           ..write('notes: $notes, ')
           ..write('expectedDelivery: $expectedDelivery, ')
+          ..write('discount: $discount, ')
+          ..write('shipping: $shipping, ')
           ..write('totalAmount: $totalAmount, ')
           ..write('createdById: $createdById, ')
           ..write('createdByName: $createdByName, ')
@@ -17590,6 +17656,8 @@ class PurchaseOrderRow extends DataClass
     poNumber,
     notes,
     expectedDelivery,
+    discount,
+    shipping,
     totalAmount,
     createdById,
     createdByName,
@@ -17618,6 +17686,8 @@ class PurchaseOrderRow extends DataClass
           other.poNumber == this.poNumber &&
           other.notes == this.notes &&
           other.expectedDelivery == this.expectedDelivery &&
+          other.discount == this.discount &&
+          other.shipping == this.shipping &&
           other.totalAmount == this.totalAmount &&
           other.createdById == this.createdById &&
           other.createdByName == this.createdByName &&
@@ -17644,6 +17714,8 @@ class PurchaseOrdersTableCompanion extends UpdateCompanion<PurchaseOrderRow> {
   final Value<String> poNumber;
   final Value<String?> notes;
   final Value<DateTime?> expectedDelivery;
+  final Value<double> discount;
+  final Value<double> shipping;
   final Value<double> totalAmount;
   final Value<String?> createdById;
   final Value<String?> createdByName;
@@ -17669,6 +17741,8 @@ class PurchaseOrdersTableCompanion extends UpdateCompanion<PurchaseOrderRow> {
     this.poNumber = const Value.absent(),
     this.notes = const Value.absent(),
     this.expectedDelivery = const Value.absent(),
+    this.discount = const Value.absent(),
+    this.shipping = const Value.absent(),
     this.totalAmount = const Value.absent(),
     this.createdById = const Value.absent(),
     this.createdByName = const Value.absent(),
@@ -17695,6 +17769,8 @@ class PurchaseOrdersTableCompanion extends UpdateCompanion<PurchaseOrderRow> {
     required String poNumber,
     this.notes = const Value.absent(),
     this.expectedDelivery = const Value.absent(),
+    this.discount = const Value.absent(),
+    this.shipping = const Value.absent(),
     this.totalAmount = const Value.absent(),
     this.createdById = const Value.absent(),
     this.createdByName = const Value.absent(),
@@ -17723,6 +17799,8 @@ class PurchaseOrdersTableCompanion extends UpdateCompanion<PurchaseOrderRow> {
     Expression<String>? poNumber,
     Expression<String>? notes,
     Expression<DateTime>? expectedDelivery,
+    Expression<double>? discount,
+    Expression<double>? shipping,
     Expression<double>? totalAmount,
     Expression<String>? createdById,
     Expression<String>? createdByName,
@@ -17749,6 +17827,8 @@ class PurchaseOrdersTableCompanion extends UpdateCompanion<PurchaseOrderRow> {
       if (poNumber != null) 'po_number': poNumber,
       if (notes != null) 'notes': notes,
       if (expectedDelivery != null) 'expected_delivery': expectedDelivery,
+      if (discount != null) 'discount': discount,
+      if (shipping != null) 'shipping': shipping,
       if (totalAmount != null) 'total_amount': totalAmount,
       if (createdById != null) 'created_by_id': createdById,
       if (createdByName != null) 'created_by_name': createdByName,
@@ -17777,6 +17857,8 @@ class PurchaseOrdersTableCompanion extends UpdateCompanion<PurchaseOrderRow> {
     Value<String>? poNumber,
     Value<String?>? notes,
     Value<DateTime?>? expectedDelivery,
+    Value<double>? discount,
+    Value<double>? shipping,
     Value<double>? totalAmount,
     Value<String?>? createdById,
     Value<String?>? createdByName,
@@ -17803,6 +17885,8 @@ class PurchaseOrdersTableCompanion extends UpdateCompanion<PurchaseOrderRow> {
       poNumber: poNumber ?? this.poNumber,
       notes: notes ?? this.notes,
       expectedDelivery: expectedDelivery ?? this.expectedDelivery,
+      discount: discount ?? this.discount,
+      shipping: shipping ?? this.shipping,
       totalAmount: totalAmount ?? this.totalAmount,
       createdById: createdById ?? this.createdById,
       createdByName: createdByName ?? this.createdByName,
@@ -17850,6 +17934,12 @@ class PurchaseOrdersTableCompanion extends UpdateCompanion<PurchaseOrderRow> {
     }
     if (expectedDelivery.present) {
       map['expected_delivery'] = Variable<DateTime>(expectedDelivery.value);
+    }
+    if (discount.present) {
+      map['discount'] = Variable<double>(discount.value);
+    }
+    if (shipping.present) {
+      map['shipping'] = Variable<double>(shipping.value);
     }
     if (totalAmount.present) {
       map['total_amount'] = Variable<double>(totalAmount.value);
@@ -17911,6 +18001,8 @@ class PurchaseOrdersTableCompanion extends UpdateCompanion<PurchaseOrderRow> {
           ..write('poNumber: $poNumber, ')
           ..write('notes: $notes, ')
           ..write('expectedDelivery: $expectedDelivery, ')
+          ..write('discount: $discount, ')
+          ..write('shipping: $shipping, ')
           ..write('totalAmount: $totalAmount, ')
           ..write('createdById: $createdById, ')
           ..write('createdByName: $createdByName, ')
@@ -20312,6 +20404,674 @@ class InvoiceSequencesTableCompanion
   }
 }
 
+class $PoNumberSequencesTableTable extends PoNumberSequencesTable
+    with TableInfo<$PoNumberSequencesTableTable, PoNumberSequencesTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PoNumberSequencesTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _monthKeyMeta = const VerificationMeta(
+    'monthKey',
+  );
+  @override
+  late final GeneratedColumn<String> monthKey = GeneratedColumn<String>(
+    'month_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastValueMeta = const VerificationMeta(
+    'lastValue',
+  );
+  @override
+  late final GeneratedColumn<int> lastValue = GeneratedColumn<int>(
+    'last_value',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    businessId,
+    monthKey,
+    lastValue,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'po_number_sequences';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PoNumberSequencesTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('month_key')) {
+      context.handle(
+        _monthKeyMeta,
+        monthKey.isAcceptableOrUnknown(data['month_key']!, _monthKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_monthKeyMeta);
+    }
+    if (data.containsKey('last_value')) {
+      context.handle(
+        _lastValueMeta,
+        lastValue.isAcceptableOrUnknown(data['last_value']!, _lastValueMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {businessId, monthKey};
+  @override
+  PoNumberSequencesTableData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PoNumberSequencesTableData(
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      monthKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}month_key'],
+      )!,
+      lastValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_value'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PoNumberSequencesTableTable createAlias(String alias) {
+    return $PoNumberSequencesTableTable(attachedDatabase, alias);
+  }
+}
+
+class PoNumberSequencesTableData extends DataClass
+    implements Insertable<PoNumberSequencesTableData> {
+  final String businessId;
+  final String monthKey;
+  final int lastValue;
+  final DateTime updatedAt;
+  const PoNumberSequencesTableData({
+    required this.businessId,
+    required this.monthKey,
+    required this.lastValue,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['business_id'] = Variable<String>(businessId);
+    map['month_key'] = Variable<String>(monthKey);
+    map['last_value'] = Variable<int>(lastValue);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  PoNumberSequencesTableCompanion toCompanion(bool nullToAbsent) {
+    return PoNumberSequencesTableCompanion(
+      businessId: Value(businessId),
+      monthKey: Value(monthKey),
+      lastValue: Value(lastValue),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory PoNumberSequencesTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PoNumberSequencesTableData(
+      businessId: serializer.fromJson<String>(json['businessId']),
+      monthKey: serializer.fromJson<String>(json['monthKey']),
+      lastValue: serializer.fromJson<int>(json['lastValue']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'businessId': serializer.toJson<String>(businessId),
+      'monthKey': serializer.toJson<String>(monthKey),
+      'lastValue': serializer.toJson<int>(lastValue),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  PoNumberSequencesTableData copyWith({
+    String? businessId,
+    String? monthKey,
+    int? lastValue,
+    DateTime? updatedAt,
+  }) => PoNumberSequencesTableData(
+    businessId: businessId ?? this.businessId,
+    monthKey: monthKey ?? this.monthKey,
+    lastValue: lastValue ?? this.lastValue,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  PoNumberSequencesTableData copyWithCompanion(
+    PoNumberSequencesTableCompanion data,
+  ) {
+    return PoNumberSequencesTableData(
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      monthKey: data.monthKey.present ? data.monthKey.value : this.monthKey,
+      lastValue: data.lastValue.present ? data.lastValue.value : this.lastValue,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PoNumberSequencesTableData(')
+          ..write('businessId: $businessId, ')
+          ..write('monthKey: $monthKey, ')
+          ..write('lastValue: $lastValue, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(businessId, monthKey, lastValue, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PoNumberSequencesTableData &&
+          other.businessId == this.businessId &&
+          other.monthKey == this.monthKey &&
+          other.lastValue == this.lastValue &&
+          other.updatedAt == this.updatedAt);
+}
+
+class PoNumberSequencesTableCompanion
+    extends UpdateCompanion<PoNumberSequencesTableData> {
+  final Value<String> businessId;
+  final Value<String> monthKey;
+  final Value<int> lastValue;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const PoNumberSequencesTableCompanion({
+    this.businessId = const Value.absent(),
+    this.monthKey = const Value.absent(),
+    this.lastValue = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PoNumberSequencesTableCompanion.insert({
+    required String businessId,
+    required String monthKey,
+    this.lastValue = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : businessId = Value(businessId),
+       monthKey = Value(monthKey);
+  static Insertable<PoNumberSequencesTableData> custom({
+    Expression<String>? businessId,
+    Expression<String>? monthKey,
+    Expression<int>? lastValue,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (businessId != null) 'business_id': businessId,
+      if (monthKey != null) 'month_key': monthKey,
+      if (lastValue != null) 'last_value': lastValue,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PoNumberSequencesTableCompanion copyWith({
+    Value<String>? businessId,
+    Value<String>? monthKey,
+    Value<int>? lastValue,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return PoNumberSequencesTableCompanion(
+      businessId: businessId ?? this.businessId,
+      monthKey: monthKey ?? this.monthKey,
+      lastValue: lastValue ?? this.lastValue,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (monthKey.present) {
+      map['month_key'] = Variable<String>(monthKey.value);
+    }
+    if (lastValue.present) {
+      map['last_value'] = Variable<int>(lastValue.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PoNumberSequencesTableCompanion(')
+          ..write('businessId: $businessId, ')
+          ..write('monthKey: $monthKey, ')
+          ..write('lastValue: $lastValue, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ProcurementSettingsTableTable extends ProcurementSettingsTable
+    with
+        TableInfo<
+          $ProcurementSettingsTableTable,
+          ProcurementSettingsTableData
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ProcurementSettingsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _approvalThresholdMeta = const VerificationMeta(
+    'approvalThreshold',
+  );
+  @override
+  late final GeneratedColumn<double> approvalThreshold =
+      GeneratedColumn<double>(
+        'approval_threshold',
+        aliasedName,
+        true,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+    'syncStatus',
+  );
+  @override
+  late final GeneratedColumn<int> syncStatus = GeneratedColumn<int>(
+    'sync_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    businessId,
+    approvalThreshold,
+    updatedAt,
+    syncStatus,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'procurement_settings';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ProcurementSettingsTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('approval_threshold')) {
+      context.handle(
+        _approvalThresholdMeta,
+        approvalThreshold.isAcceptableOrUnknown(
+          data['approval_threshold']!,
+          _approvalThresholdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('sync_status')) {
+      context.handle(
+        _syncStatusMeta,
+        syncStatus.isAcceptableOrUnknown(data['sync_status']!, _syncStatusMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {businessId};
+  @override
+  ProcurementSettingsTableData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ProcurementSettingsTableData(
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      approvalThreshold: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}approval_threshold'],
+      ),
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      syncStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sync_status'],
+      )!,
+    );
+  }
+
+  @override
+  $ProcurementSettingsTableTable createAlias(String alias) {
+    return $ProcurementSettingsTableTable(attachedDatabase, alias);
+  }
+}
+
+class ProcurementSettingsTableData extends DataClass
+    implements Insertable<ProcurementSettingsTableData> {
+  final String businessId;
+  final double? approvalThreshold;
+  final DateTime updatedAt;
+  final int syncStatus;
+  const ProcurementSettingsTableData({
+    required this.businessId,
+    this.approvalThreshold,
+    required this.updatedAt,
+    required this.syncStatus,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['business_id'] = Variable<String>(businessId);
+    if (!nullToAbsent || approvalThreshold != null) {
+      map['approval_threshold'] = Variable<double>(approvalThreshold);
+    }
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['sync_status'] = Variable<int>(syncStatus);
+    return map;
+  }
+
+  ProcurementSettingsTableCompanion toCompanion(bool nullToAbsent) {
+    return ProcurementSettingsTableCompanion(
+      businessId: Value(businessId),
+      approvalThreshold: approvalThreshold == null && nullToAbsent
+          ? const Value.absent()
+          : Value(approvalThreshold),
+      updatedAt: Value(updatedAt),
+      syncStatus: Value(syncStatus),
+    );
+  }
+
+  factory ProcurementSettingsTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ProcurementSettingsTableData(
+      businessId: serializer.fromJson<String>(json['businessId']),
+      approvalThreshold: serializer.fromJson<double?>(
+        json['approvalThreshold'],
+      ),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      syncStatus: serializer.fromJson<int>(json['syncStatus']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'businessId': serializer.toJson<String>(businessId),
+      'approvalThreshold': serializer.toJson<double?>(approvalThreshold),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'syncStatus': serializer.toJson<int>(syncStatus),
+    };
+  }
+
+  ProcurementSettingsTableData copyWith({
+    String? businessId,
+    Value<double?> approvalThreshold = const Value.absent(),
+    DateTime? updatedAt,
+    int? syncStatus,
+  }) => ProcurementSettingsTableData(
+    businessId: businessId ?? this.businessId,
+    approvalThreshold: approvalThreshold.present
+        ? approvalThreshold.value
+        : this.approvalThreshold,
+    updatedAt: updatedAt ?? this.updatedAt,
+    syncStatus: syncStatus ?? this.syncStatus,
+  );
+  ProcurementSettingsTableData copyWithCompanion(
+    ProcurementSettingsTableCompanion data,
+  ) {
+    return ProcurementSettingsTableData(
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      approvalThreshold: data.approvalThreshold.present
+          ? data.approvalThreshold.value
+          : this.approvalThreshold,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      syncStatus: data.syncStatus.present
+          ? data.syncStatus.value
+          : this.syncStatus,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProcurementSettingsTableData(')
+          ..write('businessId: $businessId, ')
+          ..write('approvalThreshold: $approvalThreshold, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncStatus: $syncStatus')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(businessId, approvalThreshold, updatedAt, syncStatus);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ProcurementSettingsTableData &&
+          other.businessId == this.businessId &&
+          other.approvalThreshold == this.approvalThreshold &&
+          other.updatedAt == this.updatedAt &&
+          other.syncStatus == this.syncStatus);
+}
+
+class ProcurementSettingsTableCompanion
+    extends UpdateCompanion<ProcurementSettingsTableData> {
+  final Value<String> businessId;
+  final Value<double?> approvalThreshold;
+  final Value<DateTime> updatedAt;
+  final Value<int> syncStatus;
+  final Value<int> rowid;
+  const ProcurementSettingsTableCompanion({
+    this.businessId = const Value.absent(),
+    this.approvalThreshold = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ProcurementSettingsTableCompanion.insert({
+    required String businessId,
+    this.approvalThreshold = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : businessId = Value(businessId);
+  static Insertable<ProcurementSettingsTableData> custom({
+    Expression<String>? businessId,
+    Expression<double>? approvalThreshold,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? syncStatus,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (businessId != null) 'business_id': businessId,
+      if (approvalThreshold != null) 'approval_threshold': approvalThreshold,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ProcurementSettingsTableCompanion copyWith({
+    Value<String>? businessId,
+    Value<double?>? approvalThreshold,
+    Value<DateTime>? updatedAt,
+    Value<int>? syncStatus,
+    Value<int>? rowid,
+  }) {
+    return ProcurementSettingsTableCompanion(
+      businessId: businessId ?? this.businessId,
+      approvalThreshold: approvalThreshold ?? this.approvalThreshold,
+      updatedAt: updatedAt ?? this.updatedAt,
+      syncStatus: syncStatus ?? this.syncStatus,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (approvalThreshold.present) {
+      map['approval_threshold'] = Variable<double>(approvalThreshold.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<int>(syncStatus.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProcurementSettingsTableCompanion(')
+          ..write('businessId: $businessId, ')
+          ..write('approvalThreshold: $approvalThreshold, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $RefundsTableTable extends RefundsTable
     with TableInfo<$RefundsTableTable, RefundsTableData> {
   @override
@@ -21706,6 +22466,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SyncStateTableTable syncStateTable = $SyncStateTableTable(this);
   late final $InvoiceSequencesTableTable invoiceSequencesTable =
       $InvoiceSequencesTableTable(this);
+  late final $PoNumberSequencesTableTable poNumberSequencesTable =
+      $PoNumberSequencesTableTable(this);
+  late final $ProcurementSettingsTableTable procurementSettingsTable =
+      $ProcurementSettingsTableTable(this);
   late final $RefundsTableTable refundsTable = $RefundsTableTable(this);
   late final $RefundItemsTableTable refundItemsTable = $RefundItemsTableTable(
     this,
@@ -21757,6 +22521,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final InvoiceSequencesDao invoiceSequencesDao = InvoiceSequencesDao(
     this as AppDatabase,
   );
+  late final PoNumberSequencesDao poNumberSequencesDao = PoNumberSequencesDao(
+    this as AppDatabase,
+  );
+  late final ProcurementSettingsDao procurementSettingsDao =
+      ProcurementSettingsDao(this as AppDatabase);
   late final RefundsDao refundsDao = RefundsDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -21788,6 +22557,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     recipeLinesTable,
     syncStateTable,
     invoiceSequencesTable,
+    poNumberSequencesTable,
+    procurementSettingsTable,
     refundsTable,
     refundItemsTable,
   ];
@@ -29663,6 +30434,8 @@ typedef $$PurchaseOrdersTableTableCreateCompanionBuilder =
       required String poNumber,
       Value<String?> notes,
       Value<DateTime?> expectedDelivery,
+      Value<double> discount,
+      Value<double> shipping,
       Value<double> totalAmount,
       Value<String?> createdById,
       Value<String?> createdByName,
@@ -29690,6 +30463,8 @@ typedef $$PurchaseOrdersTableTableUpdateCompanionBuilder =
       Value<String> poNumber,
       Value<String?> notes,
       Value<DateTime?> expectedDelivery,
+      Value<double> discount,
+      Value<double> shipping,
       Value<double> totalAmount,
       Value<String?> createdById,
       Value<String?> createdByName,
@@ -29758,6 +30533,16 @@ class $$PurchaseOrdersTableTableFilterComposer
 
   ColumnFilters<DateTime> get expectedDelivery => $composableBuilder(
     column: $table.expectedDelivery,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get discount => $composableBuilder(
+    column: $table.discount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get shipping => $composableBuilder(
+    column: $table.shipping,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -29886,6 +30671,16 @@ class $$PurchaseOrdersTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get discount => $composableBuilder(
+    column: $table.discount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get shipping => $composableBuilder(
+    column: $table.shipping,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<double> get totalAmount => $composableBuilder(
     column: $table.totalAmount,
     builder: (column) => ColumnOrderings(column),
@@ -30000,6 +30795,12 @@ class $$PurchaseOrdersTableTableAnnotationComposer
     column: $table.expectedDelivery,
     builder: (column) => column,
   );
+
+  GeneratedColumn<double> get discount =>
+      $composableBuilder(column: $table.discount, builder: (column) => column);
+
+  GeneratedColumn<double> get shipping =>
+      $composableBuilder(column: $table.shipping, builder: (column) => column);
 
   GeneratedColumn<double> get totalAmount => $composableBuilder(
     column: $table.totalAmount,
@@ -30116,6 +30917,8 @@ class $$PurchaseOrdersTableTableTableManager
                 Value<String> poNumber = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<DateTime?> expectedDelivery = const Value.absent(),
+                Value<double> discount = const Value.absent(),
+                Value<double> shipping = const Value.absent(),
                 Value<double> totalAmount = const Value.absent(),
                 Value<String?> createdById = const Value.absent(),
                 Value<String?> createdByName = const Value.absent(),
@@ -30141,6 +30944,8 @@ class $$PurchaseOrdersTableTableTableManager
                 poNumber: poNumber,
                 notes: notes,
                 expectedDelivery: expectedDelivery,
+                discount: discount,
+                shipping: shipping,
                 totalAmount: totalAmount,
                 createdById: createdById,
                 createdByName: createdByName,
@@ -30168,6 +30973,8 @@ class $$PurchaseOrdersTableTableTableManager
                 required String poNumber,
                 Value<String?> notes = const Value.absent(),
                 Value<DateTime?> expectedDelivery = const Value.absent(),
+                Value<double> discount = const Value.absent(),
+                Value<double> shipping = const Value.absent(),
                 Value<double> totalAmount = const Value.absent(),
                 Value<String?> createdById = const Value.absent(),
                 Value<String?> createdByName = const Value.absent(),
@@ -30193,6 +31000,8 @@ class $$PurchaseOrdersTableTableTableManager
                 poNumber: poNumber,
                 notes: notes,
                 expectedDelivery: expectedDelivery,
+                discount: discount,
+                shipping: shipping,
                 totalAmount: totalAmount,
                 createdById: createdById,
                 createdByName: createdByName,
@@ -31449,6 +32258,414 @@ typedef $$InvoiceSequencesTableTableProcessedTableManager =
       InvoiceSequencesTableData,
       PrefetchHooks Function()
     >;
+typedef $$PoNumberSequencesTableTableCreateCompanionBuilder =
+    PoNumberSequencesTableCompanion Function({
+      required String businessId,
+      required String monthKey,
+      Value<int> lastValue,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$PoNumberSequencesTableTableUpdateCompanionBuilder =
+    PoNumberSequencesTableCompanion Function({
+      Value<String> businessId,
+      Value<String> monthKey,
+      Value<int> lastValue,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$PoNumberSequencesTableTableFilterComposer
+    extends Composer<_$AppDatabase, $PoNumberSequencesTableTable> {
+  $$PoNumberSequencesTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get monthKey => $composableBuilder(
+    column: $table.monthKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastValue => $composableBuilder(
+    column: $table.lastValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PoNumberSequencesTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $PoNumberSequencesTableTable> {
+  $$PoNumberSequencesTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get monthKey => $composableBuilder(
+    column: $table.monthKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastValue => $composableBuilder(
+    column: $table.lastValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PoNumberSequencesTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PoNumberSequencesTableTable> {
+  $$PoNumberSequencesTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get monthKey =>
+      $composableBuilder(column: $table.monthKey, builder: (column) => column);
+
+  GeneratedColumn<int> get lastValue =>
+      $composableBuilder(column: $table.lastValue, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$PoNumberSequencesTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PoNumberSequencesTableTable,
+          PoNumberSequencesTableData,
+          $$PoNumberSequencesTableTableFilterComposer,
+          $$PoNumberSequencesTableTableOrderingComposer,
+          $$PoNumberSequencesTableTableAnnotationComposer,
+          $$PoNumberSequencesTableTableCreateCompanionBuilder,
+          $$PoNumberSequencesTableTableUpdateCompanionBuilder,
+          (
+            PoNumberSequencesTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $PoNumberSequencesTableTable,
+              PoNumberSequencesTableData
+            >,
+          ),
+          PoNumberSequencesTableData,
+          PrefetchHooks Function()
+        > {
+  $$PoNumberSequencesTableTableTableManager(
+    _$AppDatabase db,
+    $PoNumberSequencesTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PoNumberSequencesTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$PoNumberSequencesTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$PoNumberSequencesTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> businessId = const Value.absent(),
+                Value<String> monthKey = const Value.absent(),
+                Value<int> lastValue = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PoNumberSequencesTableCompanion(
+                businessId: businessId,
+                monthKey: monthKey,
+                lastValue: lastValue,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String businessId,
+                required String monthKey,
+                Value<int> lastValue = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PoNumberSequencesTableCompanion.insert(
+                businessId: businessId,
+                monthKey: monthKey,
+                lastValue: lastValue,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PoNumberSequencesTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PoNumberSequencesTableTable,
+      PoNumberSequencesTableData,
+      $$PoNumberSequencesTableTableFilterComposer,
+      $$PoNumberSequencesTableTableOrderingComposer,
+      $$PoNumberSequencesTableTableAnnotationComposer,
+      $$PoNumberSequencesTableTableCreateCompanionBuilder,
+      $$PoNumberSequencesTableTableUpdateCompanionBuilder,
+      (
+        PoNumberSequencesTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $PoNumberSequencesTableTable,
+          PoNumberSequencesTableData
+        >,
+      ),
+      PoNumberSequencesTableData,
+      PrefetchHooks Function()
+    >;
+typedef $$ProcurementSettingsTableTableCreateCompanionBuilder =
+    ProcurementSettingsTableCompanion Function({
+      required String businessId,
+      Value<double?> approvalThreshold,
+      Value<DateTime> updatedAt,
+      Value<int> syncStatus,
+      Value<int> rowid,
+    });
+typedef $$ProcurementSettingsTableTableUpdateCompanionBuilder =
+    ProcurementSettingsTableCompanion Function({
+      Value<String> businessId,
+      Value<double?> approvalThreshold,
+      Value<DateTime> updatedAt,
+      Value<int> syncStatus,
+      Value<int> rowid,
+    });
+
+class $$ProcurementSettingsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $ProcurementSettingsTableTable> {
+  $$ProcurementSettingsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get approvalThreshold => $composableBuilder(
+    column: $table.approvalThreshold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ProcurementSettingsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $ProcurementSettingsTableTable> {
+  $$ProcurementSettingsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get approvalThreshold => $composableBuilder(
+    column: $table.approvalThreshold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ProcurementSettingsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ProcurementSettingsTableTable> {
+  $$ProcurementSettingsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get approvalThreshold => $composableBuilder(
+    column: $table.approvalThreshold,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => column,
+  );
+}
+
+class $$ProcurementSettingsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ProcurementSettingsTableTable,
+          ProcurementSettingsTableData,
+          $$ProcurementSettingsTableTableFilterComposer,
+          $$ProcurementSettingsTableTableOrderingComposer,
+          $$ProcurementSettingsTableTableAnnotationComposer,
+          $$ProcurementSettingsTableTableCreateCompanionBuilder,
+          $$ProcurementSettingsTableTableUpdateCompanionBuilder,
+          (
+            ProcurementSettingsTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $ProcurementSettingsTableTable,
+              ProcurementSettingsTableData
+            >,
+          ),
+          ProcurementSettingsTableData,
+          PrefetchHooks Function()
+        > {
+  $$ProcurementSettingsTableTableTableManager(
+    _$AppDatabase db,
+    $ProcurementSettingsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ProcurementSettingsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$ProcurementSettingsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$ProcurementSettingsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> businessId = const Value.absent(),
+                Value<double?> approvalThreshold = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> syncStatus = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ProcurementSettingsTableCompanion(
+                businessId: businessId,
+                approvalThreshold: approvalThreshold,
+                updatedAt: updatedAt,
+                syncStatus: syncStatus,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String businessId,
+                Value<double?> approvalThreshold = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> syncStatus = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ProcurementSettingsTableCompanion.insert(
+                businessId: businessId,
+                approvalThreshold: approvalThreshold,
+                updatedAt: updatedAt,
+                syncStatus: syncStatus,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ProcurementSettingsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ProcurementSettingsTableTable,
+      ProcurementSettingsTableData,
+      $$ProcurementSettingsTableTableFilterComposer,
+      $$ProcurementSettingsTableTableOrderingComposer,
+      $$ProcurementSettingsTableTableAnnotationComposer,
+      $$ProcurementSettingsTableTableCreateCompanionBuilder,
+      $$ProcurementSettingsTableTableUpdateCompanionBuilder,
+      (
+        ProcurementSettingsTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $ProcurementSettingsTableTable,
+          ProcurementSettingsTableData
+        >,
+      ),
+      ProcurementSettingsTableData,
+      PrefetchHooks Function()
+    >;
 typedef $$RefundsTableTableCreateCompanionBuilder =
     RefundsTableCompanion Function({
       required String id,
@@ -32166,6 +33383,16 @@ class $AppDatabaseManager {
       $$SyncStateTableTableTableManager(_db, _db.syncStateTable);
   $$InvoiceSequencesTableTableTableManager get invoiceSequencesTable =>
       $$InvoiceSequencesTableTableTableManager(_db, _db.invoiceSequencesTable);
+  $$PoNumberSequencesTableTableTableManager get poNumberSequencesTable =>
+      $$PoNumberSequencesTableTableTableManager(
+        _db,
+        _db.poNumberSequencesTable,
+      );
+  $$ProcurementSettingsTableTableTableManager get procurementSettingsTable =>
+      $$ProcurementSettingsTableTableTableManager(
+        _db,
+        _db.procurementSettingsTable,
+      );
   $$RefundsTableTableTableManager get refundsTable =>
       $$RefundsTableTableTableManager(_db, _db.refundsTable);
   $$RefundItemsTableTableTableManager get refundItemsTable =>

@@ -76,12 +76,19 @@ class AppFilledButton extends StatelessWidget {
                   Icon(icon, size: 17, color: Colors.white),
                   const SizedBox(width: 7),
                 ],
-                Text(
-                  label,
-                  style: getOutfitStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
+                // Flexible + ellipsis so a long label in a narrow (e.g.
+                // half-width) button shrinks instead of overflowing the Row.
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: getOutfitStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
                   ),
                 ),
               ],
