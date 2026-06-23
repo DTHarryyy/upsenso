@@ -21,6 +21,7 @@ import 'package:pos/features/procurement/domain/entities/po_status.dart';
 import 'package:pos/features/procurement/domain/entities/purchase_order.dart';
 import 'package:pos/features/procurement/presentation/cubit/po_cubit.dart';
 import 'package:pos/features/procurement/presentation/cubit/po_state.dart';
+import 'package:pos/features/procurement/presentation/pages/procurement_insights_page.dart';
 import 'package:pos/features/procurement/presentation/widgets/po_list_card.dart';
 
 class PurchaseOrdersPage extends StatelessWidget {
@@ -68,6 +69,8 @@ class PurchaseOrdersPage extends StatelessWidget {
                         onChanged: (q) => context.read<PoCubit>().search(q),
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    _InsightsButton(cubit: context.read<PoCubit>()),
                     if (_canManage) ...[
                       const SizedBox(width: 8),
                       _ApprovalSettingsButton(cubit: context.read<PoCubit>()),
@@ -178,6 +181,30 @@ class _StatusFilterRow extends StatelessWidget {
             onTap: () => onChanged(s),
           );
         },
+      ),
+    );
+  }
+}
+
+/// Opens the procurement insights overview, carrying the live PoCubit so the
+/// page computes its aggregates from the already-loaded orders.
+class _InsightsButton extends StatelessWidget {
+  final PoCubit cubit;
+
+  const _InsightsButton({required this.cubit});
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: 'Insights',
+      icon: const Icon(IconlyLight.chart, color: AppColors.textSecondary),
+      onPressed: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => BlocProvider.value(
+            value: cubit,
+            child: const ProcurementInsightsPage(),
+          ),
+        ),
       ),
     );
   }

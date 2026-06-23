@@ -6,6 +6,8 @@ import 'package:pos/core/audit/audit_log_service.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/core/database/app_database.dart';
+import 'package:pos/core/database/daos/goods_receipt_items_dao.dart';
+import 'package:pos/core/database/daos/goods_receipts_dao.dart';
 import 'package:pos/core/database/daos/inventory_levels_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
 import 'package:pos/core/database/daos/procurement_settings_dao.dart';
@@ -19,6 +21,7 @@ import 'package:pos/core/services/po_number_service.dart';
 import 'package:pos/core/sync/sync_status.dart';
 import 'package:pos/features/procurement/data/datasources/procurement_remote_ds.dart';
 import 'package:pos/features/procurement/domain/entities/approval_policy.dart';
+import 'package:pos/features/procurement/domain/entities/goods_receipt.dart';
 import 'package:pos/features/procurement/domain/entities/po_input.dart';
 import 'package:pos/features/procurement/domain/entities/po_status.dart';
 import 'package:pos/features/procurement/domain/entities/procurement_settings.dart';
@@ -36,6 +39,8 @@ class ProcurementRepository implements IProcurementRepository {
   final StockMovementService _stockMovement;
   final PoNumberService _poNumberService;
   final ProcurementSettingsDao _settingsDao;
+  final GoodsReceiptsDao _receiptsDao;
+  final GoodsReceiptItemsDao _receiptItemsDao;
   // ignore: unused_field
   final ProcurementRemoteDs? _remoteDs;
 
@@ -50,6 +55,8 @@ class ProcurementRepository implements IProcurementRepository {
     required StockMovementService stockMovement,
     required PoNumberService poNumberService,
     required ProcurementSettingsDao settingsDao,
+    required GoodsReceiptsDao receiptsDao,
+    required GoodsReceiptItemsDao receiptItemsDao,
     ProcurementRemoteDs? remoteDs,
   }) : _suppliersDao = suppliersDao,
        _purchaseOrdersDao = purchaseOrdersDao,
@@ -59,7 +66,16 @@ class ProcurementRepository implements IProcurementRepository {
        _stockMovement = stockMovement,
        _poNumberService = poNumberService,
        _settingsDao = settingsDao,
+       _receiptsDao = receiptsDao,
+       _receiptItemsDao = receiptItemsDao,
        _remoteDs = remoteDs;
+
+  @override
+  Stream<List<GoodsReceipt>> watchReceipts(String poId) {
+    return _receiptsDao
+        .watchByPoId(poId)
+        .map((rows) => rows.map(GoodsReceipt.fromRow).toList());
+  }
 
   // ── Settings ──────────────────────────────────────────────────────────────
 
@@ -514,6 +530,8 @@ class ProcurementRepository implements IProcurementRepository {
     required String poId,
     required String branchId,
     required List<ReceiveLineInput> lines,
+    String? receivedById,
+    String? receivedByName,
   }) async {
     try {
       // A blank branch would write stock to an empty branch id — orphan
@@ -529,10 +547,17 @@ class ProcurementRepository implements IProcurementRepository {
         'receiveGoods',
       );
 
+      // Receipt number claimed up front (its own counter); a gap on rollback is
+      // acceptable, like invoice numbers.
+      final receiptId = _uuid.v4();
+      final receiptNumber =
+          await _poNumberService.claimNextReceipt(po.businessId);
+      final receiptItems = <GoodsReceiptItemsTableCompanion>[];
+
       // Receiving must be atomic: moving-average cost, the stock movement, the
-      // PO line's received qty, and the PO status all commit together. A crash
-      // mid-loop previously left stock added but the line not marked received,
-      // so re-receiving double-counted the goods.
+      // PO line's received qty, the GRN document, and the PO status all commit
+      // together. A crash mid-loop previously left stock added but the line not
+      // marked received, so re-receiving double-counted the goods.
       late final bool allReceived;
       late final String newStatus;
       var unitsReceived = 0.0;
@@ -610,6 +635,40 @@ class ProcurementRepository implements IProcurementRepository {
               localUpdatedAt: Value(DateTime.now()),
             ),
           );
+
+          // Capture this line on the GRN document.
+          receiptItems.add(
+            GoodsReceiptItemsTableCompanion.insert(
+              id: _uuid.v4(),
+              businessId: po.businessId,
+              goodsReceiptId: receiptId,
+              purchaseOrderLineId: receive.lineId,
+              variantId: receive.variantId,
+              productId: receive.productId,
+              productName: line.productName,
+              quantityReceived: Value(qtyToReceive),
+              unitCost: Value(landedUnitCost),
+              syncStatus: Value(SyncStatus.pendingUpload.toInt()),
+            ),
+          );
+        }
+
+        // Record the GRN document for this receiving event (only if anything
+        // was actually received).
+        if (receiptItems.isNotEmpty) {
+          await _receiptsDao.insert(
+            GoodsReceiptsTableCompanion.insert(
+              id: receiptId,
+              businessId: po.businessId,
+              purchaseOrderId: poId,
+              branchId: branchId,
+              receiptNumber: receiptNumber,
+              receivedById: Value(receivedById),
+              receivedByName: Value(receivedByName),
+              syncStatus: Value(SyncStatus.pendingUpload.toInt()),
+            ),
+          );
+          await _receiptItemsDao.insertAll(receiptItems);
         }
 
         // Determine new PO status.
@@ -676,6 +735,38 @@ class ProcurementRepository implements IProcurementRepository {
       );
     } catch (e, st) {
       debugPrint('[Procurement] Error in cancelPurchaseOrder: $e\n$st');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> closePurchaseOrder(String id) async {
+    try {
+      final po = await _purchaseOrdersDao.getById(id);
+      if (po == null) throw Exception('PO not found: $id');
+      final status = PoStatus.fromString(po.status);
+      if (!status.canClose) {
+        throw Exception('Cannot close PO in status ${po.status}');
+      }
+
+      await _purchaseOrdersDao.updatePo(
+        id,
+        PurchaseOrdersTableCompanion(
+          status: const Value('closed'),
+          syncStatus: Value(SyncStatus.pendingUpdate.toInt()),
+          localUpdatedAt: Value(DateTime.now()),
+        ),
+      );
+      sl<AuditLogService>().log(
+        actionType: AuditLogActionType.purchaseOrderUpdated,
+        entityType: 'purchase_order',
+        entityId: id,
+        entityName: po.poNumber,
+        description:
+            'Purchase order ${po.poNumber} closed with outstanding quantity',
+      );
+    } catch (e, st) {
+      debugPrint('[Procurement] Error in closePurchaseOrder: $e\n$st');
       rethrow;
     }
   }

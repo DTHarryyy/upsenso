@@ -1,3 +1,4 @@
+import 'package:pos/features/procurement/domain/entities/goods_receipt.dart';
 import 'package:pos/features/procurement/domain/entities/po_input.dart';
 import 'package:pos/features/procurement/domain/entities/procurement_settings.dart';
 import 'package:pos/features/procurement/domain/entities/purchase_order.dart';
@@ -90,13 +91,23 @@ abstract interface class IProcurementRepository {
   });
 
   /// Receive goods against an approved PO, updating inventory via
-  /// StockMovementService and applying moving-weighted-average costing.
+  /// StockMovementService and applying moving-weighted-average costing. Records
+  /// a goods-receipt (GRN) document for the received lines.
   Future<void> receiveGoods({
     required String poId,
     required String branchId,
     required List<ReceiveLineInput> lines,
+    String? receivedById,
+    String? receivedByName,
   });
+
+  /// Goods-receipt history for a PO, newest first.
+  Stream<List<GoodsReceipt>> watchReceipts(String poId);
 
   /// Cancel a PO that is still in draft / submitted / approved.
   Future<void> cancelPurchaseOrder(String id);
+
+  /// Short-close a PO with outstanding quantity (approved / partially received),
+  /// finalising it without receiving the rest.
+  Future<void> closePurchaseOrder(String id);
 }

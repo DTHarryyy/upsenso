@@ -196,6 +196,8 @@ class PoCubit extends Cubit<PoState> {
         poId: poId,
         branchId: branchId,
         lines: lines,
+        receivedById: userId,
+        receivedByName: userName,
       );
     } catch (e, st) {
       debugPrint('[PoCubit] Error in receiveGoods: $e\n$st');
@@ -234,6 +236,19 @@ class PoCubit extends Cubit<PoState> {
     } catch (e, st) {
       debugPrint('[PoCubit] Error in cancelPurchaseOrder: $e\n$st');
       emit(PoError('Failed to cancel purchase order.'));
+      emit(PoLoaded(orders: currentOrders));
+    }
+  }
+
+  Future<void> closePurchaseOrder(String id) async {
+    if (!await _allowed(AppPermission.manageProcurement, entityId: id)) return;
+    final currentOrders = _currentOrders();
+    emit(PoActionInProgress(currentOrders));
+    try {
+      await _repository.closePurchaseOrder(id);
+    } catch (e, st) {
+      debugPrint('[PoCubit] Error in closePurchaseOrder: $e\n$st');
+      emit(PoError('Failed to close purchase order.'));
       emit(PoLoaded(orders: currentOrders));
     }
   }

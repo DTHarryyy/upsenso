@@ -31,6 +31,8 @@ import 'package:pos/features/audit_logs/data/datasources/audit_log_remote_ds.dar
 import 'package:pos/features/audit_logs/data/audit_log_sync_mapper.dart';
 import 'package:pos/features/employees/data/datasources/employees_remote_ds.dart';
 import 'package:pos/core/database/daos/purchase_order_lines_dao.dart';
+import 'package:pos/core/database/daos/goods_receipts_dao.dart';
+import 'package:pos/core/database/daos/goods_receipt_items_dao.dart';
 import 'package:pos/core/database/daos/purchase_orders_dao.dart';
 import 'package:pos/core/database/daos/recipe_lines_dao.dart';
 import 'package:pos/core/database/daos/sync_state_dao.dart';
@@ -69,6 +71,8 @@ class SyncService {
   final SuppliersDao _suppliersDao;
   final PurchaseOrdersDao _purchaseOrdersDao;
   final PurchaseOrderLinesDao _purchaseOrderLinesDao;
+  final GoodsReceiptsDao _goodsReceiptsDao;
+  final GoodsReceiptItemsDao _goodsReceiptItemsDao;
   final ProcurementRemoteDs _procurementRemoteDs;
   final RecipeLinesDao _recipeLinesDao;
   final SyncStateDao _syncStateDao;
@@ -133,6 +137,8 @@ class SyncService {
     required SuppliersDao suppliersDao,
     required PurchaseOrdersDao purchaseOrdersDao,
     required PurchaseOrderLinesDao purchaseOrderLinesDao,
+    required GoodsReceiptsDao goodsReceiptsDao,
+    required GoodsReceiptItemsDao goodsReceiptItemsDao,
     required ProcurementRemoteDs procurementRemoteDs,
     required RecipeLinesDao recipeLinesDao,
     required SyncStateDao syncStateDao,
@@ -164,6 +170,8 @@ class SyncService {
        _suppliersDao = suppliersDao,
        _purchaseOrdersDao = purchaseOrdersDao,
        _purchaseOrderLinesDao = purchaseOrderLinesDao,
+       _goodsReceiptsDao = goodsReceiptsDao,
+       _goodsReceiptItemsDao = goodsReceiptItemsDao,
        _procurementRemoteDs = procurementRemoteDs,
        _recipeLinesDao = recipeLinesDao,
        _syncStateDao = syncStateDao,
@@ -270,6 +278,8 @@ class SyncService {
       await _auditLogsDao.clearAll();
       await _employeesDao.clearAll();
       await _suppliersDao.clearAll();
+      await _goodsReceiptItemsDao.clearAll();
+      await _goodsReceiptsDao.clearAll();
       await _purchaseOrderLinesDao.clearAll();
       await _purchaseOrdersDao.clearAll();
       await _recipeLinesDao.clearAll();
@@ -322,6 +332,8 @@ class SyncService {
         sup = 0,
         po = 0,
         pol = 0,
+        gr = 0,
+        gri = 0,
         rcp = 0,
         rfnd = 0;
     final controller = StreamController<int>.broadcast();
@@ -329,7 +341,7 @@ class SyncService {
     void emit() {
       if (!controller.isClosed) {
         controller.add(
-          cat + prod + vars + orders + exp + inv + led + rcpt + audit + emp + sup + po + pol + rcp + rfnd,
+          cat + prod + vars + orders + exp + inv + led + rcpt + audit + emp + sup + po + pol + gr + gri + rcp + rfnd,
         );
       }
     }
@@ -395,6 +407,14 @@ class SyncService {
       rfnd = n;
       emit();
     });
+    final s16 = _goodsReceiptsDao.watchPendingSyncCount().listen((n) {
+      gr = n;
+      emit();
+    });
+    final s17 = _goodsReceiptItemsDao.watchPendingSyncCount().listen((n) {
+      gri = n;
+      emit();
+    });
 
     controller.onCancel = () {
       s1.cancel();
@@ -412,6 +432,8 @@ class SyncService {
       s13.cancel();
       s14.cancel();
       s15.cancel();
+      s16.cancel();
+      s17.cancel();
       controller.close();
     };
 
@@ -463,6 +485,8 @@ class SyncService {
       final supplierResult = await _syncSuppliers();
       final poResult = await _syncPurchaseOrders();
       final polResult = await _syncPurchaseOrderLines();
+      final grResult = await _syncGoodsReceipts();
+      final griResult = await _syncGoodsReceiptItems();
       final recipeResult = await _syncRecipeLines();
 
       final int totalSynced =
@@ -480,6 +504,8 @@ class SyncService {
           supplierResult.syncedCount +
           poResult.syncedCount +
           polResult.syncedCount +
+          grResult.syncedCount +
+          griResult.syncedCount +
           recipeResult.syncedCount;
       final int totalFailed =
           branchResult.failedCount +
@@ -496,6 +522,8 @@ class SyncService {
           supplierResult.failedCount +
           poResult.failedCount +
           polResult.failedCount +
+          grResult.failedCount +
+          griResult.failedCount +
           recipeResult.failedCount;
 
       // pull kapag may businessId (either provided or from auth context)
@@ -522,6 +550,8 @@ class SyncService {
           ...supplierResult.errors,
           ...poResult.errors,
           ...polResult.errors,
+          ...grResult.errors,
+          ...griResult.errors,
           ...recipeResult.errors,
         ];
         if (containsTenantRejection(pushErrors)) {
@@ -553,10 +583,12 @@ class SyncService {
             supplierResult.success &&
             poResult.success &&
             polResult.success &&
+            grResult.success &&
+            griResult.success &&
             recipeResult.success &&
             pullResult.success,
         message:
-            '${branchResult.message}; ${businessResult.message}; ${categoryResult.message}; ${productResult.message}; ${variantResult.message}; ${orderResult.message}; ${refundResult.message}; ${expenseResult.message}; ${inventoryResult.message}; ${ledgerResult.message}; ${employeeResult.message}; ${supplierResult.message}; ${poResult.message}; ${polResult.message}; ${recipeResult.message}; ${pullResult.message}',
+            '${branchResult.message}; ${businessResult.message}; ${categoryResult.message}; ${productResult.message}; ${variantResult.message}; ${orderResult.message}; ${refundResult.message}; ${expenseResult.message}; ${inventoryResult.message}; ${ledgerResult.message}; ${employeeResult.message}; ${supplierResult.message}; ${poResult.message}; ${polResult.message}; ${grResult.message}; ${griResult.message}; ${recipeResult.message}; ${pullResult.message}',
         syncedCount: totalSynced + pullResult.syncedCount,
         failedCount: totalFailed + pullResult.failedCount,
         errors: [
@@ -574,6 +606,8 @@ class SyncService {
           ...supplierResult.errors,
           ...poResult.errors,
           ...polResult.errors,
+          ...grResult.errors,
+          ...griResult.errors,
           ...recipeResult.errors,
           ...pullResult.errors,
         ],
@@ -1932,6 +1966,27 @@ class SyncService {
     }
 
     try {
+      final receipts = await _procurementRemoteDs.getGoodsReceiptsByBusiness(
+        businessId,
+      );
+      for (final row in receipts) {
+        await _goodsReceiptsDao.upsertFromServer(row);
+        pulled++;
+      }
+      final items = await _procurementRemoteDs.getGoodsReceiptItemsByBusiness(
+        businessId,
+      );
+      for (final row in items) {
+        await _goodsReceiptItemsDao.upsertFromServer(row);
+        pulled++;
+      }
+    } catch (e, st) {
+      failed++;
+      debugPrint('[SYNC] Pull goods receipts failed: $e\n$st');
+      errors.add('Pull goods receipts: ${e.toString()}');
+    }
+
+    try {
       final recipeLines = await _productsRemoteDs.getRecipeLinesByBusiness(
         businessId,
       );
@@ -2335,6 +2390,127 @@ class SyncService {
     return SyncResult(
       success: failed == 0,
       message: 'PO lines: $synced synced, $failed failed',
+      syncedCount: synced,
+      failedCount: failed,
+      errors: errors,
+    );
+  }
+
+  Future<SyncResult> _syncGoodsReceipts() async {
+    final pending = await _goodsReceiptsDao.getPendingSync();
+    int synced = 0;
+    int failed = 0;
+    final errors = <String>[];
+
+    for (final record in pending) {
+      final status = SyncStatusExtension.fromInt(record.syncStatus);
+      try {
+        switch (status) {
+          case SyncStatus.pendingUpload:
+          case SyncStatus.pendingUpdate:
+          case SyncStatus.failed:
+            await _procurementRemoteDs.upsertGoodsReceipt({
+              'id': record.id,
+              'business_id': record.businessId,
+              'purchase_order_id': record.purchaseOrderId,
+              'branch_id': record.branchId,
+              'receipt_number': record.receiptNumber,
+              'received_by_id': record.receivedById,
+              'received_by_name': record.receivedByName,
+              'notes': record.notes,
+              'is_deleted': record.isDeleted,
+              'received_at': record.receivedAt.toUtc().toIso8601String(),
+              'created_at': record.createdAt.toUtc().toIso8601String(),
+              'updated_at': record.localUpdatedAt.toUtc().toIso8601String(),
+            });
+            await _goodsReceiptsDao.updateSyncStatus(
+              id: record.id,
+              status: SyncStatus.synced,
+            );
+            synced++;
+
+          case SyncStatus.pendingDelete:
+            await _goodsReceiptsDao.hardDelete(record.id);
+            synced++;
+
+          case SyncStatus.synced:
+            break;
+        }
+      } catch (e, st) {
+        failed++;
+        debugPrint('[SYNC] GoodsReceipt ${record.id} FAILED: $e\n$st');
+        errors.add('Goods receipt ${record.id}: ${e.toString()}');
+        await _goodsReceiptsDao.updateSyncStatus(
+          id: record.id,
+          status: SyncStatus.failed,
+          error: e.toString(),
+        );
+      }
+    }
+
+    return SyncResult(
+      success: failed == 0,
+      message: 'Goods receipts: $synced synced, $failed failed',
+      syncedCount: synced,
+      failedCount: failed,
+      errors: errors,
+    );
+  }
+
+  Future<SyncResult> _syncGoodsReceiptItems() async {
+    final pending = await _goodsReceiptItemsDao.getPendingSync();
+    int synced = 0;
+    int failed = 0;
+    final errors = <String>[];
+
+    for (final record in pending) {
+      final status = SyncStatusExtension.fromInt(record.syncStatus);
+      try {
+        switch (status) {
+          case SyncStatus.pendingUpload:
+          case SyncStatus.pendingUpdate:
+          case SyncStatus.failed:
+            await _procurementRemoteDs.upsertGoodsReceiptItem({
+              'id': record.id,
+              'business_id': record.businessId,
+              'goods_receipt_id': record.goodsReceiptId,
+              'purchase_order_line_id': record.purchaseOrderLineId,
+              'variant_id': record.variantId,
+              'product_id': record.productId,
+              'product_name': record.productName,
+              'quantity_received': record.quantityReceived,
+              'unit_cost': record.unitCost,
+              'created_at': record.createdAt.toUtc().toIso8601String(),
+              'updated_at': record.localUpdatedAt.toUtc().toIso8601String(),
+            });
+            await _goodsReceiptItemsDao.updateSyncStatus(
+              id: record.id,
+              status: SyncStatus.synced,
+            );
+            synced++;
+
+          case SyncStatus.pendingDelete:
+            await _goodsReceiptItemsDao.hardDelete(record.id);
+            synced++;
+
+          case SyncStatus.synced:
+            break;
+        }
+      } catch (e, st) {
+        failed++;
+        debugPrint('[SYNC] GoodsReceiptItem ${record.id} FAILED: $e\n$st');
+        errors.add('Goods receipt item ${record.id}: ${e.toString()}');
+        await _goodsReceiptItemsDao.updateSyncStatus(
+          id: record.id,
+          status: SyncStatus.failed,
+          error: e.toString(),
+        );
+      }
+    }
+
+    return SyncResult(
+      success: failed == 0,
+      message: 'Goods receipt items: $synced synced, $failed failed',
       syncedCount: synced,
       failedCount: failed,
       errors: errors,

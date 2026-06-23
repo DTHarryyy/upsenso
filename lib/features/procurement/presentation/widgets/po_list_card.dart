@@ -164,6 +164,7 @@ class _StageTrack extends StatelessWidget {
       PoStatus.partiallyReceived => (3, true),
       PoStatus.received => (4, false),
       PoStatus.cancelled => (0, false),
+      PoStatus.closed => (4, false),
     };
     final color = status.color;
 

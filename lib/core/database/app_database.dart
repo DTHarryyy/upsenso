@@ -55,6 +55,10 @@ import 'package:pos/core/database/tables/po_number_sequences_table.dart';
 import 'package:pos/core/database/daos/po_number_sequences_dao.dart';
 import 'package:pos/core/database/tables/procurement_settings_table.dart';
 import 'package:pos/core/database/daos/procurement_settings_dao.dart';
+import 'package:pos/core/database/tables/goods_receipts_table.dart';
+import 'package:pos/core/database/daos/goods_receipts_dao.dart';
+import 'package:pos/core/database/tables/goods_receipt_items_table.dart';
+import 'package:pos/core/database/daos/goods_receipt_items_dao.dart';
 import 'package:pos/core/database/tables/refunds_table.dart';
 import 'package:pos/core/database/tables/refund_items_table.dart';
 import 'package:pos/core/database/daos/refunds_dao.dart';
@@ -90,6 +94,8 @@ part 'app_database.g.dart';
     InvoiceSequencesTable,
     PoNumberSequencesTable,
     ProcurementSettingsTable,
+    GoodsReceiptsTable,
+    GoodsReceiptItemsTable,
     RefundsTable,
     RefundItemsTable,
   ],
@@ -119,6 +125,8 @@ part 'app_database.g.dart';
     InvoiceSequencesDao,
     PoNumberSequencesDao,
     ProcurementSettingsDao,
+    GoodsReceiptsDao,
+    GoodsReceiptItemsDao,
     RefundsDao,
   ],
 )
@@ -140,7 +148,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 49;
+  int get schemaVersion => 50;
 
   @override
   MigrationStrategy get migration {
@@ -844,6 +852,15 @@ class AppDatabase extends _$AppDatabase {
             } catch (e, st) {
               debugPrint('[AppDatabase] v49 add $col skipped: $e\n$st');
             }
+          }
+        }
+        if (from < 50) {
+          // Goods-receipt (GRN) document tables. Additive.
+          try {
+            await m.createTable(goodsReceiptsTable);
+            await m.createTable(goodsReceiptItemsTable);
+          } catch (e, st) {
+            debugPrint('[AppDatabase] v50 goods_receipts create skipped: $e\n$st');
           }
         }
       },

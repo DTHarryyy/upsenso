@@ -13,19 +13,33 @@ class PoNumberSequencesDao extends DatabaseAccessor<AppDatabase>
   /// `PO-YYYYMM-NNNN` format. Runs in a transaction so concurrent creates on the
   /// same device never produce the same number.
   Future<String> nextLocalPoNumber(String businessId, String monthKey) async {
+    final next = await _bump(businessId, monthKey);
+    return 'PO-$monthKey-${next.toString().padLeft(4, '0')}';
+  }
+
+  /// Next goods-receipt (GRN) number in `GRN-YYYYMM-NNNN` format. Uses a
+  /// GRN-namespaced key so it has its own counter, separate from PO numbers.
+  Future<String> nextLocalReceiptNumber(
+    String businessId,
+    String monthKey,
+  ) async {
+    final next = await _bump(businessId, 'GRN-$monthKey');
+    return 'GRN-$monthKey-${next.toString().padLeft(4, '0')}';
+  }
+
+  // Atomically increments and returns the counter for (businessId, key).
+  Future<int> _bump(String businessId, String key) async {
     return db.transaction(() async {
       final existing =
           await (select(poNumberSequencesTable)..where(
-                (t) =>
-                    t.businessId.equals(businessId) &
-                    t.monthKey.equals(monthKey),
+                (t) => t.businessId.equals(businessId) & t.monthKey.equals(key),
               ))
               .getSingleOrNull();
 
       final next = (existing?.lastValue ?? 0) + 1;
       final companion = PoNumberSequencesTableCompanion(
         businessId: Value(businessId),
-        monthKey: Value(monthKey),
+        monthKey: Value(key),
         lastValue: Value(next),
         updatedAt: Value(DateTime.now()),
       );
@@ -34,13 +48,11 @@ class PoNumberSequencesDao extends DatabaseAccessor<AppDatabase>
         await into(poNumberSequencesTable).insert(companion);
       } else {
         await (update(poNumberSequencesTable)..where(
-              (t) =>
-                  t.businessId.equals(businessId) & t.monthKey.equals(monthKey),
+              (t) => t.businessId.equals(businessId) & t.monthKey.equals(key),
             ))
             .write(companion);
       }
-
-      return 'PO-$monthKey-${next.toString().padLeft(4, '0')}';
+      return next;
     });
   }
 

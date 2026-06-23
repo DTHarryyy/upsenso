@@ -70,6 +70,35 @@ class ProcurementRemoteDs {
     await _client.from('purchase_order_lines').delete().eq('id', id);
   }
 
+  // ── Goods Receipts ──────────────────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> getGoodsReceiptsByBusiness(
+    String businessId,
+  ) async {
+    return await _client
+        .from('goods_receipts')
+        .select()
+        .eq('business_id', businessId)
+        .eq('is_deleted', false);
+  }
+
+  Future<void> upsertGoodsReceipt(Map<String, dynamic> row) async {
+    await _client.from('goods_receipts').upsert(row);
+  }
+
+  Future<List<Map<String, dynamic>>> getGoodsReceiptItemsByBusiness(
+    String businessId,
+  ) async {
+    return await _client
+        .from('goods_receipt_items')
+        .select()
+        .eq('business_id', businessId);
+  }
+
+  Future<void> upsertGoodsReceiptItem(Map<String, dynamic> row) async {
+    await _client.from('goods_receipt_items').upsert(row);
+  }
+
   // ── Settings ──────────────────────────────────────────────────────────────
 
   /// Upserts the per-business approval threshold so the server-side RLS check

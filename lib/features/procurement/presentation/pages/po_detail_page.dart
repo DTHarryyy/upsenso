@@ -18,6 +18,7 @@ import 'package:pos/core/widgets/app_progress_bar.dart';
 import 'package:pos/core/widgets/app_section_card.dart';
 import 'package:pos/core/widgets/app_sticky_action_bar.dart';
 import 'package:pos/core/widgets/app_sub_page_bar.dart';
+import 'package:pos/features/procurement/domain/entities/goods_receipt.dart';
 import 'package:pos/features/procurement/domain/entities/po_input.dart';
 import 'package:pos/features/procurement/domain/entities/po_status.dart';
 import 'package:pos/features/procurement/domain/entities/purchase_order.dart';
@@ -165,6 +166,10 @@ class _PoDetailContent extends StatelessWidget {
                       ),
                   ],
                 ),
+                if (_showsReceiving(po.status)) ...[
+                  const SizedBox(height: 12),
+                  _ReceiptsSection(poId: po.id),
+                ],
                 const SizedBox(height: 12),
                 AppSectionCard(
                   title: 'Timeline',
@@ -212,6 +217,77 @@ class _ReceivingProgressCard extends StatelessWidget {
             '${AppFormatters.quantity(received)} / ${AppFormatters.quantity(ordered)}'
             '  (${(fraction * 100).round()}%)',
       ),
+    );
+  }
+}
+
+/// Goods-receipt (GRN) history for the PO — one row per receiving event.
+class _ReceiptsSection extends StatelessWidget {
+  final String poId;
+
+  const _ReceiptsSection({required this.poId});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<GoodsReceipt>>(
+      stream: sl<IProcurementRepository>().watchReceipts(poId),
+      builder: (context, snap) {
+        final receipts = snap.data ?? const <GoodsReceipt>[];
+        if (receipts.isEmpty) return const SizedBox.shrink();
+        return AppSectionCard(
+          title: 'Receipts',
+          icon: Icons.inventory_2_outlined,
+          trailing: Text(
+            receipts.length == 1 ? '1 receipt' : '${receipts.length} receipts',
+            style: getOutfitStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+            ),
+          ),
+          children: [
+            for (final r in receipts)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            r.receiptNumber,
+                            style: getOutfitStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          if (r.receivedByName != null)
+                            Text(
+                              'by ${r.receivedByName}',
+                              style: getOutfitStyle(
+                                fontSize: 11,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      AppFormatters.shortDate(r.receivedAt),
+                      style: getOutfitStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
@@ -508,16 +584,18 @@ class _ActionBar extends StatelessWidget {
       );
     }
 
-    final cancel = status.canCancel &&
-            perms.can(PermissionKeys.procurementManage)
+    // Secondary destructive action: cancel while still cancellable, else
+    // short-close once goods have started arriving (partially received).
+    final canManage = perms.can(PermissionKeys.procurementManage);
+    final Widget? secondary = status.canCancel && canManage
         ? _cancelButton(context, cubit)
-        : null;
+        : (status.canClose && canManage ? _closeButton(context, cubit) : null);
 
-    if (primary == null && cancel == null) return const SizedBox.shrink();
+    if (primary == null && secondary == null) return const SizedBox.shrink();
 
     return AppStickyActionBar(
-      primary: primary ?? cancel!,
-      secondary: primary != null ? cancel : null,
+      primary: primary ?? secondary!,
+      secondary: primary != null ? secondary : null,
     );
   }
 
@@ -557,6 +635,11 @@ class _ActionBar extends StatelessWidget {
       'Approve ${po.poNumber}? This allows goods to be received.',
     );
     if (!confirm) return;
+    // A draft must be submitted before it can be approved (approve only accepts
+    // a submitted PO); chain them so a one-tap approve from a draft works.
+    if (po.status == PoStatus.draft) {
+      await cubit.submitPurchaseOrder(po.id);
+    }
     await cubit.approvePurchaseOrder(po.id);
   }
 
@@ -569,6 +652,38 @@ class _ActionBar extends StatelessWidget {
     );
     if (!confirm) return;
     await cubit.cancelPurchaseOrder(po.id);
+    if (context.mounted) context.pop();
+  }
+
+  Widget _closeButton(BuildContext context, PoCubit cubit) => OutlinedButton(
+    onPressed: () => _close(context, cubit),
+    style: OutlinedButton.styleFrom(
+      side: const BorderSide(color: AppColors.textSecondary),
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+    ),
+    child: Text(
+      'Close (short)',
+      style: getOutfitStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: AppColors.textSecondary,
+      ),
+    ),
+  );
+
+  Future<void> _close(BuildContext context, PoCubit cubit) async {
+    final confirm = await _confirmDialog(
+      context,
+      'Close PO',
+      'Close ${po.poNumber} with outstanding quantity? Remaining items will '
+          'not be received.',
+      destructive: true,
+    );
+    if (!confirm) return;
+    await cubit.closePurchaseOrder(po.id);
     if (context.mounted) context.pop();
   }
 

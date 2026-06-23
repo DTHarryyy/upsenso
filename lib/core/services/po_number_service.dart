@@ -58,6 +58,12 @@ class PoNumberService {
     }
   }
 
+  /// Next goods-receipt number `GRN-YYYYMM-NNNN`. Local-sequential per business
+  /// (no server RPC) — receipts are child documents of an already-numbered PO.
+  Future<String> claimNextReceipt(String businessId) {
+    return _dao.nextLocalReceiptNumber(businessId, monthKeyFor(DateTime.now()));
+  }
+
   // Extracts the trailing integer from PO-YYYYMM-NNNN.
   static int? _parseSequence(String poNumber) {
     final match = RegExp(r'^PO-\d{6}-(\d+)$').firstMatch(poNumber);

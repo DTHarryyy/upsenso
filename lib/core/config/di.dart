@@ -82,6 +82,8 @@ import 'package:pos/core/database/daos/invoice_sequences_dao.dart';
 import 'package:pos/core/services/invoice_number_service.dart';
 import 'package:pos/core/database/daos/po_number_sequences_dao.dart';
 import 'package:pos/core/database/daos/procurement_settings_dao.dart';
+import 'package:pos/core/database/daos/goods_receipts_dao.dart';
+import 'package:pos/core/database/daos/goods_receipt_items_dao.dart';
 import 'package:pos/core/services/po_number_service.dart';
 import 'package:pos/core/database/daos/refunds_dao.dart';
 import 'package:pos/core/services/refund_service.dart';
@@ -181,6 +183,12 @@ Future<void> initDI() async {
   );
   sl.registerLazySingleton<ProcurementSettingsDao>(
     () => ProcurementSettingsDao(sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<GoodsReceiptsDao>(
+    () => GoodsReceiptsDao(sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<GoodsReceiptItemsDao>(
+    () => GoodsReceiptItemsDao(sl<AppDatabase>()),
   );
   sl.registerLazySingleton<RefundsDao>(() => RefundsDao(sl<AppDatabase>()));
   sl.registerLazySingleton<DraftSalesDao>(
@@ -340,6 +348,8 @@ Future<void> initDI() async {
       suppliersDao: sl<SuppliersDao>(),
       purchaseOrdersDao: sl<PurchaseOrdersDao>(),
       purchaseOrderLinesDao: sl<PurchaseOrderLinesDao>(),
+      goodsReceiptsDao: sl<GoodsReceiptsDao>(),
+      goodsReceiptItemsDao: sl<GoodsReceiptItemsDao>(),
       procurementRemoteDs: sl<ProcurementRemoteDs>(),
       recipeLinesDao: sl<RecipeLinesDao>(),
       syncStateDao: sl<SyncStateDao>(),
@@ -432,6 +442,8 @@ Future<void> initDI() async {
       stockMovement: sl<StockMovementService>(),
       poNumberService: sl<PoNumberService>(),
       settingsDao: sl<ProcurementSettingsDao>(),
+      receiptsDao: sl<GoodsReceiptsDao>(),
+      receiptItemsDao: sl<GoodsReceiptItemsDao>(),
       remoteDs: sl<ProcurementRemoteDs>(),
     ),
   );
