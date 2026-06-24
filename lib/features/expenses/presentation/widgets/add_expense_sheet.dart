@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/const/app_colors.dart';
@@ -11,7 +12,6 @@ import 'package:pos/core/widgets/app_toast.dart';
 import 'package:pos/core/widgets/app_field_label.dart';
 import 'package:pos/core/widgets/app_input_decoration.dart';
 import 'package:pos/core/widgets/branch_sale_dialog.dart';
-import 'package:pos/features/expenses/domain/expense_item.dart';
 import 'package:pos/features/expenses/presentation/cubit/expenses_cubit.dart';
 
 const List<String> kExpenseCategories = [
@@ -59,6 +59,44 @@ void showAddExpenseSheet(
   }
 }
 
+/// Tells the user what submitting will do, derived from their permission:
+/// auto-approved when they can approve, otherwise routed to a manager. This
+/// replaces the old manual status picker.
+class _ApprovalHint extends StatelessWidget {
+  final bool canApprove;
+  const _ApprovalHint({required this.canApprove});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.inputFill,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            canApprove ? Icons.check_circle_outline : Icons.schedule_outlined,
+            size: 16,
+            color: AppColors.textMuted,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              canApprove
+                  ? 'You can approve — this will be saved as approved.'
+                  : 'This will be sent to a manager for approval.',
+              style:
+                  getOutfitStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _AddExpenseSheet extends StatefulWidget {
   final bool canApprove;
   const _AddExpenseSheet({required this.canApprove});
@@ -74,7 +112,6 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
   final _noteCtrl = TextEditingController();
 
   String? _category;
-  ExpenseStatus _selectedStatus = ExpenseStatus.pending;
   DateTime _expenseDate = DateTime.now();
   bool _submitting = false;
 
@@ -114,7 +151,6 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
             branchName: branchName,
             note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
             expenseDate: _expenseDate,
-            overrideStatus: _selectedStatus,
           );
 
       if (mounted) Navigator.pop(context);
@@ -208,25 +244,6 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
                     ),
                     const SizedBox(height: 14),
 
-                    if (widget.canApprove) ...[
-                      AppFieldLabel('Status'),
-                      AppDropdown<ExpenseStatus>(
-                        value: _selectedStatus,
-                        hint: 'Select status',
-                        items: const [
-                          AppDropdownItem(
-                              value: ExpenseStatus.pending, label: 'Pending'),
-                          AppDropdownItem(
-                              value: ExpenseStatus.approved, label: 'Approved'),
-                          AppDropdownItem(
-                              value: ExpenseStatus.draft, label: 'Draft'),
-                        ],
-                        onChanged: (v) => setState(
-                            () => _selectedStatus = v ?? ExpenseStatus.pending),
-                      ),
-                      const SizedBox(height: 14),
-                    ],
-
                     AppFieldLabel('Vendor / Supplier *'),
                     TextFormField(
                       controller: _vendorCtrl,
@@ -244,7 +261,11 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
                       controller: _amountCtrl,
                       keyboardType: const TextInputType.numberWithOptions(
                           decimal: true),
-                      decoration: appInputDeco('0.00'),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                      ],
+                      decoration:
+                          appInputDeco('0.00').copyWith(prefixText: '₱ '),
                       style: getOutfitStyle(
                           fontSize: 14, color: AppColors.textPrimary),
                       validator: (v) {
@@ -282,7 +303,9 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
                       style: getOutfitStyle(
                           fontSize: 14, color: AppColors.textPrimary),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
+                    _ApprovalHint(canApprove: widget.canApprove),
+                    const SizedBox(height: 16),
 
                     SizedBox(
                       width: double.infinity,
@@ -302,7 +325,9 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
                                     strokeWidth: 2, color: Colors.white),
                               )
                             : Text(
-                                'Add Expense',
+                                widget.canApprove
+                                    ? 'Add & Approve'
+                                    : 'Submit for Approval',
                                 style: getOutfitStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w600,
@@ -338,7 +363,6 @@ class _AddExpenseDialogState extends State<_AddExpenseDialog> {
   final _noteCtrl = TextEditingController();
 
   String? _category;
-  ExpenseStatus _selectedStatus = ExpenseStatus.pending;
   DateTime _expenseDate = DateTime.now();
   bool _submitting = false;
 
@@ -378,7 +402,6 @@ class _AddExpenseDialogState extends State<_AddExpenseDialog> {
             branchName: branchName,
             note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
             expenseDate: _expenseDate,
-            overrideStatus: _selectedStatus,
           );
 
       if (mounted) Navigator.pop(context);
@@ -462,75 +485,18 @@ class _AddExpenseDialogState extends State<_AddExpenseDialog> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Row 1: Category + Status (if canApprove)
-                        if (widget.canApprove)
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    AppFieldLabel('Category *'),
-                                    AppDropdown<String>(
-                                      value: _category,
-                                      hint: 'Select category',
-                                      items: kExpenseCategories
-                                          .map((c) => AppDropdownItem(
-                                              value: c, label: c))
-                                          .toList(),
-                                      onChanged: (v) =>
-                                          setState(() => _category = v),
-                                      validator: (v) => v == null
-                                          ? 'Please select a category'
-                                          : null,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    AppFieldLabel('Status'),
-                                    AppDropdown<ExpenseStatus>(
-                                      value: _selectedStatus,
-                                      hint: 'Select status',
-                                      items: const [
-                                        AppDropdownItem(
-                                            value: ExpenseStatus.pending,
-                                            label: 'Pending'),
-                                        AppDropdownItem(
-                                            value: ExpenseStatus.approved,
-                                            label: 'Approved'),
-                                        AppDropdownItem(
-                                            value: ExpenseStatus.draft,
-                                            label: 'Draft'),
-                                      ],
-                                      onChanged: (v) => setState(() =>
-                                          _selectedStatus =
-                                              v ?? ExpenseStatus.pending),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          )
-                        else ...[
-                          AppFieldLabel('Category *'),
-                          AppDropdown<String>(
-                            value: _category,
-                            hint: 'Select category',
-                            items: kExpenseCategories
-                                .map((c) =>
-                                    AppDropdownItem(value: c, label: c))
-                                .toList(),
-                            onChanged: (v) => setState(() => _category = v),
-                            validator: (v) =>
-                                v == null ? 'Please select a category' : null,
-                          ),
-                        ],
+                        // Category
+                        AppFieldLabel('Category *'),
+                        AppDropdown<String>(
+                          value: _category,
+                          hint: 'Select category',
+                          items: kExpenseCategories
+                              .map((c) => AppDropdownItem(value: c, label: c))
+                              .toList(),
+                          onChanged: (v) => setState(() => _category = v),
+                          validator: (v) =>
+                              v == null ? 'Please select a category' : null,
+                        ),
                         const SizedBox(height: 14),
 
                         // Row 2: Vendor + Amount
@@ -569,7 +535,12 @@ class _AddExpenseDialogState extends State<_AddExpenseDialog> {
                                     keyboardType:
                                         const TextInputType.numberWithOptions(
                                             decimal: true),
-                                    decoration: appInputDeco('0.00'),
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.allow(
+                                          RegExp(r'^\d*\.?\d*')),
+                                    ],
+                                    decoration: appInputDeco('0.00')
+                                        .copyWith(prefixText: '₱ '),
                                     style: getOutfitStyle(
                                         fontSize: 14,
                                         color: AppColors.textPrimary),
@@ -617,6 +588,8 @@ class _AddExpenseDialogState extends State<_AddExpenseDialog> {
                           style: getOutfitStyle(
                               fontSize: 14, color: AppColors.textPrimary),
                         ),
+                        const SizedBox(height: 16),
+                        _ApprovalHint(canApprove: widget.canApprove),
                       ],
                     ),
                   ),
@@ -670,7 +643,9 @@ class _AddExpenseDialogState extends State<_AddExpenseDialog> {
                                     strokeWidth: 2, color: Colors.white),
                               )
                             : Text(
-                                'Add Expense',
+                                widget.canApprove
+                                    ? 'Add & Approve'
+                                    : 'Submit for Approval',
                                 style: getOutfitStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,

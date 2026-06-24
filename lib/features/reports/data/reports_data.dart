@@ -125,10 +125,12 @@ class ProfitTrendPoint {
   final String label;
   final double revenue;
   final double cogs;
+  final double expenses;
   const ProfitTrendPoint({
     required this.label,
     required this.revenue,
     required this.cogs,
+    this.expenses = 0,
   });
 }
 
@@ -181,6 +183,7 @@ class ReportsData {
   // Profit Summary
   final double grossRevenue;
   final double costOfGoods;
+  final double operatingExpenses;
   final double netProfit;
   final double prevNetProfit;
   final List<ProfitTrendPoint> profitTrend;
@@ -210,6 +213,7 @@ class ReportsData {
     required this.ingredientItems,
     required this.grossRevenue,
     required this.costOfGoods,
+    required this.operatingExpenses,
     required this.netProfit,
     required this.prevNetProfit,
     required this.profitTrend,
@@ -238,6 +242,7 @@ class ReportsData {
     ingredientItems: [],
     grossRevenue: 0,
     costOfGoods: 0,
+    operatingExpenses: 0,
     netProfit: 0,
     prevNetProfit: 0,
     profitTrend: [],

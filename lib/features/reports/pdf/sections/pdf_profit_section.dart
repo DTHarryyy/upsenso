@@ -6,11 +6,14 @@ import 'package:pos/features/reports/presentation/widgets/report_card.dart'
 
 List<pw.Widget> buildProfitSection(ReportsData data) {
   final profitChg = pctChange(data.netProfit, data.prevNetProfit);
-  // Profit math excludes collected tax. Net revenue is the profit base
-  // (netProfit = netRevenue - COGS), derived without a model change.
-  final netRevenue = data.netProfit + data.costOfGoods;
+  // Profit math excludes collected tax. Net revenue is the profit base:
+  // netProfit = netRevenue - COGS - operating expenses.
+  final netRevenue =
+      data.netProfit + data.costOfGoods + data.operatingExpenses;
   final margin = netRevenue > 0 ? data.netProfit / netRevenue * 100 : 0.0;
   final cogsRatio = netRevenue > 0 ? data.costOfGoods / netRevenue * 100 : 0.0;
+  final opexRatio =
+      netRevenue > 0 ? data.operatingExpenses / netRevenue * 100 : 0.0;
 
   String s(double v) =>
       '${v >= 0 ? '+' : ''}${v.toStringAsFixed(1)}% vs prev';
@@ -69,6 +72,11 @@ List<pw.Widget> buildProfitSection(ReportsData data) {
           pdfCurrency(netRevenue - data.costOfGoods),
           '${(100 - cogsRatio).toStringAsFixed(1)}%',
         ],
+        [
+          'Operating Expenses',
+          pdfCurrency(data.operatingExpenses),
+          '${opexRatio.toStringAsFixed(1)}%',
+        ],
       ],
       totalsRow: [
         'Net Profit',
@@ -90,12 +98,13 @@ pw.Widget _profitTrendTable(ReportsData data) {
   // Totals span every bucket; labels are blanked only for axis readability,
   // so summing over the displayed rows would silently drop most days.
   final pts = data.profitTrend.where((p) => p.label.isNotEmpty).toList();
-  double totRev = 0, totCogs = 0;
+  double totRev = 0, totCogs = 0, totExp = 0;
   for (final p in data.profitTrend) {
     totRev += p.revenue;
     totCogs += p.cogs;
+    totExp += p.expenses;
   }
-  final totNet = totRev - totCogs;
+  final totNet = totRev - totCogs - totExp;
   final totMargin =
       totRev > 0 ? '${(totNet / totRev * 100).toStringAsFixed(1)}%' : '—';
 
@@ -109,7 +118,7 @@ pw.Widget _profitTrendTable(ReportsData data) {
     },
     headers: ['Period', 'Revenue', 'COGS', 'Net Profit', 'Margin'],
     rows: pts.map((p) {
-      final net = p.revenue - p.cogs;
+      final net = p.revenue - p.cogs - p.expenses;
       final mg = p.revenue > 0
           ? '${(net / p.revenue * 100).toStringAsFixed(1)}%'
           : '—';

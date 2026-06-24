@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/core/database/daos/categories_dao.dart';
+import 'package:pos/core/database/daos/expenses_dao.dart';
 import 'package:pos/core/database/daos/inventory_levels_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
 import 'package:pos/core/database/daos/products_dao.dart';
@@ -25,6 +26,7 @@ class ReportsRepository implements IReportsRepository {
   final InventoryLevelsDao _levelsDao;
   final StockLedgerDao _ledgerDao;
   final RefundsDao _refundsDao;
+  final ExpensesDao _expensesDao;
   final SharedPreferences _prefs;
 
   static const String _branchCubitOptionsKeyPrefix = 'cached_branch_options';
@@ -38,6 +40,7 @@ class ReportsRepository implements IReportsRepository {
     required InventoryLevelsDao levelsDao,
     required StockLedgerDao ledgerDao,
     required RefundsDao refundsDao,
+    required ExpensesDao expensesDao,
     required SharedPreferences prefs,
   }) : _txnDao = txnDao,
        _variantsDao = variantsDao,
@@ -47,6 +50,7 @@ class ReportsRepository implements IReportsRepository {
        _levelsDao = levelsDao,
        _ledgerDao = ledgerDao,
        _refundsDao = refundsDao,
+       _expensesDao = expensesDao,
        _prefs = prefs;
 
   // ─── Real-time change stream ─────────────────────────────────────────────
@@ -62,6 +66,7 @@ class ReportsRepository implements IReportsRepository {
   Stream<void> watchChanges({required String businessId}) {
     StreamSubscription<List<TransactionsTableData>>? txnSub;
     StreamSubscription<List<ProductVariantsTableData>>? variantSub;
+    StreamSubscription<List<ExpenseRow>>? expenseSub;
 
     late final StreamController<void> controller;
     controller = StreamController<void>.broadcast(
@@ -74,12 +79,20 @@ class ReportsRepository implements IReportsRepository {
         ) {
           if (!controller.isClosed) controller.add(null);
         });
+        // Approving or recording an expense changes net profit, so refresh too.
+        expenseSub = _expensesDao.watchByBusinessId(businessId).skip(1).listen((
+          _,
+        ) {
+          if (!controller.isClosed) controller.add(null);
+        });
       },
       onCancel: () {
         txnSub?.cancel();
         variantSub?.cancel();
+        expenseSub?.cancel();
         txnSub = null;
         variantSub = null;
+        expenseSub = null;
       },
     );
     return controller.stream;
@@ -227,6 +240,23 @@ class ReportsRepository implements IReportsRepository {
         .fold(0.0, (s, r) => s + r.totalAmount);
   }
 
+  /// Only approved expenses hit the P&L, dated by [ExpenseRow.expenseDate]
+  /// (when the cost was incurred, not when it was entered).
+  double _sumApprovedExpensesInRange(
+    List<ExpenseRow> expenses,
+    DateTime from,
+    DateTime to,
+  ) {
+    return expenses
+        .where(
+          (e) =>
+              e.status == 'approved' &&
+              !e.expenseDate.isBefore(from) &&
+              e.expenseDate.isBefore(to),
+        )
+        .fold(0.0, (s, e) => s + e.amount);
+  }
+
   static DateTime _addMonths(DateTime date, int months) {
     int year = date.year;
     int month = date.month + months;
@@ -281,6 +311,13 @@ class ReportsRepository implements IReportsRepository {
     final allRefundsAllBranch = branchId != null
         ? await _refundsDao.getAllRefundsSince(prevCutoff, businessId: businessId)
         : allRefundsFiltered;
+
+    // Approved expenses feed the P&L (offline-first, local SQLite). Branch-scoped
+    // to match the transaction filter so per-branch net profit stays accurate.
+    final allExpenses = await _expensesDao.getByBusinessId(businessId);
+    final periodExpenses = branchId == null
+        ? allExpenses
+        : allExpenses.where((e) => e.branchId == branchId).toList();
 
     final currentTxns = allFiltered
         .where(
@@ -530,7 +567,19 @@ class ReportsRepository implements IReportsRepository {
     final prevNetRevenue =
         prevTxns.fold(0.0, (s, t) => s + (t.totalAmount - t.taxAmount)) -
         prevRefundNet;
-    final netProfit = netRevenue - costOfGoods;
+
+    // Operating expenses reduce net profit on top of COGS.
+    final operatingExpenses = _sumApprovedExpensesInRange(
+      periodExpenses,
+      cutoff,
+      rangeEnd,
+    );
+    final prevOperatingExpenses = _sumApprovedExpensesInRange(
+      periodExpenses,
+      prevCutoff,
+      cutoff,
+    );
+    final netProfit = netRevenue - costOfGoods - operatingExpenses;
 
     var prevCogs = 0.0;
     for (final item in prevItems) {
@@ -538,7 +587,7 @@ class ReportsRepository implements IReportsRepository {
       if (cp != null) prevCogs += cp * item.qty;
     }
     prevCogs -= prevRefundCogs;
-    final prevNetProfit = prevNetRevenue - prevCogs;
+    final prevNetProfit = prevNetRevenue - prevCogs - prevOperatingExpenses;
 
     // Profit trend (revenue + COGS per bucket). Refunds are netted into the
     // bucket the refund happened in, mirroring the sales trend above.
@@ -562,7 +611,13 @@ class ReportsRepository implements IReportsRepository {
       final cogs =
           bTxns.fold(0.0, (s, t) => s + (txnCogs[t.id] ?? 0)) -
           bRefunds.fold(0.0, (s, r) => s + (refundCogsByRefundId[r.id] ?? 0));
-      return ProfitTrendPoint(label: b.label, revenue: rev, cogs: cogs);
+      final exp = _sumApprovedExpensesInRange(periodExpenses, b.start, b.end);
+      return ProfitTrendPoint(
+        label: b.label,
+        revenue: rev,
+        cogs: cogs,
+        expenses: exp,
+      );
     }).toList();
 
     // ── 7. Branch Comparison ──────────────────────────────────────────────
@@ -737,6 +792,7 @@ class ReportsRepository implements IReportsRepository {
       ingredientItems: ingredientItems,
       grossRevenue: totalRevenue,
       costOfGoods: costOfGoods,
+      operatingExpenses: operatingExpenses,
       netProfit: netProfit,
       prevNetProfit: prevNetProfit,
       profitTrend: profitTrend,

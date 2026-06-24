@@ -171,15 +171,18 @@ class ReportExcelExporter {
     // ① P&L summary
     rows.add(_headerRow(['Metric', 'Amount']));
     // Profit margin excludes collected tax: net revenue is the profit base
-    // (netProfit = netRevenue - COGS), derived without a model change.
-    final netRevenue = data.netProfit + data.costOfGoods;
+    // (netProfit = netRevenue - COGS - operating expenses).
+    final netRevenue =
+        data.netProfit + data.costOfGoods + data.operatingExpenses;
     final margin = netRevenue > 0
         ? '${(data.netProfit / netRevenue * 100).toStringAsFixed(1)}%'
         : '0%';
     rows.add(_kpiRow(0, 'Net Revenue', _cur(netRevenue), '', ''));
     rows.add(_kpiRow(1, 'Cost of Goods (COGS)', _cur(data.costOfGoods), '', ''));
-    rows.add(_kpiRow(2, 'Net Profit', _cur(data.netProfit), '', ''));
-    rows.add(_kpiRow(3, 'Profit Margin', margin, '', ''));
+    rows.add(
+        _kpiRow(2, 'Operating Expenses', _cur(data.operatingExpenses), '', ''));
+    rows.add(_kpiRow(3, 'Net Profit', _cur(data.netProfit), '', ''));
+    rows.add(_kpiRow(4, 'Profit Margin', margin, '', ''));
     rows.add(_blankRow(rows.length));
 
     // ② Period trend
@@ -188,13 +191,14 @@ class ReportExcelExporter {
     final trend = data.profitTrend.where((p) => p.label.isNotEmpty).toList();
     // Totals span every bucket; blank labels are axis-only, so sum over the
     // full trend rather than just the displayed rows.
-    double totRev = 0, totCogs = 0;
+    double totRev = 0, totCogs = 0, totExp = 0;
     for (final p in data.profitTrend) {
       totRev += p.revenue;
       totCogs += p.cogs;
+      totExp += p.expenses;
     }
     for (int i = 0; i < trend.length; i++) {
-      final net = trend[i].revenue - trend[i].cogs;
+      final net = trend[i].revenue - trend[i].cogs - trend[i].expenses;
       final mg = trend[i].revenue > 0 ? '${(net / trend[i].revenue * 100).toStringAsFixed(1)}%' : '0%';
       rows.add(_Row([
         _Cell(trend[i].label, i.isOdd ? _S.altL : _S.normalL),
@@ -204,7 +208,7 @@ class ReportExcelExporter {
         _Cell(mg, i.isOdd ? _S.altR : _S.normalR),
       ]));
     }
-    final totNet = totRev - totCogs;
+    final totNet = totRev - totCogs - totExp;
     final totMg = totRev > 0 ? '${(totNet / totRev * 100).toStringAsFixed(1)}%' : '0%';
     rows.add(_totalsRow(['Total', _cur(totRev), _cur(totCogs), _cur(totNet), totMg]));
 

@@ -563,6 +563,7 @@ Future<void> initDI() async {
       levelsDao: sl<InventoryLevelsDao>(),
       ledgerDao: sl<StockLedgerDao>(),
       refundsDao: sl<RefundsDao>(),
+      expensesDao: sl<ExpensesDao>(),
       prefs: sl<SharedPreferences>(),
     ),
   );

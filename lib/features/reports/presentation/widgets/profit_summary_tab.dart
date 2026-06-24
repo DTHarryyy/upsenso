@@ -56,7 +56,7 @@ class _ProfitOverview extends StatelessWidget {
         ),
         AppStatCard(
           title: 'Operating Expenses',
-          value: '₱0',
+          value: fmtCurrency(data.operatingExpenses),
           icon: IconlyLight.paper,
           iconBg: AppColors.warningSoft,
           iconColor: AppColors.warning,
@@ -241,12 +241,13 @@ class _ProfitTrendTable extends StatelessWidget {
 
     // Totals span every bucket; labels are blanked only for display, so sum
     // over the full trend to stay consistent with the KPI cards.
-    double totRev = 0, totCogs = 0;
+    double totRev = 0, totCogs = 0, totExp = 0;
     for (final p in trend) {
       totRev += p.revenue;
       totCogs += p.cogs;
+      totExp += p.expenses;
     }
-    final totNet = totRev - totCogs;
+    final totNet = totRev - totCogs - totExp;
     final totMargin = totRev > 0
         ? '${(totNet / totRev * 100).toStringAsFixed(1)}%'
         : '—';
@@ -264,7 +265,7 @@ class _ProfitTrendTable extends StatelessWidget {
             rowCount: rows.length,
             rowCellsBuilder: (ctx, i) {
               final p = rows[i];
-              final net = p.revenue - p.cogs;
+              final net = p.revenue - p.cogs - p.expenses;
               final margin = p.revenue > 0
                   ? '${(net / p.revenue * 100).toStringAsFixed(1)}%'
                   : '—';
