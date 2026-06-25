@@ -152,9 +152,9 @@ class AppKpiStrip extends StatelessWidget {
           );
         }
 
+        //make this wrap instead of scrollable
+
         return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: padding,
           child: IntrinsicHeight(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,

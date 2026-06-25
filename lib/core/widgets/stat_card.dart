@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/const/app_typography.dart';
 
 /// Generic white card shell used across reports, dashboard, expenses, inventory.
 class AppCard extends StatelessWidget {
@@ -62,10 +63,12 @@ class AppStatCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 13,
+                  style: AppTextStyles.body(context).copyWith(
                     color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                    overflow: TextOverflow.ellipsis,
                   ),
+                  maxLines: 1,
                 ),
               ),
               Container(
@@ -81,10 +84,9 @@ class AppStatCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
+            style: AppTextStyles.body(context).copyWith(
               color: AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
             ),
           ),
           if (changeLabel != null) ...[
@@ -129,30 +131,36 @@ class StatCardsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (_, c) {
-      if (c.maxWidth > 800) {
-        return Row(
-          children: cards
-              .map((w) => Expanded(child: w))
-              .expand((w) => [w, const SizedBox(width: 12)])
-              .toList()
-            ..removeLast(),
-        );
-      }
-      // 2-column grid for narrow screens
-      final rows = <Widget>[];
-      for (var i = 0; i < cards.length; i += 2) {
-        if (i > 0) rows.add(const SizedBox(height: 12));
-        final pair = cards.sublist(i, (i + 2).clamp(0, cards.length));
-        rows.add(Row(
-          children: pair
-              .map((w) => Expanded(child: w))
-              .expand((w) => [w, const SizedBox(width: 12)])
-              .toList()
-            ..removeLast(),
-        ));
-      }
-      return Column(children: rows);
-    });
+    return LayoutBuilder(
+      builder: (_, c) {
+        if (c.maxWidth > 800) {
+          return Row(
+            children:
+                cards
+                    .map((w) => Expanded(child: w))
+                    .expand((w) => [w, const SizedBox(width: 12)])
+                    .toList()
+                  ..removeLast(),
+          );
+        }
+        // 2-column grid for narrow screens
+        final rows = <Widget>[];
+        for (var i = 0; i < cards.length; i += 2) {
+          if (i > 0) rows.add(const SizedBox(height: 8));
+          final pair = cards.sublist(i, (i + 2).clamp(0, cards.length));
+          rows.add(
+            Row(
+              children:
+                  pair
+                      .map((w) => Expanded(child: w))
+                      .expand((w) => [w, const SizedBox(width: 8)])
+                      .toList()
+                    ..removeLast(),
+            ),
+          );
+        }
+        return Column(children: rows);
+      },
+    );
   }
 }

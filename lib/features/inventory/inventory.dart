@@ -147,7 +147,7 @@ class _InventoryState extends State<Inventory> {
                 : null;
             final viewMode = state is InventoryLoaded
                 ? state.viewMode
-                : AppViewMode.table;
+                : AppViewMode.cards;
 
             return Scaffold(
               backgroundColor: AppColors.background,

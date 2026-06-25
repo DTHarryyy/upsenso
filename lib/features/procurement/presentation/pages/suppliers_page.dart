@@ -100,14 +100,11 @@ class SuppliersPage extends StatelessWidget {
                 Expanded(
                   child: AppSearchBar(
                     hint: 'Search name, contact, phone…',
-                    onChanged: (q) =>
-                        context.read<SupplierCubit>().search(q),
+                    onChanged: (q) => context.read<SupplierCubit>().search(q),
                   ),
                 ),
                 const SizedBox(width: 10),
-                _SortButton(
-                  onTap: () => _showSortSheet(context, loaded.sort),
-                ),
+                _SortButton(onTap: () => _showSortSheet(context, loaded.sort)),
               ],
             ),
           ),

@@ -120,27 +120,6 @@ class _DashboardPageState extends State<DashboardPage> {
                             _StatCardsRow(data: data, isLoading: isLoading),
 
                             const SizedBox(height: 16),
-                            // Quick actions, low stock, branch comparison and
-                            // expenses are only shown to roles that can
-                            // actually use them. Cashier and inventory staff
-                            // see a trimmed-down dashboard.
-                            Builder(
-                              builder: (ctx) {
-                                final isRestricted = !sl<PermissionService>()
-                                    .can(PermissionKeys.navExpenses);
-                                if (isRestricted) {
-                                  return const SizedBox.shrink();
-                                }
-                                return Column(
-                                  children: [
-                                    QuickActionsBar(
-                                      onNewSale: widget.onNewSale,
-                                    ),
-                                    const SizedBox(height: 16),
-                                  ],
-                                );
-                              },
-                            ),
 
                             // ── Row 1: Sales Trend + Top Selling Items ──
                             // On wide screens they sit side by side (flex 3 : 2)

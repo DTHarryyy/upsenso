@@ -116,6 +116,8 @@ class ReceiptTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        _PreviewBanner(settings: s),
+        const SizedBox(height: 8),
         AppSectionCard(
           icon: Icons.text_fields_rounded,
           title: 'Receipt Text',
@@ -200,8 +202,6 @@ class ReceiptTab extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 16),
-        _PreviewBanner(settings: s),
         const SizedBox(height: 24),
       ],
     );
@@ -895,7 +895,8 @@ class _LogoBannerState extends State<_LogoBanner> {
   Widget build(BuildContext context) {
     // A logo exists once the live settings carry a local path or a URL.
     final settings = context.watch<SettingsCubit>().state.settings;
-    final hasLogo = settings != null &&
+    final hasLogo =
+        settings != null &&
         (settings.logoLocalPath.isNotEmpty || settings.logoUrl.isNotEmpty);
     if (hasLogo || _dismissed) return const SizedBox.shrink();
 
@@ -1025,7 +1026,9 @@ class _PrinterSelectorState extends State<_PrinterSelector> {
   }
 
   IconData _iconForUrl(String url) {
-    if (url.startsWith('bt://') || url.contains('bluetooth')) return Icons.bluetooth_rounded;
+    if (url.startsWith('bt://') || url.contains('bluetooth')) {
+      return Icons.bluetooth_rounded;
+    }
     if (url.contains('usb')) return Icons.usb_rounded;
     return Icons.wifi_rounded;
   }
@@ -1073,10 +1076,7 @@ class _PrinterSelectorState extends State<_PrinterSelector> {
             icon: const Icon(Icons.add_rounded, size: 16),
             label: Text(
               'Connect a Printer',
-              style: getOutfitStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
+              style: getOutfitStyle(fontSize: 13, fontWeight: FontWeight.w600),
             ),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.brand,
@@ -1151,8 +1151,8 @@ class _PrinterSelectorState extends State<_PrinterSelector> {
                     _printerUrl.startsWith('bt://')
                         ? 'BT · ${_printerUrl.replaceFirst('bt://', '')}'
                         : _printerUrl.startsWith('custom://')
-                            ? _printerUrl.replaceFirst('custom://', '')
-                            : 'System printer',
+                        ? _printerUrl.replaceFirst('custom://', '')
+                        : 'System printer',
                     style: getOutfitStyle(
                       fontSize: 11.5,
                       color: AppColors.textMuted,
@@ -1255,22 +1255,23 @@ class _PrinterSetupDialogState extends State<PrinterSetupDialog> {
     }
 
     // System / OS printers — fast, fires in background
-    Printing.listPrinters().then((printers) {
-      if (mounted) setState(() => _scanResults = printers);
-    }).catchError((_) {});
+    Printing.listPrinters()
+        .then((printers) {
+          if (mounted) setState(() => _scanResults = printers);
+        })
+        .catchError((_) {});
 
     // Request Bluetooth permissions
     try {
       if (!kIsWeb && Platform.isAndroid) {
-        await [
-          Permission.bluetoothConnect,
-          Permission.bluetoothScan,
-        ].request();
+        await [Permission.bluetoothConnect, Permission.bluetoothScan].request();
       } else if (!kIsWeb && Platform.isIOS) {
         await Permission.bluetooth.request();
       }
     } catch (e, st) {
-      debugPrint('[ReceiptSettingsSection] Error requesting Bluetooth permission: $e\n$st');
+      debugPrint(
+        '[ReceiptSettingsSection] Error requesting Bluetooth permission: $e\n$st',
+      );
     }
 
     // List paired BT devices (only paired devices are visible without active scan)
@@ -1283,7 +1284,12 @@ class _PrinterSetupDialogState extends State<PrinterSetupDialog> {
       }
     }
 
-    if (mounted) setState(() { _scanning = false; _scanDone = true; });
+    if (mounted) {
+      setState(() {
+        _scanning = false;
+        _scanDone = true;
+      });
+    }
   }
 
   // ── Connect actions ──────────────────────────────────────────────────
@@ -1349,11 +1355,7 @@ class _PrinterSetupDialogState extends State<PrinterSetupDialog> {
         _customPrinters = updated;
         _activePrinterUrl = activeUrl;
       });
-      AppToast.show(
-        context,
-        'Printer removed',
-        variant: AppToastVariant.info,
-      );
+      AppToast.show(context, 'Printer removed', variant: AppToastVariant.info);
     }
   }
 
@@ -1616,7 +1618,9 @@ class _PrinterSearchTab extends StatelessWidget {
   });
 
   static IconData _iconForUrl(String url) {
-    if (url.startsWith('bt://') || url.contains('bluetooth')) return Icons.bluetooth_rounded;
+    if (url.startsWith('bt://') || url.contains('bluetooth')) {
+      return Icons.bluetooth_rounded;
+    }
     if (url.contains('usb')) return Icons.usb_rounded;
     return Icons.wifi_rounded;
   }
@@ -1640,10 +1644,7 @@ class _PrinterSearchTab extends StatelessWidget {
             SizedBox(height: 16),
             Text(
               'Searching for printers…',
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 13.5,
-              ),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13.5),
             ),
           ],
         ),
@@ -1717,7 +1718,8 @@ class _PrinterSearchTab extends StatelessWidget {
             (e) => _SavedPrinterTile(
               entry: e,
               isActive:
-                  activePrinterUrl == ReceiptPrinterService.customPrinterUrl(e.ip),
+                  activePrinterUrl ==
+                  ReceiptPrinterService.customPrinterUrl(e.ip),
               onSelect: () => onSelectCustom(e),
               onDelete: () => onDeleteCustom(e),
             ),
@@ -1907,7 +1909,9 @@ class _ScannedPrinterTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
-                color: isActive ? AppColors.brand.withAlpha(25) : AppColors.surfaceAlt,
+                color: isActive
+                    ? AppColors.brand.withAlpha(25)
+                    : AppColors.surfaceAlt,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
@@ -1984,7 +1988,9 @@ class _SavedPrinterTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
-                color: isActive ? AppColors.brand.withAlpha(25) : AppColors.surfaceAlt,
+                color: isActive
+                    ? AppColors.brand.withAlpha(25)
+                    : AppColors.surfaceAlt,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
@@ -2142,8 +2148,9 @@ class _PrinterManualTabState extends State<_PrinterManualTab> {
                 fillColor: AppColors.surfaceAlt,
                 radius: 10,
               ),
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Enter a printer name' : null,
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? 'Enter a printer name'
+                  : null,
             ),
             const SizedBox(height: 16),
             Text(
@@ -2157,7 +2164,9 @@ class _PrinterManualTabState extends State<_PrinterManualTab> {
             const SizedBox(height: 6),
             TextFormField(
               controller: _ipCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               style: getOutfitStyle(
                 fontSize: 13.5,
                 color: AppColors.textPrimary,
@@ -2215,7 +2224,7 @@ class _CollapsibleSectionCard extends StatefulWidget {
 
 class _CollapsibleSectionCardState extends State<_CollapsibleSectionCard>
     with SingleTickerProviderStateMixin {
-  bool _expanded = false;
+  bool _expanded = true;
   late final AnimationController _ctrl;
   late final Animation<double> _iconTurn;
 

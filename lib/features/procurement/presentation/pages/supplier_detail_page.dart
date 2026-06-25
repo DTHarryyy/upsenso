@@ -14,7 +14,6 @@ import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/core/widgets/app_filled_button.dart';
 import 'package:pos/core/widgets/app_modal.dart';
 import 'package:pos/core/widgets/app_section_card.dart';
-import 'package:pos/core/widgets/app_status_badge.dart';
 import 'package:pos/core/widgets/dashboard_card.dart';
 import 'package:pos/core/widgets/app_sticky_action_bar.dart';
 import 'package:pos/core/widgets/app_sub_page_bar.dart';
@@ -50,7 +49,7 @@ class SupplierDetailPage extends StatelessWidget {
                   title: current.name,
                   actions: [
                     IconButton(
-                      icon: const Icon(IconlyLight.edit),
+                      icon: const Icon(Icons.mode_edit, size: 20),
                       tooltip: 'Edit',
                       onPressed: () => _edit(context, current),
                     ),
@@ -67,13 +66,6 @@ class SupplierDetailPage extends StatelessWidget {
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                     children: [
-                      _Header(
-                        supplier: current,
-                        onEdit: Breakpoints.isTablet(context)
-                            ? () => _edit(context, current)
-                            : null,
-                      ),
-                      const SizedBox(height: 16),
                       _StatsGrid(pos: pos),
                       const SizedBox(height: 16),
                       _ContactCard(supplier: current),
@@ -109,7 +101,7 @@ class SupplierDetailPage extends StatelessWidget {
               ? AppStickyActionBar(
                   primary: AppFilledButton(
                     label: 'New PO for ${current.name}',
-                    icon: IconlyLight.plus,
+                    icon: Icons.add,
                     onPressed: () =>
                         context.push(AppRoutes.poForm, extra: current),
                   ),
@@ -212,13 +204,6 @@ class _Header extends StatelessWidget {
                     ),
                   ),
                 ],
-                const SizedBox(height: 8),
-                AppStatusBadge(
-                  label: supplier.isActive ? 'Active' : 'Inactive',
-                  color: supplier.isActive
-                      ? AppColors.success
-                      : AppColors.textMuted,
-                ),
               ],
             ),
           ),
@@ -303,28 +288,28 @@ class _StatsGrid extends StatelessWidget {
         AppStatCard(
           title: 'Total spend',
           value: AppFormatters.currency(spend),
-          icon: IconlyBold.chart,
+          icon: Icons.analytics,
           iconBg: AppColors.successSoft,
           iconColor: AppColors.success,
         ),
         AppStatCard(
           title: 'Orders',
           value: '$orderCount',
-          icon: IconlyBold.bag_2,
+          icon: Icons.shopping_bag,
           iconBg: AppColors.brandSoft,
           iconColor: AppColors.brand,
         ),
         AppStatCard(
           title: 'Outstanding',
           value: '$outstanding',
-          icon: IconlyBold.bag,
+          icon: Icons.arrow_outward_rounded,
           iconBg: AppColors.infoSoft,
           iconColor: AppColors.info,
         ),
         AppStatCard(
           title: 'Last order',
           value: lastOrder,
-          icon: IconlyBold.calendar,
+          icon: Icons.calendar_month,
           iconBg: AppColors.warningSoft,
           iconColor: AppColors.warning,
         ),
@@ -341,17 +326,16 @@ class _ContactCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rows = <Widget>[
-      if (supplier.phone != null) _row(IconlyLight.call, supplier.phone!),
-      if (supplier.email != null) _row(IconlyLight.message, supplier.email!),
-      if (supplier.address != null)
-        _row(IconlyLight.location, supplier.address!),
+      if (supplier.phone != null) _row(Icons.phone, supplier.phone!),
+      if (supplier.email != null) _row(Icons.email, supplier.email!),
+      if (supplier.address != null) _row(Icons.location_on, supplier.address!),
       if (supplier.notes != null && supplier.notes!.isNotEmpty)
         _row(IconlyLight.document, supplier.notes!),
     ];
 
     return AppSectionCard(
       title: 'Contact',
-      icon: IconlyLight.profile,
+      icon: Icons.person,
       children: rows.isEmpty
           ? [
               Text(
