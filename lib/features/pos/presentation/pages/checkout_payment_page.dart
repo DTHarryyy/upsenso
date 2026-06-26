@@ -7,6 +7,8 @@ import 'package:uuid/uuid.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/permissions/permission_keys.dart';
+import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/database/app_database.dart';
@@ -126,6 +128,21 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
         AppToast.show(
           context,
           'Session error: no business context. Please sign in again.',
+          variant: AppToastVariant.error,
+        );
+      }
+      return;
+    }
+
+    // A discounted sale requires pos.apply_discount. Enforce here (not only in
+    // the discount sheet) so a resumed held sale that already carries a discount
+    // can't be completed without the permission — mirrors the server RLS gate.
+    if (widget.discountAmount > 0 &&
+        !sl<PermissionService>().can(PermissionKeys.posApplyDiscount)) {
+      if (mounted) {
+        AppToast.show(
+          context,
+          'You do not have permission to apply a discount.',
           variant: AppToastVariant.error,
         );
       }

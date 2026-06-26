@@ -7,6 +7,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:pos/core/config/di.dart';
+import 'package:pos/core/permissions/permission_keys.dart';
+import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/services/cart_service.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
@@ -219,6 +221,14 @@ class _PosTerminalPageState extends State<PosTerminalPage>
   }
 
   void _showDiscountSheet() {
+    if (!sl<PermissionService>().can(PermissionKeys.posApplyDiscount)) {
+      AppToast.show(
+        context,
+        'You do not have permission to apply a discount.',
+        variant: AppToastVariant.error,
+      );
+      return;
+    }
     showDiscountSheet(context, _cartService, _subtotal);
   }
 
