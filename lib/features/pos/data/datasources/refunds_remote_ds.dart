@@ -32,6 +32,56 @@ class RefundsRemoteDs {
     }
   }
 
+  // ── Refund approval (Phase 1 server foundation: 20260627000013) ─────────────
+
+  /// Reads the business's refund-approval settings. `null` = not configured,
+  /// which the server treats as "approval off". Read online before deciding
+  /// whether an over-threshold refund needs a manager authorization.
+  Future<({bool requireApproval, double threshold})?> fetchRefundSettings(
+    String businessId,
+  ) async {
+    final row = await client
+        .from('refund_settings')
+        .select('require_approval, approval_threshold')
+        .eq('business_id', businessId)
+        .maybeSingle();
+    if (row == null) return null;
+    return (
+      requireApproval: row['require_approval'] as bool? ?? false,
+      threshold: (row['approval_threshold'] as num?)?.toDouble() ?? 0,
+    );
+  }
+
+  /// Verifies a manager PIN server-side and issues a single-use, transaction-
+  /// and amount-scoped authorization for an over-threshold refund. The refund's
+  /// INSERT trigger consumes it on sync. Throws `INVALID_PIN` / `LOCKED` on
+  /// failure — the PIN is never checked client-side.
+  Future<String> authorizeRefund({
+    required String pin,
+    required String transactionId,
+    required double amount,
+  }) async {
+    final result = await client.rpc(
+      'authorize_refund',
+      params: {
+        'p_pin': pin,
+        'p_transaction_id': transactionId,
+        'p_amount': amount,
+      },
+    );
+    return result as String;
+  }
+
+  /// Sets/updates a manager PIN — the caller's own, or another employee's when
+  /// [employeeId] is given (owner/admin only, enforced server-side). The PIN is
+  /// bcrypt-hashed in the database and never stored or compared on the client.
+  Future<void> setManagerPin({required String pin, String? employeeId}) async {
+    await client.rpc('set_manager_pin', params: {
+      'p_pin': pin,
+      'p_employee_id': ?employeeId,
+    });
+  }
+
   /// Refunds for a business, ordered by (created_at, id) ascending for the
   /// incremental keyset pull. Refunds are append-only — `created_at` is the
   /// right cursor column, same as the stock-ledger pull, since rows are never
