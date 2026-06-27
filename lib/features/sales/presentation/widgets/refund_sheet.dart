@@ -3,14 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
+import 'package:pos/core/permissions/permission_keys.dart';
+import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/services/refund_service.dart';
 import 'package:pos/core/session/active_business_context.dart';
+import 'package:pos/features/pos/data/datasources/refunds_remote_ds.dart';
 import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/core/widgets/app_count_stepper.dart';
 import 'package:pos/core/widgets/app_dropdown.dart';
 import 'package:pos/core/widgets/app_filled_button.dart';
 import 'package:pos/core/widgets/app_inline_banner.dart';
 import 'package:pos/core/widgets/app_bottom_sheet_scaffold.dart';
+import 'package:pos/core/widgets/app_manager_pin_sheet.dart';
 import 'package:pos/core/widgets/app_modal.dart';
 import 'package:pos/core/widgets/app_switch.dart';
 import 'package:pos/features/sales/domain/entities/sale_item.dart';
@@ -204,6 +208,48 @@ class _RefundSheetState extends State<RefundSheet> {
     }
 
     final refundedAmount = _selectedTotal;
+
+    // Refund approval: an over-threshold refund by someone who can't approve
+    // refunds needs a manager to authorise it inline. The server is the real
+    // gate (it consumes a PIN-verified, single-use authorization); this prompt
+    // obtains that authorization first so the refund's sync isn't rejected.
+    // Best-effort: if settings can't be read (offline) we proceed and let the
+    // server enforce on sync.
+    if (!sl<PermissionService>().can(PermissionKeys.posApproveRefund)) {
+      ({bool requireApproval, double threshold})? settings;
+      try {
+        settings = await sl<RefundsRemoteDs>().fetchRefundSettings(businessId);
+      } catch (_) {
+        settings = null;
+      }
+      if (settings != null &&
+          settings.requireApproval &&
+          refundedAmount > settings.threshold) {
+        if (!mounted) return;
+        final authId = await showManagerPinSheet(
+          context,
+          title: 'Manager approval',
+          subtitle:
+              'This refund is over the approval limit. Ask a manager to enter '
+              'their PIN to authorise it.',
+          authorize: (pin) => sl<RefundsRemoteDs>().authorizeRefund(
+            pin: pin,
+            transactionId: widget.transaction.id,
+            amount: refundedAmount,
+          ),
+        );
+        if (authId == null) {
+          if (mounted) {
+            setState(() {
+              _saving = false;
+              _error = 'Refund needs manager approval.';
+            });
+          }
+          return;
+        }
+      }
+    }
+
     try {
       await sl<RefundService>().refund(
         transactionId: widget.transaction.id,
