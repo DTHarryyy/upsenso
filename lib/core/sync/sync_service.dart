@@ -1499,6 +1499,8 @@ class SyncService {
           reason: record.reason,
           note: record.note,
           createdAt: record.createdAt,
+          sourceType: record.sourceType,
+          sourceId: record.sourceId,
         );
         await _stockLedgerDao.updateSyncStatus(
           id: record.id,

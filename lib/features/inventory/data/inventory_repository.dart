@@ -191,6 +191,9 @@ class InventoryRepository implements IInventoryRepository {
       quantity: quantity,
       reason: reason,
       note: note,
+      // Tags a manual stock adjustment so the server gates it on inventory.adjust
+      // (distinct from sale/refund/purchase movements).
+      sourceType: 'adjustment',
     );
   }
 

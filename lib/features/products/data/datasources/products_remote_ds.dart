@@ -334,6 +334,8 @@ class ProductsRemoteDs {
     required String reason,
     String? note,
     required DateTime createdAt,
+    String? sourceType,
+    String? sourceId,
   }) async {
     await client.from('stock_ledger').upsert({
       'id': id,
@@ -347,6 +349,11 @@ class ProductsRemoteDs {
       'quantity_after': quantityAfter,
       'reason': reason,
       'note': note,
+      // Movement provenance — the server gates stock_ledger inserts by source_type
+      // and derives inventory_levels from the ledger, so a null source_type is
+      // treated as a manual adjustment (requires inventory.adjust).
+      'source_type': sourceType,
+      'source_id': sourceId,
       'created_at': createdAt.toUtc().toIso8601String(),
     });
   }
