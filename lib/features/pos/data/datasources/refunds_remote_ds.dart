@@ -72,6 +72,20 @@ class RefundsRemoteDs {
     return result as String;
   }
 
+  /// Enables/updates refund approval for [businessId]. Owner/admin only —
+  /// enforced server-side by the refund_settings RLS (settings.edit_business).
+  Future<void> upsertRefundSettings({
+    required String businessId,
+    required bool requireApproval,
+    required double threshold,
+  }) async {
+    await client.from('refund_settings').upsert({
+      'business_id': businessId,
+      'require_approval': requireApproval,
+      'approval_threshold': threshold,
+    }, onConflict: 'business_id');
+  }
+
   /// Sets/updates a manager PIN — the caller's own, or another employee's when
   /// [employeeId] is given (owner/admin only, enforced server-side). The PIN is
   /// bcrypt-hashed in the database and never stored or compared on the client.

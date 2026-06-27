@@ -67,6 +67,27 @@ class SettingsPage extends StatelessWidget {
                 context.push(AppRoutes.moduleSettings, extra: businessId);
               },
             ),
+            const SizedBox(height: 12),
+            _SettingsRow(
+              icon: IconlyLight.shield_done,
+              iconBg: AppColors.brandSoft,
+              iconColor: AppColors.brand,
+              title: 'Refund Approval',
+              subtitle: 'Require a manager PIN for over-limit refunds',
+              onTap: () => context.push(AppRoutes.refundApprovalSettings),
+            ),
+          ],
+          // Manager PIN — anyone who can approve refunds sets their own.
+          if (sl<PermissionService>().can(PermissionKeys.posApproveRefund)) ...[
+            const SizedBox(height: 12),
+            _SettingsRow(
+              icon: IconlyLight.lock,
+              iconBg: AppColors.warningSoft,
+              iconColor: AppColors.warning,
+              title: 'Manager PIN',
+              subtitle: 'Set the PIN you use to authorise refunds',
+              onTap: () => context.push(AppRoutes.managerPin),
+            ),
           ],
           const SizedBox(height: 24),
         ],

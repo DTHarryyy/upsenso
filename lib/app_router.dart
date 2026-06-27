@@ -49,6 +49,8 @@ import 'package:pos/features/employees/domain/entities/employee.dart';
 import 'package:pos/features/employees/presentation/pages/employees_page.dart';
 import 'package:pos/features/employees/presentation/pages/employee_permissions_page.dart';
 import 'package:pos/features/settings/presentation/module_settings_page.dart';
+import 'package:pos/features/settings/presentation/refund_approval_settings_page.dart';
+import 'package:pos/features/settings/presentation/manager_pin_page.dart';
 import 'package:pos/features/procurement/domain/repositories/i_procurement_repository.dart';
 import 'package:pos/features/procurement/presentation/cubit/po_cubit.dart';
 import 'package:pos/features/procurement/presentation/cubit/supplier_cubit.dart';
@@ -182,6 +184,8 @@ class AppRouter {
           AppRoutes.settings: PermissionKeys.navSettings,
           AppRoutes.receiptSettings: PermissionKeys.navSettings,
           AppRoutes.moduleSettings: PermissionKeys.settingsEditBusiness,
+          AppRoutes.refundApprovalSettings: PermissionKeys.settingsEditBusiness,
+          AppRoutes.managerPin: PermissionKeys.navSettings,
           AppRoutes.employeePermissions: PermissionKeys.navEmployees,
           AppRoutes.suppliers: PermissionKeys.navProcurement,
           AppRoutes.supplierDetail: PermissionKeys.navProcurement,
@@ -284,6 +288,14 @@ class AppRouter {
           final businessId = state.extra as String? ?? '';
           return ModuleSettingsPage(businessId: businessId);
         },
+      ),
+      GoRoute(
+        path: AppRoutes.refundApprovalSettings,
+        builder: (context, _) => const RefundApprovalSettingsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.managerPin,
+        builder: (context, _) => const ManagerPinPage(),
       ),
       GoRoute(
         path: AppRoutes.employeePermissions,
