@@ -148,12 +148,67 @@ class PermissionService {
     final module = _moduleCodeForKey(key);
     if (module != null && !isModuleEnabled(module)) return false;
 
+    if (_resolve(key)) return true;
+
+    // A `nav.*` menu entry is also visible when the user can access the area it
+    // opens. The permission editor grants the *access* keys (e.g.
+    // `audit_logs.view`, `expenses.view`) but never the redundant `nav.*` keys —
+    // so without this, granting access via an override would never surface the
+    // More/bottom-nav item or pass the route guard. Resolving the access key
+    // through `can` keeps its own module gate applied.
+    if (key.startsWith('nav.')) {
+      for (final access in _navAccessKeys(key)) {
+        if (can(access)) return true;
+      }
+    }
+    return false;
+  }
+
+  /// Raw resolution for one key: loaded map → role default → deny.
+  bool _resolve(String key) {
     if (_hasLoadedPermissions) {
       return _permissionsMap[key] ??
           DefaultPermissionMatrix.forRole(_roleKey)[key] ??
           false;
     }
     return DefaultPermissionMatrix.forRole(_roleKey)[key] ?? false;
+  }
+
+  /// Access permission(s) that should also reveal a `nav.*` entry — holding any
+  /// of them is treated as nav access for that area.
+  static List<String> _navAccessKeys(String navKey) {
+    switch (navKey) {
+      case 'nav.pos':
+        return const ['pos.use'];
+      case 'nav.inventory':
+        return const ['inventory.view', 'inventory.view_levels'];
+      case 'nav.reports':
+        return const [
+          'reports.view_own',
+          'reports.view_branch',
+          'reports.view_all',
+        ];
+      case 'nav.expenses':
+        return const ['expenses.view'];
+      case 'nav.employees':
+        return const ['employees.view'];
+      case 'nav.settings':
+        return const ['settings.view'];
+      case 'nav.audit_logs':
+        return const ['audit_logs.view'];
+      case 'nav.sales_history':
+        return const ['pos.view_own_sales', 'pos.view_all_sales'];
+      case 'nav.held_sales':
+        return const ['pos.hold_sale'];
+      case 'nav.suppliers':
+        return const ['suppliers.view', 'suppliers.manage'];
+      case 'nav.procurement':
+        return const ['procurement.view'];
+      case 'nav.recipes':
+        return const ['recipes.manage', 'ingredients.view', 'ingredients.manage'];
+      default:
+        return const [];
+    }
   }
 
   /// Resolves the business-module code that gates [key], or `null` if the
