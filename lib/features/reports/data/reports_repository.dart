@@ -273,6 +273,7 @@ class ReportsRepository implements IReportsRepository {
   Future<ReportsData> load({
     required String businessId,
     String? branchId,
+    String? cashierId,
     required ReportPeriod period,
     DateTimeRange? customRange,
   }) async {
@@ -285,16 +286,21 @@ class ReportsRepository implements IReportsRepository {
 
     // ── 1. Fetch transactions ──────────────────────────────────────────────
     // Fetch enough for both current and previous periods.
-    final allFiltered = await _txnDao.getTransactionsSince(
+    // Own-scope (view_own) narrows results to the user's own records; a null
+    // cashierId means no user filter (branch- or all-branch-scoped users).
+    bool ownTxn(TransactionsTableData t) =>
+        cashierId == null || t.cashierId == cashierId;
+
+    final allFiltered = (await _txnDao.getTransactionsSince(
       prevCutoff,
       businessId: businessId,
       branchId: branchId,
-    );
+    )).where(ownTxn).toList();
     final allBranches = branchId != null
-        ? await _txnDao.getAllTransactionsSince(
+        ? (await _txnDao.getAllTransactionsSince(
             prevCutoff,
             businessId: businessId,
-          )
+          )).where(ownTxn).toList()
         : allFiltered;
 
     // Partially/fully refunded sales still count toward gross — the refund
@@ -303,13 +309,16 @@ class ReportsRepository implements IReportsRepository {
     // special case here. Only a (currently unused) 'voided' status excludes.
     bool isCompleted(TransactionsTableData t) => t.status != 'voided';
 
-    final allRefundsFiltered = await _refundsDao.getRefundsSince(
+    final allRefundsFiltered = (await _refundsDao.getRefundsSince(
       prevCutoff,
       businessId: businessId,
       branchId: branchId,
-    );
+    )).where((r) => cashierId == null || r.refundedBy == cashierId).toList();
     final allRefundsAllBranch = branchId != null
-        ? await _refundsDao.getAllRefundsSince(prevCutoff, businessId: businessId)
+        ? (await _refundsDao.getAllRefundsSince(prevCutoff,
+                businessId: businessId))
+            .where((r) => cashierId == null || r.refundedBy == cashierId)
+            .toList()
         : allRefundsFiltered;
 
     // Approved expenses feed the P&L (offline-first, local SQLite). Branch-scoped

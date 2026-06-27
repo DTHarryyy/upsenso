@@ -93,6 +93,8 @@ class ReportsCubit extends Cubit<ReportsState> {
       final data = await _repository.load(
         businessId: businessId,
         branchId: effectiveBranchId,
+        // own-scope (view_own) → only this user's records; null otherwise.
+        cashierId: scoping.effectiveUserFilter,
         period: _period,
         customRange: _customRange,
       );

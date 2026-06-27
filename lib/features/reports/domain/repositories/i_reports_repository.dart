@@ -7,6 +7,7 @@ abstract class IReportsRepository {
   Future<ReportsData> load({
     required String businessId,
     String? branchId,
+    String? cashierId,
     required ReportPeriod period,
     DateTimeRange? customRange,
   });

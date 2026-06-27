@@ -10,6 +10,7 @@ import 'package:pos/core/config/di.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/core/permissions/data_scope.dart';
+import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/permissions/role_permission_matrix.dart';
 import 'package:pos/core/sync/sync_status.dart';
 import 'package:pos/features/auth/domain/entities/app_user.dart';
@@ -211,12 +212,20 @@ class BranchCubit extends Cubit<BranchState> {
       final isBranchScopedRole =
           RolePermissionMatrix.dataScopeTypeFor(roleLowerKey) !=
           DataScopeType.allBranches;
-      // Can switch only when the role is NOT branch-scoped AND the user has
-      // no explicit branch assignment (canAccessAllBranches already encodes
-      // the !hasAssignedBranch logic for non-owner users).
-      // The cached value is intentionally excluded: it must never override
-      // the role / branch assignment determined from the live session.
-      final canSwitch = !isBranchScopedRole && canAccessAllBranches;
+      // A per-employee override can narrow scope below the role; respect it so a
+      // user restricted to their own branch also loses the All-Branches option.
+      // getDataScope() falls back to the role matrix before the override map
+      // loads, so owners keep their access (additive — never expands it).
+      final isOverrideScoped =
+          sl<PermissionService>().getDataScope().type !=
+          DataScopeType.allBranches;
+      // Can switch only when neither the role nor an override scopes the user,
+      // AND they have no explicit branch assignment (canAccessAllBranches
+      // already encodes the !hasAssignedBranch logic for non-owner users).
+      // The cached value is intentionally excluded: it must never override the
+      // role / branch assignment determined from the live session.
+      final canSwitch =
+          !isBranchScopedRole && !isOverrideScoped && canAccessAllBranches;
       if (canSwitch && !uniqueNames.contains(allBranchesLabel)) {
         uniqueNames.insert(0, allBranchesLabel);
         idsByName[allBranchesLabel] = null;
