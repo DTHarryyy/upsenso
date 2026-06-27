@@ -2,7 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pos/core/config/di.dart';
 import 'package:pos/core/errors/app_error_mapper.dart';
+import 'package:pos/core/permissions/data_scope.dart';
+import 'package:pos/core/permissions/data_scoping_layer.dart';
 import 'package:pos/features/reports/data/reports_data.dart';
 import 'package:pos/features/reports/domain/repositories/i_reports_repository.dart';
 import 'package:pos/features/reports/presentation/cubit/reports_state.dart';
@@ -79,9 +82,17 @@ class ReportsCubit extends Cubit<ReportsState> {
     if (showSpinner) emit(const ReportsLoading());
 
     try {
+      // Enforce the signed-in user's data scope: only an unrestricted (all-
+      // branch) user honours the branch picker; a branch/own-scoped user is
+      // locked to their own branch regardless of what branch is selected.
+      final scoping = sl<DataScopingLayer>();
+      final effectiveBranchId =
+          scoping.scope.type == DataScopeType.allBranches
+              ? _branchId
+              : scoping.effectiveBranchFilter;
       final data = await _repository.load(
         businessId: businessId,
-        branchId: _branchId,
+        branchId: effectiveBranchId,
         period: _period,
         customRange: _customRange,
       );

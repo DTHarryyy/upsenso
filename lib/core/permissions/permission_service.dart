@@ -528,11 +528,14 @@ class PermissionService {
   /// to determine scope.  Falls back to the static [RolePermissionMatrix].
   DataScope getDataScope() {
     if (_hasLoadedPermissions) {
-      if (_permissionsMap[PermissionKeys.dataCrossBranchAccess] == true) {
+      // Broadest granted reports scope wins. Resolve through the override-aware
+      // matrix (not a raw map read) so a denied cross-branch / view-all override
+      // actually narrows the scope, and so view_all counts as unrestricted.
+      if (_resolve(PermissionKeys.reportsViewAll) ||
+          _resolve(PermissionKeys.dataCrossBranchAccess)) {
         return const DataScope.unrestricted();
       }
-      // Distinguish branch vs own scope using the reports keys.
-      if (_permissionsMap[PermissionKeys.reportsViewBranch] == true) {
+      if (_resolve(PermissionKeys.reportsViewBranch)) {
         return DataScope.branch(_branchId ?? '');
       }
       return DataScope.own(branchId: _branchId ?? '', userId: _userId ?? '');
