@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
+import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
@@ -94,21 +95,15 @@ class _ProductsPageState extends State<ProductsPage> {
             final cartNotEmpty = _cartService.isNotEmpty;
             final cartTotal = _cartService.computeTotals().total;
 
-            // Derive role once at this level so both the grid and the cart
-            // bar can gate on it — the cart bar lives outside BlocBuilder.
-            final outerAuthState = context.read<AuthBloc>().state;
-            final roleLower = outerAuthState is AuthAuthenticated
-                ? (outerAuthState.user.roleName ?? '')
-                      .trim()
-                      .toLowerCase()
-                      .replaceAll(' ', '_')
-                : '';
-            // Cashier: browse-only — no add/edit.
-            final canAddEditProduct = roleLower != 'cashier';
-            // Inventory staff manages stock, not sales.
-            // Also hide cart when the POS module is disabled for this business.
-            final canAddToCart = roleLower != 'inventory_staff' &&
-                sl<PermissionService>().isModuleEnabled('pos');
+            // Gate add/edit and cart on the granted PERMISSIONS, not a hardcoded
+            // role string — so an override granting products.create /
+            // products.edit (or pos.use) actually surfaces the affordances.
+            // Computed once here so the grid and the cart bar (outside the inner
+            // BlocBuilder) share it; the server enforces the writes regardless.
+            final perms = sl<PermissionService>();
+            final canAddEditProduct = perms.can(PermissionKeys.productsCreate) ||
+                perms.can(PermissionKeys.productsEdit);
+            final canAddToCart = perms.can(PermissionKeys.posUse);
 
             return Scaffold(
               backgroundColor: AppColors.background,
