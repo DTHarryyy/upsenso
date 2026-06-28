@@ -139,15 +139,8 @@ class BranchCubit extends Cubit<BranchState> {
     }
   }
 
-  bool _isOwner(String? roleName) {
-    final normalized = roleName?.trim().toLowerCase() ?? '';
-    return normalized == 'business owner' ||
-        normalized == 'business_owner' ||
-        normalized == 'owner' ||
-        normalized == 'super admin' ||
-        normalized == 'superadmin' ||
-        normalized == 'super_admin';
-  }
+  bool _isOwner(String? roleName) =>
+      RolePermissionMatrix.isOwnerRoleName(roleName);
 
   /// Determine if user can access all branches.
   /// Offline sessions can have missing roleName, so we also infer from branch linkage.

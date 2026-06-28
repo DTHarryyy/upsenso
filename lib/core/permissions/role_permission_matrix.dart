@@ -206,6 +206,15 @@ class RolePermissionMatrix {
   static String normalise(String? rawRoleName) =>
       (rawRoleName ?? '').trim().toLowerCase().replaceAll(' ', '_');
 
+  /// True for the unrestricted owner-tier roles (and their legacy aliases).
+  /// SINGLE SOURCE OF TRUTH for "is this role name an owner" — every caller
+  /// that needs this (branch switching, owner-protection guards, role
+  /// assignment) must use this instead of re-deriving its own alias list.
+  static bool isOwnerRoleName(String? rawRoleName) {
+    final key = normalise(rawRoleName);
+    return key == businessOwner || key == superAdmin || key == owner;
+  }
+
   // ── Feature access matrix ─────────────────────────────────────────────────
   // Controls which modules / screens a role is allowed to enter.
 

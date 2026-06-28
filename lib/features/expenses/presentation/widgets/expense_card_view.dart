@@ -42,133 +42,163 @@ class _ExpenseCard extends StatelessWidget {
 
   const _ExpenseCard({required this.item, required this.canApprove});
 
+  String _formatDate(DateTime d) =>
+      '${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}/${d.year}';
+
   @override
   Widget build(BuildContext context) {
-    final d = item.expenseDate;
-    final dateStr =
-        '${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}/${d.year}';
     final cubit = context.read<ExpensesCubit>();
+    final showActions = canApprove && item.status == ExpenseStatus.pending;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.borderSoft),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.brandSoft,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  IconlyLight.paper,
-                  color: AppColors.brand,
-                  size: 18,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.vendor,
-                      style: getOutfitStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    Text(
-                      item.category,
-                      style: getOutfitStyle(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+    // Whole card opens the detail sheet — no separate "view" button needed.
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => showExpenseDetail(context, item, canApprove),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.borderSoft),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _Header(item: item),
+            const SizedBox(height: 12),
+            _MetaRow(
+              date: _formatDate(item.expenseDate),
+              branch: item.branchName ?? 'All',
+              submittedBy: item.submittedByName,
+            ),
+            if (showActions) ...[
+              const SizedBox(height: 14),
+              Row(
                 children: [
-                  Text(
-                    AppFormatters.currency(item.amount),
-                    style: getOutfitStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                  Expanded(
+                    child: _ApprovalButton(
+                      icon: IconlyLight.close_square,
+                      label: 'Reject',
+                      color: AppColors.error,
+                      bg: AppColors.errorSoft,
+                      onTap: () => cubit.rejectExpense(item.id),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  ExpenseStatusBadge(item.status),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _ApprovalButton(
+                      icon: IconlyLight.tick_square,
+                      label: 'Approve',
+                      color: AppColors.success,
+                      bg: AppColors.successSoft,
+                      onTap: () => cubit.approveExpense(item.id),
+                    ),
+                  ),
                 ],
               ),
             ],
-          ),
-          const SizedBox(height: 12),
-          const Divider(height: 1, color: AppColors.borderSoft),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _Meta(icon: IconlyLight.calendar, label: dateStr),
-              const SizedBox(width: 8),
-              _Meta(
-                icon: IconlyLight.work,
-                label: item.branchName ?? 'All',
-              ),
-              const SizedBox(width: 8),
-              _Meta(
-                icon: IconlyLight.profile,
-                label: item.submittedByName,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              _CardAction(
-                icon: IconlyLight.show,
-                color: AppColors.brand,
-                bg: AppColors.brandSoft,
-                tooltip: 'View',
-                onTap: () => showExpenseDetail(context, item, canApprove),
-              ),
-              if (canApprove && item.status == ExpenseStatus.pending) ...[
-                _CardAction(
-                  icon: IconlyLight.tick_square,
-                  color: AppColors.success,
-                  bg: AppColors.successSoft,
-                  tooltip: 'Approve',
-                  onTap: () => cubit.approveExpense(item.id),
-                ),
-                _CardAction(
-                  icon: IconlyLight.close_square,
-                  color: AppColors.error,
-                  bg: AppColors.errorSoft,
-                  tooltip: 'Reject',
-                  onTap: () => cubit.rejectExpense(item.id),
-                ),
-              ],
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _Header extends StatelessWidget {
+  final ExpenseItem item;
+  const _Header({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(9),
+          decoration: BoxDecoration(
+            color: AppColors.brandSoft,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Icon(IconlyLight.paper, color: AppColors.brand, size: 18),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                item.vendor,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: getOutfitStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                item.category,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: getOutfitStyle(fontSize: 12, color: AppColors.textMuted),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              AppFormatters.currency(item.amount),
+              style: getOutfitStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            ExpenseStatusBadge(item.status),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+// Date · branch · submitter. Date and branch take their natural width; the
+// submitter fills the rest and ellipsizes, so the row never forces gaps.
+class _MetaRow extends StatelessWidget {
+  final String date;
+  final String branch;
+  final String submittedBy;
+
+  const _MetaRow({
+    required this.date,
+    required this.branch,
+    required this.submittedBy,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        _Meta(icon: IconlyLight.calendar, label: date),
+        const SizedBox(width: 14),
+        _Meta(icon: IconlyLight.work, label: branch),
+        const SizedBox(width: 14),
+        Expanded(
+          child: _Meta(icon: IconlyLight.profile, label: submittedBy),
+        ),
+      ],
     );
   }
 }
@@ -180,57 +210,64 @@ class _Meta extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: AppColors.textMuted),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              label,
-              style: getOutfitStyle(
-                fontSize: 11,
-                color: AppColors.textSecondary,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: AppColors.textMuted),
+        const SizedBox(width: 5),
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: getOutfitStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
-class _CardAction extends StatelessWidget {
+class _ApprovalButton extends StatelessWidget {
   final IconData icon;
+  final String label;
   final Color color;
   final Color bg;
-  final String tooltip;
   final VoidCallback onTap;
 
-  const _CardAction({
+  const _ApprovalButton({
     required this.icon,
+    required this.label,
     required this.color,
     required this.bg,
-    required this.tooltip,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          margin: const EdgeInsets.only(left: 6),
-          padding: const EdgeInsets.all(7),
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, size: 15, color: color),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 9),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: getOutfitStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
         ),
       ),
     );

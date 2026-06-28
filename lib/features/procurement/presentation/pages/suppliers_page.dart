@@ -15,11 +15,11 @@ import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/core/widgets/app_bottom_sheet_scaffold.dart';
 import 'package:pos/core/widgets/app_empty_state.dart';
 import 'package:pos/core/widgets/app_filter_chip.dart';
-import 'package:pos/core/widgets/app_kpi_card.dart';
 import 'package:pos/core/widgets/app_modal.dart';
 import 'package:pos/core/widgets/app_search_bar.dart';
 import 'package:pos/core/widgets/app_skeleton.dart';
 import 'package:pos/core/widgets/app_sub_page_bar.dart';
+import 'package:pos/core/widgets/stat_card.dart';
 import 'package:pos/features/procurement/domain/entities/supplier.dart';
 import 'package:pos/features/procurement/presentation/cubit/supplier_cubit.dart';
 import 'package:pos/features/procurement/presentation/cubit/supplier_state.dart';
@@ -93,7 +93,7 @@ class SuppliersPage extends StatelessWidget {
       children: [
         _KpiStrip(kpis: loaded.kpis),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
           child: IntrinsicHeight(
             child: Row(
               children: [
@@ -236,7 +236,8 @@ class SuppliersPage extends StatelessWidget {
 }
 
 /// Portfolio summary — fills the top of the page with at-a-glance health using
-/// the shared [AppKpiStrip] so suppliers reads the same as the rest of the app.
+/// the shared [AppStatCard]/[StatCardsRow] so suppliers reads the same as
+/// Reports, Dashboard, Inventory, and Expenses.
 class _KpiStrip extends StatelessWidget {
   final ({int total, int active, double openValue, int reorder}) kpis;
 
@@ -244,33 +245,40 @@ class _KpiStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppKpiStrip(
-      tiles: [
-        AppKpiTile(
-          icon: IconlyBold.work,
-          label: 'Suppliers',
-          value: '${kpis.total}',
-          color: AppColors.brand,
-        ),
-        AppKpiTile(
-          icon: IconlyBold.tick_square,
-          label: 'Active',
-          value: '${kpis.active}',
-          color: AppColors.success,
-        ),
-        AppKpiTile(
-          icon: IconlyBold.wallet,
-          label: 'Open value',
-          value: AppFormatters.currency(kpis.openValue),
-          color: AppColors.info,
-        ),
-        AppKpiTile(
-          icon: IconlyBold.danger,
-          label: 'Reorder',
-          value: '${kpis.reorder}',
-          color: AppColors.warning,
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+      child: StatCardsRow(
+        cards: [
+          AppStatCard(
+            title: 'Suppliers',
+            value: '${kpis.total}',
+            icon: IconlyBold.work,
+            iconBg: AppColors.brandSoft,
+            iconColor: AppColors.brand,
+          ),
+          AppStatCard(
+            title: 'Active',
+            value: '${kpis.active}',
+            icon: IconlyBold.tick_square,
+            iconBg: AppColors.successSoft,
+            iconColor: AppColors.success,
+          ),
+          AppStatCard(
+            title: 'Open value',
+            value: AppFormatters.currency(kpis.openValue),
+            icon: IconlyBold.wallet,
+            iconBg: AppColors.infoSoft,
+            iconColor: AppColors.info,
+          ),
+          AppStatCard(
+            title: 'Reorder',
+            value: '${kpis.reorder}',
+            icon: IconlyBold.danger,
+            iconBg: AppColors.warningSoft,
+            iconColor: AppColors.warning,
+          ),
+        ],
+      ),
     );
   }
 }

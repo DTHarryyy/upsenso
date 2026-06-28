@@ -18,10 +18,15 @@ abstract class IInventoryRepository {
 
   // qty is a double so weight/fraction products (e.g. 0.5 kg) deduct the exact
   // amount sold instead of being rounded to a whole unit.
+  //
+  // [sourceId] (the sale's transaction id) is stamped on the stock ledger
+  // entries so server-side RLS can verify each deduction traces back to a
+  // real sale instead of trusting the client-supplied source_type label.
   Future<void> recordSaleDeductions({
     required List<({String variantId, double qty})> items,
     required String businessId,
     required String? branchId,
+    required String sourceId,
   });
 
   /// Reverses [recordSaleDeductions] for refunded items — restocks tracked

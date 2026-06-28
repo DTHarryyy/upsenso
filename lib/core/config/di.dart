@@ -86,6 +86,7 @@ import 'package:pos/core/database/daos/goods_receipts_dao.dart';
 import 'package:pos/core/database/daos/goods_receipt_items_dao.dart';
 import 'package:pos/core/services/po_number_service.dart';
 import 'package:pos/core/database/daos/refunds_dao.dart';
+import 'package:pos/core/database/daos/refund_settings_dao.dart';
 import 'package:pos/core/services/refund_service.dart';
 import 'package:pos/features/pos/data/datasources/refunds_remote_ds.dart';
 import 'package:pos/core/database/daos/audit_logs_dao.dart';
@@ -108,6 +109,7 @@ import 'package:pos/features/reports/domain/repositories/i_reports_repository.da
 import 'package:pos/features/sales/domain/repositories/i_sales_repository.dart';
 import 'package:pos/features/settings/data/datasources/receipt_settings_remote_ds.dart';
 import 'package:pos/features/settings/data/receipt_settings_repository.dart';
+import 'package:pos/features/settings/data/refund_settings_repository.dart';
 import 'package:pos/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:pos/features/settings/services/receipt_printer_service.dart';
 import 'package:pos/features/notifications/data/notifications_repository.dart';
@@ -298,6 +300,16 @@ Future<void> initDI() async {
   sl.registerLazySingleton(() => ProductsRemoteDs(sl<SupabaseClient>()));
   sl.registerLazySingleton(() => TransactionsRemoteDs(sl<SupabaseClient>()));
   sl.registerLazySingleton(() => RefundsRemoteDs(sl<SupabaseClient>()));
+  sl.registerLazySingleton<RefundSettingsDao>(
+    () => RefundSettingsDao(sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<RefundSettingsRepository>(
+    () => RefundSettingsRepository(
+      dao: sl<RefundSettingsDao>(),
+      remote: sl<RefundsRemoteDs>(),
+      connectivity: sl<ConnectivityService>(),
+    ),
+  );
 
   sl.registerLazySingleton<BusinessRepository>(
     () => BusinessRepositoryImpl(
@@ -356,6 +368,7 @@ Future<void> initDI() async {
       imageService: sl<ImageService>(),
       refundsDao: sl<RefundsDao>(),
       refundsRemoteDs: sl<RefundsRemoteDs>(),
+      refundSettingsRepository: sl<RefundSettingsRepository>(),
     ),
   );
 

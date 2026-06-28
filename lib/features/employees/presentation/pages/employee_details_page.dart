@@ -29,6 +29,11 @@ class EmployeeDetailsPage extends StatelessWidget {
     final canManagePermissions = sl<PermissionService>().can(
       PermissionKeys.employeesAssignRole,
     );
+    // set_manager_pin only allows the business owner (or super admin) to
+    // target another employee — matches that server-side rule exactly so
+    // this button never appears for someone it would just fail for (e.g. a
+    // Branch Manager who holds employeesAssignRole but isn't the owner).
+    final isOwner = sl<PermissionService>().isOwnerRole;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -51,6 +56,10 @@ class EmployeeDetailsPage extends StatelessWidget {
           const SizedBox(height: 8),
           if (canManagePermissions) ...[
             _PermissionsCard(employee: employee),
+            const SizedBox(height: 8),
+          ],
+          if (isOwner) ...[
+            _ManagerPinCard(employee: employee),
             const SizedBox(height: 8),
           ],
           _SecurityActivityCard(employee: employee),
@@ -312,6 +321,96 @@ class _ManagePermissionsButton extends StatelessWidget {
             color: Colors.white,
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ── Manager PIN Card ────────────────────────────────────────────────────────
+
+class _ManagerPinCard extends StatelessWidget {
+  final Employee employee;
+
+  const _ManagerPinCard({required this.employee});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.borderSoft),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x07101828),
+            blurRadius: 20,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.brandSoft,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  IconlyLight.lock,
+                  size: 18,
+                  color: AppColors.brand,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Manager PIN',
+                style: AppTextStyles.subtitle(context).copyWith(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Reset the PIN this employee uses to authorise over-limit refunds.',
+            style: getOutfitStyle(
+              fontSize: 13,
+              color: AppColors.textMuted,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () =>
+                  context.push(AppRoutes.managerPin, extra: employee),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.brand,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+              icon: const Icon(IconlyLight.lock, size: 16, color: Colors.white),
+              label: Text(
+                'Reset Manager PIN',
+                style: getOutfitStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -36,12 +36,15 @@ class StockLedgerTable extends Table {
   TextColumn get note => text().nullable()();
 
   /// Traceability of what caused this movement: 'sale', 'purchase_order',
-  /// 'recipe_consumption', 'manual', etc. Lets audit/fraud queries tell a sale
-  /// apart from a manual adjustment. Local-only for now — not synced until the
-  /// Supabase stock_ledger schema is confirmed to have these columns.
+  /// 'recipe_consumption', 'adjustment', etc. Lets audit/fraud queries tell a
+  /// sale apart from a manual adjustment. Synced to Supabase, where server-side
+  /// RLS cross-references [sourceId] against the real source document (see
+  /// stock_ledger_source_document_check) — never trust this pair client-side.
   TextColumn get sourceType => text().nullable()();
 
-  /// ID of the originating document (transaction id, PO id, …). No foreign key.
+  /// ID of the originating document (transaction id, refund id, PO id, …).
+  /// No DB-level foreign key, but RLS verifies it against the real table for
+  /// every source_type that has one — see [sourceType].
   TextColumn get sourceId => text().nullable()();
 
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();

@@ -26,13 +26,17 @@ class ExpensesCubit extends Cubit<ExpensesState> {
   ExpenseStatus? _statusFilter;
   String? _categoryFilter;
   DateTimeRange? _dateRange;
-  ExpensesViewMode _viewMode = ExpensesViewMode.table;
+  ExpensesViewMode _viewMode;
 
   // Guards against a double-tap on an approve/reject button firing the same
   // mutation twice before the list stream re-emits and hides the button.
   final Set<String> _inFlightApprovalActions = {};
 
-  ExpensesCubit(this._repository) : super(const ExpensesInitial());
+  ExpensesCubit(
+    this._repository, {
+    ExpensesViewMode initialViewMode = ExpensesViewMode.table,
+  }) : _viewMode = initialViewMode,
+       super(const ExpensesInitial());
 
   bool get canApprove =>
       sl<PermissionService>().can(PermissionKeys.expensesApprove);

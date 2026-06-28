@@ -43,6 +43,7 @@ import 'package:pos/core/database/daos/invoice_sequences_dao.dart';
 import 'package:pos/features/procurement/data/datasources/procurement_remote_ds.dart';
 import 'package:pos/core/database/daos/refunds_dao.dart';
 import 'package:pos/features/pos/data/datasources/refunds_remote_ds.dart';
+import 'package:pos/features/settings/data/refund_settings_repository.dart';
 
 /// Service to handle synchronization between local Drift DB and Supabase
 class SyncService {
@@ -79,6 +80,7 @@ class SyncService {
   final ImageService _imageService;
   final RefundsDao _refundsDao;
   final RefundsRemoteDs _refundsRemoteDs;
+  final RefundSettingsRepository _refundSettingsRepo;
 
   // Built lazily from existing deps (no DI change) so duplicate-invoice
   // recovery can re-claim a fresh server number on a 23505 conflict.
@@ -145,6 +147,7 @@ class SyncService {
     required ImageService imageService,
     required RefundsDao refundsDao,
     required RefundsRemoteDs refundsRemoteDs,
+    required RefundSettingsRepository refundSettingsRepository,
   }) : _authContextDao = authContextDao,
        _activeBusinessContext = activeBusinessContext,
        _branchesDao = branchesDao,
@@ -177,7 +180,8 @@ class SyncService {
        _syncStateDao = syncStateDao,
        _imageService = imageService,
        _refundsDao = refundsDao,
-       _refundsRemoteDs = refundsRemoteDs;
+       _refundsRemoteDs = refundsRemoteDs,
+       _refundSettingsRepo = refundSettingsRepository;
 
   /// Resolves the businessId a sync should operate on.
   ///
@@ -478,12 +482,15 @@ class SyncService {
       final refundResult = await _syncRefunds();
       final expenseResult = await _syncExpenses();
       final inventoryResult = await _syncInventoryLevels();
+      // Purchase orders push before the stock ledger so a same-session
+      // create-PO-then-receive flow already has its parent PO on the server
+      // when the ledger's purchase_order source-document check runs.
+      final poResult = await _syncPurchaseOrders();
       final ledgerResult = await _syncStockLedger();
       await _syncReceiptSettings(); // fire-and-forget style; errors logged internally
       await _syncAuditLogs(); // fire-and-forget style; errors logged internally
       final employeeResult = await _syncEmployees();
       final supplierResult = await _syncSuppliers();
-      final poResult = await _syncPurchaseOrders();
       final polResult = await _syncPurchaseOrderLines();
       final grResult = await _syncGoodsReceipts();
       final griResult = await _syncGoodsReceiptItems();
@@ -1867,6 +1874,15 @@ class SyncService {
       failed++;
       debugPrint('[SYNC] Pull receipt settings failed: $e\n$st');
       errors.add('Pull receipt settings: ${e.toString()}');
+    }
+
+    try {
+      await _refundSettingsRepo.pullFromServer(businessId);
+      pulled++;
+    } catch (e, st) {
+      failed++;
+      debugPrint('[SYNC] Pull refund settings failed: $e\n$st');
+      errors.add('Pull refund settings: ${e.toString()}');
     }
 
     try {

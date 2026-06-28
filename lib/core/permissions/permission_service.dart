@@ -121,11 +121,7 @@ class PermissionService {
   /// True for the unrestricted owner-level roles. Procurement approval
   /// governance exempts owners from separation-of-duties — they hold ultimate
   /// authority and must never be dead-ended on their own POs.
-  bool get isOwnerRole => const {
-        RolePermissionMatrix.superAdmin,
-        RolePermissionMatrix.owner,
-        RolePermissionMatrix.businessOwner,
-      }.contains(_roleKey);
+  bool get isOwnerRole => RolePermissionMatrix.isOwnerRoleName(_roleKey);
 
   // ── NEW: per-employee permission map ──────────────────────────────────────
 

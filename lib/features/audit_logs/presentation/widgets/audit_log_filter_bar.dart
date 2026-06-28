@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/widgets/app_date_range_picker.dart';
 import 'package:pos/core/widgets/app_dropdown.dart';
 import 'package:pos/core/widgets/app_filter_chip.dart';
+import 'package:pos/core/widgets/app_filter_toolbar.dart';
 import 'package:pos/core/widgets/app_search_bar.dart';
+import 'package:pos/core/widgets/app_section_label.dart';
 import 'package:pos/core/widgets/app_view_toggle.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/features/audit_logs/presentation/bloc/audit_log_bloc.dart';
@@ -230,23 +231,14 @@ class _MobileFilters extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Row 1: Search + filter btn + view toggle
-        Row(
-          children: [
-            Expanded(
-              child: AppSearchBar(
-                hint: 'Search…',
-                onChanged: (q) =>
-                    context.read<AuditLogBloc>().add(SearchAuditLogs(query: q)),
-              ),
-            ),
-            const SizedBox(width: 8),
-            _FilterButton(
-              hasActiveFilters: hasFilters,
-              onTap: () => _openFilterSheet(context),
-            ),
-            const SizedBox(width: 8),
-            AppViewToggle(current: viewMode, onChanged: onViewModeChanged),
-          ],
+        AppFilterToolbar(
+          searchHint: 'Search…',
+          onSearchChanged: (q) =>
+              context.read<AuditLogBloc>().add(SearchAuditLogs(query: q)),
+          hasActiveFilters: hasFilters,
+          onFilterTap: () => _openFilterSheet(context),
+          viewMode: viewMode,
+          onViewModeChanged: onViewModeChanged,
         ),
 
         // Row 2: Entity type chips (always shown, even if empty — shows "All")
@@ -281,58 +273,6 @@ class _MobileFilters extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-// ── Filter icon button ────────────────────────────────────────────────────────
-
-class _FilterButton extends StatelessWidget {
-  final bool hasActiveFilters;
-  final VoidCallback onTap;
-
-  const _FilterButton({required this.hasActiveFilters, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: hasActiveFilters ? AppColors.brand : AppColors.surfaceAlt,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: hasActiveFilters ? AppColors.brand : AppColors.borderSoft,
-          ),
-        ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Icon(
-              IconlyLight.filter,
-              size: 20,
-              color:
-                  hasActiveFilters ? Colors.white : AppColors.textSecondary,
-            ),
-            if (hasActiveFilters)
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  width: 7,
-                  height: 7,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFBBF24),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -439,7 +379,7 @@ class _FilterSheetState extends State<_FilterSheet> {
           const SizedBox(height: 24),
 
           // ── Date range ────────────────────────────────────────────────
-          _SectionLabel(label: 'DATE RANGE'),
+          AppSectionLabel(label: 'DATE RANGE'),
           const SizedBox(height: 10),
           AppDateRangePicker(
             value: _dateRange,
@@ -449,7 +389,7 @@ class _FilterSheetState extends State<_FilterSheet> {
           const SizedBox(height: 20),
 
           // ── Action type ───────────────────────────────────────────────
-          _SectionLabel(label: 'ACTION TYPE'),
+          AppSectionLabel(label: 'ACTION TYPE'),
           const SizedBox(height: 10),
           AppDropdown<String>(
             value: _actionTypeFilter,
@@ -464,26 +404,6 @@ class _FilterSheetState extends State<_FilterSheet> {
           ),
           const SizedBox(height: 24),
         ],
-      ),
-    );
-  }
-}
-
-// ── Section label ─────────────────────────────────────────────────────────────
-
-class _SectionLabel extends StatelessWidget {
-  final String label;
-  const _SectionLabel({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: getOutfitStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-        color: AppColors.textMuted,
-        letterSpacing: 0.8,
       ),
     );
   }

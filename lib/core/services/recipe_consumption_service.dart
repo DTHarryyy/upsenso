@@ -28,11 +28,14 @@ class RecipeConsumptionService {
         _levelsDao = levelsDao;
 
   /// Deducts ingredient stock for [qty] units sold of [productVariantId].
+  /// [sourceId] (the sale's transaction id) is stamped on the stock ledger
+  /// entries so server-side RLS can verify the deduction traces to a real sale.
   Future<void> consume({
     required String productVariantId,
     required int qty,
     required String businessId,
     required String branchId,
+    required String sourceId,
   }) async {
     final lines = await _recipeLinesDao.getByVariantId(productVariantId);
     for (final line in lines) {
@@ -66,7 +69,7 @@ class RecipeConsumptionService {
             quantityAfter: Value(qtyAfter),
             reason: 'Recipe consumption',
             sourceType: const Value('recipe_consumption'),
-            sourceId: Value(productVariantId),
+            sourceId: Value(sourceId),
             createdAt: Value(DateTime.now()),
           ),
         );
@@ -88,12 +91,15 @@ class RecipeConsumptionService {
 
   /// Restores ingredient stock for [qty] units refunded of [productVariantId].
   /// Inverse of [consume] — same recipe lines, opposite direction.
+  /// [sourceId] (the refund's id) is stamped on the stock ledger entries so
+  /// server-side RLS can verify the restock traces to a real refund — never
+  /// falls back to [productVariantId], which wouldn't pass that check.
   Future<void> restore({
     required String productVariantId,
     required int qty,
     required String businessId,
     required String branchId,
-    String? sourceId,
+    required String sourceId,
   }) async {
     final lines = await _recipeLinesDao.getByVariantId(productVariantId);
     for (final line in lines) {
@@ -130,7 +136,7 @@ class RecipeConsumptionService {
             quantityAfter: Value(qtyAfter),
             reason: 'Refund',
             sourceType: const Value('refund'),
-            sourceId: Value(sourceId ?? productVariantId),
+            sourceId: Value(sourceId),
             createdAt: Value(DateTime.now()),
           ),
         );

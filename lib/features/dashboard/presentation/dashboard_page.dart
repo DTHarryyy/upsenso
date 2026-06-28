@@ -18,7 +18,6 @@ import 'package:pos/features/dashboard/presentation/widgets/category_performance
 import 'package:pos/features/dashboard/presentation/widgets/expenses_summary_card.dart';
 import 'package:pos/features/dashboard/presentation/widgets/low_stock_alerts_card.dart';
 import 'package:pos/features/dashboard/presentation/widgets/payment_methods_chart.dart';
-import 'package:pos/features/dashboard/presentation/widgets/quick_actions_bar.dart';
 import 'package:pos/features/dashboard/presentation/widgets/sales_trend_chart.dart';
 import 'package:pos/core/widgets/stat_card.dart';
 import 'package:pos/features/dashboard/presentation/widgets/top_selling_items.dart';
@@ -449,22 +448,17 @@ class _DashboardSkeletonState extends State<_DashboardSkeleton>
           child: child,
         );
 
-        // Stat card skeleton (icon badge + big value + change label)
+        // Stat card skeleton (icon badge + big value + label), matching
+        // AppStatCard's icon-top-left layout.
         Widget statCard() => skCard(
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  box(width: 88, height: 12),
-                  box(width: 34, height: 34, radius: 10),
-                ],
-              ),
+              box(width: 36, height: 36, radius: 10),
               const SizedBox(height: 12),
               box(width: 110, height: 26, radius: 6),
               const SizedBox(height: 8),
-              box(width: 130, height: 11, radius: 5),
+              box(width: 90, height: 11, radius: 5),
             ],
           ),
         );
@@ -491,41 +485,29 @@ class _DashboardSkeletonState extends State<_DashboardSkeleton>
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              // ── Stat cards ──
+              // ── Stat cards ── matches StatCardsRow's responsive grid.
               LayoutBuilder(
                 builder: (_, c) {
-                  if (c.maxWidth > 800) {
-                    return Row(
-                      children: [
-                        Expanded(child: statCard()),
-                        const SizedBox(width: 12),
-                        Expanded(child: statCard()),
-                        const SizedBox(width: 12),
-                        Expanded(child: statCard()),
-                        const SizedBox(width: 12),
-                        Expanded(child: statCard()),
-                      ],
+                  final perRow = kpiColumnCount(c.maxWidth, 4);
+                  final cards = List.generate(4, (_) => statCard());
+                  final rows = <Widget>[];
+                  for (var i = 0; i < cards.length; i += perRow) {
+                    if (i > 0) rows.add(const SizedBox(height: 12));
+                    final slice = cards.sublist(
+                      i,
+                      (i + perRow).clamp(0, cards.length),
+                    );
+                    rows.add(
+                      Row(
+                        children: slice
+                            .map((w) => Expanded(child: w))
+                            .expand((w) => [w, const SizedBox(width: 12)])
+                            .toList()
+                          ..removeLast(),
+                      ),
                     );
                   }
-                  return Column(
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(child: statCard()),
-                          const SizedBox(width: 12),
-                          Expanded(child: statCard()),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(child: statCard()),
-                          const SizedBox(width: 12),
-                          Expanded(child: statCard()),
-                        ],
-                      ),
-                    ],
-                  );
+                  return Column(children: rows);
                 },
               ),
 

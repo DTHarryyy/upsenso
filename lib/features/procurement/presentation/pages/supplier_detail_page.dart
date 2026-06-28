@@ -14,7 +14,6 @@ import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/core/widgets/app_filled_button.dart';
 import 'package:pos/core/widgets/app_modal.dart';
 import 'package:pos/core/widgets/app_section_card.dart';
-import 'package:pos/core/widgets/dashboard_card.dart';
 import 'package:pos/core/widgets/app_sticky_action_bar.dart';
 import 'package:pos/core/widgets/app_sub_page_bar.dart';
 import 'package:pos/core/widgets/stat_card.dart';
@@ -143,78 +142,6 @@ class SupplierDetailPage extends StatelessWidget {
       builder: (_) => BlocProvider.value(
         value: cubit,
         child: SupplierFormSheet(supplier: supplier),
-      ),
-    );
-  }
-}
-
-class _Header extends StatelessWidget {
-  final Supplier supplier;
-  final VoidCallback? onEdit;
-
-  const _Header({required this.supplier, this.onEdit});
-
-  @override
-  Widget build(BuildContext context) {
-    return DashboardCard(
-      child: Row(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: AppColors.brandSoft,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Center(
-              child: Text(
-                supplier.name.isNotEmpty ? supplier.name[0].toUpperCase() : '?',
-                style: getOutfitStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.brand,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  supplier.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: getOutfitStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                if (supplier.contactName != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    supplier.contactName!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: getOutfitStyle(
-                      fontSize: 13,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          if (onEdit != null)
-            IconButton(
-              icon: const Icon(IconlyLight.edit, size: 20),
-              tooltip: 'Edit',
-              color: AppColors.textSecondary,
-              onPressed: onEdit,
-            ),
-        ],
       ),
     );
   }

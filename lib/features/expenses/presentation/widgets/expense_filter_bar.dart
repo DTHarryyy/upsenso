@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/widgets/app_bottom_sheet_scaffold.dart';
 import 'package:pos/core/widgets/app_date_range_picker.dart';
-import 'package:pos/core/widgets/app_dropdown.dart';
-import 'package:pos/core/widgets/app_search_bar.dart';
+import 'package:pos/core/widgets/app_filter_chip.dart';
+import 'package:pos/core/widgets/app_filter_toolbar.dart';
+import 'package:pos/core/widgets/app_modal.dart';
+import 'package:pos/core/widgets/app_section_label.dart';
+import 'package:pos/core/widgets/app_view_toggle.dart';
 
 class ExpenseFilterBar extends StatelessWidget {
-  final bool isTableView;
-  final VoidCallback onToggleView;
+  final AppViewMode viewMode;
+  final ValueChanged<AppViewMode> onViewModeChanged;
   final ValueChanged<String> onSearchChanged;
   final DateTimeRange? dateRange;
   final ValueChanged<DateTimeRange?> onDateRangeChanged;
@@ -17,8 +21,8 @@ class ExpenseFilterBar extends StatelessWidget {
 
   const ExpenseFilterBar({
     super.key,
-    required this.isTableView,
-    required this.onToggleView,
+    required this.viewMode,
+    required this.onViewModeChanged,
     required this.onSearchChanged,
     required this.dateRange,
     required this.onDateRangeChanged,
@@ -27,129 +31,142 @@ class ExpenseFilterBar extends StatelessWidget {
     required this.onCategoryChanged,
   });
 
+  bool get _hasActiveFilters => dateRange != null || categoryFilter != null;
+
+  void _openFilterSheet(BuildContext context) {
+    showAppModal<void>(
+      context: context,
+      builder: (_) => _ExpenseFilterSheet(
+        dateRange: dateRange,
+        onDateRangeChanged: onDateRangeChanged,
+        categoryFilter: categoryFilter,
+        categories: categories,
+        onCategoryChanged: onCategoryChanged,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: AppSearchBar(
-                hint: 'Search by vendor or category...',
-                onChanged: onSearchChanged,
-              ),
-            ),
-            const SizedBox(width: 8),
-            _ViewToggle(
-              isTableView: isTableView,
-              onToggle: onToggleView,
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: AppDateRangePicker(
-                value: dateRange,
-                onChanged: onDateRangeChanged,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: AppDropdown<String>(
-                hint: 'All Categories',
-                value: categoryFilter,
-                items: [
-                  ...categories.map(
-                    (c) => AppDropdownItem(value: c, label: c),
-                  ),
-                ],
-                onChanged: onCategoryChanged,
-              ),
-            ),
-          ],
-        ),
-      ],
+    return AppFilterToolbar(
+      searchHint: 'Search by vendor or category...',
+      onSearchChanged: onSearchChanged,
+      hasActiveFilters: _hasActiveFilters,
+      onFilterTap: () => _openFilterSheet(context),
+      viewMode: viewMode,
+      onViewModeChanged: onViewModeChanged,
     );
   }
 }
 
-class _ViewToggle extends StatelessWidget {
-  final bool isTableView;
-  final VoidCallback onToggle;
+// ── Filter bottom sheet ─────────────────────────────────────────────────────
 
-  const _ViewToggle({required this.isTableView, required this.onToggle});
+class _ExpenseFilterSheet extends StatefulWidget {
+  final DateTimeRange? dateRange;
+  final ValueChanged<DateTimeRange?> onDateRangeChanged;
+  final String? categoryFilter;
+  final List<String> categories;
+  final ValueChanged<String?> onCategoryChanged;
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.inputFill,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderSoft),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _Btn(
-            icon: IconlyLight.document,
-            selected: isTableView,
-            tooltip: 'Table view',
-            onTap: () { if (!isTableView) onToggle(); },
-            isLeft: true,
-          ),
-          _Btn(
-            icon: IconlyLight.category,
-            selected: !isTableView,
-            tooltip: 'Card view',
-            onTap: () { if (isTableView) onToggle(); },
-            isLeft: false,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Btn extends StatelessWidget {
-  final IconData icon;
-  final bool selected;
-  final String tooltip;
-  final VoidCallback onTap;
-  final bool isLeft;
-
-  const _Btn({
-    required this.icon,
-    required this.selected,
-    required this.tooltip,
-    required this.onTap,
-    required this.isLeft,
+  const _ExpenseFilterSheet({
+    required this.dateRange,
+    required this.onDateRangeChanged,
+    required this.categoryFilter,
+    required this.categories,
+    required this.onCategoryChanged,
   });
 
   @override
+  State<_ExpenseFilterSheet> createState() => _ExpenseFilterSheetState();
+}
+
+class _ExpenseFilterSheetState extends State<_ExpenseFilterSheet> {
+  late DateTimeRange? _dateRange;
+  late String? _categoryFilter;
+
+  @override
+  void initState() {
+    super.initState();
+    _dateRange = widget.dateRange;
+    _categoryFilter = widget.categoryFilter;
+  }
+
+  void _setDateRange(DateTimeRange? range) {
+    setState(() => _dateRange = range);
+    widget.onDateRangeChanged(range);
+  }
+
+  void _setCategory(String? category) {
+    setState(() => _categoryFilter = category);
+    widget.onCategoryChanged(category);
+  }
+
+  void _clearAll() {
+    setState(() {
+      _dateRange = null;
+      _categoryFilter = null;
+    });
+    widget.onDateRangeChanged(null);
+    widget.onCategoryChanged(null);
+  }
+
+  bool get _hasFilters => _dateRange != null || _categoryFilter != null;
+
+  @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: selected ? AppColors.brand : Colors.transparent,
-            borderRadius: BorderRadius.only(
-              topLeft: isLeft ? const Radius.circular(9) : Radius.zero,
-              bottomLeft: isLeft ? const Radius.circular(9) : Radius.zero,
-              topRight: !isLeft ? const Radius.circular(9) : Radius.zero,
-              bottomRight: !isLeft ? const Radius.circular(9) : Radius.zero,
+    return AppBottomSheetScaffold(
+      title: 'Filters',
+      titleTrailing: _hasFilters
+          ? GestureDetector(
+              onTap: _clearAll,
+              child: Text(
+                'Clear all',
+                style: getOutfitStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.brand,
+                ),
+              ),
+            )
+          : null,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Date range ────────────────────────────────────────────────
+            AppSectionLabel(label: 'DATE RANGE'),
+            const SizedBox(height: 10),
+            AppDateRangePicker(
+              value: _dateRange,
+              placeholder: 'Select date range',
+              onChanged: _setDateRange,
             ),
-          ),
-          child: Icon(
-            icon,
-            size: 18,
-            color: selected ? AppColors.textInverse : AppColors.textMuted,
-          ),
+            const SizedBox(height: 20),
+
+            // ── Category ──────────────────────────────────────────────────
+            AppSectionLabel(label: 'CATEGORY'),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                AppFilterChip(
+                  label: 'All',
+                  isSelected: _categoryFilter == null,
+                  onTap: () => _setCategory(null),
+                ),
+                for (final category in widget.categories)
+                  AppFilterChip(
+                    label: category,
+                    isSelected: _categoryFilter == category,
+                    onTap: () => _setCategory(
+                      _categoryFilter == category ? null : category,
+                    ),
+                  ),
+              ],
+            ),
+          ],
         ),
       ),
     );

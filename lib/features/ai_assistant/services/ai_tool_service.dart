@@ -458,6 +458,7 @@ class AiToolService {
           .toList(),
       businessId: businessId,
       branchId: branchId,
+      transactionId: txId,
     );
 
     return txId;

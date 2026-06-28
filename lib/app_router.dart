@@ -172,6 +172,7 @@ class AppRouter {
       // are redirected to the dashboard rather than seeing a blank screen.
       if (!isPasswordResetRoute) {
         const routePermissionGuards = <String, String>{
+          AppRoutes.products: PermissionKeys.productsView,
           AppRoutes.posTerminal: PermissionKeys.navPos,
           AppRoutes.reports: PermissionKeys.navReports,
           AppRoutes.inventory: PermissionKeys.navInventory,
@@ -295,7 +296,8 @@ class AppRouter {
       ),
       GoRoute(
         path: AppRoutes.managerPin,
-        builder: (context, _) => const ManagerPinPage(),
+        builder: (context, state) =>
+            ManagerPinPage(targetEmployee: state.extra as Employee?),
       ),
       GoRoute(
         path: AppRoutes.employeePermissions,

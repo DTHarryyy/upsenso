@@ -10653,12 +10653,15 @@ class StockLedgerTableData extends DataClass
   final String? note;
 
   /// Traceability of what caused this movement: 'sale', 'purchase_order',
-  /// 'recipe_consumption', 'manual', etc. Lets audit/fraud queries tell a sale
-  /// apart from a manual adjustment. Local-only for now — not synced until the
-  /// Supabase stock_ledger schema is confirmed to have these columns.
+  /// 'recipe_consumption', 'adjustment', etc. Lets audit/fraud queries tell a
+  /// sale apart from a manual adjustment. Synced to Supabase, where server-side
+  /// RLS cross-references [sourceId] against the real source document (see
+  /// stock_ledger_source_document_check) — never trust this pair client-side.
   final String? sourceType;
 
-  /// ID of the originating document (transaction id, PO id, …). No foreign key.
+  /// ID of the originating document (transaction id, refund id, PO id, …).
+  /// No DB-level foreign key, but RLS verifies it against the real table for
+  /// every source_type that has one — see [sourceType].
   final String? sourceId;
   final DateTime createdAt;
 
@@ -24031,6 +24034,481 @@ class RefundItemsTableCompanion extends UpdateCompanion<RefundItemsTableData> {
   }
 }
 
+class $RefundSettingsTableTable extends RefundSettingsTable
+    with TableInfo<$RefundSettingsTableTable, RefundSettingsRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RefundSettingsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _requireApprovalMeta = const VerificationMeta(
+    'requireApproval',
+  );
+  @override
+  late final GeneratedColumn<bool> requireApproval = GeneratedColumn<bool>(
+    'require_approval',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("require_approval" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _approvalThresholdMeta = const VerificationMeta(
+    'approvalThreshold',
+  );
+  @override
+  late final GeneratedColumn<double> approvalThreshold =
+      GeneratedColumn<double>(
+        'approval_threshold',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(0),
+      );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+    'syncStatus',
+  );
+  @override
+  late final GeneratedColumn<int> syncStatus = GeneratedColumn<int>(
+    'sync_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(3),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    businessId,
+    requireApproval,
+    approvalThreshold,
+    createdAt,
+    updatedAt,
+    syncStatus,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'refund_settings';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RefundSettingsRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('require_approval')) {
+      context.handle(
+        _requireApprovalMeta,
+        requireApproval.isAcceptableOrUnknown(
+          data['require_approval']!,
+          _requireApprovalMeta,
+        ),
+      );
+    }
+    if (data.containsKey('approval_threshold')) {
+      context.handle(
+        _approvalThresholdMeta,
+        approvalThreshold.isAcceptableOrUnknown(
+          data['approval_threshold']!,
+          _approvalThresholdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('sync_status')) {
+      context.handle(
+        _syncStatusMeta,
+        syncStatus.isAcceptableOrUnknown(data['sync_status']!, _syncStatusMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RefundSettingsRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RefundSettingsRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      requireApproval: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}require_approval'],
+      )!,
+      approvalThreshold: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}approval_threshold'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      syncStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sync_status'],
+      )!,
+    );
+  }
+
+  @override
+  $RefundSettingsTableTable createAlias(String alias) {
+    return $RefundSettingsTableTable(attachedDatabase, alias);
+  }
+}
+
+class RefundSettingsRow extends DataClass
+    implements Insertable<RefundSettingsRow> {
+  final String id;
+  final String businessId;
+  final bool requireApproval;
+  final double approvalThreshold;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  /// Always 3=synced for this table — see class doc.
+  final int syncStatus;
+  const RefundSettingsRow({
+    required this.id,
+    required this.businessId,
+    required this.requireApproval,
+    required this.approvalThreshold,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.syncStatus,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['business_id'] = Variable<String>(businessId);
+    map['require_approval'] = Variable<bool>(requireApproval);
+    map['approval_threshold'] = Variable<double>(approvalThreshold);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['sync_status'] = Variable<int>(syncStatus);
+    return map;
+  }
+
+  RefundSettingsTableCompanion toCompanion(bool nullToAbsent) {
+    return RefundSettingsTableCompanion(
+      id: Value(id),
+      businessId: Value(businessId),
+      requireApproval: Value(requireApproval),
+      approvalThreshold: Value(approvalThreshold),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      syncStatus: Value(syncStatus),
+    );
+  }
+
+  factory RefundSettingsRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RefundSettingsRow(
+      id: serializer.fromJson<String>(json['id']),
+      businessId: serializer.fromJson<String>(json['businessId']),
+      requireApproval: serializer.fromJson<bool>(json['requireApproval']),
+      approvalThreshold: serializer.fromJson<double>(json['approvalThreshold']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      syncStatus: serializer.fromJson<int>(json['syncStatus']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'businessId': serializer.toJson<String>(businessId),
+      'requireApproval': serializer.toJson<bool>(requireApproval),
+      'approvalThreshold': serializer.toJson<double>(approvalThreshold),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'syncStatus': serializer.toJson<int>(syncStatus),
+    };
+  }
+
+  RefundSettingsRow copyWith({
+    String? id,
+    String? businessId,
+    bool? requireApproval,
+    double? approvalThreshold,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    int? syncStatus,
+  }) => RefundSettingsRow(
+    id: id ?? this.id,
+    businessId: businessId ?? this.businessId,
+    requireApproval: requireApproval ?? this.requireApproval,
+    approvalThreshold: approvalThreshold ?? this.approvalThreshold,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    syncStatus: syncStatus ?? this.syncStatus,
+  );
+  RefundSettingsRow copyWithCompanion(RefundSettingsTableCompanion data) {
+    return RefundSettingsRow(
+      id: data.id.present ? data.id.value : this.id,
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      requireApproval: data.requireApproval.present
+          ? data.requireApproval.value
+          : this.requireApproval,
+      approvalThreshold: data.approvalThreshold.present
+          ? data.approvalThreshold.value
+          : this.approvalThreshold,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      syncStatus: data.syncStatus.present
+          ? data.syncStatus.value
+          : this.syncStatus,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RefundSettingsRow(')
+          ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
+          ..write('requireApproval: $requireApproval, ')
+          ..write('approvalThreshold: $approvalThreshold, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncStatus: $syncStatus')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    businessId,
+    requireApproval,
+    approvalThreshold,
+    createdAt,
+    updatedAt,
+    syncStatus,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RefundSettingsRow &&
+          other.id == this.id &&
+          other.businessId == this.businessId &&
+          other.requireApproval == this.requireApproval &&
+          other.approvalThreshold == this.approvalThreshold &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.syncStatus == this.syncStatus);
+}
+
+class RefundSettingsTableCompanion extends UpdateCompanion<RefundSettingsRow> {
+  final Value<String> id;
+  final Value<String> businessId;
+  final Value<bool> requireApproval;
+  final Value<double> approvalThreshold;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> syncStatus;
+  final Value<int> rowid;
+  const RefundSettingsTableCompanion({
+    this.id = const Value.absent(),
+    this.businessId = const Value.absent(),
+    this.requireApproval = const Value.absent(),
+    this.approvalThreshold = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RefundSettingsTableCompanion.insert({
+    required String id,
+    required String businessId,
+    this.requireApproval = const Value.absent(),
+    this.approvalThreshold = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       businessId = Value(businessId);
+  static Insertable<RefundSettingsRow> custom({
+    Expression<String>? id,
+    Expression<String>? businessId,
+    Expression<bool>? requireApproval,
+    Expression<double>? approvalThreshold,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? syncStatus,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (businessId != null) 'business_id': businessId,
+      if (requireApproval != null) 'require_approval': requireApproval,
+      if (approvalThreshold != null) 'approval_threshold': approvalThreshold,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RefundSettingsTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? businessId,
+    Value<bool>? requireApproval,
+    Value<double>? approvalThreshold,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? syncStatus,
+    Value<int>? rowid,
+  }) {
+    return RefundSettingsTableCompanion(
+      id: id ?? this.id,
+      businessId: businessId ?? this.businessId,
+      requireApproval: requireApproval ?? this.requireApproval,
+      approvalThreshold: approvalThreshold ?? this.approvalThreshold,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      syncStatus: syncStatus ?? this.syncStatus,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (requireApproval.present) {
+      map['require_approval'] = Variable<bool>(requireApproval.value);
+    }
+    if (approvalThreshold.present) {
+      map['approval_threshold'] = Variable<double>(approvalThreshold.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<int>(syncStatus.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RefundSettingsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
+          ..write('requireApproval: $requireApproval, ')
+          ..write('approvalThreshold: $approvalThreshold, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -24095,6 +24573,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $RefundItemsTableTable refundItemsTable = $RefundItemsTableTable(
     this,
   );
+  late final $RefundSettingsTableTable refundSettingsTable =
+      $RefundSettingsTableTable(this);
   late final AuthContextDao authContextDao = AuthContextDao(
     this as AppDatabase,
   );
@@ -24154,6 +24634,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this as AppDatabase,
   );
   late final RefundsDao refundsDao = RefundsDao(this as AppDatabase);
+  late final RefundSettingsDao refundSettingsDao = RefundSettingsDao(
+    this as AppDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -24190,6 +24673,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     goodsReceiptItemsTable,
     refundsTable,
     refundItemsTable,
+    refundSettingsTable,
   ];
 }
 
@@ -35736,6 +36220,268 @@ typedef $$RefundItemsTableTableProcessedTableManager =
       RefundItemsTableData,
       PrefetchHooks Function()
     >;
+typedef $$RefundSettingsTableTableCreateCompanionBuilder =
+    RefundSettingsTableCompanion Function({
+      required String id,
+      required String businessId,
+      Value<bool> requireApproval,
+      Value<double> approvalThreshold,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> syncStatus,
+      Value<int> rowid,
+    });
+typedef $$RefundSettingsTableTableUpdateCompanionBuilder =
+    RefundSettingsTableCompanion Function({
+      Value<String> id,
+      Value<String> businessId,
+      Value<bool> requireApproval,
+      Value<double> approvalThreshold,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> syncStatus,
+      Value<int> rowid,
+    });
+
+class $$RefundSettingsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $RefundSettingsTableTable> {
+  $$RefundSettingsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get requireApproval => $composableBuilder(
+    column: $table.requireApproval,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get approvalThreshold => $composableBuilder(
+    column: $table.approvalThreshold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RefundSettingsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $RefundSettingsTableTable> {
+  $$RefundSettingsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get requireApproval => $composableBuilder(
+    column: $table.requireApproval,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get approvalThreshold => $composableBuilder(
+    column: $table.approvalThreshold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RefundSettingsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RefundSettingsTableTable> {
+  $$RefundSettingsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get requireApproval => $composableBuilder(
+    column: $table.requireApproval,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get approvalThreshold => $composableBuilder(
+    column: $table.approvalThreshold,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => column,
+  );
+}
+
+class $$RefundSettingsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RefundSettingsTableTable,
+          RefundSettingsRow,
+          $$RefundSettingsTableTableFilterComposer,
+          $$RefundSettingsTableTableOrderingComposer,
+          $$RefundSettingsTableTableAnnotationComposer,
+          $$RefundSettingsTableTableCreateCompanionBuilder,
+          $$RefundSettingsTableTableUpdateCompanionBuilder,
+          (
+            RefundSettingsRow,
+            BaseReferences<
+              _$AppDatabase,
+              $RefundSettingsTableTable,
+              RefundSettingsRow
+            >,
+          ),
+          RefundSettingsRow,
+          PrefetchHooks Function()
+        > {
+  $$RefundSettingsTableTableTableManager(
+    _$AppDatabase db,
+    $RefundSettingsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RefundSettingsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RefundSettingsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$RefundSettingsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> businessId = const Value.absent(),
+                Value<bool> requireApproval = const Value.absent(),
+                Value<double> approvalThreshold = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> syncStatus = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RefundSettingsTableCompanion(
+                id: id,
+                businessId: businessId,
+                requireApproval: requireApproval,
+                approvalThreshold: approvalThreshold,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                syncStatus: syncStatus,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String businessId,
+                Value<bool> requireApproval = const Value.absent(),
+                Value<double> approvalThreshold = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> syncStatus = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RefundSettingsTableCompanion.insert(
+                id: id,
+                businessId: businessId,
+                requireApproval: requireApproval,
+                approvalThreshold: approvalThreshold,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                syncStatus: syncStatus,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RefundSettingsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RefundSettingsTableTable,
+      RefundSettingsRow,
+      $$RefundSettingsTableTableFilterComposer,
+      $$RefundSettingsTableTableOrderingComposer,
+      $$RefundSettingsTableTableAnnotationComposer,
+      $$RefundSettingsTableTableCreateCompanionBuilder,
+      $$RefundSettingsTableTableUpdateCompanionBuilder,
+      (
+        RefundSettingsRow,
+        BaseReferences<
+          _$AppDatabase,
+          $RefundSettingsTableTable,
+          RefundSettingsRow
+        >,
+      ),
+      RefundSettingsRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -35820,4 +36566,6 @@ class $AppDatabaseManager {
       $$RefundsTableTableTableManager(_db, _db.refundsTable);
   $$RefundItemsTableTableTableManager get refundItemsTable =>
       $$RefundItemsTableTableTableManager(_db, _db.refundItemsTable);
+  $$RefundSettingsTableTableTableManager get refundSettingsTable =>
+      $$RefundSettingsTableTableTableManager(_db, _db.refundSettingsTable);
 }

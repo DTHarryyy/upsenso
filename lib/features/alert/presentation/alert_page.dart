@@ -7,7 +7,7 @@ import 'package:pos/features/alert/presentation/widgets/alert_detail_dialog.dart
 import 'package:pos/features/alert/presentation/widgets/alert_detail_page.dart';
 import 'package:pos/features/alert/presentation/widgets/alert_filter_bar.dart';
 import 'package:pos/features/alert/presentation/widgets/alert_list_item.dart';
-import 'package:pos/features/alert/presentation/widgets/alert_stat_card.dart';
+import 'package:pos/core/widgets/stat_card.dart';
 
 class AlertPage extends StatefulWidget {
   const AlertPage({super.key});
@@ -173,64 +173,33 @@ class _StatCardsSection extends StatelessWidget {
     return Container(
       color: AppColors.surface,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final cards = [
-            AlertStatCard(
-              label: 'New Alerts',
-              count: newCount,
-              icon: IconlyBold.danger,
-              iconColor: AppColors.error,
-              iconBackground: AppColors.errorSoft,
-              borderColor: AppColors.errorSoft,
-            ),
-            AlertStatCard(
-              label: 'High Severity',
-              count: highCount,
-              icon: IconlyLight.danger,
-              iconColor: AppColors.warning,
-              iconBackground: AppColors.warningSoft,
-              borderColor: AppColors.warningSoft,
-            ),
-            AlertStatCard(
-              label: 'Investigating',
-              count: investigatingCount,
-              icon: IconlyLight.search,
-              iconColor: AppColors.info,
-              iconBackground: AppColors.infoSoft,
-              borderColor: AppColors.infoSoft,
-            ),
-            AlertStatCard(
-              label: 'Resolved',
-              count: resolvedCount,
-              icon: IconlyBold.tick_square,
-              iconColor: AppColors.success,
-              iconBackground: AppColors.successSoft,
-              borderColor: AppColors.successSoft,
-            ),
-          ];
-
-          if (constraints.maxWidth > 800) {
-            return Row(
-              children: [
-                for (int i = 0; i < cards.length; i++) ...[
-                  Expanded(child: cards[i]),
-                  if (i < cards.length - 1) const SizedBox(width: 12),
-                ],
-              ],
-            );
-          }
-
-          return GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 2.0,
-            children: cards,
-          );
-        },
+      child: StatCardsRow(
+        cards: [
+          AppStatCard(
+            title: 'New Alerts',
+            value: '$newCount',
+            icon: IconlyBold.danger,
+            iconColor: AppColors.error,
+          ),
+          AppStatCard(
+            title: 'High Severity',
+            value: '$highCount',
+            icon: IconlyLight.danger,
+            iconColor: AppColors.warning,
+          ),
+          AppStatCard(
+            title: 'Investigating',
+            value: '$investigatingCount',
+            icon: IconlyLight.search,
+            iconColor: AppColors.info,
+          ),
+          AppStatCard(
+            title: 'Resolved',
+            value: '$resolvedCount',
+            icon: IconlyBold.tick_square,
+            iconColor: AppColors.success,
+          ),
+        ],
       ),
     );
   }

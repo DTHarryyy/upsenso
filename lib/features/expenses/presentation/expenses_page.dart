@@ -5,8 +5,10 @@ import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/widgets/app_sub_page_bar.dart';
+import 'package:pos/core/widgets/app_view_toggle.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/expenses/domain/repositories/i_expenses_repository.dart';
@@ -24,8 +26,14 @@ class ExpensesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final initialViewMode = Breakpoints.isPhone(context)
+        ? ExpensesViewMode.cards
+        : ExpensesViewMode.table;
     return BlocProvider(
-      create: (_) => ExpensesCubit(sl<IExpensesRepository>()),
+      create: (_) => ExpensesCubit(
+        sl<IExpensesRepository>(),
+        initialViewMode: initialViewMode,
+      ),
       child: const _ExpensesView(),
     );
   }
@@ -134,11 +142,13 @@ class _LoadedBody extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         ExpenseFilterBar(
-          isTableView: state.viewMode == ExpensesViewMode.table,
-          onToggleView: () => cubit.setViewMode(
-            state.viewMode == ExpensesViewMode.table
-                ? ExpensesViewMode.cards
-                : ExpensesViewMode.table,
+          viewMode: state.viewMode == ExpensesViewMode.table
+              ? AppViewMode.table
+              : AppViewMode.cards,
+          onViewModeChanged: (mode) => cubit.setViewMode(
+            mode == AppViewMode.table
+                ? ExpensesViewMode.table
+                : ExpensesViewMode.cards,
           ),
           onSearchChanged: cubit.setSearchQuery,
           dateRange: state.dateRange,

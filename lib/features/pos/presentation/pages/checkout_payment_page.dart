@@ -199,6 +199,7 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
             .toList(),
         businessId: businessId,
         branchId: branchId,
+        transactionId: txId,
       );
 
       widget.onPaymentConfirmed();

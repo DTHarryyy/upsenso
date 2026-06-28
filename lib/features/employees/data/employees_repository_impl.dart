@@ -8,6 +8,7 @@ import 'package:pos/core/database/daos/employee_permissions_dao.dart';
 import 'package:pos/core/database/daos/employees_dao.dart';
 import 'package:pos/core/permissions/data/permission_remote_ds.dart';
 import 'package:pos/core/permissions/default_permission_matrix.dart';
+import 'package:pos/core/permissions/role_permission_matrix.dart';
 import 'package:pos/core/sync/sync_status.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/features/employees/data/datasources/employees_remote_ds.dart';
@@ -268,17 +269,8 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
 
   // Owner / Super Admin accounts are protected: the DB rejects deactivating
   // them, so we block it here too rather than letting it fail during sync.
-  static bool _isOwnerRole(String? roleName) {
-    switch (roleName?.toLowerCase().trim()) {
-      case 'owner':
-      case 'business owner':
-      case 'super admin':
-      case 'superadmin':
-        return true;
-      default:
-        return false;
-    }
-  }
+  static bool _isOwnerRole(String? roleName) =>
+      RolePermissionMatrix.isOwnerRoleName(roleName);
 
   Future<void> _setActive(
     String id,

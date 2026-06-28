@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/widgets/app_filter_button.dart';
 import 'package:pos/core/widgets/app_filter_chip.dart';
 import 'package:pos/core/widgets/app_search_bar.dart';
+import 'package:pos/core/widgets/app_section_label.dart';
 import 'package:pos/features/business/domain/entities/branch.dart';
 import 'package:pos/features/employees/presentation/bloc/employee_bloc.dart';
 import 'package:pos/features/employees/presentation/bloc/employee_event.dart';
@@ -87,7 +88,7 @@ class _EmployeeFilterBarState extends State<EmployeeFilterBar> {
                 },
                 builder: (context, state) {
                   final loaded = _resolveLoaded(state);
-                  return _FilterButton(
+                  return AppFilterButton(
                     hasActiveFilters:
                         loaded?.isActiveFilter != null ||
                         loaded?.branchFilter != null,
@@ -137,57 +138,6 @@ class _EmployeeFilterBarState extends State<EmployeeFilterBar> {
             },
           ),
         ],
-      ),
-    );
-  }
-}
-
-// Filter icon button
-
-class _FilterButton extends StatelessWidget {
-  final bool hasActiveFilters;
-  final VoidCallback onTap;
-
-  const _FilterButton({required this.hasActiveFilters, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: hasActiveFilters ? AppColors.brand : AppColors.surfaceAlt,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: hasActiveFilters ? AppColors.brand : AppColors.borderSoft,
-          ),
-        ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Icon(
-              IconlyLight.filter,
-              size: 20,
-              color: hasActiveFilters ? Colors.white : AppColors.textSecondary,
-            ),
-            if (hasActiveFilters)
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  width: 7,
-                  height: 7,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFBBF24),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-          ],
-        ),
       ),
     );
   }
@@ -292,7 +242,7 @@ class _FilterSheetState extends State<_FilterSheet> {
           const SizedBox(height: 24),
 
           // ── Status ────────────────────────────────────────────────────
-          _SectionLabel(label: 'STATUS'),
+          AppSectionLabel(label: 'STATUS'),
           const SizedBox(height: 10),
           Wrap(
             spacing: 8,
@@ -323,7 +273,7 @@ class _FilterSheetState extends State<_FilterSheet> {
             const SizedBox(height: 20),
 
             // ── Branch ────────────────────────────────────────────────
-            _SectionLabel(label: 'BRANCH'),
+            AppSectionLabel(label: 'BRANCH'),
             const SizedBox(height: 10),
             Wrap(
               spacing: 8,
@@ -348,24 +298,6 @@ class _FilterSheetState extends State<_FilterSheet> {
 
           const SizedBox(height: 24),
         ],
-      ),
-    );
-  }
-}
-
-class _SectionLabel extends StatelessWidget {
-  final String label;
-  const _SectionLabel({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: getOutfitStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-        color: AppColors.textMuted,
-        letterSpacing: 0.8,
       ),
     );
   }

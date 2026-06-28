@@ -9,13 +9,18 @@ import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/widgets/app_filled_button.dart';
 import 'package:pos/core/widgets/app_inline_banner.dart';
 import 'package:pos/core/widgets/app_toast.dart';
+import 'package:pos/features/employees/domain/entities/employee.dart';
 import 'package:pos/features/pos/data/datasources/refunds_remote_ds.dart';
 
-/// Lets a manager set/reset their own manager PIN. The PIN authorises
-/// over-threshold refunds at the terminal; it is bcrypt-hashed on the server
-/// (`set_manager_pin`) and never stored or compared on the device.
+/// Lets a manager set/reset a manager PIN — their own, or (when
+/// [targetEmployee] is given) another employee's. Owner/admin only for the
+/// other-employee case, enforced server-side by `set_manager_pin`. The PIN
+/// authorises over-threshold refunds at the terminal; it is bcrypt-hashed on
+/// the server and never stored or compared on the device.
 class ManagerPinPage extends StatefulWidget {
-  const ManagerPinPage({super.key});
+  final Employee? targetEmployee;
+
+  const ManagerPinPage({super.key, this.targetEmployee});
 
   @override
   State<ManagerPinPage> createState() => _ManagerPinPageState();
@@ -47,7 +52,10 @@ class _ManagerPinPageState extends State<ManagerPinPage> {
     }
     setState(() => _saving = true);
     try {
-      await sl<RefundsRemoteDs>().setManagerPin(pin: pin);
+      await sl<RefundsRemoteDs>().setManagerPin(
+        pin: pin,
+        employeeId: widget.targetEmployee?.id,
+      );
       if (!mounted) return;
       AppToast.show(context, 'Manager PIN updated.',
           variant: AppToastVariant.success);
@@ -76,7 +84,10 @@ class _ManagerPinPageState extends State<ManagerPinPage> {
               size: 18, color: AppColors.textSecondary),
           onPressed: () => Navigator.of(context).maybePop(),
         ),
-        title: Text('Manager PIN',
+        title: Text(
+            widget.targetEmployee != null
+                ? 'Reset Manager PIN'
+                : 'Manager PIN',
             style: getOutfitStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
@@ -90,8 +101,13 @@ class _ManagerPinPageState extends State<ManagerPinPage> {
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            'Set a 4–6 digit PIN. You enter it at the terminal to authorise '
-            'refunds that are over your business\'s approval limit.',
+            widget.targetEmployee != null
+                ? 'Set a 4–6 digit PIN for ${widget.targetEmployee!.fullName}. '
+                  'They\'ll enter it at the terminal to authorise refunds that '
+                  'are over your business\'s approval limit.'
+                : 'Set a 4–6 digit PIN. You enter it at the terminal to '
+                  'authorise refunds that are over your business\'s approval '
+                  'limit.',
             style: AppTextStyles.body(context)
                 .copyWith(color: AppColors.textSecondary),
           ),
@@ -102,8 +118,12 @@ class _ManagerPinPageState extends State<ManagerPinPage> {
               label: 'Confirm PIN', controller: _confirm, enabled: !_saving),
           const SizedBox(height: 16),
           AppInlineBanner(
-            message: 'Keep your PIN private. Anyone with it can approve '
-                'over-limit refunds in your name.',
+            message: widget.targetEmployee != null
+                ? 'Share this PIN with ${widget.targetEmployee!.fullName} '
+                  'directly. Anyone who has it can approve over-limit refunds '
+                  'in their name.'
+                : 'Keep your PIN private. Anyone with it can approve '
+                  'over-limit refunds in your name.',
             variant: AppInlineBannerVariant.info,
           ),
           const SizedBox(height: 24),

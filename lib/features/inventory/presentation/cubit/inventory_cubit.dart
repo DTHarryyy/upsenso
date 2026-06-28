@@ -23,11 +23,14 @@ class InventoryCubit extends Cubit<InventoryState> {
   // Local filter / view state preserved across reloads
   String _searchQuery = '';
   StockStatus? _statusFilter;
-  AppViewMode _viewMode = AppViewMode.table;
+  AppViewMode _viewMode;
 
-  InventoryCubit(IInventoryRepository repository)
-    : _repository = repository,
-      super(const InventoryInitial());
+  InventoryCubit(
+    IInventoryRepository repository, {
+    AppViewMode initialViewMode = AppViewMode.table,
+  }) : _repository = repository,
+       _viewMode = initialViewMode,
+       super(const InventoryInitial());
 
   Future<void> startWatching({
     required String businessId,

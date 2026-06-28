@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/errors/app_error_mapper.dart';
+import 'package:pos/core/permissions/role_permission_matrix.dart';
 import 'package:pos/features/employees/domain/entities/employee.dart';
 import 'package:pos/features/employees/domain/errors/employee_errors.dart';
 import 'package:pos/features/employees/domain/repositories/i_employees_repository.dart';
@@ -92,17 +93,8 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
     return allowed.any((r) => r.toLowerCase().trim() == target);
   }
 
-  bool _isOwnerRole(String? roleName) {
-    switch (roleName?.toLowerCase().trim()) {
-      case 'owner':
-      case 'business owner':
-      case 'super admin':
-      case 'superadmin':
-        return true;
-      default:
-        return false;
-    }
-  }
+  bool _isOwnerRole(String? roleName) =>
+      RolePermissionMatrix.isOwnerRoleName(roleName);
 
   Future<void> _onAdd(AddEmployee event, Emitter<EmployeeState> emit) async {
     final current = _currentLoaded;

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:pos/core/config/di.dart';
@@ -8,6 +10,7 @@ import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/services/refund_service.dart';
 import 'package:pos/core/session/active_business_context.dart';
 import 'package:pos/features/pos/data/datasources/refunds_remote_ds.dart';
+import 'package:pos/features/settings/data/refund_settings_repository.dart';
 import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/core/widgets/app_count_stepper.dart';
 import 'package:pos/core/widgets/app_dropdown.dart';
@@ -77,6 +80,14 @@ class _RefundSheetState extends State<RefundSheet> {
     for (final item in _refundable) {
       _selectedQty[item.id] = 0;
       _restock[item.id] = true;
+    }
+    // Best-effort: refreshes the cached threshold so it's as current as
+    // possible by the time _performRefund reads it. Never blocks the sheet —
+    // a stale or missing cache just falls back to "not required" and the
+    // server still enforces the real threshold on sync.
+    final businessId = sl<ActiveBusinessContext>().businessId;
+    if (businessId != null) {
+      unawaited(sl<RefundSettingsRepository>().pullFromServer(businessId));
     }
   }
 
@@ -209,22 +220,27 @@ class _RefundSheetState extends State<RefundSheet> {
 
     final refundedAmount = _selectedTotal;
 
-    // Refund approval: an over-threshold refund by someone who can't approve
-    // refunds needs a manager to authorise it inline. The server is the real
-    // gate (it consumes a PIN-verified, single-use authorization); this prompt
-    // obtains that authorization first so the refund's sync isn't rejected.
-    // Best-effort: if settings can't be read (offline) we proceed and let the
-    // server enforce on sync.
-    if (!sl<PermissionService>().can(PermissionKeys.posApproveRefund)) {
-      ({bool requireApproval, double threshold})? settings;
-      try {
-        settings = await sl<RefundsRemoteDs>().fetchRefundSettings(businessId);
-      } catch (_) {
-        settings = null;
-      }
-      if (settings != null &&
-          settings.requireApproval &&
-          refundedAmount > settings.threshold) {
+    // Refund approval: an over-threshold refund needs either the refunder's
+    // own pos.approve_refund, or a manager to authorise it inline (the server
+    // is the real gate — it consumes a PIN-verified, single-use
+    // authorization). Reads the offline-synced cache, never the network, so
+    // an under-threshold decision works fully offline; a cache that's never
+    // synced (e.g. first login, never been online) reads as "not required"
+    // and the server still enforces the real threshold on sync.
+    final settings = await sl<RefundSettingsRepository>().get(businessId);
+    final needsApproval = settings != null &&
+        settings.requireApproval &&
+        refundedAmount > settings.threshold;
+
+    // Drives the audit log only — never fabricated. 'manager_pin' never
+    // carries an approver identity here (authorize_refund only returns an
+    // authorization id); the true approver lives server-side on the refund
+    // row itself.
+    String? approvalMethod;
+    if (needsApproval) {
+      if (sl<PermissionService>().can(PermissionKeys.posApproveRefund)) {
+        approvalMethod = 'self';
+      } else {
         if (!mounted) return;
         final authId = await showManagerPinSheet(
           context,
@@ -247,6 +263,7 @@ class _RefundSheetState extends State<RefundSheet> {
           }
           return;
         }
+        approvalMethod = 'manager_pin';
       }
     }
 
@@ -257,6 +274,7 @@ class _RefundSheetState extends State<RefundSheet> {
         businessId: businessId,
         refundedBy: userId,
         reason: _composedReason,
+        approvalMethod: approvalMethod,
       );
       if (mounted) Navigator.pop(context, refundedAmount);
     } on RefundPermissionDeniedException {

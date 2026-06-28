@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:pos/core/env/app_env.dart';
+import 'package:pos/core/permissions/role_permission_matrix.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -310,13 +311,7 @@ class AuthRemoteDs {
       // Business Owner is not scoped to any branch — skip branch assignment.
       String? branchId;
       String? branchName;
-      final n = roleName?.trim().toLowerCase();
-      final isOwner = n == 'business owner' ||
-          n == 'business_owner' ||
-          n == 'owner' ||
-          n == 'super admin' ||
-          n == 'superadmin' ||
-          n == 'super_admin';
+      final isOwner = RolePermissionMatrix.isOwnerRoleName(roleName);
 
       if (businessId != null && !isOwner) {
         try {

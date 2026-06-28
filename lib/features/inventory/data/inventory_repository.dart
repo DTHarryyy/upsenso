@@ -261,6 +261,7 @@ class InventoryRepository implements IInventoryRepository {
     required List<({String variantId, double qty})> items,
     required String businessId,
     required String? branchId,
+    required String sourceId,
   }) async {
     if (branchId == null) {
       assert(false, 'recordSaleDeductions called without branchId');
@@ -284,6 +285,7 @@ class InventoryRepository implements IInventoryRepository {
             qty: item.qty.round(),
             businessId: businessId,
             branchId: branchId,
+            sourceId: sourceId,
           );
         case 'service':
           break; // no stock impact
@@ -300,6 +302,7 @@ class InventoryRepository implements IInventoryRepository {
             quantity: item.qty,
             reason: 'Sale',
             sourceType: 'sale',
+            sourceId: sourceId,
           );
       }
     }

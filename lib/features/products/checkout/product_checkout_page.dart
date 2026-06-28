@@ -207,6 +207,7 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
             .toList(),
         businessId: businessId,
         branchId: branchId,
+        transactionId: txId,
       );
 
       unawaited(

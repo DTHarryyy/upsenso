@@ -4,9 +4,12 @@ import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 // ignore: unused_import
 import 'package:pos/core/widgets/app_sub_page_bar.dart';
+import 'package:pos/core/widgets/app_filter_chip.dart';
+import 'package:pos/core/widgets/app_filter_toolbar.dart';
 import 'package:pos/core/widgets/app_view_toggle.dart';
 import 'package:pos/core/widgets/branch_action_dialog.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
@@ -29,12 +32,27 @@ class Inventory extends StatefulWidget {
 class _InventoryState extends State<Inventory> {
   late final InventoryCubit _cubit;
   final _searchController = TextEditingController();
+  bool _cubitCreated = false;
 
   @override
   void initState() {
     super.initState();
-    _cubit = InventoryCubit(sl());
     WidgetsBinding.instance.addPostFrameCallback((_) => _triggerLoad());
+  }
+
+  // MediaQuery isn't available yet in initState, so the breakpoint-aware
+  // default is read here instead — see Breakpoints.isPhone usage below.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_cubitCreated) return;
+    _cubitCreated = true;
+    _cubit = InventoryCubit(
+      sl(),
+      initialViewMode: Breakpoints.isPhone(context)
+          ? AppViewMode.cards
+          : AppViewMode.table,
+    );
   }
 
   @override
@@ -147,7 +165,9 @@ class _InventoryState extends State<Inventory> {
                 : null;
             final viewMode = state is InventoryLoaded
                 ? state.viewMode
-                : AppViewMode.cards;
+                : (Breakpoints.isPhone(context)
+                      ? AppViewMode.cards
+                      : AppViewMode.table);
 
             return Scaffold(
               backgroundColor: AppColors.background,
@@ -268,42 +288,12 @@ class _SearchAndFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: TextField(
-            controller: searchController,
-            onChanged: onSearchChanged,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: AppColors.surface,
-              hintText: 'Search products...',
-              prefixIcon: const Icon(Icons.search, size: 18),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.borderSoft),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.borderSoft),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(
-                  color: AppColors.brand,
-                  width: 1.5,
-                ),
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 13,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        AppViewToggle(current: viewMode, onChanged: onViewModeChanged),
-      ],
+    return AppFilterToolbar(
+      searchHint: 'Search products...',
+      searchController: searchController,
+      onSearchChanged: onSearchChanged,
+      viewMode: viewMode,
+      onViewModeChanged: onViewModeChanged,
     );
   }
 }
@@ -335,25 +325,10 @@ class _StatusChips extends StatelessWidget {
           final isActive = selected == c.value;
           return Padding(
             padding: const EdgeInsets.only(right: 8),
-            child: FilterChip(
-              label: Text(c.label),
-              selected: isActive,
-              onSelected: (_) => onSelected(isActive ? null : c.value),
-              labelStyle: getOutfitStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: isActive ? AppColors.brand : AppColors.textSecondary,
-              ),
-              selectedColor: AppColors.brandSoft,
-              checkmarkColor: AppColors.brand,
-              backgroundColor: AppColors.surface,
-              side: BorderSide(
-                color: isActive ? AppColors.brand : AppColors.borderSoft,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            child: AppFilterChip(
+              label: c.label,
+              isSelected: isActive,
+              onTap: () => onSelected(isActive ? null : c.value),
             ),
           );
         }).toList(),

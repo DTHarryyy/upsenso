@@ -24,6 +24,7 @@ class AppBottomNav extends StatelessWidget {
         service.isModuleEnabled('reports');
     final canUseInventory = service.can(PermissionKeys.navInventory) &&
         service.isModuleEnabled('inventory');
+    final canViewProducts = service.can(PermissionKeys.productsView);
     // hasPosByRole: user's role grants POS access regardless of module toggle.
     // Used to distinguish "inventory staff" (never has POS) from "owner with
     // POS module off" — the latter should still get the full nav bar.
@@ -51,14 +52,18 @@ class AppBottomNav extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               // ── Cashier-like (POS but no reports/inventory) ─────────────
-              if (isCashierLike) ..._cashierItems(),
+              if (isCashierLike) ..._cashierItems(canViewProducts: canViewProducts),
 
               // ── Inventory-like (inventory but no POS) ────────────────────
-              if (isInventoryLike) ..._inventoryStaffItems(),
+              if (isInventoryLike)
+                ..._inventoryStaffItems(canViewProducts: canViewProducts),
 
               // ── All other roles: full nav bar ─────────────────────────────
               if (!isCashierLike && !isInventoryLike)
-                ..._fullNavItems(canUsePOS: canUsePOS),
+                ..._fullNavItems(
+                  canUsePOS: canUsePOS,
+                  canViewProducts: canViewProducts,
+                ),
             ],
           ),
         ),
@@ -96,7 +101,7 @@ class AppBottomNav extends StatelessWidget {
 
   // ── Role-specific nav item sets ────────────────────────────────────────
 
-  List<Widget> _cashierItems() => [
+  List<Widget> _cashierItems({required bool canViewProducts}) => [
     _buildNavItem(
       icon: IconlyLight.home,
       activeIcon: IconlyBold.home,
@@ -104,27 +109,29 @@ class AppBottomNav extends StatelessWidget {
       index: 0,
     ),
     _buildCenterPOSButton(),
-    _buildNavItem(
-      icon: IconlyLight.bag,
-      activeIcon: IconlyBold.bag,
-      label: 'Products',
-      index: 1,
-    ),
+    if (canViewProducts)
+      _buildNavItem(
+        icon: IconlyLight.bag,
+        activeIcon: IconlyBold.bag,
+        label: 'Products',
+        index: 1,
+      ),
   ];
 
-  List<Widget> _inventoryStaffItems() => [
+  List<Widget> _inventoryStaffItems({required bool canViewProducts}) => [
     _buildNavItem(
       icon: IconlyLight.home,
       activeIcon: IconlyBold.home,
       label: 'Dashboard',
       index: 0,
     ),
-    _buildNavItem(
-      icon: IconlyLight.bag,
-      activeIcon: IconlyBold.bag,
-      label: 'Products',
-      index: 1,
-    ),
+    if (canViewProducts)
+      _buildNavItem(
+        icon: IconlyLight.bag,
+        activeIcon: IconlyBold.bag,
+        label: 'Products',
+        index: 1,
+      ),
     _buildNavItem(
       icon: IconlyLight.category,
       activeIcon: IconlyBold.category,
@@ -133,19 +140,23 @@ class AppBottomNav extends StatelessWidget {
     ),
   ];
 
-  List<Widget> _fullNavItems({required bool canUsePOS}) => [
+  List<Widget> _fullNavItems({
+    required bool canUsePOS,
+    required bool canViewProducts,
+  }) => [
     _buildNavItem(
       icon: IconlyLight.home,
       activeIcon: IconlyBold.home,
       label: 'Dashboard',
       index: 0,
     ),
-    _buildNavItem(
-      icon: IconlyLight.bag,
-      activeIcon: IconlyBold.bag,
-      label: 'Products',
-      index: 1,
-    ),
+    if (canViewProducts)
+      _buildNavItem(
+        icon: IconlyLight.bag,
+        activeIcon: IconlyBold.bag,
+        label: 'Products',
+        index: 1,
+      ),
     if (canUsePOS) _buildCenterPOSButton(),
     _buildNavItem(
       icon: IconlyLight.chart,

@@ -123,7 +123,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
           final userAvatar = authState.user.avatarUrl;
           final userName =
               authState.user.fullName ?? authState.user.email ?? 'User';
-          final roleName = authState.user.roleName?.trim();
+          final roleName = displayRoleName(authState.user.roleName?.trim());
           final roleId = authState.user.roleId?.trim();
           final userRole = (roleName != null && roleName.isNotEmpty)
               ? roleName
@@ -214,7 +214,8 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                                       businessName: businessName,
                                       isOnline: isOnline,
                                       pendingSyncCount: pendingSyncCount,
-                                      onNotificationTapped: () => context.push(AppRoutes.notifications),
+                                      onNotificationTapped: () =>
+                                          context.push(AppRoutes.notifications),
                                       showThemeToggle: false,
                                     ),
 
@@ -280,7 +281,8 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                           businessName: businessName,
                           isOnline: isOnline,
                           pendingSyncCount: pendingSyncCount,
-                          onNotificationTapped: () => context.push(AppRoutes.notifications),
+                          onNotificationTapped: () =>
+                              context.push(AppRoutes.notifications),
                           onMenuTapped: () =>
                               _scaffoldKey.currentState?.openDrawer(),
                           showThemeToggle: false,
@@ -504,7 +506,8 @@ class _AppSidebarState extends State<_AppSidebar>
   bool get _sidebarShowInventory =>
       _permService.can(PermissionKeys.navInventory) &&
       _permService.isModuleEnabled('inventory');
-  bool get _sidebarShowProducts => true;
+  bool get _sidebarShowProducts =>
+      _permService.can(PermissionKeys.productsView);
   bool get _sidebarShowReports =>
       _permService.can(PermissionKeys.navReports) &&
       _permService.isModuleEnabled('reports');
@@ -673,8 +676,7 @@ class _AppSidebarState extends State<_AppSidebar>
                   if (_sidebarShowInventory || _sidebarShowIngredients) ...[
                     const Divider(height: 1, color: AppColors.borderSoft),
                     const SizedBox(height: 6),
-                    if (layoutExpanded)
-                      const _SectionLabel(label: 'INVENTORY'),
+                    if (layoutExpanded) const _SectionLabel(label: 'INVENTORY'),
                     if (_sidebarShowInventory)
                       _NavItem(
                         icon: IconlyLight.category,
@@ -692,8 +694,9 @@ class _AppSidebarState extends State<_AppSidebar>
                         label: 'Ingredients',
                         route: AppRoutes.ingredients,
                         expanded: layoutExpanded,
-                        currentLocation:
-                            GoRouterState.of(context).matchedLocation,
+                        currentLocation: GoRouterState.of(
+                          context,
+                        ).matchedLocation,
                       ),
                   ],
 
@@ -858,7 +861,7 @@ class _AppSidebarState extends State<_AppSidebar>
   }
 }
 
-// ── Business logo widget ───────────────────────────────────────────────────
+// Business logo widget
 // Shows the uploaded business logo, falling back to a branded initial block.
 
 class _BusinessLogo extends StatelessWidget {
@@ -1146,8 +1149,8 @@ class _SettingsAccordion extends StatelessWidget {
                 subItemTile(
                   icon: IconlyLight.setting,
                   label: 'Module Management',
-                  isSubActive: isActive &&
-                      activeSubPage == SettingsSubPage.modules,
+                  isSubActive:
+                      isActive && activeSubPage == SettingsSubPage.modules,
                   onTap: onModulesTap!,
                 ),
             ],

@@ -50,12 +50,23 @@ class RefundService {
   ///
   /// Hidden UI is not access control — this is the actual enforcement point
   /// for `pos.refund_sale`, regardless of what the caller's UI shows.
+  ///
+  /// [approvalMethod] is a client-observed signal for the audit log only —
+  /// `'self'` (refunder already held `pos.approve_refund`) or `'manager_pin'`
+  /// (a manager authorised it inline). It is never the source of truth: the
+  /// server trigger stamps `refunds.approval_method`/`approved_by`
+  /// authoritatively, including for `'manager_pin'`, where the approving
+  /// employee's identity is deliberately never returned to this device
+  /// (`authorize_refund` only returns an authorization id). `approvedBy` is
+  /// therefore only ever set here for `'self'` — trivially `refundedBy` —
+  /// never fabricated for the other case.
   Future<String> refund({
     required String transactionId,
     required List<({String transactionItemId, double qty, bool restock})> lines,
     required String businessId,
     required String refundedBy,
     String? reason,
+    String? approvalMethod,
   }) async {
     if (!_permissionService.hasPermission(AppPermission.refundSale)) {
       throw const RefundPermissionDeniedException();
@@ -170,6 +181,8 @@ class RefundService {
       );
     });
 
+    final approvedBy = approvalMethod == 'self' ? refundedBy : null;
+
     await _auditLogService.log(
       actionType: AuditLogActionType.refundCreated,
       entityType: 'refund',
@@ -185,6 +198,8 @@ class RefundService {
         'restocked_line_count': restockedCount,
         'not_restocked_line_count': itemCount - restockedCount,
         'reason': ?reason,
+        'approval_method': ?approvalMethod,
+        'approved_by': ?approvedBy,
       },
       businessId: businessId,
       branchId: branchId,

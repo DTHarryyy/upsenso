@@ -29,12 +29,18 @@ class CheckoutService {
   /// Persists [transaction] + [items] and deducts [deductions] atomically.
   /// Claims the next invoice number (server RPC when online, local counter
   /// when offline) and writes it into the companion before committing.
+  ///
+  /// [transactionId] must be the same id already set on [transaction] (the
+  /// caller generates it up front to also stamp it on each item). It's
+  /// threaded into the stock ledger entries so server-side RLS can verify
+  /// each deduction traces back to this real sale.
   Future<String> completeSale({
     required TransactionsTableCompanion transaction,
     required List<TransactionItemsTableCompanion> items,
     required List<({String variantId, double qty})> deductions,
     required String businessId,
     required String? branchId,
+    required String transactionId,
   }) async {
     // Claim the invoice number BEFORE opening the DB transaction so a server
     // roundtrip (when online) doesn't hold the SQLite write lock.
@@ -61,6 +67,7 @@ class CheckoutService {
         items: deductions,
         businessId: businessId,
         branchId: branchId,
+        sourceId: transactionId,
       );
     });
 

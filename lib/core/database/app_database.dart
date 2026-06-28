@@ -62,6 +62,8 @@ import 'package:pos/core/database/daos/goods_receipt_items_dao.dart';
 import 'package:pos/core/database/tables/refunds_table.dart';
 import 'package:pos/core/database/tables/refund_items_table.dart';
 import 'package:pos/core/database/daos/refunds_dao.dart';
+import 'package:pos/core/database/tables/refund_settings_table.dart';
+import 'package:pos/core/database/daos/refund_settings_dao.dart';
 
 part 'app_database.g.dart';
 
@@ -98,6 +100,7 @@ part 'app_database.g.dart';
     GoodsReceiptItemsTable,
     RefundsTable,
     RefundItemsTable,
+    RefundSettingsTable,
   ],
   daos: [
     AuthContextDao,
@@ -128,6 +131,7 @@ part 'app_database.g.dart';
     GoodsReceiptsDao,
     GoodsReceiptItemsDao,
     RefundsDao,
+    RefundSettingsDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -148,7 +152,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 50;
+  int get schemaVersion => 51;
 
   @override
   MigrationStrategy get migration {
@@ -861,6 +865,15 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(goodsReceiptItemsTable);
           } catch (e, st) {
             debugPrint('[AppDatabase] v50 goods_receipts create skipped: $e\n$st');
+          }
+        }
+        if (from < 51) {
+          // Local pull-only read cache of refund_settings (Phase 5 — lets the
+          // refund sheet check the approval threshold offline). Additive.
+          try {
+            await m.createTable(refundSettingsTable);
+          } catch (e, st) {
+            debugPrint('[AppDatabase] v51 refund_settings create skipped: $e\n$st');
           }
         }
       },
