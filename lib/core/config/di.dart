@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:pos/core/env/app_env.dart';
 import 'package:pos/core/security/secure_storage_service.dart';
+import 'package:pos/core/device/device_info_service.dart';
 
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/auth_context_dao.dart';
@@ -407,11 +408,13 @@ Future<void> initDI() async {
   sl.registerLazySingleton<IAuditLogRepository>(
     () => AuditLogRepositoryImpl(dao: sl<AuditLogsDao>()),
   );
+  sl.registerLazySingleton<DeviceInfoService>(() => DeviceInfoService());
   sl.registerLazySingleton<AuditLogService>(
     () => AuditLogService(
       dao: sl<AuditLogsDao>(),
       authContextDao: sl<AuthContextDao>(),
       activeBusinessContext: sl<ActiveBusinessContext>(),
+      deviceInfoService: sl<DeviceInfoService>(),
     ),
   );
 

@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/audit_logs_dao.dart';
 import 'package:pos/core/database/daos/auth_context_dao.dart';
+import 'package:pos/core/device/device_info_service.dart';
 import 'package:pos/core/session/active_business_context.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 
@@ -29,15 +30,18 @@ class AuditLogService {
   final AuditLogsDao _dao;
   final AuthContextDao _authContextDao;
   final ActiveBusinessContext _activeBusinessContext;
+  final DeviceInfoService _deviceInfoService;
   static const _uuid = Uuid();
 
   AuditLogService({
     required AuditLogsDao dao,
     required AuthContextDao authContextDao,
     required ActiveBusinessContext activeBusinessContext,
+    required DeviceInfoService deviceInfoService,
   }) : _dao = dao,
        _authContextDao = authContextDao,
-       _activeBusinessContext = activeBusinessContext;
+       _activeBusinessContext = activeBusinessContext,
+       _deviceInfoService = deviceInfoService;
 
   /// Write an audit log entry.  Fire-and-forget — errors are swallowed so
   /// audit logging never breaks the caller's flow.
@@ -83,6 +87,8 @@ class AuditLogService {
 
       if (resolvedBusinessId.isEmpty) return; // no session — skip silently
 
+      final deviceLabel = await _deviceInfoService.getDeviceLabel();
+
       // Tenant guard: if a session is active, never write a log attributed to a
       // different business than the active one. Drop it rather than corrupt
       // another tenant's audit trail.
@@ -117,6 +123,7 @@ class AuditLogService {
           entityId: Value(entityId),
           description: description,
           metadata: Value(jsonEncode(enrichedMetadata)),
+          deviceId: Value(deviceLabel),
         ),
       );
     } catch (e, st) {

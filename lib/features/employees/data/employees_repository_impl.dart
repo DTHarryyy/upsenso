@@ -127,6 +127,7 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
       businessId: businessId,
       authUserId: authUserId,
       fullName: fullName,
+      email: email,
       roleId: roleId,
       roleName: roleName,
       isActive: isActive,
