@@ -190,11 +190,31 @@ on budget" and hand clean numbers to an accountant.
 **Goal:** turn the app into a sellable SaaS platform.
 
 - **M7.1 Subscription / billing & plan enforcement** — the gap `CLAUDE.md`
-  already names (no real subscription exists today). Plans map to module + seat
-  limits; enforcement at the **module gate + RLS**, not UI. Offline grace period
-  with cached entitlement (last-known-good), re-validate on sync.
-  - New `subscriptions` / `plan_entitlements` (server source of truth; cached
-    locally read-only). Permission `billing.manage`; owner-only.
+  already names (no real subscription exists today). **Full spec:
+  `docs/UPSENSO_SUBSCRIPTION_AND_LIMITS_DESIGN.md`.** Summary:
+  - **Fair-to-customer, offline-first by design:** the POS never stops selling,
+    you always own/export your data, limits are on *value* dimensions
+    (branches, seats, advanced modules) — never on number of receipts — and a
+    generous offline grace window means a lapsed/offline device degrades premium
+    features to read-only rather than locking the owner out.
+  - **Plans:** Free (1 branch / 2 seats) → Growth ($29/mo) → Business ($79/mo)
+    → Enterprise (custom), each unlocking modules/AI/fraud/CRM/accounting by tier.
+  - **Pricing is derived, not guessed:** tiers ladder ~2.7×, seat add-ons priced
+    below blended rate, with a COGS floor to validate before launch.
+  - **Yearly discount = "2 months free" (16.667%), calculated not invented:**
+    `annual = monthly × 10`, driven by a single `discount_months_free = 2`
+    constant so prices can't drift (Growth $290/yr saves $58; Business $790/yr
+    saves $158). Customers can verify the saving themselves.
+  - **Enforcement = a third gate layer:** `plan_entitlement ∩ business_module ∩
+    permission`, wrapping the existing two-layer system. Limits enforced
+    server-side in RLS (branch/seat counts, premium writes) against the
+    authoritative `subscriptions` row; cached `entitlement_cache` (Drift,
+    read-only) drives offline UX with a sync-timestamp-based grace window
+    (clock-tamper resistant).
+  - New Supabase `plans` / `plan_limits` / `subscriptions` /
+    `subscription_events` (hash-chained, reusing M1) — client-read-only, writes
+    are billing-webhook/service-role only. Permission `billing.manage`;
+    owner-only.
 - **M7.2 Multi-currency** — currency per business/branch; display + reporting.
 - **M7.3 Hardware & integrations** — deepen receipt/label printing
   (`print_bluetooth_thermal` exists), barcode scanning, payment-terminal hooks.
