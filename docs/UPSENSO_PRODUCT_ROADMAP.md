@@ -197,14 +197,24 @@ on budget" and hand clean numbers to an accountant.
     (branches, seats, advanced modules) — never on number of receipts — and a
     generous offline grace window means a lapsed/offline device degrades premium
     features to read-only rather than locking the owner out.
-  - **Plans:** Free (1 branch / 2 seats) → Growth ($29/mo) → Business ($79/mo)
-    → Enterprise (custom), each unlocking modules/AI/fraud/CRM/accounting by tier.
-  - **Pricing is derived, not guessed:** tiers ladder ~2.7×, seat add-ons priced
-    below blended rate, with a COGS floor to validate before launch.
+  - **Plans (PHP, PH market):** Free (1 branch / 2 seats / 2 devices / 100
+    products) → Growth (₱499/mo) → Business (₱1,299/mo) → Enterprise (custom),
+    each unlocking modules/AI/fraud/CRM/accounting by tier.
+  - **Pricing is derived, not guessed:** tiers ladder ~2.6×, seat add-ons priced
+    below blended rate (₱99→₱79), with a COGS floor to validate before launch.
   - **Yearly discount = "2 months free" (16.667%), calculated not invented:**
     `annual = monthly × 10`, driven by a single `discount_months_free = 2`
-    constant so prices can't drift (Growth $290/yr saves $58; Business $790/yr
-    saves $158). Customers can verify the saving themselves.
+    constant so prices can't drift (Growth ₱4,990/yr saves ₱998; Business
+    ₱12,990/yr saves ₱2,598). Customers can verify the saving themselves.
+  - **Offline-first limit enforcement (the multi-device problem):** a hard global
+    cap is impossible without write-time coordination, so we use **optimistic
+    edge soft-checks + authoritative server reconciliation that never deletes
+    data**. If offline devices collectively overshoot a limit (e.g. 100-product
+    Free cap), all rows persist and stay sellable; the account enters an
+    `over_limit` state that soft-locks only *new* creates until upgrade or
+    archive. Abuse is bounded by an online-only **device cap** and a server-side
+    `COUNT(*)` a tampered client can't shrink — so the exploit yields nothing
+    durable. Optional quota-leasing documented for true hard caps.
   - **Enforcement = a third gate layer:** `plan_entitlement ∩ business_module ∩
     permission`, wrapping the existing two-layer system. Limits enforced
     server-side in RLS (branch/seat counts, premium writes) against the
