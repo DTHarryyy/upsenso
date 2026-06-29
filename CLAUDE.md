@@ -192,6 +192,16 @@ Read these before deep work in the matching area — do not re-derive what's alr
 - `delta_sync_design.md` — offline delta-sync design
 - `AI_CONTEXT.md` — AI assistant context
 
+### Product/roadmap & launch docs (read these to resume work across sessions)
+- **`UPSENSO_EXECUTION_SEQUENCE.md`** — **START HERE.** The live, ordered task
+  list + a "Current position / session handoff" footer with exactly what's done,
+  what's pending verification, and the next action. The source of truth for "what
+  do we do next."
+- `UPSENSO_PRODUCT_ROADMAP.md` — milestones M1–M8 (the what & why)
+- `UPSENSO_FRAUD_AND_AUDIT_CHAIN_DESIGN.md` — M1 deep spec (fraud + hash-chained audit)
+- `UPSENSO_SUBSCRIPTION_AND_LIMITS_DESIGN.md` — M7.1 (PHP pricing, offline limit enforcement)
+- `UPSENSO_BIR_COMPLIANCE.md` — M-BIR invoice/receipt compliance + §9 pre-accreditation mode
+
 ## Testing
 - New repositories → unit tests. Critical flows → integration tests. Bug fixes → regression tests.
 - Write tests for: repository methods (mock both local and remote), permission resolution logic, sync status transitions, error states and edge cases.

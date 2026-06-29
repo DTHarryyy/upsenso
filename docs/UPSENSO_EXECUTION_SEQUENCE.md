@@ -213,7 +213,50 @@ From `CLAUDE.md` — a step isn't `[x]` until all hold:
 8. Tests for critical paths; `flutter analyze` + `flutter test` green.
 9. AI-queryable where relevant (branch-filtered, permission-scoped).
 
-## Current position
+## 📌 Current position / session handoff
 
-- ✅ Planning docs complete (roadmap, fraud+audit, subscription/limits, this).
-- ⬜ **Next action: Step 0**, then Phase 1 Task 1 (the canonical serializer).
+> Live status so any session (or a fresh Claude one — no memory between sessions)
+> resumes exactly here. **Last updated: 2026-06-29.**
+
+### Active priority order
+**M2 (AI insights) → M5 (CRM) → M1 (fraud+audit, deferred) → M-BIR → M-LEGAL → ship.**
+(See the "Priority override" section near the top for the rationale.)
+
+### Done
+- ✅ All planning/spec docs (on `main`): `UPSENSO_PRODUCT_ROADMAP.md`,
+  this file, `UPSENSO_FRAUD_AND_AUDIT_CHAIN_DESIGN.md`,
+  `UPSENSO_SUBSCRIPTION_AND_LIMITS_DESIGN.md`, `UPSENSO_BIR_COMPLIANCE.md`.
+- ✅ **M2 Task 1 code WRITTEN (commit on feature branch)** —
+  `lib/features/ai_assistant/services/ai_tool_service.dart`: `getSalesTrend`,
+  `previousPeriod`, `SalesTrendResult`, `getApprovedExpenseTotal`; tests in
+  `test/features/ai_assistant/ai_tool_service_analytics_test.dart`.
+
+### ⚠️ Pending verification (BLOCKER before continuing M2)
+- ❗ **M2 Task 1 is UNVERIFIED.** The remote env has **no Flutter SDK**, so
+  `flutter analyze` / `flutter test` were NOT run. **User will test locally
+  (~2026-06-30):**
+  ```
+  git checkout claude/platform-features-roadmap-7bqdgn
+  flutter pub get
+  flutter analyze lib/features/ai_assistant/services/ai_tool_service.dart
+  flutter test test/features/ai_assistant/ai_tool_service_analytics_test.dart
+  ```
+  Do NOT build on top of this code until it's green locally.
+
+### Next action (after the above is green)
+- ⬜ Finish **Task 16**: `getTopProducts` (reuse `getSalesByProduct`) + low-stock
+  count (confirm `product_variants` low-stock threshold column first).
+- ⬜ **Task 17** insights generator → **18** `insights.view` permission → **19**
+  dashboard card.
+
+### Repo/branch state
+- **Code lives on `claude/platform-features-roadmap-7bqdgn` only.** `main` holds
+  **docs only** (code reaches `main` via PR after the user verifies).
+- PR #11 already merged (docs). No open PR for the M2 code yet.
+- Working rule this project: docs → `main` on request; **unverified code stays on
+  the feature branch** until the user runs the gates.
+
+### Environment note for future sessions
+- No Flutter/Dart SDK in the remote execution env → you cannot run
+  `analyze`/`test`/`build_runner` here. Write code + self-review; the user runs
+  the gates. Say so honestly; never claim tests passed.
