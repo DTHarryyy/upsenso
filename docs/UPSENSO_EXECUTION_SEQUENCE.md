@@ -151,12 +151,21 @@ driven (see the roadmap's dependency graph).
 23. [ ] **M5 Customers/CRM + loyalty** — new `customers` module, link to
         transactions/refunds, loyalty ledger.
 24. [ ] **M6 Money** — reports overhaul, tax engine, accounting export, budgets.
-25. [ ] **M7.1 Subscription & limits** — spec in
+25. [ ] **M-BIR — BIR compliance & invoice (CRITICAL, pre-commercial-launch)** —
+        full spec in `UPSENSO_BIR_COMPLIANCE.md`. The legal gate before selling
+        to any registered PH business. Highlights: rename the document to
+        **INVOICE** (EOPT), all mandatory invoice fields + VAT breakdown +
+        SC/PWD discounts, **per-device gapless sequential numbering** (offline-
+        safe via `pos_devices` series), Accumulated Grand Total, X/Z readings,
+        tamper-proof (reuses M1 audit chain), then eAccReg enrollment + TWG demo.
+        Build the `pos_devices` model **together with** M7.1's device cap. Note:
+        once accredited, major invoice-logic changes require **re-accreditation**.
+26. [ ] **M7.1 Subscription & limits** — spec in
         `UPSENSO_SUBSCRIPTION_AND_LIMITS_DESIGN.md` (PHP pricing, entitlement
         layer, offline distributed-limit reconciliation). Needs a payment gateway
         (GCash/Maya/card) — its own sub-project.
-26. [ ] **M7.2–7.4** multi-currency, hardware/integrations, push notifications.
-27. [ ] **M8** (continuous) — delta-sync at scale + conflict UI, security/RLS
+27. [ ] **M7.2–7.4** multi-currency, hardware/integrations, push notifications.
+28. [ ] **M8** (continuous) — delta-sync at scale + conflict UI, security/RLS
         audit, CI test gates, performance, web parity.
 
 ---
