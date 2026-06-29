@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconly/iconly.dart';
 import 'package:pos/core/config/di.dart';
@@ -8,9 +9,13 @@ import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/routes/app_routes.dart';
+import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/core/widgets/app_sub_page_bar.dart';
 import 'package:pos/core/widgets/user_avatar.dart';
+import 'package:pos/features/audit_logs/domain/repositories/i_audit_log_repository.dart';
 import 'package:pos/features/employees/domain/entities/employee.dart';
+import 'package:pos/features/employees/presentation/bloc/employee_activity_cubit.dart';
+import 'package:pos/features/employees/presentation/bloc/employee_activity_state.dart';
 import 'package:pos/features/employees/presentation/widgets/employee_role_badge.dart';
 import 'package:pos/features/employees/presentation/widgets/employee_status_badge.dart';
 
@@ -50,7 +55,7 @@ class EmployeeDetailsPage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
-          _EmployeeProfileHeader(employee: employee, branchName: branchName),
+          _EmployeeProfileHeader(employee: employee),
           const SizedBox(height: 8),
           _EmployeeOverviewCard(employee: employee, branchName: branchName),
           const SizedBox(height: 8),
@@ -62,7 +67,12 @@ class EmployeeDetailsPage extends StatelessWidget {
             _ManagerPinCard(employee: employee),
             const SizedBox(height: 8),
           ],
-          _SecurityActivityCard(employee: employee),
+          BlocProvider(
+            create: (_) =>
+                EmployeeActivityCubit(sl<IAuditLogRepository>())
+                  ..load(employee),
+            child: const _SecurityActivityCard(),
+          ),
           const SizedBox(height: 16),
         ],
       ),
@@ -85,17 +95,11 @@ class EmployeeDetailsPage extends StatelessWidget {
 
 class _EmployeeProfileHeader extends StatelessWidget {
   final Employee employee;
-  final String? branchName;
 
-  const _EmployeeProfileHeader({
-    required this.employee,
-    required this.branchName,
-  });
+  const _EmployeeProfileHeader({required this.employee});
 
   @override
   Widget build(BuildContext context) {
-    final branch = branchName ?? employee.branchId ?? '—';
-
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -128,31 +132,9 @@ class _EmployeeProfileHeader extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(
-                      IconlyLight.location,
-                      size: 13,
-                      color: AppColors.textMuted,
-                    ),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        branch,
-                        style: getOutfitStyle(
-                          fontSize: 12,
-                          color: AppColors.textMuted,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    EmployeeRoleBadge(roleName: employee.roleName),
-                    const SizedBox(width: 6),
-                    EmployeeStatusBadge(isActive: employee.isActive),
-                  ],
-                ),
+                // Role/branch dropped here — Employee Overview below already
+                // shows both, so only status is worth surfacing in the header.
+                EmployeeStatusBadge(isActive: employee.isActive),
                 const SizedBox(height: 6),
               ],
             ),
@@ -419,9 +401,7 @@ class _ManagerPinCard extends StatelessWidget {
 // ── Security & Activity Card ───────────────────────────────────────────────
 
 class _SecurityActivityCard extends StatelessWidget {
-  final Employee employee;
-
-  const _SecurityActivityCard({required this.employee});
+  const _SecurityActivityCard();
 
   @override
   Widget build(BuildContext context) {
@@ -430,31 +410,47 @@ class _SecurityActivityCard extends StatelessWidget {
       iconColor: AppColors.success,
       title: 'Security & Activity',
       children: [
-        _InfoRow(
-          icon: IconlyLight.time_circle,
-          label: 'Last Login',
-          value: 'Not available',
-          valueStyle: getOutfitStyle(fontSize: 13, color: AppColors.textMuted),
-        ),
-        _Divider(),
-        _InfoRow(
-          icon: IconlyLight.scan,
-          label: 'Device',
-          value: 'Not available',
-          valueStyle: getOutfitStyle(fontSize: 13, color: AppColors.textMuted),
-        ),
-        _Divider(),
-        _InfoRow(
-          icon: IconlyLight.danger,
-          label: 'Fraud Flags',
-          child: _FraudFlagBadge(flagCount: 0),
-        ),
-        _Divider(),
-        _InfoRow(
-          icon: IconlyLight.activity,
-          label: 'Recent Activity',
-          value: 'No recent activity',
-          valueStyle: getOutfitStyle(fontSize: 13, color: AppColors.textMuted),
+        BlocBuilder<EmployeeActivityCubit, EmployeeActivityState>(
+          builder: (context, state) {
+            final loaded = state is EmployeeActivityLoaded ? state : null;
+            final lastLogin = loaded?.lastLogin;
+            final device = loaded?.device;
+            final recentLabel = loaded?.recentActivityLabel;
+            final recentTime = loaded?.recentActivityTime;
+            final mutedStyle = getOutfitStyle(
+              fontSize: 13,
+              color: AppColors.textMuted,
+            );
+
+            return Column(
+              children: [
+                _InfoRow(
+                  icon: IconlyLight.time_circle,
+                  label: 'Last Login',
+                  value: lastLogin != null
+                      ? '${AppFormatters.shortDate(lastLogin)} · ${AppFormatters.time12h(lastLogin)}'
+                      : 'Not available',
+                  valueStyle: mutedStyle,
+                ),
+                _Divider(),
+                _InfoRow(
+                  icon: IconlyLight.scan,
+                  label: 'Device',
+                  value: device ?? 'Not available',
+                  valueStyle: mutedStyle,
+                ),
+                _Divider(),
+                _InfoRow(
+                  icon: IconlyLight.activity,
+                  label: 'Recent Activity',
+                  value: recentLabel != null && recentTime != null
+                      ? '$recentLabel · ${AppFormatters.relativeDate(recentTime)}'
+                      : 'No recent activity',
+                  valueStyle: mutedStyle,
+                ),
+              ],
+            );
+          },
         ),
       ],
     );
