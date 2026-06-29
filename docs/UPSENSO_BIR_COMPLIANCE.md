@@ -159,6 +159,7 @@ This keeps UPSENSO both **offline-first** and **BIR-sequential**.
 ## 5. Schema gap analysis (concrete columns to add)
 
 ### `receipt_settings` (business/seller config) — add:
+- `invoiceMode` (`'provisional'` | `'official'`, default `'provisional'` — see §9)
 - `documentTitle` (default `'INVOICE'`)
 - `vatRegistered` (bool)
 - `ptuNumber`, `ptuDateIssued` (customer's Permit to Use / AC)
@@ -236,6 +237,9 @@ breakdown and prints "NON-VAT REG TIN".)
 ## 7. Build checklist (added to the execution sequence)
 
 Sequence within this milestone:
+0. [ ] **Pre-accreditation mode first (§9)** — `invoiceMode` flag, "ORDER SLIP"
+       title + non-official banner, Terms/onboarding notice. Ships *before*
+       everything below; lets you launch without accreditation.
 1. [ ] Reconcile `ReceiptSettings` entity ↔ Drift table (map currency/tax/VAT).
 2. [ ] Add seller BIR fields to `receipt_settings` (§5) + settings UI.
 3. [ ] `pos_devices` table + device registration (online-only) carrying MIN/SN/PTU/series.
@@ -268,7 +272,84 @@ work in `UPSENSO_SUBSCRIPTION_AND_LIMITS_DESIGN.md`. Build them together.
 sales logic require re-filing**. So freeze the BIR-critical surface, version it
 carefully, and batch changes — don't ship continuous tweaks to it.
 
+---
+
+## 9. Pre-accreditation mode (ship legally BEFORE accreditation)
+
+Accreditation gates serving *registered* businesses — but you can launch and even
+charge **before** it by making UPSENSO's printout an explicitly **non-official**
+document. This is a legitimate, common bridge: an un-accredited system may
+generate internal sales slips, it just may not generate *official* tax receipts.
+
+### 9.1 Who this protects (be precise)
+
+- **You (developer): fully protected.** A clearly-marked non-official document
+  is an internal sales-management tool, not a receipting machine → **no
+  accreditation required** for it.
+- **The user (business): only partly.** The disclaimer does **not** exempt a
+  registered business from its legal duty to issue an official BIR receipt/
+  invoice by some other means. UPSENSO must **not imply** its slip is official.
+  State this plainly (§9.3) so no one is misled.
+
+### 9.2 The feature flag
+
+A single business-level setting drives the whole document:
+
+```
+receipt_settings.invoiceMode  ∈  { 'provisional', 'official' }
+   • 'provisional' (default until accredited):
+        - Document title = "ORDER SLIP" / "SALES SUMMARY" (NEVER "INVOICE")
+        - Prints the non-official banner (§9.3) prominently
+        - No accreditation/PTU/MIN block required
+        - AGT / Z-reading still run internally (good practice + demo-ready)
+   • 'official' (only after the business is accredited + has a PTU/AC):
+        - Document title = "INVOICE" / "SALES INVOICE"
+        - Full §2 field set + accreditation footer
+        - Locked: switching ON requires accreditation no. + PTU/AC present
+```
+
+Flipping `provisional → official` is the launch switch once accreditation lands —
+**no rebuild**, just enable the already-built §2/§3 machinery. Guard the flag so
+it can't be set to `'official'` without the accreditation/PTU fields filled.
+
+### 9.3 Required wording in provisional mode
+
+On every printout (header or footer, prominent):
+
+> **THIS IS NOT AN OFFICIAL INVOICE/RECEIPT — FOR INTERNAL USE ONLY**
+
+Do **not** use the word "INVOICE" as the document title while provisional (it
+implies official). Use "ORDER SLIP" or "SALES SUMMARY."
+
+### 9.4 Required Terms / onboarding language
+
+Surface this in Terms of Service **and** first-run onboarding:
+
+> "UPSENSO is a business-management tool. In provisional mode, the documents it
+> generates are **not** BIR-official receipts or invoices. Registered businesses
+> remain solely responsible for issuing official receipts/invoices in compliance
+> with BIR rules. Official invoicing becomes available only after UPSENSO and the
+> business complete BIR accreditation/registration."
+
+This explicit notice is what protects you from any claim that you misled users.
+
+### 9.5 Rollout
+
+```
+Phase 1 (now → early users):  invoiceMode='provisional'  → no accreditation needed
+Phase 2 (ready for formal SMBs): accredit (M-BIR) → flip to 'official' per business
+```
+
+Provisional mode is the default everywhere; `official` unlocks per-business once
+that business is BIR-registered and UPSENSO is accredited. The two coexist —
+different customers can be in different modes.
+
+> Not legal advice — confirm the exact disclaimer + Terms wording with a PH tax
+> consultant before launch. But "clearly-marked non-official internal document +
+> explicit user notice" is a well-established, low-risk pre-accreditation path.
+
+---
+
 **Sources:** RR 7-2024 / RR 11-2024 / RMC 77-2024 (invoice content & EOPT),
 RR 11-2004 (machine/functional), RMO 24-2023 (eAccReg process), RA 9994 / RA
 10754 (SC/PWD). Validate all with a PH tax consultant before filing.
-```
