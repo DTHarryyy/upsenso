@@ -3,14 +3,20 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/audit_logs_dao.dart';
+import 'package:pos/features/audit_logs/data/datasources/audit_log_remote_ds.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/features/audit_logs/domain/entities/audit_log.dart';
 import 'package:pos/features/audit_logs/domain/repositories/i_audit_log_repository.dart';
 
 class AuditLogRepositoryImpl implements IAuditLogRepository {
   final AuditLogsDao _dao;
+  final AuditLogRemoteDs _remoteDs;
 
-  AuditLogRepositoryImpl({required AuditLogsDao dao}) : _dao = dao;
+  AuditLogRepositoryImpl({
+    required AuditLogsDao dao,
+    required AuditLogRemoteDs remoteDs,
+  }) : _dao = dao,
+       _remoteDs = remoteDs;
 
   @override
   Future<List<AuditLog>> getLogs({
@@ -51,6 +57,45 @@ class AuditLogRepositoryImpl implements IAuditLogRepository {
           limit: limit,
         )
         .map((rows) => rows.map(_toEntity).toList());
+  }
+
+  @override
+  Future<List<AuditLog>> getRemoteUserLogs({
+    required String businessId,
+    required String userId,
+    String? actionType,
+    int limit = 1,
+  }) async {
+    final rows = await _remoteDs.getByUser(
+      businessId,
+      userId,
+      actionType: actionType,
+      limit: limit,
+    );
+    return rows.map(_toEntityFromRemote).toList();
+  }
+
+  AuditLog _toEntityFromRemote(Map<String, dynamic> row) {
+    final rawMetadata = row['metadata'];
+    final metadata = rawMetadata is Map
+        ? Map<String, dynamic>.from(rawMetadata)
+        : <String, dynamic>{};
+    return AuditLog(
+      id: row['id'] as String,
+      businessId: row['business_id'] as String,
+      branchId: row['branch_id'] as String? ?? '',
+      userId: row['user_id'] as String? ?? '',
+      actionType:
+          AuditLogActionTypeX.fromValue(row['action_type'] as String? ?? '') ??
+          AuditLogActionType.syncStarted,
+      entityType: row['entity_type'] as String? ?? '',
+      entityId: row['entity_id'] as String?,
+      description: row['description'] as String? ?? '',
+      metadata: metadata,
+      deviceId: row['device_id'] as String? ?? 'unknown',
+      createdAt: DateTime.parse(row['created_at'] as String).toLocal(),
+      syncStatus: 1,
+    );
   }
 
   AuditLog _toEntity(AuditLogRow row) {

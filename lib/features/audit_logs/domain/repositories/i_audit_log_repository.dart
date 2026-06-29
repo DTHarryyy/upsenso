@@ -20,4 +20,14 @@ abstract class IAuditLogRepository {
     String? actionType,
     int limit = 200,
   });
+
+  /// Fetches a user's most recent logs directly from Supabase — online-only,
+  /// no local fallback. Use when the viewer's device may not hold the
+  /// target user's local audit trail (e.g. a different employee's activity).
+  Future<List<AuditLog>> getRemoteUserLogs({
+    required String businessId,
+    required String userId,
+    String? actionType,
+    int limit = 1,
+  });
 }

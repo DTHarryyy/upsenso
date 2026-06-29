@@ -7,7 +7,12 @@ import 'package:pos/features/employees/domain/entities/employee.dart';
 import 'package:pos/features/employees/presentation/bloc/employee_activity_state.dart';
 
 /// Resolves Last Login, Device, and Recent Activity for the Security &
-/// Activity card from the employee's own audit log trail.
+/// Activity card.
+///
+/// Reads straight from Supabase rather than the local audit trail: the
+/// employee being viewed may have logged in / acted on a different device
+/// than the one viewing this page, and audit logs only sync device → server,
+/// never back down — so the local DB can't be relied on here.
 class EmployeeActivityCubit extends Cubit<EmployeeActivityState> {
   final IAuditLogRepository _repository;
 
@@ -21,13 +26,13 @@ class EmployeeActivityCubit extends Cubit<EmployeeActivityState> {
       return;
     }
     try {
-      final loginLogs = await _repository.getLogs(
+      final loginLogs = await _repository.getRemoteUserLogs(
         businessId: employee.businessId,
         userId: authUserId,
         actionType: AuditLogActionType.userLogin.value,
         limit: 1,
       );
-      final recentLogs = await _repository.getLogs(
+      final recentLogs = await _repository.getRemoteUserLogs(
         businessId: employee.businessId,
         userId: authUserId,
         limit: 1,

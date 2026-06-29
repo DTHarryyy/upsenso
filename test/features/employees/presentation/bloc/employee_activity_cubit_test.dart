@@ -54,7 +54,7 @@ void main() {
       build: () => EmployeeActivityCubit(repository),
       setUp: () {
         when(
-          () => repository.getLogs(
+          () => repository.getRemoteUserLogs(
             businessId: 'biz1',
             userId: 'auth1',
             actionType: AuditLogActionType.userLogin.value,
@@ -70,7 +70,7 @@ void main() {
           ],
         );
         when(
-          () => repository.getLogs(businessId: 'biz1', userId: 'auth1', limit: 1),
+          () => repository.getRemoteUserLogs(businessId: 'biz1', userId: 'auth1', limit: 1),
         ).thenAnswer(
           (_) async => [
             buildLog(actionType: AuditLogActionType.saleCreated, createdAt: recentTime),
@@ -96,7 +96,7 @@ void main() {
       build: () => EmployeeActivityCubit(repository),
       setUp: () {
         when(
-          () => repository.getLogs(
+          () => repository.getRemoteUserLogs(
             businessId: 'biz1',
             userId: 'auth1',
             actionType: AuditLogActionType.userLogin.value,
@@ -108,7 +108,7 @@ void main() {
           ],
         );
         when(
-          () => repository.getLogs(businessId: 'biz1', userId: 'auth1', limit: 1),
+          () => repository.getRemoteUserLogs(businessId: 'biz1', userId: 'auth1', limit: 1),
         ).thenAnswer((_) async => []);
       },
       act: (cubit) => cubit.load(employee),
@@ -133,7 +133,12 @@ void main() {
             .having((s) => s.recentActivityLabel, 'recentActivityLabel', isNull),
       ],
       verify: (_) {
-        verifyNever(() => repository.getLogs(businessId: any(named: 'businessId')));
+        verifyNever(
+          () => repository.getRemoteUserLogs(
+            businessId: any(named: 'businessId'),
+            userId: any(named: 'userId'),
+          ),
+        );
       },
     );
 
@@ -142,7 +147,7 @@ void main() {
       build: () => EmployeeActivityCubit(repository),
       setUp: () {
         when(
-          () => repository.getLogs(
+          () => repository.getRemoteUserLogs(
             businessId: 'biz1',
             userId: 'auth1',
             actionType: AuditLogActionType.userLogin.value,
