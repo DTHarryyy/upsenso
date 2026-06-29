@@ -38,16 +38,25 @@ class AuditLogRemoteDs {
     String businessId,
     String userId, {
     String? actionType,
+    List<String>? excludeActionTypes,
     int limit = 1,
   }) async {
-    final filter = _client
+    var filter = _client
         .from('audit_logs')
         .select()
         .eq('business_id', businessId)
         .eq('user_id', userId);
-    final response = await (actionType != null
-            ? filter.eq('action_type', actionType)
-            : filter)
+    if (actionType != null) {
+      filter = filter.eq('action_type', actionType);
+    }
+    if (excludeActionTypes != null && excludeActionTypes.isNotEmpty) {
+      filter = filter.not(
+        'action_type',
+        'in',
+        '(${excludeActionTypes.join(',')})',
+      );
+    }
+    final response = await filter
         .order('created_at', ascending: false)
         .limit(limit);
     return List<Map<String, dynamic>>.from(response);

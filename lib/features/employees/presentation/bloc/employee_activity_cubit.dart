@@ -32,9 +32,15 @@ class EmployeeActivityCubit extends Cubit<EmployeeActivityState> {
         actionType: AuditLogActionType.userLogin.value,
         limit: 1,
       );
+      // Login/logout already surface via "Last Login" above, so excluding
+      // them here keeps Recent Activity meaningful rather than redundant.
       final recentLogs = await _repository.getRemoteUserLogs(
         businessId: employee.businessId,
         userId: authUserId,
+        excludeActionTypes: [
+          AuditLogActionType.userLogin.value,
+          AuditLogActionType.userLogout.value,
+        ],
         limit: 1,
       );
 

@@ -64,12 +64,14 @@ class AuditLogRepositoryImpl implements IAuditLogRepository {
     required String businessId,
     required String userId,
     String? actionType,
+    List<String>? excludeActionTypes,
     int limit = 1,
   }) async {
     final rows = await _remoteDs.getByUser(
       businessId,
       userId,
       actionType: actionType,
+      excludeActionTypes: excludeActionTypes,
       limit: limit,
     );
     return rows.map(_toEntityFromRemote).toList();
