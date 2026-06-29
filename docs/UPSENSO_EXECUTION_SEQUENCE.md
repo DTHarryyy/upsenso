@@ -170,6 +170,32 @@ driven (see the roadmap's dependency graph).
 
 ---
 
+## 🚦 Pre-ship launch gate (do LAST, before any public/commercial release)
+
+These are not features — they're the legal/trust requirements that must be in
+place **before real users touch the app**. App stores also require them.
+
+29. [ ] **M-LEGAL — Terms, Privacy & Data Privacy Act** (do last, before ship):
+    - [ ] **Privacy Policy** (required by Google Play / App Store; explains what
+          data is collected, why, retention, user rights).
+    - [ ] **Terms of Service** — including the **provisional-invoice notice** from
+          `UPSENSO_BIR_COMPLIANCE.md` §9.4 (UPSENSO docs are not BIR-official in
+          provisional mode; businesses remain responsible for official receipts).
+    - [ ] **Data Privacy Act (RA 10173)** compliance — you process personal data
+          (employees, customers): lawful basis, consent where needed, security
+          measures, breach-response plan; register with the **NPC** if/when you
+          meet the thresholds (sensitive data / scale).
+    - [ ] In-app **first-run consent / acceptance** of Terms + Privacy.
+    - [ ] Confirm **business + BIR registration** is done *if* taking real
+          payments at launch (see `UPSENSO_BIR_ACTION_PLAN`); free beta with the
+          §9 non-official disclaimer needs no registration.
+
+> This gate is independent of feature milestones — even a free beta with real
+> users needs Privacy + Terms. Keep it as the final checklist before flipping the
+> app public.
+
+---
+
 ## Definition of done — applies to EVERY step above
 
 From `CLAUDE.md` — a step isn't `[x]` until all hold:
