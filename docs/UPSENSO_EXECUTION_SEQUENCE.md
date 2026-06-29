@@ -6,9 +6,27 @@
 > hard parts live in `UPSENSO_FRAUD_AND_AUDIT_CHAIN_DESIGN.md` and
 > `UPSENSO_SUBSCRIPTION_AND_LIMITS_DESIGN.md`. **This doc says what to do first.**
 
+## Priority override (current decision)
+
+The product owner chose to **lead with visible value** rather than the trust
+spine. So the near-term order is **M2 (proactive AI insights) → M5 (CRM
+foundation)**, with **M1 (fraud + audit chain) deferred to the milestone right
+after** (its full spec stays valid, just rescheduled). The phase numbering below
+is unchanged for reference; the *active* work order is:
+
+1. **Step 0 — Foundations** (below)
+2. **Phase 3 — M2 Proactive AI Insights**  ⬅️ *in progress*
+3. **M5 — CRM foundation** (customers + purchase history; loyalty stretch)
+4. **Phase 1 + 2 — M1 audit chain + fraud engine** (deferred, next milestone)
+
+Rationale: the AI assistant already exists, so making it *proactive* is the
+highest-leverage, most demoable win; CRM fills the biggest functional gap
+(customers are only a text field today). See the chat decision for full reasoning.
+
 ## How to use this
 
-- Work **top to bottom**. Each step is gated on the one before it.
+- Work **top to bottom** *within the active order above*. Each step is gated on
+  the one before it.
 - Finish a step *completely* (code → codegen → migration → RLS → tests → device
   QA) before starting the next. Vertical slices, not many half-built features.
 - `[ ]` = todo · `[~]` = in progress · `[x]` = done. Update as you go so any
@@ -101,11 +119,13 @@ all tests green.
 
 Spec: `UPSENSO_PRODUCT_ROADMAP.md` M2. Reuses the existing AI pipeline.
 
-16. [ ] **Analytics tool methods** in `ai_tool_service.dart` (branch-filtered,
-        permission-aware like existing queries): `getSalesTrend`,
-        `getTopProducts`, `getMarginMovers`, `getExpenseAnomalies`,
-        `getFraudSummary` (reads Phase 2).
-    - [ ] Tests for each query (totals, branch filter, permission scope).
+16. [~] **Analytics tool methods** in `ai_tool_service.dart` (branch-filtered,
+        permission-aware like existing queries):
+    - [x] `getSalesTrend` (+ `previousPeriod` helper, `SalesTrendResult`) and
+          `getApprovedExpenseTotal` — with pure-logic unit tests for the
+          period math.
+    - [ ] `getTopProducts` (reuse existing `getSalesByProduct`), low-stock count,
+          `getMarginMovers`, `getFraudSummary` (the last reads Phase 2 / M1).
 17. [ ] **Insights generator** — deterministic metrics compute the numbers; LLM
         only phrases them; template fallback when no model (web).
 18. [ ] **Permissions** — `insights.view` (module `reports`); matrices; diff check.
