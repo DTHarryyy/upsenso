@@ -28,6 +28,7 @@ abstract class IAuditLogRepository {
     required String businessId,
     required String userId,
     String? actionType,
+    List<String>? excludeActionTypes,
     int limit = 1,
   });
 }

@@ -70,7 +70,15 @@ void main() {
           ],
         );
         when(
-          () => repository.getRemoteUserLogs(businessId: 'biz1', userId: 'auth1', limit: 1),
+          () => repository.getRemoteUserLogs(
+            businessId: 'biz1',
+            userId: 'auth1',
+            excludeActionTypes: [
+              AuditLogActionType.userLogin.value,
+              AuditLogActionType.userLogout.value,
+            ],
+            limit: 1,
+          ),
         ).thenAnswer(
           (_) async => [
             buildLog(actionType: AuditLogActionType.saleCreated, createdAt: recentTime),
@@ -108,7 +116,15 @@ void main() {
           ],
         );
         when(
-          () => repository.getRemoteUserLogs(businessId: 'biz1', userId: 'auth1', limit: 1),
+          () => repository.getRemoteUserLogs(
+            businessId: 'biz1',
+            userId: 'auth1',
+            excludeActionTypes: [
+              AuditLogActionType.userLogin.value,
+              AuditLogActionType.userLogout.value,
+            ],
+            limit: 1,
+          ),
         ).thenAnswer((_) async => []);
       },
       act: (cubit) => cubit.load(employee),
