@@ -1,5 +1,89 @@
 # CLAUDE.md — UPSENSO Project Rules (enforced every prompt)
 
+## What This Is
+UPSENSO ("Manage your business smarter") is an **offline-first Flutter POS + business-management app**. It covers point-of-sale, inventory, products/recipes, procurement, expenses, sales/refunds, employees, reporting, and an on-device AI assistant — all behind a two-layer RBAC + module-gate permission system.
+
+- Dart package name: `pos` · Android app id: `com.ledgidy.pos` · version lives in `pubspec.yaml` (`version: x.y.z+build`).
+- Targets **all six Flutter platforms** (`android`, `ios`, `web`, `macos`, `linux`, `windows`). Primary ships: Android (Play Store) and Web (Cloudflare Pages).
+- ~530 Dart files. Local source of truth is **Drift/SQLite**; **Supabase** is the remote backend (Postgres + Auth + RLS + RPC).
+
+## Tech Stack
+| Concern | Choice |
+|---|---|
+| Framework | Flutter (Dart SDK `^3.10.7`, stable channel) |
+| State management | `flutter_bloc` (Cubit + BLoC) |
+| Dependency injection | `get_it` — global locator `sl` configured in `lib/core/config/di.dart` |
+| Local database | `drift` over SQLite (`drift_flutter`, `sqlite3_flutter_libs`) — schema version in `app_database.dart` |
+| Remote backend | `supabase_flutter` (auth, Postgres, RLS, RPC) |
+| Routing | `go_router` — see `lib/app_router.dart` (guards enforce permissions) |
+| Charts / PDF | `fl_chart`, `pdf`, `printing`, `print_bluetooth_thermal` |
+| On-device AI | `nobodywho` (local LLM; mobile/desktop only — no web) for the AI assistant |
+| Config | compile-time `--dart-define-from-file` → `lib/core/env/app_env.dart` |
+| Codegen | `build_runner` + `drift_dev` (`*.g.dart`) |
+| Testing | `flutter_test`, `mocktail`, `bloc_test` |
+
+## Project Map
+```
+lib/
+  main.dart            App entrypoint: error handlers, splash, calls bootstrap()
+  bootstrap.dart       Startup order: Supabase → session recovery → DI → DB → auth → permissions
+  app_bootstrap.dart   Root MaterialApp.router wiring
+  app_router.dart      GoRouter routes + permission/redirect guards
+  theme_data.dart      App ThemeData
+  core/
+    config/di.dart     get_it registrations (~100 singletons/factories)
+    env/app_env.dart   Compile-time env (SUPABASE_URL, ANON_KEY, FLAVOR, …)
+    database/          Drift: app_database.dart, tables/ (32), daos/ (28), connection/
+    permissions/       RBAC + module gate (see Permission System section)
+    sync/              connectivity_service, sync_service, sync_status
+    services/          Cross-feature services: cart, checkout, refund, stock_movement,
+                       invoice_number, po_number, recipe_consumption, image
+    widgets/           Shared reusable widgets (App*, see Reusable Widgets section)
+    const/             app_colors, app_typography, app_strings, validators, breakpoint, …
+    branch/ session/ seeding/ audit/ security/ errors/ navigation/ utils/ theme/ ui/
+  features/<name>/     One folder per feature, clean-architecture layered (see below)
+test/                  Mirrors lib/ — mocktail + bloc_test
+supabase/migrations/   ~95 timestamped SQL migrations (source of truth for the remote schema)
+docs/                  Architecture, schema, RLS, permissions, access-control references
+tool/diff_matrices.dart   Diffs role vs. default permission matrices (keep them in sync)
+scripts/               DB backup helpers (backup_db.sh/.ps1)
+```
+
+### Feature folder layout (clean architecture)
+A full feature (e.g. `lib/features/auth/`, `products/`) follows:
+```
+data/        datasources/ (remote_ds, local_ds), models/, repositories/ (impl)
+domain/      entities/, repositories/ (interfaces), usecases/
+presentation/ bloc/ or cubit/, widgets/, pages
+```
+Simpler features collapse this (e.g. just `pages/` + `presentation/cubit/`). Follow the layering of the **feature you are editing**; don't impose a heavier structure than its neighbors.
+
+## Commands
+Env config is injected at compile time and the `flavors/` dir is **gitignored** — you must supply `flavors/dev.json` with `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `FLAVOR`, etc. (see `app_env.dart` for the full key list).
+
+```bash
+flutter pub get                                   # install deps
+
+# Run (always pass the dart-define file — app asserts env at startup)
+flutter run --dart-define-from-file=flavors/dev.json
+
+# Codegen — required after editing any Drift table/DAO or other generated code
+dart run build_runner build --delete-conflicting-outputs
+dart run build_runner watch  --delete-conflicting-outputs   # during active DB work
+
+# Quality gates
+flutter analyze                                   # lints (flutter_lints, excludes *.g.dart)
+flutter test                                      # unit/bloc tests
+flutter test test/core/permissions/              # scope to a dir/file
+
+# Builds
+flutter build web      --release --dart-define-from-file=flavors/prod.json
+flutter build appbundle --release --dart-define-from-file=flavors/prod.json \
+  --obfuscate --split-debug-info=build/debug-info/
+./build.sh                                         # Cloudflare Pages web build recipe
+```
+CI: `.github/workflows/deploy.yml` builds a signed App Bundle and uploads to the Play Store **production** track on every push to `main`. Web deploys to Cloudflare Pages via `build.sh`.
+
 ## Code Style
 - One file = one responsibility. Features in `lib/features/<name>/`. Shared code in `lib/core/`.
 - Split functions over ~40 lines into smaller named functions. No monolithic files.
@@ -48,6 +132,8 @@
 - Every migration needs a rollback strategy before running.
 - Never drop tables or columns without explicit approval. No destructive migrations automatically.
 - Before any schema change confirm: schema impact → offline impact → sync impact → existing data → rollback.
+- **Remote (Supabase):** schema is defined by the timestamped files in `supabase/migrations/` — they are the source of truth, never edit a table by hand without a migration. Reference docs live in `docs/UPSENSO_SCHEMA.md` and `docs/UPSENSO_RLS.md`.
+- **Local (Drift):** a Drift table/DAO change means bumping `schemaVersion` in `lib/core/database/app_database.dart`, writing the matching `onUpgrade` step, then re-running `build_runner`. Keep the Drift schema and the Supabase schema reconciled — synced entities must match on both sides.
 
 ## Security
 - No hardcoded secrets. Keys in env vars or secure config. Never expose `service_role` to the client.
@@ -94,6 +180,17 @@ Employee overrides: `null` = role default, `true` = explicit grant, `false` = ex
 6. If new top-level module: register in `BusinessModulesTable` + module settings page.
 7. Gate via `PermissionService.canAccessFeature()` in GoRouter guards **and** Bloc/UseCase logic.
 8. Hidden UI elements are not access control. Permission checks belong in business logic.
+
+> Run `dart run tool/diff_matrices.dart` to verify `role_permission_matrix.dart` and `default_permission_matrix.dart` stay in sync after touching either.
+
+## Reference Docs (`docs/`)
+Read these before deep work in the matching area — do not re-derive what's already documented:
+- `UPSENSO_ARCHITECTURE.md` — overall architecture & layering
+- `UPSENSO_SCHEMA.md` — Supabase/Postgres schema
+- `UPSENSO_RLS.md` — Row-Level Security policies
+- `UPSENSO_PERMISSIONS.md` / `UPSENSO_ACCESS_CONTROL.md` — full RBAC + module-gate model
+- `delta_sync_design.md` — offline delta-sync design
+- `AI_CONTEXT.md` — AI assistant context
 
 ## Testing
 - New repositories → unit tests. Critical flows → integration tests. Bug fixes → regression tests.
