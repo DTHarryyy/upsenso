@@ -405,7 +405,11 @@ Future<void> initDI() async {
     () => AuditLogRemoteDs(sl<SupabaseClient>()),
   );
   sl.registerLazySingleton<IAuditLogRepository>(
-    () => AuditLogRepositoryImpl(dao: sl<AuditLogsDao>()),
+    () => AuditLogRepositoryImpl(
+      dao: sl<AuditLogsDao>(),
+      remoteDs: sl<AuditLogRemoteDs>(),
+      connectivityService: sl<ConnectivityService>(),
+    ),
   );
   sl.registerLazySingleton<AuditLogService>(
     () => AuditLogService(

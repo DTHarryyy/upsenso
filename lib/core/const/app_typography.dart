@@ -87,4 +87,11 @@ class AppTextStyles {
     fontWeight: FontWeight.w700,
     height: 1.15,
   );
+
+  // Hero number on KPI/stat tiles.
+  static TextStyle kpiValue(BuildContext c) => getOutfitStyle(
+    fontSize: _fs(c, 22),
+    fontWeight: FontWeight.w800,
+    height: 1.15,
+  );
 }

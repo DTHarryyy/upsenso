@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 
@@ -37,7 +36,15 @@ class AppCard extends StatelessWidget {
 class AppStatCard extends StatelessWidget {
   final String title;
   final String value;
+
+  /// Short delta shown inside the trend pill — e.g. "+100%". Keep it brief;
+  /// the comparison window goes in [changePeriod] so neither truncates.
   final String? changeLabel;
+
+  /// Muted comparison window beside the pill — e.g. "vs last week". Optional;
+  /// omit it and only the pill shows.
+  final String? changePeriod;
+
   final bool? isPositive;
   final IconData icon;
 
@@ -53,6 +60,7 @@ class AppStatCard extends StatelessWidget {
     required this.title,
     required this.value,
     this.changeLabel,
+    this.changePeriod,
     this.isPositive,
     required this.icon,
     this.iconBg,
@@ -69,7 +77,9 @@ class AppStatCard extends StatelessWidget {
     final card = Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isSelected ? iconColor.withValues(alpha: 0.06) : AppColors.surface,
+        color: isSelected
+            ? iconColor.withValues(alpha: 0.06)
+            : AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isSelected ? iconColor : AppColors.borderSoft,
@@ -83,10 +93,44 @@ class AppStatCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
         children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.caption(context).copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.money(
+                    context,
+                  ).copyWith(color: AppColors.textPrimary),
+                ),
+                if (changeLabel != null) ...[
+                  const SizedBox(height: 6),
+                  _TrendRow(
+                    label: changeLabel!,
+                    period: changePeriod,
+                    positive: positive,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
           Container(
             width: 36,
             height: 36,
@@ -96,53 +140,6 @@ class AppStatCard extends StatelessWidget {
             ),
             child: Icon(icon, size: 18, color: iconColor),
           ),
-          const SizedBox(height: 12),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              maxLines: 1,
-              style: AppTextStyles.headline(
-                context,
-              ).copyWith(color: AppColors.textPrimary),
-            ),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.caption(context).copyWith(
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          if (changeLabel != null) ...[
-            const SizedBox(height: 6),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  positive ? IconlyBold.arrow_up_2 : IconlyBold.arrow_down_2,
-                  size: 14,
-                  color: positive ? AppColors.success : AppColors.error,
-                ),
-                const SizedBox(width: 4),
-                Flexible(
-                  child: Text(
-                    changeLabel!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.caption(context).copyWith(
-                      color: positive ? AppColors.success : AppColors.error,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
         ],
       ),
     );
@@ -155,6 +152,47 @@ class AppStatCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: card,
       ),
+    );
+  }
+}
+
+/// Trend line for [AppStatCard]: a trending-up/down glyph followed by the
+/// delta and its comparison window, all tinted green/red on one line.
+class _TrendRow extends StatelessWidget {
+  final String label;
+  final String? period;
+  final bool positive;
+
+  const _TrendRow({required this.label, this.period, required this.positive});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = positive ? AppColors.success : AppColors.error;
+    final size = (11 * ResponsiveTypography.scale(context)).roundToDouble();
+    final text = period == null ? label : '$label $period';
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          positive ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+          size: 14,
+          color: color,
+        ),
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.caption(context).copyWith(
+              fontSize: size,
+              color: color,
+              // fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -203,7 +241,6 @@ class StatCardsRow extends StatelessWidget {
           minTileWidth: minTileWidth,
           gap: gap,
         );
-
         final rows = <Widget>[];
         for (var i = 0; i < cards.length; i += columns) {
           if (i > 0) rows.add(SizedBox(height: gap));
@@ -216,7 +253,9 @@ class StatCardsRow extends StatelessWidget {
                 children: [
                   for (var j = 0; j < columns; j++) ...[
                     if (j > 0) SizedBox(width: gap),
-                    Expanded(child: j < slice.length ? slice[j] : const SizedBox()),
+                    Expanded(
+                      child: j < slice.length ? slice[j] : const SizedBox(),
+                    ),
                   ],
                 ],
               ),

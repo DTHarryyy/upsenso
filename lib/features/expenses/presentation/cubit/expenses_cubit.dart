@@ -41,6 +41,8 @@ class ExpensesCubit extends Cubit<ExpensesState> {
   bool get canApprove =>
       sl<PermissionService>().can(PermissionKeys.expensesApprove);
 
+  String? get currentUserId => _userId;
+
   bool get _shouldAutoApprove => canApprove;
 
   Future<void> startWatching({

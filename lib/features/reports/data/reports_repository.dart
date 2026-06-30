@@ -144,6 +144,12 @@ class ReportsRepository implements IReportsRepository {
     'Dec',
   ];
 
+  String _hourLabel(int hour) {
+    final period = hour < 12 ? 'AM' : 'PM';
+    final h12 = hour % 12 == 0 ? 12 : hour % 12;
+    return '$h12 $period';
+  }
+
   List<({DateTime start, DateTime end, String label})> _buildBuckets(
     DateTimeRange range,
     ReportPeriod period,
@@ -152,10 +158,23 @@ class ReportsRepository implements IReportsRepository {
     final rangeEnd = range.end.add(const Duration(days: 1));
     final rangeDays = range.end.difference(range.start).inDays + 1;
 
-    // Single-day periods.
+    // A single calendar day (Today/Yesterday/a one-day custom range) would
+    // otherwise collapse to one bucket — a one-point line chart. Break it
+    // into hours instead so the trend is actually visible.
+    if (rangeDays == 1) {
+      return List.generate(24, (h) {
+        final start = DateTime(cutoff.year, cutoff.month, cutoff.day, h);
+        return (
+          start: start,
+          end: start.add(const Duration(hours: 1)),
+          label: (h % 3 == 0 || h == 23) ? _hourLabel(h) : '',
+        );
+      });
+    }
+
+    // Two-day periods.
     if (rangeDays <= 2) {
-      final days = rangeDays;
-      return List.generate(days, (i) {
+      return List.generate(rangeDays, (i) {
         final day = cutoff.add(Duration(days: i));
         return (
           start: day,
@@ -465,6 +484,29 @@ class ReportsRepository implements IReportsRepository {
             .map((e) => CategoryStat(name: e.key, total: e.value))
             .toList()
           ..sort((a, b) => b.total.compareTo(a.total)));
+
+    // Per-product breakdown — full list sorted by revenue. The UI takes the
+    // top 5; the View-all sheet and exports use the whole list.
+    final productAgg = <String, _ProductAgg>{};
+    for (final item in currentItems) {
+      final agg = productAgg.putIfAbsent(
+        item.productName,
+        () => _ProductAgg(item.productName),
+      );
+      agg.qty += item.qty;
+      agg.revenue += item.lineTotal;
+    }
+    final productBreakdown =
+        (productAgg.values.toList()
+              ..sort((a, b) => b.revenue.compareTo(a.revenue)))
+            .map(
+              (a) => TopItem(
+                name: a.name,
+                sold: a.qty.toInt(),
+                revenue: a.revenue,
+              ),
+            )
+            .toList();
 
     // ── 5. Inventory Health ───────────────────────────────────────────────
     final activeVariants = variants
@@ -790,6 +832,7 @@ class ReportsRepository implements IReportsRepository {
       prevItemsSold: prevItemsSold,
       salesTrend: salesTrend,
       categoryBreakdown: categoryBreakdown,
+      productBreakdown: productBreakdown,
       lowStockCount: lowStockCount,
       fastMoversCount: fastMovers,
       deadStockCount: deadStockCount,
@@ -815,4 +858,11 @@ class _BranchAgg {
   int txnCount = 0;
   double revenue = 0;
   _BranchAgg(this.name);
+}
+
+class _ProductAgg {
+  final String name;
+  double qty = 0;
+  double revenue = 0;
+  _ProductAgg(this.name);
 }

@@ -42,9 +42,6 @@ class _ExpenseCard extends StatelessWidget {
 
   const _ExpenseCard({required this.item, required this.canApprove});
 
-  String _formatDate(DateTime d) =>
-      '${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}/${d.year}';
-
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<ExpensesCubit>();
@@ -74,7 +71,7 @@ class _ExpenseCard extends StatelessWidget {
             _Header(item: item),
             const SizedBox(height: 12),
             _MetaRow(
-              date: _formatDate(item.expenseDate),
+              date: AppFormatters.shortDate(item.expenseDate),
               branch: item.branchName ?? 'All',
               submittedBy: item.submittedByName,
             ),

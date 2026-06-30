@@ -234,13 +234,23 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
                 : '';
             final branchLabel =
                 ctx.read<BranchCubit>().state.selectedBranch ?? 'All Branches';
+            // The Branches comparison tab is meaningless with a single branch
+            // (nothing to compare), so hide it rather than show a one-row table.
+            final hasMultipleBranches =
+                ctx.read<BranchCubit>().getAvailableBranchOptions().length > 1;
+            final visibleTabs = hasMultipleBranches
+                ? _tabs
+                : _tabs.sublist(0, _tabs.length - 1);
+            final effectiveSelectedTab = _selectedTab < visibleTabs.length
+                ? _selectedTab
+                : 0;
 
             final hp = Breakpoints.horizontalPadding(context);
             final isPhone = Breakpoints.isPhone(context);
 
             final navBar = ReportNavChipBar(
-              tabs: _tabs,
-              selectedIndex: _selectedTab,
+              tabs: visibleTabs,
+              selectedIndex: effectiveSelectedTab,
               onTabSelected: (i) => setState(() => _selectedTab = i),
             );
             final controls = ReportsControls(
@@ -291,7 +301,12 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
                     SliverPadding(
                       padding: EdgeInsets.fromLTRB(hp, 16, hp, 28),
                       sliver: SliverToBoxAdapter(
-                        child: _buildBody(state, data, isLoading: isLoading),
+                        child: _buildBody(
+                          state,
+                          data,
+                          isLoading: isLoading,
+                          selectedTab: effectiveSelectedTab,
+                        ),
                       ),
                     ),
                   ],
@@ -308,9 +323,10 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
     ReportsState state,
     ReportsData data, {
     required bool isLoading,
+    required int selectedTab,
   }) {
     // Inventory Health drives its own adaptive skeleton/empty handling.
-    if (_selectedTab != 1) {
+    if (selectedTab != 1) {
       if (isLoading) return const ReportsTabSkeleton();
       if (state is ReportsError) {
         return isNetworkErrorMessage(state.message)
@@ -318,11 +334,15 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
             : _ErrorView(message: state.message, onRetry: _startWatching);
       }
     }
-    return _buildTabContent(data, isLoading: isLoading);
+    return _buildTabContent(data, selectedTab, isLoading: isLoading);
   }
 
-  Widget _buildTabContent(ReportsData data, {bool isLoading = false}) {
-    switch (_selectedTab) {
+  Widget _buildTabContent(
+    ReportsData data,
+    int selectedTab, {
+    bool isLoading = false,
+  }) {
+    switch (selectedTab) {
       case 0:
         return SalesReportTab(data: data);
       case 1:

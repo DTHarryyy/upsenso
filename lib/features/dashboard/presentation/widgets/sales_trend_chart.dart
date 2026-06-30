@@ -99,9 +99,11 @@ class _SalesTrendChartState extends State<SalesTrendChart> {
                       ),
                       titlesData: FlTitlesData(
                         topTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false)),
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
                         rightTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false)),
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
                         leftTitles: AxisTitles(
                           sideTitles: SideTitles(
                             showTitles: true,
@@ -112,8 +114,9 @@ class _SalesTrendChartState extends State<SalesTrendChart> {
                               child: Text(
                                 _formatAmount(value),
                                 style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey.shade500),
+                                  fontSize: 10,
+                                  color: Colors.grey.shade500,
+                                ),
                               ),
                             ),
                           ),
@@ -134,8 +137,9 @@ class _SalesTrendChartState extends State<SalesTrendChart> {
                                 child: Text(
                                   label,
                                   style: TextStyle(
-                                      fontSize: 10,
-                                      color: Colors.grey.shade500),
+                                    fontSize: 10,
+                                    color: Colors.grey.shade500,
+                                  ),
                                 ),
                               );
                             },
@@ -158,15 +162,17 @@ class _SalesTrendChartState extends State<SalesTrendChart> {
                             show: true,
                             getDotPainter: (spot, _, _, _) =>
                                 FlDotCirclePainter(
-                              radius: 3.5,
-                              color: const Color(0xFF3B82F6),
-                              strokeWidth: 2,
-                              strokeColor: Colors.white,
-                            ),
+                                  radius: 3.5,
+                                  color: const Color(0xFF3B82F6),
+                                  strokeWidth: 2,
+                                  strokeColor: Colors.white,
+                                ),
                           ),
                           belowBarData: BarAreaData(
                             show: true,
-                            color: const Color(0xFF3B82F6).withValues(alpha: 0.08),
+                            color: const Color(
+                              0xFF3B82F6,
+                            ).withValues(alpha: 0.08),
                           ),
                         ),
                       ],

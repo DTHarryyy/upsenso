@@ -19,6 +19,7 @@ import 'package:pos/core/database/daos/draft_sales_dao.dart';
 import 'package:pos/core/database/daos/audit_logs_dao.dart';
 import 'package:pos/core/database/daos/employees_dao.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
+import 'package:pos/core/sync/audit_log_retention.dart';
 import 'package:pos/core/sync/sync_status.dart';
 import 'package:pos/features/business/data/datasources/business_remote_ds.dart';
 import 'package:pos/features/business/data/models/business_model.dart';
@@ -1807,6 +1808,43 @@ class SyncService {
     }
 
     try {
+      // Incremental by created_at (append-only, like stock_ledger/refunds).
+      // RLS (audit_admin_only) restricts SELECT to owners/admins — a
+      // cashier or branch manager pulling here just gets an empty page every
+      // time, which is correct; no client-side permission gate needed.
+      //
+      // initialCursorTs caps a brand-new device's first pull to the local
+      // retention window instead of full history — older entries stay
+      // server-only and are fetched on demand (AuditLogRepository).
+      final auditWindowStart = DateTime.now().subtract(
+        const Duration(days: auditLogLocalWindowDays),
+      );
+      pulled += await _pullIncremental(
+        entity: 'audit_logs',
+        businessId: businessId,
+        timestampField: 'created_at',
+        fetchPage: (after, id, lim) => _auditLogRemoteDs.getAuditLogsByBusiness(
+          businessId,
+          afterTs: after,
+          afterId: id,
+          limit: lim,
+        ),
+        applyRow: (row) => _auditLogsDao.upsertFromServer(row),
+        initialCursorTs: auditWindowStart,
+      );
+      // Keep the local mirror bounded to the same rolling window — safe,
+      // since anything pruned is, by definition, already on the server.
+      final prunedCount = await _auditLogsDao.pruneOlderThan(auditWindowStart);
+      if (prunedCount > 0) {
+        debugPrint('[SYNC] Pruned $prunedCount audit log row(s) past the local window');
+      }
+    } catch (e, st) {
+      failed++;
+      debugPrint('[SYNC] Pull audit logs failed: $e\n$st');
+      errors.add('Pull audit logs: ${e.toString()}');
+    }
+
+    try {
       // Repair rows pulled before the upsert fix that landed with a null
       // business_id (and were therefore missing from reports). No-op once clean.
       final repaired =
@@ -2041,7 +2079,10 @@ class SyncService {
   /// The cursor is the (timestamp, id) of the LAST row in each page, so rows
   /// sharing a timestamp are never skipped at a boundary. The watermark advances
   /// only after a page is fully applied, so a crash resumes from the last good
-  /// cursor (upserts are idempotent). First run (null cursor) pages the full set.
+  /// cursor (upserts are idempotent). First run (null cursor) pages the full
+  /// set, unless [initialCursorTs] is given — then the first run starts from
+  /// there instead, e.g. so a brand-new device's first audit_logs pull only
+  /// brings down the local retention window instead of full history.
   Future<int> _pullIncremental({
     required String entity,
     required String businessId,
@@ -2053,8 +2094,12 @@ class SyncService {
     ) fetchPage,
     required Future<void> Function(Map<String, dynamic> row) applyRow,
     Future<void> Function(List<Map<String, dynamic>> page)? afterPage,
+    DateTime? initialCursorTs,
   }) async {
     var cursor = await _syncStateDao.getWatermark(entity, businessId);
+    if (cursor.ts == null && initialCursorTs != null) {
+      cursor = (ts: initialCursorTs, id: null);
+    }
     int pulled = 0;
 
     while (true) {

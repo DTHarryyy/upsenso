@@ -20,6 +20,12 @@ class RefreshAuditLogs extends AuditLogEvent {
   const RefreshAuditLogs();
 }
 
+/// Widens the local query window by one page. No-op when the current state
+/// has nothing more to load.
+class LoadMoreAuditLogs extends AuditLogEvent {
+  const LoadMoreAuditLogs();
+}
+
 class FilterAuditLogsByBranch extends AuditLogEvent {
   final String? branchId;
 

@@ -166,6 +166,8 @@ class ReportsData {
   final int prevItemsSold;
   final List<SalesTrendPoint> salesTrend;
   final List<CategoryStat> categoryBreakdown;
+  // Full revenue-sorted product list; UI takes the top 5, View-all shows all.
+  final List<TopItem> productBreakdown;
 
   // Inventory Health
   final int lowStockCount;
@@ -202,6 +204,7 @@ class ReportsData {
     required this.prevItemsSold,
     required this.salesTrend,
     required this.categoryBreakdown,
+    required this.productBreakdown,
     required this.lowStockCount,
     required this.fastMoversCount,
     required this.deadStockCount,
@@ -231,6 +234,7 @@ class ReportsData {
     prevItemsSold: 0,
     salesTrend: [],
     categoryBreakdown: [],
+    productBreakdown: [],
     lowStockCount: 0,
     fastMoversCount: 0,
     deadStockCount: 0,

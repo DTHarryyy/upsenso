@@ -33,10 +33,15 @@ class _ExpenseDetailSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (statusBg, statusText, statusLabel) = expenseStatusStyle(item.status);
-    final d = item.expenseDate;
-    final dateStr =
-        '${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}/${d.year}';
+    final dateStr = AppFormatters.shortDate(item.expenseDate);
     final cubit = context.read<ExpensesCubit>();
+    final submittedByLabel = item.submittedById == cubit.currentUserId
+        ? '${item.submittedByName} (You)'
+        : item.submittedByName;
+    final approvedByLabel =
+        item.approvedById != null && item.approvedById == cubit.currentUserId
+        ? '${item.approvedByName} (You)'
+        : item.approvedByName;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.75,
@@ -92,14 +97,6 @@ class _ExpenseDetailSheet extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          item.id,
-                          style: getOutfitStyle(
-                            fontSize: 12,
-                            color: Colors.white.withValues(alpha: 0.75),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
                           item.vendor,
                           style: getOutfitStyle(
                             fontSize: 18,
@@ -109,7 +106,7 @@ class _ExpenseDetailSheet extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          item.category,
+                          '${item.category} · $dateStr',
                           style: getOutfitStyle(
                             fontSize: 13,
                             color: Colors.white.withValues(alpha: 0.8),
@@ -161,66 +158,45 @@ class _ExpenseDetailSheet extends StatelessWidget {
                   _DetailCard(
                     children: [
                       _DetailRow(
-                        icon: IconlyLight.calendar,
+                        icon: Icons.calendar_month,
                         label: 'Date',
                         value: dateStr,
+                        iconColor: AppColors.info,
+                        iconBg: AppColors.infoSoft,
                       ),
                       const _DetailDivider(),
                       _DetailRow(
-                        icon: IconlyLight.category,
-                        label: 'Category',
-                        value: item.category,
-                      ),
-                      const _DetailDivider(),
-                      _DetailRow(
-                        icon: IconlyLight.work,
+                        icon: Icons.work,
                         label: 'Branch',
                         value: item.branchName ?? 'All Branches',
+                        iconColor: AppColors.fraudMedium,
+                        iconBg: AppColors.fraudMedium.withValues(alpha: 0.2),
                       ),
                       const _DetailDivider(),
                       _DetailRow(
-                        icon: IconlyLight.profile,
+                        icon: Icons.person,
                         label: 'Submitted By',
-                        value: item.submittedByName,
+
+                        iconColor: AppColors.syncing,
+                        iconBg: AppColors.syncing.withValues(alpha: 0.2),
+                        value: submittedByLabel,
                       ),
-                      if (item.approvedByName != null) ...[
+                      if (approvedByLabel != null) ...[
                         const _DetailDivider(),
                         _DetailRow(
-                          icon: IconlyBold.tick_square,
+                          icon: Icons.check_circle,
                           label: 'Approved By',
-                          value: item.approvedByName!,
+                          value: approvedByLabel,
+                          iconColor: AppColors.success,
+                          iconBg: AppColors.successSoft,
                         ),
                       ],
-                      if (item.note != null && item.note!.isNotEmpty) ...[
-                        const _DetailDivider(),
-                        _DetailRow(
-                          icon: IconlyLight.document,
-                          label: 'Note',
-                          value: item.note!,
-                        ),
-                      ],
-                      const _DetailDivider(),
-                      _DetailRow(
-                        icon: Icons.tag_rounded,
-                        label: 'Reference ID',
-                        value: item.id,
-                      ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  _DetailCard(
-                    children: [
-                      _AmountRow(label: 'Subtotal', value: item.amount),
-                      const _DetailDivider(),
-                      const _AmountRow(label: 'Tax (0%)', value: 0.0),
-                      const _DetailDivider(),
-                      _AmountRow(
-                        label: 'Total',
-                        value: item.amount,
-                        isTotal: true,
-                      ),
-                    ],
-                  ),
+                  if (item.note != null && item.note!.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    _NoteCard(note: item.note!),
+                  ],
                   const SizedBox(height: 16),
                   if (canApprove && item.status == ExpenseStatus.pending) ...[
                     Row(
@@ -231,7 +207,10 @@ class _ExpenseDetailSheet extends StatelessWidget {
                               cubit.rejectExpense(item.id);
                               Navigator.pop(context);
                             },
-                            icon: const Icon(IconlyLight.close_square, size: 16),
+                            icon: const Icon(
+                              IconlyLight.close_square,
+                              size: 16,
+                            ),
                             label: Text(
                               'Reject',
                               style: getOutfitStyle(
@@ -278,28 +257,6 @@ class _ExpenseDetailSheet extends StatelessWidget {
                         ),
                       ],
                     ),
-                  ] else ...[
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: AppColors.borderSoft),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: Text(
-                          'Close',
-                          style: getOutfitStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ),
                   ],
                   const SizedBox(height: 8),
                 ],
@@ -308,6 +265,61 @@ class _ExpenseDetailSheet extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _NoteCard extends StatelessWidget {
+  final String note;
+  const _NoteCard({required this.note});
+
+  @override
+  Widget build(BuildContext context) {
+    return _DetailCard(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: AppColors.brandSoft,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      IconlyLight.document,
+                      size: 15,
+                      color: AppColors.brand,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Note',
+                    style: getOutfitStyle(
+                      fontSize: 13,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                note,
+                style: getOutfitStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -340,33 +352,45 @@ class _DetailRow extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
+  final Color iconColor;
+  final Color iconBg;
   const _DetailRow({
     required this.icon,
     required this.label,
     required this.value,
+    this.iconColor = AppColors.brand,
+    this.iconBg = AppColors.brandSoft,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      // Outer row top-aligns the icon/label group with the value so a
+      // wrapping value (long names) doesn't pull them down to its vertical
+      // center; the inner row keeps the icon centered against the label.
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(7),
-            decoration: BoxDecoration(
-              color: AppColors.brandSoft,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, size: 15, color: AppColors.brand),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 15, color: iconColor),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                label,
+                style: getOutfitStyle(fontSize: 13, color: AppColors.textMuted),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Text(
-            label,
-            style: getOutfitStyle(fontSize: 13, color: AppColors.textMuted),
-          ),
-          const Spacer(),
-          Flexible(
+          Expanded(
             child: Text(
               value,
               textAlign: TextAlign.end,
@@ -375,45 +399,6 @@ class _DetailRow extends StatelessWidget {
                 fontWeight: FontWeight.w600,
                 color: AppColors.textPrimary,
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AmountRow extends StatelessWidget {
-  final String label;
-  final double value;
-  final bool isTotal;
-  const _AmountRow({
-    required this.label,
-    required this.value,
-    this.isTotal = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
-        children: [
-          Text(
-            label,
-            style: getOutfitStyle(
-              fontSize: isTotal ? 14 : 13,
-              fontWeight: isTotal ? FontWeight.w700 : FontWeight.normal,
-              color: isTotal ? AppColors.textPrimary : AppColors.textMuted,
-            ),
-          ),
-          const Spacer(),
-          Text(
-            AppFormatters.currency(value),
-            style: getOutfitStyle(
-              fontSize: isTotal ? 16 : 13,
-              fontWeight: isTotal ? FontWeight.w800 : FontWeight.w600,
-              color: isTotal ? AppColors.brand : AppColors.textSecondary,
             ),
           ),
         ],

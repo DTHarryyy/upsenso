@@ -42,12 +42,43 @@ List<pw.Widget> buildSalesSection(ReportsData data) {
       _salesTrendTable(data),
     ],
 
+    // ── Product breakdown ──────────────────────────────────────────────────
+    if (data.productBreakdown.isNotEmpty) ...[
+      PdfS.subHead('Sales by Product'),
+      _productTable(data),
+    ],
+
     // ── Category breakdown ─────────────────────────────────────────────────
     if (data.categoryBreakdown.isNotEmpty) ...[
       PdfS.subHead('Sales by Category'),
       _categoryTable(data),
     ],
   ];
+}
+
+pw.Widget _productTable(ReportsData data) {
+  final total = data.productBreakdown.fold(0.0, (s, p) => s + p.revenue);
+
+  return PdfS.financialTable(
+    columnWidths: {
+      0: const pw.FlexColumnWidth(3),
+      1: const pw.FlexColumnWidth(1.2),
+      2: const pw.FlexColumnWidth(2),
+      3: const pw.FlexColumnWidth(1.5),
+    },
+    headers: ['Product', 'Qty', 'Revenue', '% of Total'],
+    rows: data.productBreakdown.map((p) {
+      final pct = total > 0 ? p.revenue / total * 100 : 0.0;
+      return [
+        p.name,
+        '${p.sold}',
+        pdfCurrency(p.revenue),
+        '${pct.toStringAsFixed(1)}%',
+      ];
+    }).toList(),
+    totalsRow: ['Total', '', pdfCurrency(total), '100%'],
+    rightAlignCols: [1, 2, 3],
+  );
 }
 
 pw.Widget _salesTrendTable(ReportsData data) {

@@ -59,6 +59,15 @@ class AppFormatters {
   static String capitalise(String s) =>
       s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
 
+  /// Short, human-readable reference derived from a UUID's tail.
+  /// Display-only — the full id stays the source of truth.
+  /// Example: `e77fc7d0-...-16f023767c68` → `EXP-767C68`
+  static String shortRef(String id, {String prefix = 'EXP'}) {
+    final hex = id.replaceAll('-', '');
+    final tail = hex.length >= 6 ? hex.substring(hex.length - 6) : hex;
+    return '$prefix-${tail.toUpperCase()}';
+  }
+
   /// Compact relative time for activity feeds and list metrics.
   /// Examples: `Just now`, `5m ago`, `3h ago`, `2d ago`, `6w ago`, then falls
   /// back to [shortDate] beyond ~12 months.

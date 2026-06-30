@@ -3,12 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
-import 'package:pos/core/widgets/app_data_table.dart';
 import 'package:pos/core/widgets/report_section.dart';
 import 'package:pos/core/widgets/stat_card.dart';
 import 'package:pos/features/dashboard/data/dashboard_data.dart';
 import 'package:pos/features/reports/data/reports_data.dart';
 import 'package:pos/features/reports/presentation/widgets/report_card.dart';
+import 'package:pos/features/reports/presentation/widgets/report_ranked_list.dart';
+import 'package:pos/features/reports/presentation/widgets/sales_breakdown_sheet.dart';
 
 class SalesReportTab extends StatelessWidget {
   final ReportsData data;
@@ -36,7 +37,10 @@ class SalesReportTab extends StatelessWidget {
                     const SizedBox(width: 16),
                     Expanded(
                       flex: 2,
-                      child: CategoryDonutChart(stats: data.categoryBreakdown),
+                      child: CategoryDonutChart(
+                        stats: data.categoryBreakdown,
+                        onViewAll: () => _showCategoryBreakdown(context),
+                      ),
                     ),
                   ],
                 ),
@@ -46,16 +50,82 @@ class SalesReportTab extends StatelessWidget {
               children: [
                 SalesTrendChart(trend: data.salesTrend),
                 const SizedBox(height: 16),
-                CategoryDonutChart(stats: data.categoryBreakdown),
+                CategoryDonutChart(
+                  stats: data.categoryBreakdown,
+                  onViewAll: () => _showCategoryBreakdown(context),
+                ),
               ],
             );
           },
         ),
         const SizedBox(height: 16),
-        _CategoryTable(stats: data.categoryBreakdown),
+        _SalesBreakdownSection(data: data),
       ],
     );
   }
+
+  void _showCategoryBreakdown(BuildContext context) {
+    SalesBreakdownSheet.show(
+      context,
+      title: 'Sales by Category',
+      nameColumnLabel: 'Category',
+      items: _categoryRankedItems(data.categoryBreakdown),
+    );
+  }
+}
+
+// ─── Product ranked breakdown ─────────────────────────────────────────────────
+
+class _SalesBreakdownSection extends StatelessWidget {
+  final ReportsData data;
+  const _SalesBreakdownSection({required this.data});
+
+  static const _topN = 5;
+
+  @override
+  Widget build(BuildContext context) {
+    final productTotal = data.productBreakdown.fold(0.0, (s, p) => s + p.revenue);
+
+    final productItems = data.productBreakdown
+        .map(
+          (p) => RankedRevenueItem(
+            name: p.name,
+            subtitle: '${p.sold} sold',
+            value: p.revenue,
+            share: productTotal > 0 ? p.revenue / productTotal : 0,
+          ),
+        )
+        .toList();
+
+    return ReportRankedListCard(
+      title: 'Sales by Product',
+      icon: IconlyLight.bag_2,
+      items: productItems.take(_topN).toList(),
+      totalCount: productItems.length,
+      onViewAll: productItems.isEmpty
+          ? null
+          : () => SalesBreakdownSheet.show(
+              context,
+              title: 'Sales by Product',
+              nameColumnLabel: 'Product',
+              items: productItems,
+            ),
+    );
+  }
+}
+
+// Category share rows for the donut's "View all" sheet.
+List<RankedRevenueItem> _categoryRankedItems(List<CategoryStat> stats) {
+  final total = stats.fold(0.0, (s, c) => s + c.total);
+  return stats
+      .map(
+        (c) => RankedRevenueItem(
+          name: c.name,
+          value: c.total,
+          share: total > 0 ? c.total / total : 0,
+        ),
+      )
+      .toList();
 }
 
 // ─── Overview KPIs ────────────────────────────────────────────────────────────
@@ -228,18 +298,25 @@ class SalesTrendChart extends StatelessWidget {
 
 class CategoryDonutChart extends StatelessWidget {
   final List<CategoryStat> stats;
+  final VoidCallback? onViewAll;
   static const _palette = AppColors.chartPalette;
 
-  const CategoryDonutChart({super.key, required this.stats});
+  // Legend lists at most this many categories inline; beyond it, "View all"
+  // is the way to see the rest.
+  static const _legendLimit = 6;
+
+  const CategoryDonutChart({super.key, required this.stats, this.onViewAll});
 
   @override
   Widget build(BuildContext context) {
     final total = stats.fold(0.0, (s, c) => s + c.total);
+    final hasMore = onViewAll != null && stats.length > _legendLimit;
 
     return ReportSection(
       title: 'Sales by Category',
       icon: IconlyLight.category,
       subtitle: 'Share of revenue',
+      trailing: hasMore ? ReportViewAllButton(onTap: onViewAll!) : null,
       child: stats.isEmpty
           ? const _ChartEmpty(label: 'No category data', height: 160)
           : Row(
@@ -318,138 +395,6 @@ class CategoryDonutChart extends StatelessWidget {
                 ),
               ],
             ),
-    );
-  }
-}
-
-// ─── Category breakdown table ─────────────────────────────────────────────────
-
-class _CategoryTable extends StatelessWidget {
-  final List<CategoryStat> stats;
-  static const _palette = AppColors.chartPalette;
-
-  const _CategoryTable({required this.stats});
-
-  static const _columns = [
-    AppTableColumn(label: 'Category', flex: 5),
-    AppTableColumn(label: 'Revenue', flex: 3, align: TextAlign.right),
-    AppTableColumn(label: 'Share', flex: 2, align: TextAlign.right),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    if (stats.isEmpty) return const SizedBox.shrink();
-    final total = stats.fold(0.0, (s, c) => s + c.total);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const ReportSectionHeading(
-          title: 'Category Breakdown',
-          icon: IconlyLight.bag_2,
-        ),
-        const SizedBox(height: 14),
-        AppDataTable(
-            columns: _columns,
-            rowCount: stats.length,
-            rowCellsBuilder: (ctx, i) {
-              final pct = total > 0 ? stats[i].total / total * 100 : 0.0;
-              return [
-                Row(
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      margin: const EdgeInsets.only(right: 8),
-                      decoration: BoxDecoration(
-                        color: _palette[i % _palette.length],
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    Expanded(
-                      child: Text(
-                        stats[i].name,
-                        style: AppTextStyles.body(ctx).copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                Text(
-                  fmtCurrency(stats[i].total),
-                  style: AppTextStyles.body(ctx).copyWith(
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                Text(
-                  '${pct.toStringAsFixed(1)}%',
-                  style: AppTextStyles.caption(ctx).copyWith(
-                    color: AppColors.textMuted,
-                  ),
-                ),
-              ];
-            },
-        ),
-        const SizedBox(height: 10),
-        _TotalsBar(total: total),
-      ],
-    );
-  }
-}
-
-// Brand-tinted totals strip shared with the table above.
-class _TotalsBar extends StatelessWidget {
-  final double total;
-  const _TotalsBar({required this.total});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-      decoration: BoxDecoration(
-        color: AppColors.brandSoft,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.brand.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 5,
-            child: Text(
-              'TOTAL',
-              style: AppTextStyles.caption(context).copyWith(
-                color: AppColors.brand,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Text(
-              fmtCurrency(total),
-              textAlign: TextAlign.right,
-              style: AppTextStyles.body(context).copyWith(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              '100%',
-              textAlign: TextAlign.right,
-              style: AppTextStyles.caption(context).copyWith(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

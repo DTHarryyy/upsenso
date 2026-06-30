@@ -113,16 +113,6 @@ class _CardContent extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Left accent bar
-                  Container(
-                    width: 5,
-                    decoration: BoxDecoration(
-                      color: isActive
-                          ? AppColors.success
-                          : AppColors.borderSoft,
-                    ),
-                  ),
-
                   // ── Card body ────────────────────────────────────────────
                   Expanded(
                     child: Padding(

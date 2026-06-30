@@ -8,6 +8,7 @@ import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/widgets/app_data_table.dart';
+import 'package:pos/core/widgets/app_inline_banner.dart';
 import 'package:pos/core/widgets/app_sub_page_bar.dart';
 import 'package:pos/core/widgets/app_view_toggle.dart';
 import 'package:pos/features/audit_logs/domain/repositories/i_audit_log_repository.dart';
@@ -182,17 +183,26 @@ class _Body extends StatelessWidget {
                 hasFilters: state.hasActiveFilter || query.isNotEmpty,
               );
             }
+            final showFooter = state.hasMore;
             return ListView.builder(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              itemCount: logs.length,
-              itemBuilder: (ctx, i) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: auditLogMobileCard(
-                  ctx,
-                  logs[i],
-                  onTap: () => showAuditLogDetails(ctx, logs[i]),
-                ),
-              ),
+              itemCount: logs.length + (showFooter ? 1 : 0),
+              itemBuilder: (ctx, i) {
+                if (i == logs.length) {
+                  return _LoadMoreFooter(
+                    isFetchingOlder: state.isFetchingOlder,
+                    error: state.serverFetchError,
+                  );
+                }
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: auditLogMobileCard(
+                    ctx,
+                    logs[i],
+                    onTap: () => showAuditLogDetails(ctx, logs[i]),
+                  ),
+                );
+              },
             );
           }
 
@@ -200,24 +210,96 @@ class _Body extends StatelessWidget {
           // Expanded container.
           return SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-            child: AppDataTable(
-              columns: _kColumns,
-              rowCount: logs.length,
-              columnGap: 12,
-              rowCellsBuilder: (ctx, i) => auditLogTableCells(
-                ctx,
-                logs[i],
-                onViewDetails: () => showAuditLogDetails(ctx, logs[i]),
-              ),
-              emptyState: AuditLogEmptyState(
-                hasFilters: state.hasActiveFilter || query.isNotEmpty,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AppDataTable(
+                  columns: _kColumns,
+                  rowCount: logs.length,
+                  columnGap: 12,
+                  rowCellsBuilder: (ctx, i) => auditLogTableCells(
+                    ctx,
+                    logs[i],
+                    onViewDetails: () => showAuditLogDetails(ctx, logs[i]),
+                  ),
+                  emptyState: AuditLogEmptyState(
+                    hasFilters: state.hasActiveFilter || query.isNotEmpty,
+                  ),
+                ),
+                if (state.hasMore && logs.isNotEmpty)
+                  _LoadMoreFooter(
+                    isFetchingOlder: state.isFetchingOlder,
+                    error: state.serverFetchError,
+                  ),
+              ],
             ),
           );
         }
 
         return const SizedBox.shrink();
       },
+    );
+  }
+}
+
+// ── Load more footer ────────────────────────────────────────────────────────
+
+/// Widens the local Drift query window while local history remains; once
+/// that's exhausted, the same button fetches the next older page from the
+/// server instead — [isFetchingOlder] shows a spinner for that network call
+/// (local widening is synchronous and needs none), and [error] surfaces a
+/// failed/offline attempt inline without losing what's already loaded.
+class _LoadMoreFooter extends StatelessWidget {
+  final bool isFetchingOlder;
+  final String? error;
+
+  const _LoadMoreFooter({this.isFetchingOlder = false, this.error});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        children: [
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: AppInlineBanner(
+                message: error,
+                variant: AppInlineBannerVariant.warning,
+              ),
+            ),
+          Center(
+            child: TextButton.icon(
+              onPressed: isFetchingOlder
+                  ? null
+                  : () => context.read<AuditLogBloc>().add(
+                      const LoadMoreAuditLogs(),
+                    ),
+              icon: isFetchingOlder
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.brand,
+                      ),
+                    )
+                  : const Icon(IconlyLight.arrow_down_2, size: 16),
+              label: Text(
+                isFetchingOlder
+                    ? 'Loading older entries…'
+                    : (error != null ? 'Retry' : 'Load more'),
+                style: AppTextStyles.body(context).copyWith(
+                  color: AppColors.brand,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              style: TextButton.styleFrom(foregroundColor: AppColors.brand),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -65,6 +65,13 @@ enum AuditLogActionType {
   /// An admin removed a permission override, reverting the employee to their role default.
   permissionOverrideRemoved,
 
+  /// A raw INSERT/UPDATE/DELETE on user_permissions, branch_permissions, or
+  /// business_modules, captured directly by a DB trigger (log_permission_change)
+  /// rather than the app's own logging — independent of, and may appear
+  /// alongside, the matching permissionOverrideSet/Removed/businessModuleChanged
+  /// entry for the same change.
+  permissionTableChanged,
+
   // ── Approval flows ───────────────────────────────────────────────────────
   /// A Branch Manager approved a cashier's refund request.
   refundApprovedByManager,
@@ -173,6 +180,8 @@ extension AuditLogActionTypeX on AuditLogActionType {
         return 'PERMISSION_OVERRIDE_SET';
       case AuditLogActionType.permissionOverrideRemoved:
         return 'PERMISSION_OVERRIDE_REMOVED';
+      case AuditLogActionType.permissionTableChanged:
+        return 'PERMISSION_TABLE_CHANGED';
       case AuditLogActionType.refundApprovedByManager:
         return 'REFUND_APPROVED_BY_MANAGER';
       case AuditLogActionType.voidApprovedByManager:
@@ -287,6 +296,8 @@ extension AuditLogActionTypeX on AuditLogActionType {
         return 'Permission Override Set';
       case AuditLogActionType.permissionOverrideRemoved:
         return 'Permission Override Removed';
+      case AuditLogActionType.permissionTableChanged:
+        return 'Permission Table Changed';
       case AuditLogActionType.refundApprovedByManager:
         return 'Refund Approved by Manager';
       case AuditLogActionType.voidApprovedByManager:

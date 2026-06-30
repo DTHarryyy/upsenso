@@ -16,16 +16,58 @@ class AuditLogRemoteDs {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getByBusiness(
+  /// Audit logs for a business, ordered by (created_at, id) ascending for the
+  /// incremental keyset pull — mirrors [RefundsRemoteDs.getRefundsByBusiness].
+  /// Audit rows are append-only, so `created_at` is a safe, never-changing
+  /// cursor column. Pass the last pulled (afterTs, afterId) to fetch only
+  /// newer rows; omit for a full pull.
+  Future<List<Map<String, dynamic>>> getAuditLogsByBusiness(
     String businessId, {
-    int limit = 500,
+    DateTime? afterTs,
+    String? afterId,
+    int? limit,
   }) async {
-    final response = await _client
+    var filter = _client
+        .from('audit_logs')
+        .select()
+        .eq('business_id', businessId);
+    if (afterTs != null) {
+      final ts = afterTs.toUtc().toIso8601String();
+      filter = afterId != null
+          ? filter.or('created_at.gt.$ts,and(created_at.eq.$ts,id.gt.$afterId)')
+          : filter.gt('created_at', ts);
+    }
+    final ordered = filter
+        .order('created_at', ascending: true)
+        .order('id', ascending: true);
+    final res = limit != null ? await ordered.limit(limit) : await ordered;
+    return List<Map<String, dynamic>>.from(res as List);
+  }
+
+  /// On-demand fetch for history older than the local retention window — the
+  /// server keeps every row forever, so this is how a user reaches entries
+  /// that [AuditLogsDao.pruneOlderThan] has already cleared off the device.
+  /// Ordered newest-first within the range, to match the local list's order.
+  /// [before] excludes a row already seen (paging further back); omit for the
+  /// first page of a given range.
+  Future<List<Map<String, dynamic>>> getAuditLogsInRange(
+    String businessId, {
+    required DateTime from,
+    DateTime? before,
+    int limit = 200,
+  }) async {
+    var filter = _client
         .from('audit_logs')
         .select()
         .eq('business_id', businessId)
+        .gte('created_at', from.toUtc().toIso8601String());
+    if (before != null) {
+      filter = filter.lt('created_at', before.toUtc().toIso8601String());
+    }
+    final res = await filter
         .order('created_at', ascending: false)
+        .order('id', ascending: false)
         .limit(limit);
-    return List<Map<String, dynamic>>.from(response);
+    return List<Map<String, dynamic>>.from(res as List);
   }
 }

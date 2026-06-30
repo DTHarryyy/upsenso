@@ -313,9 +313,8 @@ class _StatCardsRow extends StatelessWidget {
       AppStatCard(
         title: "Today's Sales",
         value: isLoading ? '—' : _fmtCurrency(todaySales),
-        changeLabel: isLoading
-            ? null
-            : _changeLabel(salesChange, 'from yesterday'),
+        changeLabel: isLoading ? null : _changeLabel(salesChange),
+        changePeriod: isLoading ? null : 'from yesterday',
         isPositive: salesChange >= 0,
         icon: IconlyBold.wallet,
         iconBg: const Color(0xFFDCFCE7),
@@ -324,9 +323,8 @@ class _StatCardsRow extends StatelessWidget {
       AppStatCard(
         title: 'This Week',
         value: isLoading ? '—' : _fmtCurrency(weekSales),
-        changeLabel: isLoading
-            ? null
-            : _changeLabel(weekChange, 'from last week'),
+        changeLabel: isLoading ? null : _changeLabel(weekChange),
+        changePeriod: isLoading ? null : 'from last week',
         isPositive: weekChange >= 0,
         icon: IconlyBold.activity,
         iconBg: const Color(0xFFDCFCE7),
@@ -337,7 +335,8 @@ class _StatCardsRow extends StatelessWidget {
         value: isLoading ? '—' : '$todayCount',
         changeLabel: isLoading
             ? null
-            : '${countDiff >= 0 ? '+' : ''}$countDiff from yesterday',
+            : '${countDiff >= 0 ? '+' : ''}$countDiff',
+        changePeriod: isLoading ? null : 'from yesterday',
         isPositive: countDiff >= 0,
         icon: IconlyLight.buy,
         iconBg: const Color(0xFFDBEAFE),
@@ -346,9 +345,8 @@ class _StatCardsRow extends StatelessWidget {
       AppStatCard(
         title: 'Avg. Order Value',
         value: isLoading ? '—' : _fmtCurrency(avgOrder),
-        changeLabel: isLoading
-            ? null
-            : _changeLabel(avgChange, 'from yesterday'),
+        changeLabel: isLoading ? null : _changeLabel(avgChange),
+        changePeriod: isLoading ? null : 'from yesterday',
         isPositive: avgChange >= 0,
         icon: IconlyBold.chart,
         iconBg: const Color(0xFFF3E8FF),
@@ -364,9 +362,9 @@ class _StatCardsRow extends StatelessWidget {
     return (current - previous) / previous * 100;
   }
 
-  String _changeLabel(double pct, String suffix) {
+  String _changeLabel(double pct) {
     final sign = pct >= 0 ? '+' : '';
-    return '$sign${pct.toStringAsFixed(1)}% $suffix';
+    return '$sign${pct.toStringAsFixed(1)}%';
   }
 
   String _fmtCurrency(double v) {
@@ -448,17 +446,26 @@ class _DashboardSkeletonState extends State<_DashboardSkeleton>
           child: child,
         );
 
-        // Stat card skeleton (icon badge + big value + label), matching
-        // AppStatCard's icon-top-left layout.
+        // Stat card skeleton — left text column + right badge, matching
+        // AppStatCard's title / value / trend stack with the icon floated right.
         Widget statCard() => skCard(
-          Column(
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    box(width: 80, height: 12, radius: 5),
+                    const SizedBox(height: 6),
+                    box(width: 100, height: 24, radius: 6),
+                    const SizedBox(height: 6),
+                    box(width: 110, height: 12, radius: 5),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
               box(width: 36, height: 36, radius: 10),
-              const SizedBox(height: 12),
-              box(width: 110, height: 26, radius: 6),
-              const SizedBox(height: 8),
-              box(width: 90, height: 11, radius: 5),
             ],
           ),
         );

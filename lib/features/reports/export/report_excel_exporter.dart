@@ -64,7 +64,26 @@ class ReportExcelExporter {
     rows.add(_totalsRow(['Total', _cur(trendTotal)]));
     rows.add(_blankRow(rows.length));
 
-    // ③ Category breakdown
+    // ③ Product breakdown
+    rows.add(_sectionRow('Product Breakdown'));
+    rows.add(_headerRow(['Product', 'Qty', 'Revenue', '% of Total']));
+    final prods = data.productBreakdown;
+    final prodTotal = prods.fold(0.0, (s, p) => s + p.revenue);
+    for (int i = 0; i < prods.length; i++) {
+      final pct = prodTotal > 0
+          ? '${(prods[i].revenue / prodTotal * 100).toStringAsFixed(1)}%'
+          : '0%';
+      rows.add(_Row([
+        _Cell(prods[i].name, i.isOdd ? _S.altL : _S.normalL),
+        _Cell('${prods[i].sold}', i.isOdd ? _S.altR : _S.normalR),
+        _Cell(_cur(prods[i].revenue), i.isOdd ? _S.altR : _S.normalR),
+        _Cell(pct, i.isOdd ? _S.altR : _S.normalR),
+      ]));
+    }
+    rows.add(_totalsRow(['Total', '', _cur(prodTotal), '100%']));
+    rows.add(_blankRow(rows.length));
+
+    // ④ Category breakdown
     rows.add(_sectionRow('Category Breakdown'));
     rows.add(_headerRow(['Category', 'Revenue', '% of Total']));
     final cats = data.categoryBreakdown;
