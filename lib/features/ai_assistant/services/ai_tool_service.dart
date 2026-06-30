@@ -209,6 +209,102 @@ class AiToolService {
     return (result.data['total'] as num?)?.toDouble() ?? 0.0;
   }
 
+  // ─── INSIGHTS / ANALYTICS ───────────────────────────────────────────────
+
+  /// Total sales for an explicit range — the raw-range form behind the insight
+  /// queries (the public sales methods take an [AiDateFilter]).
+  Future<double> _salesTotalForRange(
+    String businessId,
+    String cashierId,
+    String? branchId,
+    DateTime start,
+    DateTime end,
+  ) async {
+    final bf = branchFilter(
+      businessId: businessId,
+      cashierId: cashierId,
+      branchId: branchId,
+    );
+    final result = await _db.customSelect(
+      'SELECT COALESCE(SUM(total_amount), 0) AS total '
+      'FROM transactions '
+      'WHERE created_at >= ? AND created_at < ? '
+      '${bf.clause}',
+      variables: [
+        Variable.withDateTime(start),
+        Variable.withDateTime(end),
+        ...bf.variables,
+      ],
+    ).getSingle();
+    return (result.data['total'] as num?)?.toDouble() ?? 0.0;
+  }
+
+  /// Sales for [dateFilter] compared against the equal-length window that
+  /// immediately precedes it — the primitive behind the "sales up/down vs last
+  /// period" insight.
+  Future<SalesTrendResult> getSalesTrend(
+    String businessId,
+    String cashierId,
+    AiDateFilter dateFilter, {
+    String? branchId,
+  }) async {
+    final range = dateFilter.resolve();
+    final prev = previousPeriod(start: range.start, end: range.end);
+    final current = await _salesTotalForRange(
+      businessId,
+      cashierId,
+      branchId,
+      range.start,
+      range.end,
+    );
+    final previous = await _salesTotalForRange(
+      businessId,
+      cashierId,
+      branchId,
+      prev.start,
+      prev.end,
+    );
+    return SalesTrendResult(current: current, previous: previous);
+  }
+
+  /// The equal-length window immediately before [start, end). Pure and
+  /// deterministic so it is unit-tested directly without a database.
+  static ({DateTime start, DateTime end}) previousPeriod({
+    required DateTime start,
+    required DateTime end,
+  }) {
+    final duration = end.difference(start);
+    return (start: start.subtract(duration), end: start);
+  }
+
+  /// Total of approved expenses within [dateFilter] — the realised spend figure
+  /// behind expense-trend insights. Scoped to the business, optionally to one
+  /// branch. Expenses have no cashier-ownership fallback, so the cashier-based
+  /// [branchFilter] is intentionally NOT reused here.
+  Future<double> getApprovedExpenseTotal(
+    String businessId,
+    AiDateFilter dateFilter, {
+    String? branchId,
+  }) async {
+    final range = dateFilter.resolve();
+    final branchClause = branchId != null ? 'AND branch_id = ?' : '';
+    final result = await _db.customSelect(
+      'SELECT COALESCE(SUM(amount), 0) AS total '
+      'FROM expenses '
+      "WHERE status = 'approved' "
+      'AND expense_date >= ? AND expense_date < ? '
+      'AND business_id = ? '
+      '$branchClause',
+      variables: [
+        Variable.withDateTime(range.start),
+        Variable.withDateTime(range.end),
+        Variable.withString(businessId),
+        if (branchId != null) Variable.withString(branchId),
+      ],
+    ).getSingle();
+    return (result.data['total'] as num?)?.toDouble() ?? 0.0;
+  }
+
   // ─── PRODUCT QUERIES ───────────────────────────────────────────────────
 
   /// Get sales filtered by a specific product name.
@@ -523,6 +619,24 @@ class ProductSalesResult {
     required this.total,
     required this.quantity,
   });
+}
+
+/// Sales for a period vs the equal-length preceding period.
+class SalesTrendResult {
+  final double current;
+  final double previous;
+
+  const SalesTrendResult({required this.current, required this.previous});
+
+  double get delta => current - previous;
+
+  /// Percentage change vs the previous period, or null when the previous period
+  /// had zero sales (a percentage from a zero base is undefined — callers should
+  /// phrase it as "new" rather than showing an infinite increase).
+  double? get deltaPercent => previous == 0 ? null : (delta / previous) * 100;
+
+  bool get isUp => delta > 0;
+  bool get isDown => delta < 0;
 }
 
 /// Info about an active product for listing.

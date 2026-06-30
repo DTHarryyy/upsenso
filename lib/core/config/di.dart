@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:pos/core/env/app_env.dart';
 import 'package:pos/core/security/secure_storage_service.dart';
+import 'package:pos/core/device/device_info_service.dart';
 
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/auth_context_dao.dart';
@@ -149,7 +150,9 @@ Future<void> initDI() async {
   // Authoritative in-memory active-tenant holder. Set on authenticate, cleared
   // on logout/account switch. Tenant-sensitive services resolve businessId from
   // here instead of a tenant-agnostic "first cached row" lookup.
-  sl.registerLazySingleton<ActiveBusinessContext>(() => ActiveBusinessContext());
+  sl.registerLazySingleton<ActiveBusinessContext>(
+    () => ActiveBusinessContext(),
+  );
 
   sl.registerLazySingleton<AuthContextDao>(
     () => AuthContextDao(sl<AppDatabase>()),
@@ -202,9 +205,7 @@ Future<void> initDI() async {
   sl.registerLazySingleton<StockLedgerDao>(
     () => StockLedgerDao(sl<AppDatabase>()),
   );
-  sl.registerLazySingleton<SyncStateDao>(
-    () => SyncStateDao(sl<AppDatabase>()),
-  );
+  sl.registerLazySingleton<SyncStateDao>(() => SyncStateDao(sl<AppDatabase>()));
   sl.registerLazySingleton<ExpensesDao>(() => ExpensesDao(sl<AppDatabase>()));
   sl.registerLazySingleton<EmployeesDao>(() => EmployeesDao(sl<AppDatabase>()));
   sl.registerLazySingleton<IExpensesRepository>(
@@ -411,11 +412,13 @@ Future<void> initDI() async {
       connectivityService: sl<ConnectivityService>(),
     ),
   );
+  sl.registerLazySingleton<DeviceInfoService>(() => DeviceInfoService());
   sl.registerLazySingleton<AuditLogService>(
     () => AuditLogService(
       dao: sl<AuditLogsDao>(),
       authContextDao: sl<AuthContextDao>(),
       activeBusinessContext: sl<ActiveBusinessContext>(),
+      deviceInfoService: sl<DeviceInfoService>(),
     ),
   );
 
@@ -425,9 +428,7 @@ Future<void> initDI() async {
   sl.registerLazySingleton<BusinessModulesDao>(
     () => BusinessModulesDao(sl<AppDatabase>()),
   );
-  sl.registerLazySingleton<SuppliersDao>(
-    () => SuppliersDao(sl<AppDatabase>()),
-  );
+  sl.registerLazySingleton<SuppliersDao>(() => SuppliersDao(sl<AppDatabase>()));
   sl.registerLazySingleton<PurchaseOrdersDao>(
     () => PurchaseOrdersDao(sl<AppDatabase>()),
   );

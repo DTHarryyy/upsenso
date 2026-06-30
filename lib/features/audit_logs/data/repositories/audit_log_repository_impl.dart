@@ -83,6 +83,47 @@ class AuditLogRepositoryImpl implements IAuditLogRepository {
     return rows.map(_fromRemoteRow).toList();
   }
 
+  @override
+  Future<List<AuditLog>> getRemoteUserLogs({
+    required String businessId,
+    required String userId,
+    String? actionType,
+    List<String>? excludeActionTypes,
+    int limit = 1,
+  }) async {
+    final rows = await _remoteDs.getByUser(
+      businessId,
+      userId,
+      actionType: actionType,
+      excludeActionTypes: excludeActionTypes,
+      limit: limit,
+    );
+    return rows.map(_toEntityFromRemote).toList();
+  }
+
+  AuditLog _toEntityFromRemote(Map<String, dynamic> row) {
+    final rawMetadata = row['metadata'];
+    final metadata = rawMetadata is Map
+        ? Map<String, dynamic>.from(rawMetadata)
+        : <String, dynamic>{};
+    return AuditLog(
+      id: row['id'] as String,
+      businessId: row['business_id'] as String,
+      branchId: row['branch_id'] as String? ?? '',
+      userId: row['user_id'] as String? ?? '',
+      actionType:
+          AuditLogActionTypeX.fromValue(row['action_type'] as String? ?? '') ??
+          AuditLogActionType.syncStarted,
+      entityType: row['entity_type'] as String? ?? '',
+      entityId: row['entity_id'] as String?,
+      description: row['description'] as String? ?? '',
+      metadata: metadata,
+      deviceId: row['device_id'] as String? ?? 'unknown',
+      createdAt: DateTime.parse(row['created_at'] as String).toLocal(),
+      syncStatus: 1,
+    );
+  }
+
   AuditLog _toEntity(AuditLogRow row) {
     Map<String, dynamic> meta = {};
     try {
