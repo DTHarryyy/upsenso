@@ -75,4 +75,27 @@ void main() {
       expect(r.deltaPercent, -20);
     });
   });
+
+  group('MarginMoverResult', () {
+    test('margin is revenue minus cost', () {
+      const r = MarginMoverResult(productName: 'Latte', revenue: 500, cost: 200);
+      expect(r.margin, 300);
+    });
+
+    test('marginPercent is margin over revenue', () {
+      const r = MarginMoverResult(productName: 'Latte', revenue: 500, cost: 200);
+      expect(r.marginPercent, 60);
+    });
+
+    test('marginPercent is null when revenue is zero (undefined base)', () {
+      const r = MarginMoverResult(productName: 'Latte', revenue: 0, cost: 0);
+      expect(r.marginPercent, isNull);
+    });
+
+    test('negative margin when cost exceeds revenue (loss leader)', () {
+      const r = MarginMoverResult(productName: 'Latte', revenue: 200, cost: 250);
+      expect(r.margin, -50);
+      expect(r.marginPercent, -25);
+    });
+  });
 }

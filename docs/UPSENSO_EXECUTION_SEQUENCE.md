@@ -123,9 +123,18 @@ Spec: `UPSENSO_PRODUCT_ROADMAP.md` M2. Reuses the existing AI pipeline.
         permission-aware like existing queries):
     - [x] `getSalesTrend` (+ `previousPeriod` helper, `SalesTrendResult`) and
           `getApprovedExpenseTotal` — with pure-logic unit tests for the
-          period math.
-    - [ ] `getTopProducts` (reuse existing `getSalesByProduct`), low-stock count,
-          `getMarginMovers`, `getFraudSummary` (the last reads Phase 2 / M1).
+          period math. **Verified green locally 2026-06-30.**
+    - [x] `getTopProducts` (thin ranking wrapper over `getSalesByProduct`) and
+          `getLowStockCount` (reuses `ProductVariantsDao.getLowStockByBusinessId`
+          so it matches the dashboard low-stock card). Added 2026-06-30; analyze
+          clean. SQL methods exercised in device QA per this file's convention.
+    - [x] `getMarginMovers` (+ `MarginMoverResult` with pure-tested `margin` /
+          `marginPercent`). **Decision (2026-06-30): current-cost approximation** —
+          uses `product_variants.cost_price` (cost-at-sale isn't stored);
+          null-cost variants excluded. Added 2026-06-30; analyze clean, 13 tests
+          pass. Revisit once M4 lands real COGS / cost-at-sale.
+    - [ ] `getFraudSummary` — **blocked:** reads Phase 2 / M1 (fraud engine),
+          which is deferred under the current priority order. Defer with it.
 17. [ ] **Insights generator** — deterministic metrics compute the numbers; LLM
         only phrases them; template fallback when no model (web).
 18. [ ] **Permissions** — `insights.view` (module `reports`); matrices; diff check.
@@ -216,7 +225,7 @@ From `CLAUDE.md` — a step isn't `[x]` until all hold:
 ## 📌 Current position / session handoff
 
 > Live status so any session (or a fresh Claude one — no memory between sessions)
-> resumes exactly here. **Last updated: 2026-06-29.**
+> resumes exactly here. **Last updated: 2026-06-30.**
 
 ### Active priority order
 **M2 (AI insights) → M5 (CRM) → M1 (fraud+audit, deferred) → M-BIR → M-LEGAL → ship.**
@@ -226,37 +235,36 @@ From `CLAUDE.md` — a step isn't `[x]` until all hold:
 - ✅ All planning/spec docs (on `main`): `UPSENSO_PRODUCT_ROADMAP.md`,
   this file, `UPSENSO_FRAUD_AND_AUDIT_CHAIN_DESIGN.md`,
   `UPSENSO_SUBSCRIPTION_AND_LIMITS_DESIGN.md`, `UPSENSO_BIR_COMPLIANCE.md`.
-- ✅ **M2 Task 1 code WRITTEN (commit on feature branch)** —
-  `lib/features/ai_assistant/services/ai_tool_service.dart`: `getSalesTrend`,
-  `previousPeriod`, `SalesTrendResult`, `getApprovedExpenseTotal`; tests in
+- ✅ **M2 Task 1 — VERIFIED & ON `main`.** `getSalesTrend`, `previousPeriod`,
+  `SalesTrendResult`, `getApprovedExpenseTotal` in
+  `lib/features/ai_assistant/services/ai_tool_service.dart`; tests in
   `test/features/ai_assistant/ai_tool_service_analytics_test.dart`.
+  `flutter analyze` clean + all 9 tests pass **(run locally 2026-06-30)**.
+  The old feature branch was merged into `main` (commit `345e10f`).
+- ✅ **M2 Task 16 analytics methods — `getTopProducts`, `getLowStockCount`,
+  `getMarginMovers`** (+ `MarginMoverResult`). Added to `ai_tool_service.dart`
+  2026-06-30. Analyze clean; **13 analytics tests pass.** `getLowStockCount`
+  reuses `ProductVariantsDao.getLowStockByBusinessId` (matches the dashboard
+  low-stock card); `getMarginMovers` uses current-cost approximation (decision
+  logged above). Only `getFraudSummary` remains (deferred with M1).
+  **All uncommitted in the working tree** — commit pending user's go-ahead.
 
-### ⚠️ Pending verification (BLOCKER before continuing M2)
-- ❗ **M2 Task 1 is UNVERIFIED.** The remote env has **no Flutter SDK**, so
-  `flutter analyze` / `flutter test` were NOT run. **User will test locally
-  (~2026-06-30):**
-  ```
-  git checkout claude/platform-features-roadmap-7bqdgn
-  flutter pub get
-  flutter analyze lib/features/ai_assistant/services/ai_tool_service.dart
-  flutter test test/features/ai_assistant/ai_tool_service_analytics_test.dart
-  ```
-  Do NOT build on top of this code until it's green locally.
-
-### Next action (after the above is green)
-- ⬜ Finish **Task 16**: `getTopProducts` (reuse `getSalesByProduct`) + low-stock
-  count (confirm `product_variants` low-stock threshold column first).
-- ⬜ **Task 17** insights generator → **18** `insights.view` permission → **19**
-  dashboard card.
+### Next action
+- ⬜ **Task 17** insights generator → **18** `insights.view` permission (module
+  `reports`; both matrices + `dart run tool/diff_matrices.dart`) → **19**
+  dashboard card (`insights` feature folder + cubit + reusable insight card).
 
 ### Repo/branch state
-- **Code lives on `claude/platform-features-roadmap-7bqdgn` only.** `main` holds
-  **docs only** (code reaches `main` via PR after the user verifies).
-- PR #11 already merged (docs). No open PR for the M2 code yet.
-- Working rule this project: docs → `main` on request; **unverified code stays on
-  the feature branch** until the user runs the gates.
+- **All M2 code is now on `main`** (the old `claude/platform-features-roadmap-7bqdgn`
+  branch was merged and no longer exists locally/remotely).
+- Latest uncommitted local change: `getTopProducts` + `getLowStockCount` in
+  `ai_tool_service.dart` (not yet committed — commit only on user's request).
+- PR #11 merged (docs). Working rule: **never `git push` / commit without an
+  explicit green light** from the user.
 
 ### Environment note for future sessions
-- No Flutter/Dart SDK in the remote execution env → you cannot run
-  `analyze`/`test`/`build_runner` here. Write code + self-review; the user runs
-  the gates. Say so honestly; never claim tests passed.
+- This local Windows session **DOES** have the Flutter SDK
+  (`/c/Softwares/flutter/bin/flutter`) → you CAN run `flutter analyze` /
+  `flutter test` / `build_runner` here. (Earlier remote sessions could not — if
+  a future session is remote with no SDK, fall back to write+self-review and say
+  so honestly; never claim tests passed when they weren't run.)

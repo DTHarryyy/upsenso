@@ -305,6 +305,93 @@ class AiToolService {
     return (result.data['total'] as num?)?.toDouble() ?? 0.0;
   }
 
+  /// Top [limit] products by sales value within [dateFilter] — the "best
+  /// sellers" insight. A thin ranking wrapper over [getSalesByProduct], which
+  /// already returns rows ordered by total descending, so the AI and any other
+  /// caller share one definition of "top product".
+  Future<List<ProductSalesResult>> getTopProducts(
+    String businessId,
+    String cashierId,
+    AiDateFilter dateFilter, {
+    String? branchId,
+    int limit = 5,
+  }) async {
+    if (limit <= 0) return const [];
+    final ranked = await getSalesByProduct(
+      businessId,
+      cashierId,
+      dateFilter,
+      branchId: branchId,
+    );
+    return ranked.take(limit).toList();
+  }
+
+  /// Number of active, stock-tracked variants currently at or below their
+  /// low-stock threshold — the "running low" insight. Reuses the same DAO
+  /// definition the dashboard's low-stock card uses, so the AI's figure always
+  /// matches what the owner sees there. Business-scoped on purpose: variant
+  /// stock is an all-branches total (product_variants has no branch_id), so a
+  /// branch filter would not be meaningful here.
+  Future<int> getLowStockCount(String businessId) async {
+    final lowStock = await _variantsDao.getLowStockByBusinessId(businessId);
+    return lowStock.length;
+  }
+
+  /// Products ranked by the gross margin they earned within [dateFilter] — the
+  /// "margin movers" insight (top [limit] by margin). The cost basis is the
+  /// variant's CURRENT `product_variants.cost_price`, because cost-at-sale is
+  /// not stored on the line item; this is therefore an approximation that
+  /// drifts if a variant's cost changed after the sale. Variants with no cost
+  /// recorded are excluded — their margin is unknowable, and counting them as
+  /// zero-cost would overstate margin.
+  Future<List<MarginMoverResult>> getMarginMovers(
+    String businessId,
+    String cashierId,
+    AiDateFilter dateFilter, {
+    String? branchId,
+    int limit = 5,
+  }) async {
+    if (limit <= 0) return const [];
+    final range = dateFilter.resolve();
+    final bf = branchFilter(
+      businessId: businessId,
+      cashierId: cashierId,
+      branchId: branchId,
+      tableAlias: 't',
+    );
+
+    final rows = await _db.customSelect(
+      'SELECT ti.product_name, '
+      'COALESCE(SUM(ti.line_total), 0) AS revenue, '
+      'COALESCE(SUM(ti.qty * pv.cost_price), 0) AS cost_total, '
+      'COALESCE(SUM(ti.line_total), 0) - COALESCE(SUM(ti.qty * pv.cost_price), 0) '
+      'AS margin '
+      'FROM transaction_items ti '
+      'JOIN transactions t ON t.id = ti.transaction_id '
+      'JOIN product_variants pv ON pv.id = ti.variant_id '
+      'WHERE t.created_at >= ? AND t.created_at < ? '
+      'AND pv.cost_price IS NOT NULL '
+      '${bf.clause} '
+      'GROUP BY ti.product_name '
+      'ORDER BY margin DESC '
+      'LIMIT ?',
+      variables: [
+        Variable.withDateTime(range.start),
+        Variable.withDateTime(range.end),
+        ...bf.variables,
+        Variable.withInt(limit),
+      ],
+    ).get();
+
+    return rows.map((r) {
+      return MarginMoverResult(
+        productName: r.data['product_name'] as String? ?? '',
+        revenue: (r.data['revenue'] as num?)?.toDouble() ?? 0.0,
+        cost: (r.data['cost_total'] as num?)?.toDouble() ?? 0.0,
+      );
+    }).toList();
+  }
+
   // ─── PRODUCT QUERIES ───────────────────────────────────────────────────
 
   /// Get sales filtered by a specific product name.
@@ -637,6 +724,27 @@ class SalesTrendResult {
 
   bool get isUp => delta > 0;
   bool get isDown => delta < 0;
+}
+
+/// Gross margin a product earned over a period. Cost basis is the variant's
+/// CURRENT `product_variants.cost_price` (cost-at-sale is not stored), so this
+/// is an approximation; variants with no cost are excluded upstream.
+class MarginMoverResult {
+  final String productName;
+  final double revenue;
+  final double cost;
+
+  const MarginMoverResult({
+    required this.productName,
+    required this.revenue,
+    required this.cost,
+  });
+
+  double get margin => revenue - cost;
+
+  /// Margin as a percentage of revenue, or null when revenue is zero (an
+  /// undefined base — callers should phrase it as "n/a" rather than 0%).
+  double? get marginPercent => revenue == 0 ? null : (margin / revenue) * 100;
 }
 
 /// Info about an active product for listing.
