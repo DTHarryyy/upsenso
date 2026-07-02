@@ -46,6 +46,16 @@ class AiDateFilter {
 
   factory AiDateFilter.today() => const AiDateFilter(type: AiDateType.today);
 
+  /// Rolling 7-day window: start of day 7 days ago up to now.
+  /// Matches the "last 7 days" slice the dashboard already uses for its trend
+  /// charts, so insight numbers are consistent with what the user sees there.
+  static AiDateFilter thisWeek() {
+    final now = BusinessClock.now();
+    final start = DateTime(now.year, now.month, now.day)
+        .subtract(const Duration(days: 6));
+    return AiDateFilter(type: AiDateType.range, start: start, end: now);
+  }
+
   /// Resolve the effective start/end for database queries.
   /// All resolved dates are start-of-day inclusive.
   ({DateTime start, DateTime end}) resolve() {

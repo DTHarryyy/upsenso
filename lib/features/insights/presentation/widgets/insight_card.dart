@@ -63,6 +63,13 @@ class _InsightsBody extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               _CountBadge(count: count),
+              const Spacer(),
+              Text(
+                'This week',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: AppColors.textMuted,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 4),

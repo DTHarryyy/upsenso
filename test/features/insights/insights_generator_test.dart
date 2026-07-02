@@ -40,7 +40,7 @@ void main() {
       final s = salesInsight(out)!;
       expect(s.severity, InsightSeverity.positive);
       expect(s.metric, '+50.0%');
-      expect(s.metricSubtext, 'vs last period');
+      expect(s.metricSubtext, 'vs last week');
     });
 
     test('flags a significant drop as attention with negative metric', () {

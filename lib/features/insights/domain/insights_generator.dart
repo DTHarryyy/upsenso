@@ -61,9 +61,9 @@ class InsightsGenerator {
         category: InsightCategory.sales,
         severity: InsightSeverity.positive,
         categoryLabel: 'REVENUE TREND',
-        message: 'Sales are up vs the previous period',
+        message: 'Sales are up vs last week',
         metric: '+$magnitude%',
-        metricSubtext: 'vs last period',
+        metricSubtext: 'vs last week',
       );
     }
 
@@ -71,9 +71,9 @@ class InsightsGenerator {
       category: InsightCategory.sales,
       severity: InsightSeverity.attention,
       categoryLabel: 'REVENUE TREND',
-      message: 'Sales are down vs the previous period',
+      message: 'Sales are down vs last week',
       metric: '-$magnitude%',
-      metricSubtext: 'vs last period',
+      metricSubtext: 'vs last week',
     );
   }
 

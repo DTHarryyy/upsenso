@@ -43,7 +43,10 @@ class InsightsRepository {
     if (!_permissionService.can(PermissionKeys.insightsView)) return const [];
     if (businessId.trim().isEmpty) return const [];
 
-    final period = AiDateFilter.today();
+    // Use a rolling 7-day window so insight numbers align with the dashboard's
+    // "last 7 days" view rather than showing today-only figures that look wrong
+    // next to the 30-day Top Selling Items widget.
+    final period = AiDateFilter.thisWeek();
 
     final salesTrend = await _toolService.getSalesTrend(
       businessId,
