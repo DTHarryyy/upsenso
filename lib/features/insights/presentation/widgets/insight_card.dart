@@ -6,7 +6,7 @@ import 'package:pos/features/insights/domain/insight.dart';
 import 'package:pos/features/insights/presentation/cubit/insights_cubit.dart';
 import 'package:pos/features/insights/presentation/cubit/insights_state.dart';
 
-/// Dashboard "AI Insights" card (M2). Shows a short, ordered list of
+/// Dashboard "Business Insights" card (M2). Shows a short, ordered list of
 /// plain-language insights generated on-device. Self-hiding: takes no space
 /// while loading, when the user lacks `insights.view`, or when there is nothing
 /// to report — so it can be dropped onto any dashboard unconditionally.
@@ -17,18 +17,19 @@ class InsightCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<InsightsCubit, InsightsState>(
       builder: (context, state) {
-        final Widget child;
         if (state is InsightsError) {
-          child = const _InsightsErrorCard();
-        } else if (state is InsightsLoaded && !state.isEmpty) {
-          child = _InsightsBody(insights: state.insights);
-        } else {
-          // Initial, loading, denied, or nothing to report → take no space.
-          return const SizedBox.shrink();
+          return const Padding(
+            padding: EdgeInsets.only(bottom: 16),
+            child: _InsightsErrorCard(),
+          );
         }
-        // Own its bottom gap only when visible, so the surrounding dashboard
-        // rhythm stays right whether or not the card renders.
-        return Padding(padding: const EdgeInsets.only(bottom: 16), child: child);
+        if (state is InsightsLoaded && !state.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: _InsightsBody(insights: state.insights),
+          );
+        }
+        return const SizedBox.shrink();
       },
     );
   }
@@ -40,35 +41,38 @@ class _InsightsBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
+    final theme = Theme.of(context);
     return DashboardCard(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.auto_awesome, size: 20, color: AppColors.brand),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'AI Insights',
-                  style: textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w600),
+              const Icon(Icons.insights, size: 17, color: AppColors.brand),
+              const SizedBox(width: 7),
+              Text(
+                'Business Insights',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
                 ),
               ),
+              const Spacer(),
               Text(
-                'On-device',
-                style: textTheme.labelSmall
-                    ?.copyWith(color: AppColors.textMuted),
+                'Today',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: AppColors.textMuted,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          for (var i = 0; i < insights.length; i++) ...[
-            if (i > 0) const SizedBox(height: 10),
-            _InsightTile(insight: insights[i]),
-          ],
+          const SizedBox(height: 12),
+          ...List.generate(insights.length, (i) {
+            return Padding(
+              padding: EdgeInsets.only(top: i == 0 ? 0 : 6),
+              child: _InsightTile(insight: insights[i]),
+            );
+          }),
         ],
       ),
     );
@@ -81,25 +85,37 @@ class _InsightTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final accent = _accentColor(insight.severity);
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(8),
+        color: accent.withValues(alpha: 0.07),
+        border: Border(left: BorderSide(color: accent, width: 3)),
+        borderRadius: const BorderRadius.only(
+          topRight: Radius.circular(6),
+          bottomRight: Radius.circular(6),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(_categoryIcon(insight.category), size: 16, color: accent),
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Icon(
+              _categoryIcon(insight.category),
+              size: 13,
+              color: accent,
+            ),
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               insight.message,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(color: AppColors.textSecondary),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.87),
+                height: 1.45,
+              ),
             ),
           ),
         ],
@@ -107,53 +123,39 @@ class _InsightTile extends StatelessWidget {
     );
   }
 
-  static Color _accentColor(InsightSeverity severity) {
-    switch (severity) {
-      case InsightSeverity.critical:
-        return AppColors.error;
-      case InsightSeverity.attention:
-        return AppColors.warning;
-      case InsightSeverity.positive:
-        return AppColors.success;
-      case InsightSeverity.neutral:
-        return AppColors.info;
-    }
-  }
+  static Color _accentColor(InsightSeverity severity) => switch (severity) {
+        InsightSeverity.critical => AppColors.error,
+        InsightSeverity.attention => AppColors.warning,
+        InsightSeverity.positive => AppColors.success,
+        InsightSeverity.neutral => AppColors.brand,
+      };
 
-  static IconData _categoryIcon(InsightCategory category) {
-    switch (category) {
-      case InsightCategory.sales:
-        return Icons.trending_up;
-      case InsightCategory.expenses:
-        return Icons.account_balance_wallet_outlined;
-      case InsightCategory.margin:
-        return Icons.percent;
-      case InsightCategory.inventory:
-        return Icons.inventory_2_outlined;
-    }
-  }
+  static IconData _categoryIcon(InsightCategory category) => switch (category) {
+        InsightCategory.sales => Icons.trending_up_rounded,
+        InsightCategory.expenses => Icons.receipt_long_outlined,
+        InsightCategory.margin => Icons.show_chart_rounded,
+        InsightCategory.inventory => Icons.inventory_2_outlined,
+      };
 }
 
-/// Graceful, low-emphasis fallback when insight generation failed — keeps the
-/// dashboard usable rather than showing a raw error or a blank.
 class _InsightsErrorCard extends StatelessWidget {
   const _InsightsErrorCard();
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
+    final theme = Theme.of(context);
     return DashboardCard(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          const Icon(Icons.auto_awesome_outlined,
-              size: 20, color: AppColors.textMuted),
+          Icon(Icons.insights_outlined, size: 16, color: AppColors.textMuted),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              "Insights aren't available right now.",
-              style: textTheme.bodyMedium
-                  ?.copyWith(color: AppColors.textSecondary),
+              'Insights unavailable right now.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.textMuted,
+              ),
             ),
           ),
         ],
