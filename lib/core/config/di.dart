@@ -71,6 +71,10 @@ import 'package:pos/core/database/daos/stock_ledger_dao.dart';
 import 'package:pos/core/database/daos/purchase_order_lines_dao.dart';
 import 'package:pos/core/database/daos/purchase_orders_dao.dart';
 import 'package:pos/core/database/daos/suppliers_dao.dart';
+import 'package:pos/core/database/daos/customers_dao.dart';
+import 'package:pos/features/crm/data/datasources/customer_remote_ds.dart';
+import 'package:pos/features/crm/data/customer_repository.dart';
+import 'package:pos/features/crm/domain/repositories/i_customer_repository.dart';
 import 'package:pos/core/services/recipe_consumption_service.dart';
 import 'package:pos/core/services/stock_movement_service.dart';
 import 'package:pos/features/procurement/data/datasources/procurement_remote_ds.dart';
@@ -365,6 +369,8 @@ Future<void> initDI() async {
       goodsReceiptsDao: sl<GoodsReceiptsDao>(),
       goodsReceiptItemsDao: sl<GoodsReceiptItemsDao>(),
       procurementRemoteDs: sl<ProcurementRemoteDs>(),
+      customersDao: sl<CustomersDao>(),
+      customerRemoteDs: sl<CustomerRemoteDs>(),
       recipeLinesDao: sl<RecipeLinesDao>(),
       syncStateDao: sl<SyncStateDao>(),
       imageService: sl<ImageService>(),
@@ -436,6 +442,7 @@ Future<void> initDI() async {
     () => BusinessModulesDao(sl<AppDatabase>()),
   );
   sl.registerLazySingleton<SuppliersDao>(() => SuppliersDao(sl<AppDatabase>()));
+  sl.registerLazySingleton<CustomersDao>(() => CustomersDao(sl<AppDatabase>()));
   sl.registerLazySingleton<PurchaseOrdersDao>(
     () => PurchaseOrdersDao(sl<AppDatabase>()),
   );
@@ -470,6 +477,16 @@ Future<void> initDI() async {
       receiptsDao: sl<GoodsReceiptsDao>(),
       receiptItemsDao: sl<GoodsReceiptItemsDao>(),
       remoteDs: sl<ProcurementRemoteDs>(),
+    ),
+  );
+  sl.registerLazySingleton<CustomerRemoteDs>(
+    () => CustomerRemoteDs(sl<SupabaseClient>()),
+  );
+  sl.registerLazySingleton<ICustomerRepository>(
+    () => CustomerRepository(
+      customersDao: sl<CustomersDao>(),
+      transactionsDao: sl<TransactionsDao>(),
+      remoteDs: sl<CustomerRemoteDs>(),
     ),
   );
   sl.registerLazySingleton<PermissionRemoteDs>(

@@ -38,6 +38,8 @@ import 'package:pos/core/database/daos/purchase_orders_dao.dart';
 import 'package:pos/core/database/daos/recipe_lines_dao.dart';
 import 'package:pos/core/database/daos/sync_state_dao.dart';
 import 'package:pos/core/database/daos/suppliers_dao.dart';
+import 'package:pos/core/database/daos/customers_dao.dart';
+import 'package:pos/features/crm/data/datasources/customer_remote_ds.dart';
 import 'package:pos/core/services/image_service.dart';
 import 'package:pos/core/services/invoice_number_service.dart';
 import 'package:pos/core/database/daos/invoice_sequences_dao.dart';
@@ -76,6 +78,8 @@ class SyncService {
   final GoodsReceiptsDao _goodsReceiptsDao;
   final GoodsReceiptItemsDao _goodsReceiptItemsDao;
   final ProcurementRemoteDs _procurementRemoteDs;
+  final CustomersDao _customersDao;
+  final CustomerRemoteDs _customerRemoteDs;
   final RecipeLinesDao _recipeLinesDao;
   final SyncStateDao _syncStateDao;
   final ImageService _imageService;
@@ -143,6 +147,8 @@ class SyncService {
     required GoodsReceiptsDao goodsReceiptsDao,
     required GoodsReceiptItemsDao goodsReceiptItemsDao,
     required ProcurementRemoteDs procurementRemoteDs,
+    required CustomersDao customersDao,
+    required CustomerRemoteDs customerRemoteDs,
     required RecipeLinesDao recipeLinesDao,
     required SyncStateDao syncStateDao,
     required ImageService imageService,
@@ -177,6 +183,8 @@ class SyncService {
        _goodsReceiptsDao = goodsReceiptsDao,
        _goodsReceiptItemsDao = goodsReceiptItemsDao,
        _procurementRemoteDs = procurementRemoteDs,
+       _customersDao = customersDao,
+       _customerRemoteDs = customerRemoteDs,
        _recipeLinesDao = recipeLinesDao,
        _syncStateDao = syncStateDao,
        _imageService = imageService,
@@ -283,6 +291,7 @@ class SyncService {
       await _auditLogsDao.clearAll();
       await _employeesDao.clearAll();
       await _suppliersDao.clearAll();
+      await _customersDao.clearAll();
       await _goodsReceiptItemsDao.clearAll();
       await _goodsReceiptsDao.clearAll();
       await _purchaseOrderLinesDao.clearAll();
@@ -312,6 +321,7 @@ class SyncService {
       _stockLedgerDao.getPendingSync().then<int>((r) => r.length),
       _employeesDao.getPendingSync().then<int>((r) => r.length),
       _suppliersDao.getPendingSync().then<int>((r) => r.length),
+      _customersDao.getPendingSync().then<int>((r) => r.length),
       _purchaseOrdersDao.getPendingSync().then<int>((r) => r.length),
       _purchaseOrderLinesDao.getPendingSync().then<int>((r) => r.length),
       _recipeLinesDao.getPendingSync().then<int>((r) => r.length),
@@ -340,13 +350,14 @@ class SyncService {
         gr = 0,
         gri = 0,
         rcp = 0,
-        rfnd = 0;
+        rfnd = 0,
+        cust = 0;
     final controller = StreamController<int>.broadcast();
 
     void emit() {
       if (!controller.isClosed) {
         controller.add(
-          cat + prod + vars + orders + exp + inv + led + rcpt + audit + emp + sup + po + pol + gr + gri + rcp + rfnd,
+          cat + prod + vars + orders + exp + inv + led + rcpt + audit + emp + sup + po + pol + gr + gri + rcp + rfnd + cust,
         );
       }
     }
@@ -420,6 +431,10 @@ class SyncService {
       gri = n;
       emit();
     });
+    final s18 = _customersDao.watchPendingSyncCount().listen((n) {
+      cust = n;
+      emit();
+    });
 
     controller.onCancel = () {
       s1.cancel();
@@ -439,6 +454,7 @@ class SyncService {
       s15.cancel();
       s16.cancel();
       s17.cancel();
+      s18.cancel();
       controller.close();
     };
 
@@ -492,6 +508,7 @@ class SyncService {
       await _syncAuditLogs(); // fire-and-forget style; errors logged internally
       final employeeResult = await _syncEmployees();
       final supplierResult = await _syncSuppliers();
+      final customerResult = await _syncCustomers();
       final polResult = await _syncPurchaseOrderLines();
       final grResult = await _syncGoodsReceipts();
       final griResult = await _syncGoodsReceiptItems();
@@ -510,6 +527,7 @@ class SyncService {
           ledgerResult.syncedCount +
           employeeResult.syncedCount +
           supplierResult.syncedCount +
+          customerResult.syncedCount +
           poResult.syncedCount +
           polResult.syncedCount +
           grResult.syncedCount +
@@ -528,6 +546,7 @@ class SyncService {
           ledgerResult.failedCount +
           employeeResult.failedCount +
           supplierResult.failedCount +
+          customerResult.failedCount +
           poResult.failedCount +
           polResult.failedCount +
           grResult.failedCount +
@@ -556,6 +575,7 @@ class SyncService {
           ...ledgerResult.errors,
           ...employeeResult.errors,
           ...supplierResult.errors,
+          ...customerResult.errors,
           ...poResult.errors,
           ...polResult.errors,
           ...grResult.errors,
@@ -589,6 +609,7 @@ class SyncService {
             ledgerResult.success &&
             employeeResult.success &&
             supplierResult.success &&
+            customerResult.success &&
             poResult.success &&
             polResult.success &&
             grResult.success &&
@@ -596,7 +617,7 @@ class SyncService {
             recipeResult.success &&
             pullResult.success,
         message:
-            '${branchResult.message}; ${businessResult.message}; ${categoryResult.message}; ${productResult.message}; ${variantResult.message}; ${orderResult.message}; ${refundResult.message}; ${expenseResult.message}; ${inventoryResult.message}; ${ledgerResult.message}; ${employeeResult.message}; ${supplierResult.message}; ${poResult.message}; ${polResult.message}; ${grResult.message}; ${griResult.message}; ${recipeResult.message}; ${pullResult.message}',
+            '${branchResult.message}; ${businessResult.message}; ${categoryResult.message}; ${productResult.message}; ${variantResult.message}; ${orderResult.message}; ${refundResult.message}; ${expenseResult.message}; ${inventoryResult.message}; ${ledgerResult.message}; ${employeeResult.message}; ${supplierResult.message}; ${customerResult.message}; ${poResult.message}; ${polResult.message}; ${grResult.message}; ${griResult.message}; ${recipeResult.message}; ${pullResult.message}',
         syncedCount: totalSynced + pullResult.syncedCount,
         failedCount: totalFailed + pullResult.failedCount,
         errors: [
@@ -612,6 +633,7 @@ class SyncService {
           ...ledgerResult.errors,
           ...employeeResult.errors,
           ...supplierResult.errors,
+          ...customerResult.errors,
           ...poResult.errors,
           ...polResult.errors,
           ...grResult.errors,
@@ -1995,6 +2017,20 @@ class SyncService {
     }
 
     try {
+      final customers = await _customerRemoteDs.getCustomersByBusiness(
+        businessId,
+      );
+      for (final row in customers) {
+        await _customersDao.upsertFromServer(row);
+        pulled++;
+      }
+    } catch (e, st) {
+      failed++;
+      debugPrint('[SYNC] Pull customers failed: $e\n$st');
+      errors.add('Pull customers: ${e.toString()}');
+    }
+
+    try {
       final pos = await _procurementRemoteDs.getPurchaseOrdersByBusiness(
         businessId,
       );
@@ -2319,6 +2355,66 @@ class SyncService {
     return SyncResult(
       success: failed == 0,
       message: 'Suppliers: $synced synced, $failed failed',
+      syncedCount: synced,
+      failedCount: failed,
+      errors: errors,
+    );
+  }
+
+  Future<SyncResult> _syncCustomers() async {
+    final pending = await _customersDao.getPendingSync();
+    int synced = 0;
+    int failed = 0;
+    final errors = <String>[];
+
+    for (final record in pending) {
+      final status = SyncStatusExtension.fromInt(record.syncStatus);
+      try {
+        switch (status) {
+          case SyncStatus.pendingUpload:
+          case SyncStatus.pendingUpdate:
+          // A customer soft-delete rides an upsert (is_deleted flag) — there's
+          // no server hard-delete for customers (no DELETE policy).
+          case SyncStatus.pendingDelete:
+          case SyncStatus.failed:
+            await _customerRemoteDs.upsertCustomer({
+              'id': record.id,
+              'business_id': record.businessId,
+              'name': record.name,
+              'phone': record.phone,
+              'email': record.email,
+              'address': record.address,
+              'notes': record.notes,
+              'is_active': record.isActive,
+              'is_deleted': record.isDeleted,
+              'deleted_at': record.deletedAt?.toUtc().toIso8601String(),
+              'created_at': record.createdAt.toUtc().toIso8601String(),
+              'updated_at': record.localUpdatedAt.toUtc().toIso8601String(),
+            });
+            await _customersDao.updateSyncStatus(
+              id: record.id,
+              status: SyncStatus.synced,
+            );
+            synced++;
+
+          case SyncStatus.synced:
+            break;
+        }
+      } catch (e, st) {
+        failed++;
+        debugPrint('[SYNC] Customer ${record.name} FAILED: $e\n$st');
+        errors.add('Customer ${record.name}: ${e.toString()}');
+        await _customersDao.updateSyncStatus(
+          id: record.id,
+          status: SyncStatus.failed,
+          error: e.toString(),
+        );
+      }
+    }
+
+    return SyncResult(
+      success: failed == 0,
+      message: 'Customers: $synced synced, $failed failed',
       syncedCount: synced,
       failedCount: failed,
       errors: errors,

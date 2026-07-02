@@ -521,6 +521,7 @@ String _badgeLabelFor(AuditLogActionType type) {
     case AuditLogActionType.branchCreated:
     case AuditLogActionType.ingredientCreated:
     case AuditLogActionType.supplierCreated:
+    case AuditLogActionType.customerCreated:
     case AuditLogActionType.purchaseOrderCreated:
       return 'CREATE';
     case AuditLogActionType.stockUpdated:
@@ -530,12 +531,15 @@ String _badgeLabelFor(AuditLogActionType type) {
     case AuditLogActionType.productUpdated:
     case AuditLogActionType.ingredientUpdated:
     case AuditLogActionType.supplierUpdated:
+    case AuditLogActionType.customerUpdated:
     case AuditLogActionType.purchaseOrderUpdated:
     case AuditLogActionType.businessModuleChanged:
       return 'UPDATE';
     case AuditLogActionType.supplierDeleted:
     case AuditLogActionType.ingredientDeleted:
       return 'DELETE';
+    case AuditLogActionType.customerArchived:
+      return 'ARCHIVE';
     case AuditLogActionType.purchaseOrderSubmitted:
       return 'SUBMIT';
     case AuditLogActionType.purchaseOrderReceived:
@@ -634,6 +638,8 @@ Color _colorFor(AuditLogActionType type) {
     case AuditLogActionType.ingredientUpdated:
     case AuditLogActionType.supplierCreated:
     case AuditLogActionType.supplierUpdated:
+    case AuditLogActionType.customerCreated:
+    case AuditLogActionType.customerUpdated:
     case AuditLogActionType.purchaseOrderCreated:
     case AuditLogActionType.purchaseOrderUpdated:
     case AuditLogActionType.purchaseOrderSubmitted:
@@ -647,6 +653,8 @@ Color _colorFor(AuditLogActionType type) {
     case AuditLogActionType.supplierDeleted:
     case AuditLogActionType.ingredientDeleted:
       return AppColors.error;
+    case AuditLogActionType.customerArchived:
+      return AppColors.warning;
     case AuditLogActionType.permissionDenied:
       return AppColors.error;
     case AuditLogActionType.permissionOverrideSet:

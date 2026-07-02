@@ -61,6 +61,12 @@ import 'package:pos/features/procurement/domain/entities/supplier.dart';
 import 'package:pos/features/procurement/presentation/pages/purchase_orders_page.dart';
 import 'package:pos/features/procurement/presentation/pages/supplier_detail_page.dart';
 import 'package:pos/features/procurement/presentation/pages/suppliers_page.dart';
+import 'package:pos/features/crm/domain/entities/customer.dart';
+import 'package:pos/features/crm/domain/repositories/i_customer_repository.dart';
+import 'package:pos/features/crm/presentation/cubit/customer_cubit.dart';
+import 'package:pos/features/crm/presentation/cubit/customer_detail_cubit.dart';
+import 'package:pos/features/crm/presentation/pages/customers_page.dart';
+import 'package:pos/features/crm/presentation/pages/customer_detail_page.dart';
 import 'package:pos/features/recipes/presentation/pages/ingredients_page.dart';
 import 'package:pos/features/onboarding/onboarding.dart';
 import 'package:pos/features/pos/presentation/pages/receipt_preview_page.dart';
@@ -195,6 +201,8 @@ class AppRouter {
           AppRoutes.poForm: PermissionKeys.procurementCreatePo,
           AppRoutes.poDetail: PermissionKeys.navProcurement,
           AppRoutes.ingredients: PermissionKeys.navRecipes,
+          AppRoutes.customers: PermissionKeys.navCustomers,
+          AppRoutes.customerDetail: PermissionKeys.navCustomers,
         };
         final requiredKey = routePermissionGuards[location];
         if (requiredKey != null && !sl<PermissionService>().can(requiredKey)) {
@@ -220,6 +228,8 @@ class AppRouter {
           AppRoutes.poForm: 'procurement',
           AppRoutes.poDetail: 'procurement',
           AppRoutes.ingredients: 'ingredients',
+          AppRoutes.customers: 'crm',
+          AppRoutes.customerDetail: 'crm',
         };
         final requiredModule = routeModuleGuards[location];
         if (requiredModule != null &&
@@ -582,6 +592,55 @@ class AppRouter {
                           branchId: _activeBranchId(context),
                         )..watch(),
                         child: PoDetailPage(poId: poId),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          // ── Branch 12: Customers (CRM) ───────────────────────────────────
+          // Nested as a shell branch so the sidebar/top bar stay visible on
+          // tablet/desktop; on mobile it's pushed from the More drawer.
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.customers,
+                builder: (context, _) {
+                  return BlocProvider(
+                    create: (_) => CustomerCubit(
+                      repository: sl<ICustomerRepository>(),
+                      permissions: sl<PermissionService>(),
+                      businessId: _activeBusinessId(),
+                    )..watch(),
+                    child: const CustomersPage(),
+                  );
+                },
+                routes: [
+                  GoRoute(
+                    path: 'detail',
+                    builder: (context, state) {
+                      final businessId = _activeBusinessId();
+                      final customer = state.extra as Customer;
+                      return MultiBlocProvider(
+                        providers: [
+                          BlocProvider(
+                            create: (_) => CustomerCubit(
+                              repository: sl<ICustomerRepository>(),
+                              permissions: sl<PermissionService>(),
+                              businessId: businessId,
+                            )..watch(),
+                          ),
+                          BlocProvider(
+                            create: (_) => CustomerDetailCubit(
+                              repository: sl<ICustomerRepository>(),
+                              businessId: businessId,
+                              customerId: customer.id,
+                            )..watch(),
+                          ),
+                        ],
+                        child: CustomerDetailPage(customer: customer),
                       );
                     },
                   ),

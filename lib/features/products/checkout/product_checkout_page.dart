@@ -22,6 +22,8 @@ import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/pos/data/models/cart_model.dart';
 import 'package:pos/core/audit/audit_log_service.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
+import 'package:pos/features/crm/presentation/widgets/customer_inline_picker.dart';
+import 'package:pos/features/crm/presentation/widgets/customer_selection.dart';
 import 'package:pos/features/drafts/domain/repositories/i_draft_sales_repository.dart';
 import 'package:pos/features/pos/presentation/pages/checkout_success_page.dart';
 import 'package:pos/features/pos/presentation/widgets/denom_chip.dart';
@@ -55,9 +57,11 @@ class ProductCheckoutPage extends StatefulWidget {
 }
 
 class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
-  final _customerController = TextEditingController();
   final _amountController = TextEditingController();
 
+  // null = walk-in. Set via the customer picker — may be a saved customer, an
+  // ad-hoc name, or an explicit walk-in.
+  CustomerSelection? _customer;
   String _paymentMethod = 'cash';
   double _amountReceived = 0;
   bool _confirming = false;
@@ -88,9 +92,13 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
 
   @override
   void dispose() {
-    _customerController.dispose();
     _amountController.dispose();
     super.dispose();
+  }
+
+  String? get _businessId {
+    final authState = context.read<AuthBloc>().state;
+    return authState is AuthAuthenticated ? authState.user.businessId : null;
   }
 
   void _addDenom(double denom) {
@@ -155,7 +163,11 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
     try {
       final cashierId = authState.user.id;
       final txId = const Uuid().v4();
-      final customerName = _customerController.text.trim();
+      // A saved customer links via customer_id; an ad-hoc "name only" selection
+      // carries just the snapshot name. The name is always snapshotted so
+      // receipts/history stay correct if a saved customer is later renamed.
+      final selection = _customer;
+      final customerName = selection?.displayName?.trim() ?? '';
 
       final tx = TransactionsTableCompanion.insert(
         id: txId,
@@ -166,6 +178,7 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
         taxAmount: widget.tax,
         subtotal: widget.subtotal,
         discountAmount: Value(widget.discountAmount),
+        customerId: Value(selection?.customerId),
         customerName: Value(customerName.isEmpty ? null : customerName),
         paymentMethod: Value(_paymentMethod),
         amountReceived: Value(_isCash ? _amountReceived : null),
@@ -410,15 +423,13 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Customer name
-        const AppFieldLabel('Customer (optional)'),
-        const SizedBox(height: 6),
-        TextField(
-          controller: _customerController,
-          textCapitalization: TextCapitalization.words,
-          textInputAction: TextInputAction.done,
-          decoration: appInputDeco('Customer name'),
-          style: getOutfitStyle(color: AppColors.textPrimary),
+        // Customer — inline search: pick existing, type a name only, or quick-add
+        CustomerInlinePicker(
+          businessId: _businessId,
+          initial: _customer,
+          // No setState: nothing in this form depends on the selection until
+          // confirm, and rebuilding here would fight the picker's own focus.
+          onChanged: (sel) => _customer = sel,
         ),
         const SizedBox(height: 20),
 

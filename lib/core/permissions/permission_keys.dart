@@ -77,6 +77,10 @@ abstract final class PermissionKeys {
   static const String suppliersView = 'suppliers.view';
   static const String suppliersManage = 'suppliers.manage';
 
+  // ── CRM / Customers ───────────────────────────────────────────────────────
+  static const String crmView = 'crm.view';
+  static const String crmManage = 'crm.manage';
+
   // ── Ingredients / Recipes ─────────────────────────────────────────────────
   static const String ingredientsView = 'ingredients.view';
   static const String ingredientsManage = 'ingredients.manage';
@@ -110,6 +114,7 @@ abstract final class PermissionKeys {
   static const String navSuppliers = 'nav.suppliers';
   static const String navProcurement = 'nav.procurement';
   static const String navRecipes = 'nav.recipes';
+  static const String navCustomers = 'nav.customers';
 
   // ── Data scoping ──────────────────────────────────────────────────────────
   static const String dataCrossBranchAccess = 'data.cross_branch_access';
@@ -159,6 +164,8 @@ abstract final class PermissionKeys {
     auditLogsDelete,
     suppliersView,
     suppliersManage,
+    crmView,
+    crmManage,
     dashboardViewStats,
     dashboardViewBranchComparison,
     dashboardViewExpenses,
@@ -175,6 +182,7 @@ abstract final class PermissionKeys {
     navSuppliers,
     navProcurement,
     navRecipes,
+    navCustomers,
     ingredientsView,
     ingredientsManage,
     recipesManage,

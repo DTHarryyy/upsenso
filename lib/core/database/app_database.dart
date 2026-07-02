@@ -64,6 +64,8 @@ import 'package:pos/core/database/tables/refund_items_table.dart';
 import 'package:pos/core/database/daos/refunds_dao.dart';
 import 'package:pos/core/database/tables/refund_settings_table.dart';
 import 'package:pos/core/database/daos/refund_settings_dao.dart';
+import 'package:pos/core/database/tables/customers_table.dart';
+import 'package:pos/core/database/daos/customers_dao.dart';
 
 part 'app_database.g.dart';
 
@@ -101,6 +103,7 @@ part 'app_database.g.dart';
     RefundsTable,
     RefundItemsTable,
     RefundSettingsTable,
+    CustomersTable,
   ],
   daos: [
     AuthContextDao,
@@ -132,6 +135,7 @@ part 'app_database.g.dart';
     GoodsReceiptItemsDao,
     RefundsDao,
     RefundSettingsDao,
+    CustomersDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -152,7 +156,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 51;
+  int get schemaVersion => 52;
 
   @override
   MigrationStrategy get migration {
@@ -875,6 +879,31 @@ class AppDatabase extends _$AppDatabase {
           } catch (e, st) {
             debugPrint('[AppDatabase] v51 refund_settings create skipped: $e\n$st');
           }
+        }
+        if (from < 52) {
+          // M5 CRM foundation — customers directory + a nullable customer_id FK
+          // on transactions so sales can be attributed for purchase history.
+          // Additive; existing (walk-in) transactions keep customer_id NULL.
+          // Rollback: DROP TABLE customers; the transactions.customer_id column
+          // is harmless if left in place.
+          try {
+            await m.createTable(customersTable);
+          } catch (e, st) {
+            debugPrint('[AppDatabase] v52 customers create skipped: $e\n$st');
+          }
+          try {
+            await m.addColumn(transactionsTable, transactionsTable.customerId);
+          } catch (e, st) {
+            debugPrint('[AppDatabase] v52 transactions.customer_id add skipped: $e\n$st');
+          }
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_customers_business '
+            'ON customers(business_id)',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_transactions_customer '
+            'ON transactions(customer_id)',
+          );
         }
       },
     );

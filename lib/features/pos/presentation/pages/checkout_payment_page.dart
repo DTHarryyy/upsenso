@@ -18,6 +18,8 @@ import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
+import 'package:pos/features/crm/presentation/widgets/customer_inline_picker.dart';
+import 'package:pos/features/crm/presentation/widgets/customer_selection.dart';
 import 'package:pos/features/pos/data/models/cart_model.dart';
 import 'package:pos/features/pos/presentation/pages/checkout_success_page.dart';
 import 'package:pos/features/pos/presentation/widgets/denom_chip.dart';
@@ -46,8 +48,10 @@ class CheckoutPaymentPage extends StatefulWidget {
 }
 
 class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
-  final _customerController = TextEditingController();
   final _amountController = TextEditingController();
+  // null = walk-in (no customer). Set via the customer picker — may be a saved
+  // customer, an ad-hoc name, or an explicit walk-in.
+  CustomerSelection? _customer;
   String _paymentMethod = 'cash';
   double _amountReceived = 0;
   bool _confirming = false;
@@ -70,7 +74,6 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
 
   @override
   void dispose() {
-    _customerController.dispose();
     _amountController.dispose();
     super.dispose();
   }
@@ -153,7 +156,11 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
     try {
       final cashierId = authState.user.id;
       final txId = const Uuid().v4();
-      final customerName = _customerController.text.trim();
+      // Snapshot the name onto the sale even though customer_id links a saved
+      // record — so receipts/history stay correct if the customer is later
+      // renamed. An ad-hoc "name only" selection carries a name but no id.
+      final selection = _customer;
+      final customerName = selection?.displayName?.trim() ?? '';
 
       final tx = TransactionsTableCompanion.insert(
         id: txId,
@@ -164,6 +171,7 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
         taxAmount: widget.tax,
         subtotal: widget.subtotal,
         discountAmount: Value(widget.discountAmount),
+        customerId: Value(selection?.customerId),
         customerName: Value(customerName.isEmpty ? null : customerName),
         paymentMethod: Value(_paymentMethod),
         amountReceived: Value(_isCash ? _amountReceived : null),
@@ -264,6 +272,11 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
     }
   }
 
+  String? get _businessId {
+    final authState = context.read<AuthBloc>().state;
+    return authState is AuthAuthenticated ? authState.user.businessId : null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -296,15 +309,11 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── Customer (optional) ───────────────────────────────
-                    const AppFieldLabel('Customer (optional)'),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: _customerController,
-                      textCapitalization: TextCapitalization.words,
-                      textInputAction: TextInputAction.done,
-                      decoration: appInputDeco('Customer name'),
-                      style: getOutfitStyle(color: AppColors.textPrimary),
+                    // ── Customer (optional) — inline search ───────────────
+                    CustomerInlinePicker(
+                      businessId: _businessId,
+                      initial: _customer,
+                      onChanged: (sel) => _customer = sel,
                     ),
                     const SizedBox(height: 20),
 

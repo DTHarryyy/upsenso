@@ -62,4 +62,8 @@ class AppRoutes {
 
   // Recipes / Ingredients
   static const String ingredients = '/more/ingredients';
+
+  // CRM / Customers
+  static const String customers = '/more/customers';
+  static const String customerDetail = '/more/customers/detail';
 }

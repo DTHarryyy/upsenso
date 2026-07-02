@@ -223,6 +223,26 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
     return query.watch();
   }
 
+  /// Watch a customer's completed sales (purchase history), newest first.
+  /// Business-scoped so a customer id never leaks another tenant's rows.
+  Stream<List<TransactionsTableData>> watchByCustomerId({
+    required String businessId,
+    required String customerId,
+  }) {
+    return (select(transactionsTable)
+          ..where(
+            (t) =>
+                t.businessId.equals(businessId) &
+                t.customerId.equals(customerId) &
+                t.status.equals('completed'),
+          )
+          ..orderBy([
+            (t) =>
+                OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
+          ]))
+        .watch();
+  }
+
   /// Fetch a single transaction by ID.
   Future<TransactionsTableData?> getById(String id) {
     return (select(

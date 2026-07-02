@@ -192,6 +192,13 @@ enum AppPermission {
   /// inventory staff can maintain the directory without controlling POs).
   manageSuppliers,
 
+  // ── CRM / Customers ───────────────────────────────────────────────────────
+  /// View the customer directory and open a customer's purchase history.
+  viewCustomers,
+
+  /// Create / edit / archive customers (also gates quick-add at the till).
+  manageCustomers,
+
   // ── Procurement ───────────────────────────────────────────────────────────
   /// View purchase orders and procurement history.
   viewProcurement,
@@ -360,6 +367,10 @@ extension AppPermissionX on AppPermission {
         return 'View Supplier List';
       case AppPermission.manageSuppliers:
         return 'Manage Suppliers';
+      case AppPermission.viewCustomers:
+        return 'View Customers';
+      case AppPermission.manageCustomers:
+        return 'Manage Customers';
       case AppPermission.viewProcurement:
         return 'View Procurement';
       case AppPermission.createPurchaseOrder:
@@ -500,6 +511,10 @@ extension AppPermissionX on AppPermission {
         return 'suppliers.view';
       case AppPermission.manageSuppliers:
         return 'suppliers.manage';
+      case AppPermission.viewCustomers:
+        return 'crm.view';
+      case AppPermission.manageCustomers:
+        return 'crm.manage';
       case AppPermission.viewProcurement:
         return 'procurement.view';
       case AppPermission.createPurchaseOrder:

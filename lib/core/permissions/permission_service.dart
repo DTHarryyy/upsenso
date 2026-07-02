@@ -228,6 +228,8 @@ class PermissionService {
       case 'suppliers':
       case 'procurement':
         return 'procurement';
+      case 'crm':
+        return 'crm';
       case 'ingredients':
         return 'ingredients';
       case 'recipes':

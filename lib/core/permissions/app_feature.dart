@@ -49,6 +49,9 @@ enum AppFeature {
   /// Supplier directory (sub-feature of procurement module).
   supplierDirectory,
 
+  /// Customer directory / CRM — customers list, detail, purchase history.
+  customerDirectory,
+
   /// Procurement module — purchase orders, receiving, supplier management.
   procurement,
 
@@ -98,6 +101,8 @@ extension AppFeatureX on AppFeature {
         return 'Products Catalogue';
       case AppFeature.supplierDirectory:
         return 'Supplier Directory';
+      case AppFeature.customerDirectory:
+        return 'Customers';
       case AppFeature.procurement:
         return 'Procurement';
       case AppFeature.ingredientsManagement:
@@ -145,6 +150,9 @@ extension AppFeatureX on AppFeature {
         return 'recipes';
       case AppFeature.auditLogs:
         return 'audit';
+      // CRM has its own module (seeded as `crm` in the modules catalogue).
+      case AppFeature.customerDirectory:
+        return 'crm';
       // Not module-gated:
       case AppFeature.businessSettings:
       case AppFeature.branchConfiguration:
@@ -182,6 +190,8 @@ extension AppFeatureX on AppFeature {
         return 'nav.audit_logs';
       case AppFeature.supplierDirectory:
         return 'nav.suppliers';
+      case AppFeature.customerDirectory:
+        return 'nav.customers';
       case AppFeature.procurement:
         return 'nav.procurement';
       case AppFeature.ingredientsManagement:

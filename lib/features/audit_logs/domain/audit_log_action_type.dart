@@ -52,6 +52,11 @@ enum AuditLogActionType {
   purchaseOrderReceived,
   purchaseOrderCancelled,
 
+  // ── CRM / Customers ────────────────────────────────────────────────────────
+  customerCreated,
+  customerUpdated,
+  customerArchived,
+
   // ── Settings ─────────────────────────────────────────────────────────────
   businessModuleChanged,
 
@@ -172,6 +177,12 @@ extension AuditLogActionTypeX on AuditLogActionType {
         return 'PURCHASE_ORDER_RECEIVED';
       case AuditLogActionType.purchaseOrderCancelled:
         return 'PURCHASE_ORDER_CANCELLED';
+      case AuditLogActionType.customerCreated:
+        return 'CUSTOMER_CREATED';
+      case AuditLogActionType.customerUpdated:
+        return 'CUSTOMER_UPDATED';
+      case AuditLogActionType.customerArchived:
+        return 'CUSTOMER_ARCHIVED';
       case AuditLogActionType.businessModuleChanged:
         return 'BUSINESS_MODULE_CHANGED';
       case AuditLogActionType.permissionDenied:
@@ -288,6 +299,12 @@ extension AuditLogActionTypeX on AuditLogActionType {
         return 'Purchase Order Received';
       case AuditLogActionType.purchaseOrderCancelled:
         return 'Purchase Order Cancelled';
+      case AuditLogActionType.customerCreated:
+        return 'Customer Created';
+      case AuditLogActionType.customerUpdated:
+        return 'Customer Updated';
+      case AuditLogActionType.customerArchived:
+        return 'Customer Archived';
       case AuditLogActionType.businessModuleChanged:
         return 'Module Setting Changed';
       case AuditLogActionType.permissionDenied:

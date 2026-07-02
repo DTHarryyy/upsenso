@@ -241,7 +241,7 @@ From `CLAUDE.md` — a step isn't `[x]` until all hold:
 ## 📌 Current position / session handoff
 
 > Live status so any session (or a fresh Claude one — no memory between sessions)
-> resumes exactly here. **Last updated: 2026-07-02.**
+> resumes exactly here. **Last updated: 2026-07-02 (M5 code-complete + migrated).**
 
 ### Active priority order
 **M2 (AI insights) → M5 (CRM) → M1 (fraud+audit, deferred) → M-BIR → M-LEGAL → ship.**
@@ -269,15 +269,73 @@ From `CLAUDE.md` — a step isn't `[x]` until all hold:
     `business_modules` rows.
   - **Gates:** `flutter analyze` clean, `flutter test` 83 pass, visual QA done.
 
+### M5 — CRM foundation — CODE COMPLETE + MIGRATED (uncommitted), 1 item owed
+Full customers module built end-to-end, mirroring the procurement/suppliers
+pattern. Reuses the **existing `crm` module** (already seeded + enabled in the
+Supabase `modules` catalogue — no new module invented).
+- **Permissions:** `crm.view` / `crm.manage` / `nav.customers` wired through
+  `PermissionKeys` → `AppPermission` (viewCustomers/manageCustomers) →
+  `AppFeature.customerDirectory` (module `crm`) → both matrices (Owner all;
+  Branch Manager view+manage+nav; **Cashier `crm.view` only** so they can attach
+  an *existing* customer at the till but not quick-add; Inventory none) +
+  `_moduleCodeForKey` `crm` case.
+- **Drift (schemaVersion 51→52):** new `customers` table + `customers_dao`
+  (mirrors suppliers), nullable `transactions.customer_id` FK, onUpgrade
+  (createTable + addColumn + 2 indexes). `build_runner` run.
+- **Supabase migration WRITTEN + APPLIED (2026-07-02, user ran it directly in the
+  SQL Editor on the live prod project `dmhyfezuravbjpoxjesb`):**
+  `supabase/migrations/20260702000001_crm_customers.sql` (customers table + RLS
+  [tenant SELECT, `crm.manage`-gated INSERT/UPDATE, no DELETE] + transactions
+  `customer_id`). **Confirmed working** — prior `[SYNC] Customer ... FAILED:
+  PGRST205 (Could not find the table 'public.customers')` errors are gone and
+  customer push/pull sync succeeds.
+- **Feature `lib/features/crm/`:** entity + `CustomerStats`/`CustomerPurchase`,
+  `ICustomerRepository` + `CustomerRepository` (local-first, audit-logged via new
+  `customerCreated/Updated/Archived` audit types), `CustomerRemoteDs`,
+  `CustomerCubit`/state + `CustomerDetailCubit`, customers list/detail pages,
+  form sheet, `CustomerCard`, and the checkout **`CustomerInlinePicker`** — an
+  inline typeahead (no bottom sheet): type in the field and matching customers
+  appear instantly below it. Three paths from one field: (1) tap a match →
+  **link** the saved customer (customer_id + name, builds history), (2) just
+  leave the typed text → **name only** (customer_name, no record — everyone incl.
+  cashiers), (3) **Save "X" as a customer** inline row (`crm.manage`-gated, opens
+  a tiny name+phone quick-add prefilled from the query). `CustomerSelection`
+  (`customer_selection.dart`) carries record / nameOnly / walkIn and is emitted
+  via `onChanged`; a linked selection shows a "purchase history will be tracked"
+  confirmation.
+- **POS:** checkout free-text field replaced by the inline picker in **both**
+  checkout screens — the **live** `products/checkout/product_checkout_page.dart`
+  (used by the POS terminal, held sales, product cart) **and** the legacy/unused
+  `pos/.../checkout_payment_page.dart`. Widget:
+  `crm/.../widgets/customer_inline_picker.dart`. A saved-customer sale stores
+  `customer_id` + `customer_name`; a name-only sale stores just `customer_name`.
+  Purchase history = completed sales where `customer_id = X` (new
+  `TransactionsDao.watchByCustomerId`).
+- **Wiring:** DI (`CustomersDao`/`CustomerRemoteDs`/`ICustomerRepository` + into
+  `SyncService`), `SyncService._syncCustomers` push + pull + clearAll + pending
+  counts, routes (`/more/customers` [+detail]) with permission+module route
+  guards, router Branch 12, sidebar + mobile More nav (gated by
+  `nav.customers` + `crm` module).
+- **Gates:** `flutter analyze` clean; **full `flutter test` green (94 tests,
+  incl. new CRM DAO/cubit/stats + purchase-history tests).**
+
 ### Next action
-- ⬜ **M5 — CRM foundation** (customers module):
-  customers entity, Drift table + DAO, Supabase migration, link to transactions,
-  purchase history, basic customer lookup in POS.
-- ⬜ Backlog within M2: optional LLM-rephrasing layer over the generator;
-  `getFraudSummary` (waits on M1 fraud engine).
+- ✅ **Supabase migration applied** 2026-07-02 — `public.customers` exists on
+  prod, RLS active, customer sync push/pull confirmed working end-to-end.
+- ⬜ **On-device visual QA** (owed, same convention as M2): Owner/Branch Manager
+  see Customers nav + can add/edit/archive + see purchase history; Cashier can
+  attach an existing customer at checkout but has no Customers nav / quick-add;
+  Inventory denied; toggling the `crm` module hides/shows it; a sale with a
+  selected customer lands in that customer's history; walk-in sale = no crash.
+- ⬜ **Commit** (needs explicit green light).
+- ⬜ Backlog within M5: loyalty (separate `loyalty` module), thread
+  `customer_id` through drafts + the AI checkout path, AI "top customers" tool.
+- ⬜ Backlog within M2: optional LLM-rephrasing layer; `getFraudSummary` (waits
+  on M1 fraud engine).
 
 ### Repo/branch state
-- All M2 work is on `main`. No open PRs.
+- M2 is on `main`. **M5 is code-complete + migrated but UNCOMMITTED** on `main`
+  (working tree) — remote schema is ahead of the last commit.
 - Working rule: **never `git push` / commit without an explicit green light** from
   the user.
 

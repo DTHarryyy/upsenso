@@ -130,7 +130,7 @@ Industry-standard, legible **"2 months free on annual"**: pay for 10 months, get
 ```
 annual_price        = monthly_price × 10
 effective_monthly   = annual_price / 12
-discount_percentage = 1 − (annual_price / (monthly_price × 12))
+discount_percentage = 1 − (annual_price / (monthl3   y_price × 12))
                     = 1 − (10/12) = 16.667%
 ```
 

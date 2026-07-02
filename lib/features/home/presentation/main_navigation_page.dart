@@ -151,9 +151,10 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
               // active branch's navigator without changing currentIndex — so we
               // detect them by location, not branch index, to drop shell chrome.
               final location = GoRouterState.of(context).uri.path;
-              final isProcurement =
+              final isStackedSubPage =
                   location.startsWith(AppRoutes.suppliers) ||
-                  location.startsWith(AppRoutes.purchaseOrders);
+                  location.startsWith(AppRoutes.purchaseOrders) ||
+                  location.startsWith(AppRoutes.customers);
 
               // GoRouter's StatefulNavigationShell manages the page stack.
               final shell = widget.navigationShell;
@@ -263,7 +264,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                     ),
                     child: MorePage(),
                   ),
-                  appBar: (isPosTab || isProcurement)
+                  appBar: (isPosTab || isStackedSubPage)
                       ? null
                       : CustomAppBar(
                           branches: visibleBranches,
@@ -288,7 +289,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                           showThemeToggle: false,
                         ),
                   body: shell,
-                  bottomNavigationBar: (isPosTab || isProcurement)
+                  bottomNavigationBar: (isPosTab || isStackedSubPage)
                       ? null
                       : AppBottomNav(
                           currentIndex: _currentIndex,
@@ -523,6 +524,9 @@ class _AppSidebarState extends State<_AppSidebar>
   bool get _sidebarShowProcurement =>
       _permService.can(PermissionKeys.navProcurement) &&
       _permService.isModuleEnabled('procurement');
+  bool get _sidebarShowCustomers =>
+      _permService.can(PermissionKeys.navCustomers) &&
+      _permService.isModuleEnabled('crm');
   bool get _sidebarShowIngredients =>
       _permService.can(PermissionKeys.navRecipes) &&
       _permService.isModuleEnabled('ingredients');
@@ -738,6 +742,23 @@ class _AppSidebarState extends State<_AppSidebar>
                       activeIcon: IconlyBold.work,
                       label: 'Suppliers',
                       index: 10,
+                      currentIndex: widget.currentIndex,
+                      expanded: layoutExpanded,
+                      onTap: widget.onNavTap,
+                    ),
+                  ],
+
+                  // ── CUSTOMERS section — CRM ──
+                  if (_sidebarShowCustomers) ...[
+                    const SizedBox(height: 6),
+                    const Divider(height: 1, color: AppColors.borderSoft),
+                    const SizedBox(height: 6),
+                    if (layoutExpanded) const _SectionLabel(label: 'CUSTOMERS'),
+                    _NavItem(
+                      icon: IconlyLight.profile,
+                      activeIcon: IconlyBold.profile,
+                      label: 'Customers',
+                      index: 12,
                       currentIndex: widget.currentIndex,
                       expanded: layoutExpanded,
                       onTap: widget.onNavTap,

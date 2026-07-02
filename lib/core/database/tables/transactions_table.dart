@@ -24,6 +24,11 @@ class TransactionsTable extends Table {
 
   TextColumn get invoiceNumber => text().nullable()(); // → invoice_number (synced)
 
+  // FK to the CRM `customers` table (synced). Nullable — walk-in sales carry no
+  // customer. customer_name below is kept as a denormalised snapshot for
+  // receipts/history even if the customer is later renamed or archived.
+  TextColumn get customerId => text().nullable()();
+
   // ── Local-only fields (not present in Supabase schema) ──────────────────
   TextColumn get customerName => text().nullable()();
   TextColumn get paymentMethod => text().withDefault(const Constant('cash'))();

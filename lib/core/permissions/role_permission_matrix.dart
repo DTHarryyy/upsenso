@@ -102,6 +102,10 @@ class RolePermissionMatrix {
       AppPermission.viewSupplierList,
       AppPermission.manageSuppliers,
 
+      // Customers / CRM — managers run the directory
+      AppPermission.viewCustomers,
+      AppPermission.manageCustomers,
+
       // Procurement — managers can create, approve, and receive
       AppPermission.viewProcurement,
       AppPermission.createPurchaseOrder,
@@ -143,6 +147,11 @@ class RolePermissionMatrix {
       AppPermission.viewProducts,
       AppPermission.viewPriceList,
       AppPermission.viewAvailableStock,
+
+      // CRM — cashiers may look up and attach an EXISTING customer at the till
+      // (crm.view). Creating/editing customers (crm.manage) stays manager-level,
+      // so the checkout quick-add is hidden for cashiers.
+      AppPermission.viewCustomers,
     },
 
     // ── Inventory Staff — stock operations only ──────────────────────────────
@@ -233,6 +242,7 @@ class RolePermissionMatrix {
       AppFeature.branchConfiguration,
       AppFeature.productsCatalogue,
       AppFeature.supplierDirectory,
+      AppFeature.customerDirectory,
       AppFeature.procurement,
       AppFeature.ingredientsManagement,
       AppFeature.recipeManagement,

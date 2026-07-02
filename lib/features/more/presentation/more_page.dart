@@ -149,6 +149,9 @@ class _MorePageState extends State<MorePage>
         final canSeeProcurement =
             permService.can(PermissionKeys.navProcurement) &&
                 permService.isModuleEnabled('procurement');
+        // Customers (CRM): permission + module gate.
+        final canSeeCustomers = permService.can(PermissionKeys.navCustomers) &&
+            permService.isModuleEnabled('crm');
         // Sales history: permission only — no module gate (see AppFeature.salesHistory).
         final canSeeSalesHistory = permService.can(
           PermissionKeys.navSalesHistory,
@@ -206,6 +209,19 @@ class _MorePageState extends State<MorePage>
                           icon: IconlyLight.work,
                           label: 'Suppliers',
                           onTap: () => _navigate(AppRoutes.suppliers),
+                        ),
+                        const SizedBox(height: 4),
+                        _Divider(),
+                        const SizedBox(height: 4),
+                      ],
+
+                      // CUSTOMERS — CRM directory
+                      if (canSeeCustomers) ...[
+                        _SectionLabel('CUSTOMERS'),
+                        _DrawerTile(
+                          icon: IconlyLight.profile,
+                          label: 'Customers',
+                          onTap: () => _navigate(AppRoutes.customers),
                         ),
                         const SizedBox(height: 4),
                         _Divider(),
