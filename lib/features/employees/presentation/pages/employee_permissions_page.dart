@@ -299,6 +299,23 @@ const _kGroups = <_PermGroup>[
     ],
   ),
   _PermGroup(
+    label: 'Customers',
+    description: 'Customer directory and purchase history',
+    icon: IconlyLight.profile,
+    permissions: [
+      _PermEntry(
+        'crm.view',
+        'View Customers',
+        'Browse the customer directory and attach an existing customer at checkout',
+      ),
+      _PermEntry(
+        'crm.manage',
+        'Manage Customers',
+        'Add, edit, and archive customer records',
+      ),
+    ],
+  ),
+  _PermGroup(
     label: 'Procurement',
     description: 'Purchase orders, receiving and supplier management',
     icon: IconlyLight.work,

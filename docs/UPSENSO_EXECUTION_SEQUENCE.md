@@ -241,7 +241,8 @@ From `CLAUDE.md` — a step isn't `[x]` until all hold:
 ## 📌 Current position / session handoff
 
 > Live status so any session (or a fresh Claude one — no memory between sessions)
-> resumes exactly here. **Last updated: 2026-07-02 (M5 code-complete + migrated).**
+> resumes exactly here. **Last updated: 2026-07-02 (M5 code-complete + migrated +
+> QA gaps closed; manual QA still owed).**
 
 ### Active priority order
 **M2 (AI insights) → M5 (CRM) → M1 (fraud+audit, deferred) → M-BIR → M-LEGAL → ship.**
@@ -269,7 +270,7 @@ From `CLAUDE.md` — a step isn't `[x]` until all hold:
     `business_modules` rows.
   - **Gates:** `flutter analyze` clean, `flutter test` 83 pass, visual QA done.
 
-### M5 — CRM foundation — CODE COMPLETE + MIGRATED (uncommitted), 1 item owed
+### M5 — CRM foundation — CODE COMPLETE + MIGRATED + GAPS CLOSED, manual QA owed
 Full customers module built end-to-end, mirroring the procurement/suppliers
 pattern. Reuses the **existing `crm` module** (already seeded + enabled in the
 Supabase `modules` catalogue — no new module invented).
@@ -316,26 +317,107 @@ Supabase `modules` catalogue — no new module invented).
   counts, routes (`/more/customers` [+detail]) with permission+module route
   guards, router Branch 12, sidebar + mobile More nav (gated by
   `nav.customers` + `crm` module).
-- **Gates:** `flutter analyze` clean; **full `flutter test` green (94 tests,
-  incl. new CRM DAO/cubit/stats + purchase-history tests).**
+- **Gates:** `flutter analyze` clean; **full `flutter test` green.**
+
+### Post-commit QA prep (2026-07-02) — two real gaps found and closed
+Preparing on-device QA surfaced two things that would have made the QA checklist
+undoable / the permission model dishonest. Both fixed, tested, and verified before
+any manual QA ran:
+1. **`crm` module was missing from Module Management** — an Owner had no way to
+   toggle Customers off/on (`isModuleEnabled` treats an absent module as enabled,
+   so it silently worked, but the toggle UI itself didn't exist). Added a `crm`
+   `_ModuleInfo` entry to `_kModules` in
+   `lib/features/settings/presentation/module_settings_page.dart`.
+2. **`crm.view` was a dead permission** — nothing enforced it; the checkout
+   customer search was open to every role regardless of the matrix. Gated the
+   existing-customer suggestions (search results + "no match" hint +
+   "save as customer" row) in `CustomerInlinePicker` behind `can(PermissionKeys.crmView)`
+   — the name-only typing path stays open to everyone. Since `can()` already
+   resolves `crm.view` through the `crm` module gate, disabling the module also
+   hides checkout suggestions for free.
+- **New tests** (both green, `flutter analyze` clean):
+  - `test/core/permissions/crm_permissions_test.dart` — locks
+    `crm.view`/`crm.manage`/`nav.customers` per role against both
+    `DefaultPermissionMatrix` (offline) and `RolePermissionMatrix` (online), and
+    asserts the two stay in sync.
+  - `test/features/crm/customer_inline_picker_test.dart` — widget-level: `crm.view
+    =false` shows zero suggestions (name-only still emits); `crm.view=true,
+    crm.manage=false` (cashier) shows matches but no save row, tap-to-link works;
+    `crm.manage=true` shows the save row.
+- **Full suite: 109 tests, all green** (was 94; +12 permission-matrix +
+  3 widget-gating tests).
+
+3. **[SEVERE] `crm.view`/`crm.manage`/`nav.customers` were never seeded server-side**
+   — user's own question ("did you consider employee accounts have default
+   permissions that can be overridden?") caught this. `20260702000001_crm_
+   customers.sql`'s RLS policies call `has_permission('crm.manage')`, but no
+   migration ever inserted `crm.view`/`crm.manage`/`nav.customers` into
+   Supabase's `permissions` catalogue (confirmed: only `20260609000001`,
+   `20260611000001`, and `20260627000007` ever `INSERT INTO permissions`, none
+   mention `crm`). Consequence: `has_permission('crm.manage')`'s `role_allow`
+   branch can never resolve a `permission_id` for a code that doesn't exist, so
+   it always falls through to `false` for every non-owner — **only the literal
+   `businesses.owner_id` account can write to `customers` online right now.** A
+   Branch Manager's create/edit passes every client-side check (both
+   `RolePermissionMatrix` and `DefaultPermissionMatrix` say they're allowed),
+   writes succeed locally (offline-first), then **silently fail to sync** with
+   an RLS-denied Postgrest error. Per-employee overrides for crm.* would also be
+   unsettable (`set_employee_permission_override` resolves the same
+   nonexistent `permission_id`).
+   - **Client fix (done):** added a "Customers" `_PermGroup` (`crm.view` /
+     `crm.manage`) to `_kGroups` in
+     `lib/features/employees/presentation/pages/employee_permissions_page.dart`
+     — previously CRM had no entry at all, so no admin could set a per-employee
+     override for it even through the UI. Mirrors the existing Suppliers group;
+     no `nav.customers` entry (nav keys are never listed — they resolve via the
+     access key, matching the established convention).
+   - **Server fix WRITTEN, NOT APPLIED:**
+     `supabase/migrations/20260703000001_seed_crm_permissions.sql` — seeds the 3
+     codes into `permissions`, wires `role_permissions` (Business Owner +
+     Branch Manager full; Cashier `crm.view` only; Inventory Staff none, matching
+     the client matrices), wires `business_template_role_permissions` so new
+     businesses inherit it, and recomputes `effective_permissions` for existing
+     employees. Modeled directly on the two prior instances of this exact class
+     of bug: `20260627000007_seed_recipe_ingredient_permissions.sql` and
+     `20260615000001_wire_procurement_role_permissions.sql`. **Needs explicit
+     go-ahead before applying** (same as the customers-table migration).
+- **These fixes are UNCOMMITTED** on top of `971e8ae` — see Repo/branch state.
 
 ### Next action
 - ✅ **Supabase migration applied** 2026-07-02 — `public.customers` exists on
   prod, RLS active, customer sync push/pull confirmed working end-to-end.
-- ⬜ **On-device visual QA** (owed, same convention as M2): Owner/Branch Manager
-  see Customers nav + can add/edit/archive + see purchase history; Cashier can
-  attach an existing customer at checkout but has no Customers nav / quick-add;
-  Inventory denied; toggling the `crm` module hides/shows it; a sale with a
-  selected customer lands in that customer's history; walk-in sale = no crash.
-- ⬜ **Commit** (needs explicit green light).
+- ✅ **Client-side permission/module gaps (#1, #2) fixed + test-locked** 2026-07-02.
+- ✅ **Client-side employee-permission-editor gap (#3) fixed** 2026-07-02 —
+  Customers group added.
+- ⬜ **Apply `20260703000001_seed_crm_permissions.sql`** (ask first — same rule as
+  every Supabase write). Until applied, non-owner writes to `customers`
+  (create/edit/archive by anyone but the literal business owner) will fail to
+  sync — silently, since local-first writes still succeed offline.
+- ⬜ **On-device manual QA — NOT YET RUN.** Full checklist in the session's plan
+  file (`C:\Users\User\.claude\plans\steady-launching-puzzle.md`, Part 3):
+  directory CRUD, checkout attribution, purchase history + stats, module-toggle,
+  sync re-check. **Caveat:** as scoped (Owner-account happy path), it will
+  **not** surface gap #3 — `has_permission()`'s owner bypass means the Owner
+  account's writes always pass RLS regardless of the missing permission rows.
+  Catching #3 live requires testing as a **non-owner** role (Branch Manager or
+  Cashier) after the new migration is applied, or trusting the migration-file
+  analysis above.
+- ⬜ **Commit** all gap-fixes + new tests + new migration (needs explicit green
+  light) — planned as a follow-up `fix(m5): …` commit on top of `971e8ae`.
 - ⬜ Backlog within M5: loyalty (separate `loyalty` module), thread
   `customer_id` through drafts + the AI checkout path, AI "top customers" tool.
 - ⬜ Backlog within M2: optional LLM-rephrasing layer; `getFraudSummary` (waits
   on M1 fraud engine).
 
 ### Repo/branch state
-- M2 is on `main`. **M5 is code-complete + migrated but UNCOMMITTED** on `main`
-  (working tree) — remote schema is ahead of the last commit.
+- M2 + M5 are both on `main` as of commit `971e8ae` (2026-07-02). `main` is
+  **7 commits ahead of `origin/main`** — **not pushed** yet.
+- **Uncommitted working-tree changes on top of `971e8ae`:** the three gap-fixes
+  (`module_settings_page.dart`, `customer_inline_picker.dart`,
+  `employee_permissions_page.dart`) + two new test files
+  (`crm_permissions_test.dart`, `customer_inline_picker_test.dart`) + one new
+  **unapplied** migration (`20260703000001_seed_crm_permissions.sql`) + this
+  doc. Awaiting explicit go-ahead to commit and to apply the migration.
 - Working rule: **never `git push` / commit without an explicit green light** from
   the user.
 

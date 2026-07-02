@@ -70,6 +70,12 @@ const _kModules = <_ModuleInfo>[
     icon: IconlyLight.work,
   ),
   _ModuleInfo(
+    code: 'crm',
+    label: 'Customers',
+    description: 'Customer directory and purchase history',
+    icon: IconlyLight.profile,
+  ),
+  _ModuleInfo(
     code: 'ingredients',
     label: 'Ingredients',
     description: 'Ingredient stock items consumed by recipe-based products',

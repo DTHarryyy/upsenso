@@ -51,6 +51,11 @@ class _CustomerInlinePickerState extends State<CustomerInlinePicker> {
   bool get _canManage =>
       sl<PermissionService>().can(PermissionKeys.crmManage);
 
+  // Gates search/link — a role (or a business with the crm module off) without
+  // crm.view never sees the existing-customer directory here. Name-only stays
+  // available to everyone regardless.
+  bool get _canView => sl<PermissionService>().can(PermissionKeys.crmView);
+
   @override
   void initState() {
     super.initState();
@@ -59,7 +64,7 @@ class _CustomerInlinePickerState extends State<CustomerInlinePicker> {
     _controller = TextEditingController(text: _query);
 
     final businessId = widget.businessId;
-    if (businessId != null && businessId.isNotEmpty) {
+    if (_canView && businessId != null && businessId.isNotEmpty) {
       _sub = _repo.watchCustomers(businessId).listen((customers) {
         if (mounted) setState(() => _all = customers);
       }, onError: (Object e, StackTrace st) {
@@ -152,10 +157,14 @@ class _CustomerInlinePickerState extends State<CustomerInlinePicker> {
     final query = _query.trim();
     final isLinked = _linked != null;
     // Collapse suggestions once the field exactly reflects a linked customer.
-    final showSuggestions = query.isNotEmpty && !(isLinked && _linked!.name == query);
+    // Suggestions (matches, no-match hint, save-as-customer) are all part of the
+    // existing-customer surface, gated behind crm.view — without it, only the
+    // plain name-only path (the field itself) is available.
+    final showSuggestions =
+        _canView && query.isNotEmpty && !(isLinked && _linked!.name == query);
     final matches = _matches;
     final canSave =
-        _canManage && widget.businessId != null && !_hasExactMatch;
+        _canView && _canManage && widget.businessId != null && !_hasExactMatch;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
