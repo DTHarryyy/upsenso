@@ -1,16 +1,14 @@
-/// A single plain-language insight shown on the dashboard insight card (M2).
+/// A single insight shown on the dashboard card (M2).
 ///
-/// Insights are produced deterministically by [InsightsGenerator] from computed
-/// metrics; the message is already phrased for display. Severity drives both the
-/// ordering (most urgent first) and the card's visual treatment.
+/// Produced deterministically by [InsightsGenerator] from computed metrics.
+/// All display-ready fields are pre-formatted — the card widget just renders
+/// them without formatting logic.
 library;
 
-/// What kind of metric an insight is about — used for the leading icon.
 enum InsightCategory { sales, expenses, margin, inventory }
 
-/// How much attention an insight deserves. [priority] orders them on the card
-/// (lower = shown first), so "needs attention" always surfaces above "doing
-/// well".
+/// How much attention the insight deserves. [priority] drives ordering:
+/// lower = surfaced first (most urgent at the top of the card).
 enum InsightSeverity {
   critical(0),
   attention(1),
@@ -25,13 +23,25 @@ class Insight {
   final InsightCategory category;
   final InsightSeverity severity;
 
-  /// Plain-language, display-ready text (already formatted with figures).
+  /// Short all-caps label shown above the message, e.g. "REVENUE TREND".
+  final String categoryLabel;
+
+  /// Main message — one short sentence, display-ready.
   final String message;
+
+  /// Optional large metric shown on the right, e.g. "+23%" or "3".
+  final String? metric;
+
+  /// Optional small descriptor under the metric, e.g. "vs last period".
+  final String? metricSubtext;
 
   const Insight({
     required this.category,
     required this.severity,
+    required this.categoryLabel,
     required this.message,
+    this.metric,
+    this.metricSubtext,
   });
 
   @override
@@ -39,11 +49,16 @@ class Insight {
       other is Insight &&
       other.category == category &&
       other.severity == severity &&
-      other.message == message;
+      other.categoryLabel == categoryLabel &&
+      other.message == message &&
+      other.metric == metric &&
+      other.metricSubtext == metricSubtext;
 
   @override
-  int get hashCode => Object.hash(category, severity, message);
+  int get hashCode =>
+      Object.hash(category, severity, categoryLabel, message, metric, metricSubtext);
 
   @override
-  String toString() => 'Insight($severity, $category, "$message")';
+  String toString() =>
+      'Insight($severity, $category, "$message", metric: $metric)';
 }

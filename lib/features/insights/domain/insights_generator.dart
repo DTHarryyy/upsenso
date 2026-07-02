@@ -2,25 +2,14 @@ import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/features/insights/domain/insight.dart';
 import 'package:pos/features/insights/domain/insights_metrics.dart';
 
-/// Turns computed [InsightsMetrics] into a short, ordered list of plain-language
-/// [Insight]s — the "what changed / what needs attention" card content.
+/// Turns computed [InsightsMetrics] into a short ordered list of [Insight]s.
 ///
-/// Pure and deterministic: same metrics in → same insights out, no I/O, no LLM.
-/// This is the template phrasing that works on every platform (including web,
-/// where no on-device model exists). An optional LLM rephrasing layer can wrap
-/// this later without changing the numbers it decides on.
+/// Pure and deterministic: same metrics → same output, no I/O, no LLM.
 class InsightsGenerator {
   const InsightsGenerator();
 
-  /// A sales swing smaller than this (in %) reads as "about the same" rather
-  /// than a real up/down move — keeps day-to-day noise off the card.
   static const double significantSalesChangePct = 10.0;
-
-  /// At or above this many low-stock items, the inventory insight escalates
-  /// from "attention" to "critical".
   static const int lowStockCriticalCount = 5;
-
-  /// Expenses at or above this share of sales is worth flagging.
   static const double expenseToSalesAttentionRatio = 0.5;
 
   List<Insight> generate(InsightsMetrics m) {
@@ -32,8 +21,6 @@ class InsightsGenerator {
       ?_expenses(m),
     ];
 
-    // Most urgent first, stable within a severity so categories keep their
-    // declaration order.
     insights.sort((a, b) => a.severity.priority.compareTo(b.severity.priority));
     return insights;
   }
@@ -42,41 +29,51 @@ class InsightsGenerator {
     final t = m.salesTrend;
     final cur = AppFormatters.currency(t.current);
 
-    // No comparable base — phrase as "new" instead of an infinite increase.
     if (t.deltaPercent == null) {
       return Insight(
         category: InsightCategory.sales,
         severity: t.current > 0 ? InsightSeverity.positive : InsightSeverity.neutral,
+        categoryLabel: 'REVENUE',
         message: t.current > 0
-            ? 'Sales so far this period: $cur (no comparable previous period).'
-            : 'No sales recorded yet this period.',
+            ? 'Sales so far this period'
+            : 'No sales recorded yet',
+        metric: t.current > 0 ? cur : null,
+        metricSubtext: t.current > 0 ? 'this period' : null,
       );
     }
 
     final pct = t.deltaPercent!;
-    final prev = AppFormatters.currency(t.previous);
     final magnitude = pct.abs().toStringAsFixed(1);
 
     if (pct.abs() < significantSalesChangePct) {
       return Insight(
         category: InsightCategory.sales,
         severity: InsightSeverity.neutral,
-        message: 'Sales are about the same as the previous period ($cur).',
+        categoryLabel: 'REVENUE TREND',
+        message: 'Sales are about the same as last period',
+        metric: cur,
+        metricSubtext: 'this period',
       );
     }
+
     if (t.isUp) {
       return Insight(
         category: InsightCategory.sales,
         severity: InsightSeverity.positive,
-        message: 'Sales are up $magnitude% vs the previous period '
-            '($cur vs $prev).',
+        categoryLabel: 'REVENUE TREND',
+        message: 'Sales are up vs the previous period',
+        metric: '+$magnitude%',
+        metricSubtext: 'vs last period',
       );
     }
+
     return Insight(
       category: InsightCategory.sales,
       severity: InsightSeverity.attention,
-      message: 'Sales are down $magnitude% vs the previous period '
-          '($cur vs $prev).',
+      categoryLabel: 'REVENUE TREND',
+      message: 'Sales are down vs the previous period',
+      metric: '-$magnitude%',
+      metricSubtext: 'vs last period',
     );
   }
 
@@ -87,8 +84,10 @@ class InsightsGenerator {
     return Insight(
       category: InsightCategory.sales,
       severity: InsightSeverity.neutral,
-      message: 'Best seller: ${top.productName} '
-          '(${AppFormatters.currency(top.total)}).',
+      categoryLabel: 'TOP SELLER',
+      message: top.productName,
+      metric: AppFormatters.currency(top.total),
+      metricSubtext: 'in sales',
     );
   }
 
@@ -100,8 +99,10 @@ class InsightsGenerator {
     return Insight(
       category: InsightCategory.margin,
       severity: InsightSeverity.positive,
-      message: 'Highest margin: ${best.productName} '
-          '(${pct.toStringAsFixed(1)}% margin).',
+      categoryLabel: 'TOP MARGIN',
+      message: best.productName,
+      metric: '${pct.toStringAsFixed(1)}%',
+      metricSubtext: 'gross margin',
     );
   }
 
@@ -111,7 +112,10 @@ class InsightsGenerator {
       return const Insight(
         category: InsightCategory.inventory,
         severity: InsightSeverity.positive,
-        message: 'All tracked stock is above its threshold.',
+        categoryLabel: 'INVENTORY',
+        message: 'All tracked stock is above its threshold',
+        metric: null,
+        metricSubtext: null,
       );
     }
     final noun = n == 1 ? 'product' : 'products';
@@ -119,13 +123,19 @@ class InsightsGenerator {
       return Insight(
         category: InsightCategory.inventory,
         severity: InsightSeverity.critical,
-        message: '$n $noun are low on stock — restock soon.',
+        categoryLabel: 'LOW STOCK',
+        message: '$n $noun need restocking soon',
+        metric: '$n',
+        metricSubtext: 'items low',
       );
     }
     return Insight(
       category: InsightCategory.inventory,
       severity: InsightSeverity.attention,
-      message: '$n $noun running low on stock.',
+      categoryLabel: 'LOW STOCK',
+      message: '$n $noun running low on stock',
+      metric: '$n',
+      metricSubtext: 'items low',
     );
   }
 
@@ -139,13 +149,19 @@ class InsightsGenerator {
       return Insight(
         category: InsightCategory.expenses,
         severity: InsightSeverity.attention,
-        message: 'Approved expenses are $share% of sales this period ($amount).',
+        categoryLabel: 'EXPENSES',
+        message: 'Approved expenses are high vs sales',
+        metric: '$share%',
+        metricSubtext: 'of revenue',
       );
     }
     return Insight(
       category: InsightCategory.expenses,
       severity: InsightSeverity.neutral,
-      message: 'Approved expenses this period: $amount.',
+      categoryLabel: 'EXPENSES',
+      message: 'Approved expenses this period',
+      metric: amount,
+      metricSubtext: 'approved',
     );
   }
 }

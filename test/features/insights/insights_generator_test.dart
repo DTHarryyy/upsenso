@@ -4,8 +4,7 @@ import 'package:pos/features/insights/domain/insight.dart';
 import 'package:pos/features/insights/domain/insights_generator.dart';
 import 'package:pos/features/insights/domain/insights_metrics.dart';
 
-// Pure-logic coverage for the deterministic insight phrasing + thresholds.
-// The DB gathering (InsightsRepository) is exercised in device QA.
+// Pure-logic coverage for deterministic insight phrasing, metrics, and thresholds.
 void main() {
   const gen = InsightsGenerator();
 
@@ -25,50 +24,52 @@ void main() {
     );
   }
 
-  Insight? sales(List<Insight> all) =>
-      all.where((i) => i.category == InsightCategory.sales).cast<Insight?>().firstWhere(
-            (i) => i!.message.startsWith('Sales'),
-            orElse: () => null,
-          );
+  Insight? salesInsight(List<Insight> all) => all
+      .where((i) => i.category == InsightCategory.sales)
+      .cast<Insight?>()
+      .firstWhere((i) => i!.message.startsWith('Sales'), orElse: () => null);
 
   Insight inventory(List<Insight> all) =>
       all.firstWhere((i) => i.category == InsightCategory.inventory);
 
   group('InsightsGenerator sales trend', () {
-    test('flags a significant rise as positive', () {
+    test('flags a significant rise as positive with metric', () {
       final out = gen.generate(metrics(
         salesTrend: const SalesTrendResult(current: 1500, previous: 1000),
       ));
-      final s = sales(out)!;
+      final s = salesInsight(out)!;
       expect(s.severity, InsightSeverity.positive);
-      expect(s.message, contains('up 50.0%'));
+      expect(s.metric, '+50.0%');
+      expect(s.metricSubtext, 'vs last period');
     });
 
-    test('flags a significant drop as attention', () {
+    test('flags a significant drop as attention with negative metric', () {
       final out = gen.generate(metrics(
         salesTrend: const SalesTrendResult(current: 800, previous: 1000),
       ));
-      final s = sales(out)!;
+      final s = salesInsight(out)!;
       expect(s.severity, InsightSeverity.attention);
-      expect(s.message, contains('down 20.0%'));
+      expect(s.metric, '-20.0%');
     });
 
     test('a small swing reads as about the same (neutral)', () {
       final out = gen.generate(metrics(
         salesTrend: const SalesTrendResult(current: 1050, previous: 1000),
       ));
-      final s = sales(out)!;
+      final s = salesInsight(out)!;
       expect(s.severity, InsightSeverity.neutral);
       expect(s.message, contains('about the same'));
     });
 
-    test('no comparable previous period is phrased as new, not infinite', () {
+    test('no previous period is positive with currency metric', () {
       final out = gen.generate(metrics(
         salesTrend: const SalesTrendResult(current: 1200, previous: 0),
       ));
-      final s = sales(out)!;
+      final s = salesInsight(out)!;
       expect(s.severity, InsightSeverity.positive);
-      expect(s.message, contains('no comparable previous period'));
+      // metric is the formatted currency amount, metricSubtext is 'this period'
+      expect(s.metric, isNotNull);
+      expect(s.metricSubtext, 'this period');
     });
   });
 
@@ -78,10 +79,11 @@ void main() {
       expect(inventory(out).severity, InsightSeverity.positive);
     });
 
-    test('a few low-stock items is attention with correct pluralisation', () {
+    test('a few low-stock items is attention with correct count', () {
       final out = gen.generate(metrics(lowStockCount: 1));
       final inv = inventory(out);
       expect(inv.severity, InsightSeverity.attention);
+      expect(inv.metric, '1');
       expect(inv.message, contains('1 product running low'));
     });
 
@@ -99,14 +101,15 @@ void main() {
       expect(out.where((i) => i.category == InsightCategory.expenses), isEmpty);
     });
 
-    test('expenses above half of sales is flagged for attention', () {
+    test('expenses above half of sales is flagged for attention with ratio metric', () {
       final out = gen.generate(metrics(
         salesTrend: const SalesTrendResult(current: 1000, previous: 1000),
         expenses: 600,
       ));
       final e = out.firstWhere((i) => i.category == InsightCategory.expenses);
       expect(e.severity, InsightSeverity.attention);
-      expect(e.message, contains('60% of sales'));
+      expect(e.metric, '60%');
+      expect(e.metricSubtext, 'of revenue');
     });
 
     test('modest expenses are reported neutrally', () {
@@ -120,35 +123,38 @@ void main() {
   });
 
   group('InsightsGenerator margin + top product', () {
-    test('reports the highest-margin product', () {
+    test('reports the highest-margin product with percent metric', () {
       final out = gen.generate(metrics(
         marginMovers: const [
           MarginMoverResult(productName: 'Latte', revenue: 500, cost: 200),
         ],
       ));
-      final margin = out.firstWhere((i) => i.category == InsightCategory.margin);
-      expect(margin.severity, InsightSeverity.positive);
-      expect(margin.message, contains('Latte'));
-      expect(margin.message, contains('60.0% margin'));
+      final m = out.firstWhere((i) => i.category == InsightCategory.margin);
+      expect(m.severity, InsightSeverity.positive);
+      expect(m.message, 'Latte');
+      expect(m.metric, '60.0%');
+      expect(m.metricSubtext, 'gross margin');
     });
 
-    test('best seller surfaces with its revenue', () {
+    test('best seller shows product name as message and revenue as metric', () {
       final out = gen.generate(metrics(
         topProducts: const [
           ProductSalesResult(productName: 'Espresso', total: 900, quantity: 30),
         ],
       ));
       final top = out.firstWhere((i) =>
-          i.category == InsightCategory.sales && i.message.startsWith('Best seller'));
-      expect(top.message, contains('Espresso'));
+          i.category == InsightCategory.sales &&
+          i.categoryLabel == 'TOP SELLER');
+      expect(top.message, 'Espresso');
+      expect(top.metric, isNotNull);
     });
   });
 
   group('InsightsGenerator ordering', () {
     test('most urgent insight is first', () {
       final out = gen.generate(metrics(
-        salesTrend: const SalesTrendResult(current: 800, previous: 1000), // attention
-        lowStockCount: InsightsGenerator.lowStockCriticalCount, // critical
+        salesTrend: const SalesTrendResult(current: 800, previous: 1000),
+        lowStockCount: InsightsGenerator.lowStockCriticalCount,
       ));
       expect(out.first.severity, InsightSeverity.critical);
     });
