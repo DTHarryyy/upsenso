@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:rxdart/rxdart.dart';
 import 'package:pos/core/env/app_env.dart';
@@ -49,7 +50,8 @@ class ConnectivityService {
       // Any response — even 401/404 — proves the network path actually
       // reaches the host, which is all this check needs to confirm.
       return response.statusCode > 0;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[Connectivity] reachability probe to ${AppEnv.supabaseUrl} failed: $e');
       return false;
     }
   }

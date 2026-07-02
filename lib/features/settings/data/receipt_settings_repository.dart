@@ -55,7 +55,7 @@ class ReceiptSettingsRepository {
     await _dao.upsert(_toCompanion(s, now, status));
 
     final online = await _connectivity.isConnected;
-    if (online) unawaited(_pushToRemote(s.id));
+    if (online) unawaited(_pushToRemote(s.businessId));
   }
 
   /// Save a freshly-picked logo. Offline-first: on native the image is written
@@ -225,9 +225,11 @@ class ReceiptSettingsRepository {
 
   Future<void> syncPending() async {
     final pending = await _dao.getPendingSync();
+    debugPrint('[ReceiptSettings] syncPending() found ${pending.length} row(s)');
     for (final row in pending) {
       try {
-        await _pushToRemote(row.id);
+        await _pushToRemote(row.businessId);
+        debugPrint('[ReceiptSettings] Pushed ${row.id} successfully');
       } catch (e, st) {
         debugPrint('[ReceiptSettings] Push failed for ${row.id}: $e\n$st');
         await _dao.updateSyncStatus(
@@ -258,11 +260,15 @@ class ReceiptSettingsRepository {
 
   // ── Private ──────────────────────────────────────────────────────────────
 
-  Future<void> _pushToRemote(String id) async {
+  Future<void> _pushToRemote(String businessId) async {
     // Upload any queued logo file first so the row we push carries its URL.
-    await _ensureLogoUploaded(id);
-    final row = await _dao.getByBusinessId(id);
-    if (row == null) return;
+    await _ensureLogoUploaded(businessId);
+    final row = await _dao.getByBusinessId(businessId);
+    if (row == null) {
+      throw StateError(
+        'No receipt_settings row found for businessId=$businessId',
+      );
+    }
     await _remote.upsert({
       'id': row.id,
       'business_id': row.businessId,
