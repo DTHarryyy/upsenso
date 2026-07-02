@@ -223,6 +223,7 @@ class PermissionService {
       case 'employees':
         return 'employees';
       case 'reports':
+      case 'insights':
         return 'reports';
       case 'suppliers':
       case 'procurement':
@@ -329,14 +330,16 @@ class PermissionService {
   /// appear enabled until the first remote sync populates the table.
   Future<void> loadEnabledModules(String businessId) async {
     final rows = await _businessModulesDao.getAll(businessId);
-    if (rows.isNotEmpty) {
-      _moduleStates = {for (final r in rows) r.moduleCode: r.enabled};
-      _moduleGateRevision.value++;
-      final enabledCount = rows.where((r) => r.enabled).length;
-      debugPrint(
-        '[PermissionService] modules loaded from cache ($enabledCount/${rows.length} enabled)',
-      );
-    }
+    // Always mark module state as "loaded" (even with no rows) so that
+    // isModuleEnabled uses the "absent key = enabled" path rather than the
+    // null-guard fail-closed path, which blocks non-core modules (reports,
+    // expenses, etc.) for businesses that have no business_modules rows yet.
+    _moduleStates = {for (final r in rows) r.moduleCode: r.enabled};
+    _moduleGateRevision.value++;
+    debugPrint(
+      '[PermissionService] modules loaded from cache '
+      '(${rows.where((r) => r.enabled).length}/${rows.length} enabled)',
+    );
   }
 
   /// Fetch the live module state from Supabase and refresh the Drift cache.

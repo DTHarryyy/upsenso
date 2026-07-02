@@ -12,7 +12,6 @@ import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/dashboard/data/dashboard_data.dart';
 import 'package:pos/features/dashboard/presentation/cubit/dashboard_cubit.dart';
 import 'package:pos/features/dashboard/presentation/cubit/dashboard_state.dart';
-// import 'package:pos/features/dashboard/presentation/widgets/ai_insights_card.dart';
 import 'package:pos/features/dashboard/presentation/widgets/branch_comparison_card.dart';
 import 'package:pos/features/dashboard/presentation/widgets/category_performance_chart.dart';
 import 'package:pos/features/dashboard/presentation/widgets/expenses_summary_card.dart';
@@ -21,6 +20,8 @@ import 'package:pos/features/dashboard/presentation/widgets/payment_methods_char
 import 'package:pos/features/dashboard/presentation/widgets/sales_trend_chart.dart';
 import 'package:pos/core/widgets/stat_card.dart';
 import 'package:pos/features/dashboard/presentation/widgets/top_selling_items.dart';
+import 'package:pos/features/insights/presentation/cubit/insights_cubit.dart';
+import 'package:pos/features/insights/presentation/widgets/insight_card.dart';
 
 class DashboardPage extends StatefulWidget {
   final VoidCallback? onNewSale;
@@ -33,17 +34,20 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   late final DashboardCubit _cubit;
+  late final InsightsCubit _insightsCubit;
 
   @override
   void initState() {
     super.initState();
     _cubit = DashboardCubit(sl());
+    _insightsCubit = InsightsCubit(sl());
     WidgetsBinding.instance.addPostFrameCallback((_) => _triggerLoad());
   }
 
   @override
   void dispose() {
     _cubit.close();
+    _insightsCubit.close();
     super.dispose();
   }
 
@@ -54,17 +58,30 @@ class _DashboardPageState extends State<DashboardPage> {
       final branchId = context
           .read<BranchCubit>()
           .getSelectedBranchIdForFiltering();
-      _cubit.startWatching(
-        businessId: authState.user.businessId ?? '',
-        branchId: branchId,
-      );
+      _loadFor(authState, branchId);
     }
+  }
+
+  /// Loads both the dashboard data and the (permission-scoped) insight card for
+  /// the given session + branch. The insight card self-hides when the role
+  /// lacks `insights.view`, so it's loaded unconditionally here.
+  void _loadFor(AuthAuthenticated authState, String? branchId) {
+    final businessId = authState.user.businessId ?? '';
+    _cubit.startWatching(businessId: businessId, branchId: branchId);
+    _insightsCubit.load(
+      businessId: businessId,
+      cashierId: authState.user.id,
+      branchId: branchId,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider.value(
-      value: _cubit,
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider.value(value: _cubit),
+        BlocProvider.value(value: _insightsCubit),
+      ],
       child: MultiBlocListener(
         listeners: [
           BlocListener<AuthBloc, AuthState>(
@@ -74,10 +91,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 final branchId = ctx
                     .read<BranchCubit>()
                     .getSelectedBranchIdForFiltering();
-                _cubit.startWatching(
-                  businessId: authState.user.businessId ?? '',
-                  branchId: branchId,
-                );
+                _loadFor(authState, branchId);
               }
             },
           ),
@@ -87,10 +101,7 @@ class _DashboardPageState extends State<DashboardPage> {
             listener: (ctx, branchState) {
               final authState = ctx.read<AuthBloc>().state;
               if (authState is AuthAuthenticated) {
-                _cubit.startWatching(
-                  businessId: authState.user.businessId ?? '',
-                  branchId: branchState.selectedBranchId,
-                );
+                _loadFor(authState, branchState.selectedBranchId);
               }
             },
           ),
@@ -119,6 +130,10 @@ class _DashboardPageState extends State<DashboardPage> {
                             _StatCardsRow(data: data, isLoading: isLoading),
 
                             const SizedBox(height: 16),
+
+                            // ── AI Insights ── (self-hides when the role lacks
+                            // insights.view or there's nothing to report)
+                            const InsightCard(),
 
                             // ── Row 1: Sales Trend + Top Selling Items ──
                             // On wide screens they sit side by side (flex 3 : 2)

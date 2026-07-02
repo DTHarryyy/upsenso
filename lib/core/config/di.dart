@@ -57,6 +57,7 @@ import 'package:pos/features/ai_assistant/services/model_download_service.dart';
 import 'package:pos/features/ai_assistant/services/ai_tool_service.dart';
 import 'package:pos/features/ai_assistant/services/ai_pipeline.dart';
 import 'package:pos/features/dashboard/data/dashboard_repository.dart';
+import 'package:pos/features/insights/data/insights_repository.dart';
 import 'package:pos/features/expenses/data/expenses_repository.dart';
 import 'package:pos/features/inventory/data/inventory_repository.dart';
 import 'package:pos/features/reports/data/reports_repository.dart';
@@ -394,6 +395,12 @@ Future<void> initDI() async {
     () => AiPipeline(
       llmService: sl<LlmService>(),
       toolService: sl<AiToolService>(),
+    ),
+  );
+  sl.registerLazySingleton<InsightsRepository>(
+    () => InsightsRepository(
+      toolService: sl<AiToolService>(),
+      permissionService: sl<PermissionService>(),
     ),
   );
 

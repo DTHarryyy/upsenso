@@ -164,6 +164,10 @@ enum AppPermission {
   /// View profit & loss analytics.
   viewProfitAnalytics,
 
+  /// View the proactive AI insights card (daily "what changed / what needs
+  /// attention"). Gated by the reports module.
+  viewInsights,
+
   // ── Employees ─────────────────────────────────────────────────────────────
   /// View the employee directory.
   viewEmployees,
@@ -340,6 +344,8 @@ extension AppPermissionX on AppPermission {
         return 'View Financial Reports';
       case AppPermission.viewProfitAnalytics:
         return 'View Profit Analytics';
+      case AppPermission.viewInsights:
+        return 'View Insights';
       case AppPermission.viewEmployees:
         return 'View Employees';
       case AppPermission.createEmployee:
@@ -477,6 +483,8 @@ extension AppPermissionX on AppPermission {
       case AppPermission.viewFinancialReports:
       case AppPermission.viewProfitAnalytics:
         return 'reports.view_all';
+      case AppPermission.viewInsights:
+        return 'insights.view';
       case AppPermission.viewEmployees:
         return 'employees.view';
       case AppPermission.createEmployee:

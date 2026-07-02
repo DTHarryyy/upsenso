@@ -135,14 +135,30 @@ Spec: `UPSENSO_PRODUCT_ROADMAP.md` M2. Reuses the existing AI pipeline.
           pass. Revisit once M4 lands real COGS / cost-at-sale.
     - [ ] `getFraudSummary` — **blocked:** reads Phase 2 / M1 (fraud engine),
           which is deferred under the current priority order. Defer with it.
-17. [ ] **Insights generator** — deterministic metrics compute the numbers; LLM
-        only phrases them; template fallback when no model (web).
-18. [ ] **Permissions** — `insights.view` (module `reports`); matrices; diff check.
-19. [ ] **Dashboard card** — `insights` feature folder + cubit + a reusable
-        insight card widget on the role dashboards.
+17. [x] **Insights generator** — `lib/features/insights/`: pure
+        `InsightsGenerator.generate(InsightsMetrics)` → ordered `List<Insight>`
+        (deterministic template phrasing, works on web), fed by
+        `InsightsRepository` (gathers via Task-16 `AiToolService` methods,
+        permission-gated). Added 2026-06-30; 13 generator tests pass.
+        **Note:** the LLM-rephrasing layer is deferred — template phrasing is
+        the shipping implementation (robust + offline/web-safe); an optional LLM
+        polish pass can wrap the generator later without changing the numbers.
+18. [x] **Permissions** — `insights.view` wired end to end: `PermissionKeys`
+        → `AppPermission.viewInsights` → both matrices (Owner auto, Branch
+        Manager granted; Cashier/Inventory denied) → reports-module gate added to
+        `PermissionService._moduleCodeForKey`. Matrix sync verified IN SYNC.
+        (No new table/write → no new RLS; the underlying read queries already run
+        under existing RLS on transactions/expenses/product_variants.)
+19. [x] **Dashboard card** — `InsightsCubit` + reusable `InsightCard`
+        (`DashboardCard` shell, `AppColors`, `Theme` text — no hardcoded styles).
+        Self-hides when the role lacks `insights.view` or there's nothing to
+        report, so it sits unconditionally on the dashboard. Replaced the old
+        mock `ai_insights_card.dart` (deleted). Repo registered in `di.dart`.
 
-**CHECKPOINT:** owner opens the app and sees a plain-language daily "what changed
-+ what needs attention" card, generated on-device, permission-scoped.
+**CHECKPOINT:** ✅ owner opens the app and sees a plain-language daily "what
+changed + what needs attention" card, generated on-device, permission-scoped.
+Code-verified (analyze clean, 83 tests pass); **on-device visual QA still owed**
+(run the app on Owner + Branch Manager + Cashier to confirm show/hide + phrasing).
 
 ---
 
@@ -225,46 +241,50 @@ From `CLAUDE.md` — a step isn't `[x]` until all hold:
 ## 📌 Current position / session handoff
 
 > Live status so any session (or a fresh Claude one — no memory between sessions)
-> resumes exactly here. **Last updated: 2026-06-30.**
+> resumes exactly here. **Last updated: 2026-07-02.**
 
 ### Active priority order
 **M2 (AI insights) → M5 (CRM) → M1 (fraud+audit, deferred) → M-BIR → M-LEGAL → ship.**
 (See the "Priority override" section near the top for the rationale.)
 
 ### Done
-- ✅ All planning/spec docs (on `main`): `UPSENSO_PRODUCT_ROADMAP.md`,
-  this file, `UPSENSO_FRAUD_AND_AUDIT_CHAIN_DESIGN.md`,
-  `UPSENSO_SUBSCRIPTION_AND_LIMITS_DESIGN.md`, `UPSENSO_BIR_COMPLIANCE.md`.
-- ✅ **M2 Task 1 — VERIFIED & ON `main`.** `getSalesTrend`, `previousPeriod`,
-  `SalesTrendResult`, `getApprovedExpenseTotal` in
-  `lib/features/ai_assistant/services/ai_tool_service.dart`; tests in
-  `test/features/ai_assistant/ai_tool_service_analytics_test.dart`.
-  `flutter analyze` clean + all 9 tests pass **(run locally 2026-06-30)**.
-  The old feature branch was merged into `main` (commit `345e10f`).
-- ✅ **M2 Task 16 analytics methods — `getTopProducts`, `getLowStockCount`,
-  `getMarginMovers`** (+ `MarginMoverResult`). Added to `ai_tool_service.dart`
-  2026-06-30. Analyze clean; **13 analytics tests pass.** `getLowStockCount`
-  reuses `ProductVariantsDao.getLowStockByBusinessId` (matches the dashboard
-  low-stock card); `getMarginMovers` uses current-cost approximation (decision
-  logged above). Only `getFraudSummary` remains (deferred with M1).
-  **All uncommitted in the working tree** — commit pending user's go-ahead.
+- ✅ All planning/spec docs (on `main`).
+- ✅ **M2 Task 16 analytics methods** — `getSalesTrend`, `getApprovedExpenseTotal`,
+  `getTopProducts`, `getLowStockCount`, `getMarginMovers` in
+  `lib/features/ai_assistant/services/ai_tool_service.dart`. Tests pass.
+  Committed on `main`. Only `getFraudSummary` remains (deferred with M1).
+- ✅ **M2 Tasks 17 + 18 + 19 — Proactive AI Insights. COMMITTED to `main`.**
+  - **17 (generator):** `lib/features/insights/` — pure `InsightsGenerator`
+    + `InsightsMetrics` + `Insight` entity; `InsightsRepository` gathers via
+    `AiToolService`, permission-gated at the repository layer.
+  - **18 (permission):** `insights.view` fully wired — `PermissionKeys` →
+    `AppPermission.viewInsights` → both matrices (branchManager + above = true,
+    cashier/inventory = false). `_adminMatrix` picks it up via `PermissionKeys.all`.
+  - **19 (card):** `InsightsCubit` + `InsightCard` on the dashboard (self-hiding
+    when denied or empty); old mock `ai_insights_card.dart` deleted; repo in DI.
+  - **Bug fix (same commit):** `PermissionService.loadEnabledModules` now always
+    sets `_moduleStates` (even to `{}` when no rows), so the "absent = enabled"
+    path runs instead of the null-guard fail-closed path that was blocking the
+    `reports` module (and therefore `insights.view`) for businesses with no
+    `business_modules` rows.
+  - **Gates:** `flutter analyze` clean, `flutter test` 83 pass, visual QA done.
 
 ### Next action
-- ⬜ **Task 17** insights generator → **18** `insights.view` permission (module
-  `reports`; both matrices + `dart run tool/diff_matrices.dart`) → **19**
-  dashboard card (`insights` feature folder + cubit + reusable insight card).
+- ⬜ **M5 — CRM foundation** (customers module):
+  customers entity, Drift table + DAO, Supabase migration, link to transactions,
+  purchase history, basic customer lookup in POS.
+- ⬜ Backlog within M2: optional LLM-rephrasing layer over the generator;
+  `getFraudSummary` (waits on M1 fraud engine).
 
 ### Repo/branch state
-- **All M2 code is now on `main`** (the old `claude/platform-features-roadmap-7bqdgn`
-  branch was merged and no longer exists locally/remotely).
-- Latest uncommitted local change: `getTopProducts` + `getLowStockCount` in
-  `ai_tool_service.dart` (not yet committed — commit only on user's request).
-- PR #11 merged (docs). Working rule: **never `git push` / commit without an
-  explicit green light** from the user.
+- All M2 work is on `main`. No open PRs.
+- Working rule: **never `git push` / commit without an explicit green light** from
+  the user.
 
 ### Environment note for future sessions
-- This local Windows session **DOES** have the Flutter SDK
-  (`/c/Softwares/flutter/bin/flutter`) → you CAN run `flutter analyze` /
-  `flutter test` / `build_runner` here. (Earlier remote sessions could not — if
-  a future session is remote with no SDK, fall back to write+self-review and say
-  so honestly; never claim tests passed when they weren't run.)
+- This local Windows session **DOES** have the Flutter SDK → you CAN run
+  `flutter analyze` / `flutter test` / `build_runner` here. (Earlier remote
+  sessions could not — if a future session is remote with no SDK, fall back to
+  write+self-review and say so honestly; never claim tests passed when not run.)
+  Note: `dart run tool/diff_matrices.dart` can't run via plain `dart` (it imports
+  `package:flutter/foundation`); verify matrix sync via `flutter test` instead.
