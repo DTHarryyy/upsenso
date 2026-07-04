@@ -2,11 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/features/alert/data/alert_model.dart';
+import 'package:pos/features/alert/presentation/widgets/alert_icons.dart';
 
 class AlertDetailContent extends StatelessWidget {
   final FraudAlert alert;
 
-  const AlertDetailContent({super.key, required this.alert});
+  /// False hides all triage actions — either the viewer lacks fraud.resolve
+  /// or they are the implicated subject (the server enforces both; this is
+  /// the UX mirror).
+  final bool canResolve;
+  final void Function(AlertStatus status, String? note)? onSetStatus;
+
+  const AlertDetailContent({
+    super.key,
+    required this.alert,
+    this.canResolve = false,
+    this.onSetStatus,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -67,8 +79,23 @@ class AlertDetailContent extends StatelessWidget {
             );
           }).toList(),
         ),
-        const SizedBox(height: 24),
-        _ActionButtons(),
+        if (alert.resolutionNote?.isNotEmpty == true) ...[
+          const SizedBox(height: 20),
+          _SectionLabel(label: 'Resolution Note'),
+          const SizedBox(height: 8),
+          Text(
+            alert.resolutionNote!,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+              height: 1.5,
+            ),
+          ),
+        ],
+        if (canResolve && onSetStatus != null) ...[
+          const SizedBox(height: 24),
+          _ActionButtons(alert: alert, onSetStatus: onSetStatus!),
+        ],
       ],
     );
   }
@@ -106,23 +133,11 @@ class _DetailHeader extends StatelessWidget {
     );
   }
 
-  IconData get _icon {
-    switch (alert.type) {
-      case AlertType.refund:
-        return IconlyLight.arrow_left;
-      case AlertType.priceOverride:
-        return IconlyLight.time_circle;
-      case AlertType.shiftHours:
-        return IconlyLight.time_circle;
-      case AlertType.inventoryShrinkage:
-        return IconlyBold.danger;
-      case AlertType.transferMismatch:
-        return IconlyLight.info_circle;
-    }
-  }
+  IconData get _icon => alertIconFor(alert.ruleCode);
 
   Color get _iconColor {
     switch (alert.severity) {
+      case AlertSeverity.critical:
       case AlertSeverity.high:
         return AppColors.error;
       case AlertSeverity.medium:
@@ -134,6 +149,7 @@ class _DetailHeader extends StatelessWidget {
 
   Color get _iconBg {
     switch (alert.severity) {
+      case AlertSeverity.critical:
       case AlertSeverity.high:
         return AppColors.errorSoft;
       case AlertSeverity.medium:
@@ -169,6 +185,8 @@ class _ChipsRow extends StatelessWidget {
 
   String get _severityLabel {
     switch (alert.severity) {
+      case AlertSeverity.critical:
+        return 'CRITICAL';
       case AlertSeverity.high:
         return 'HIGH';
       case AlertSeverity.medium:
@@ -180,6 +198,7 @@ class _ChipsRow extends StatelessWidget {
 
   Color get _severityBg {
     switch (alert.severity) {
+      case AlertSeverity.critical:
       case AlertSeverity.high:
         return AppColors.errorSoft;
       case AlertSeverity.medium:
@@ -191,6 +210,7 @@ class _ChipsRow extends StatelessWidget {
 
   Color get _severityFg {
     switch (alert.severity) {
+      case AlertSeverity.critical:
       case AlertSeverity.high:
         return AppColors.error;
       case AlertSeverity.medium:
@@ -200,16 +220,7 @@ class _ChipsRow extends StatelessWidget {
     }
   }
 
-  String get _statusLabel {
-    switch (alert.status) {
-      case AlertStatus.newAlert:
-        return 'New';
-      case AlertStatus.investigating:
-        return 'Investigating';
-      case AlertStatus.resolved:
-        return 'Resolved';
-    }
-  }
+  String get _statusLabel => alert.status.label;
 
   Color get _statusBg {
     switch (alert.status) {
@@ -219,6 +230,9 @@ class _ChipsRow extends StatelessWidget {
         return AppColors.brandSoft;
       case AlertStatus.resolved:
         return AppColors.successSoft;
+      case AlertStatus.dismissed:
+      case AlertStatus.falsePositive:
+        return AppColors.surfaceAlt;
     }
   }
 
@@ -230,6 +244,9 @@ class _ChipsRow extends StatelessWidget {
         return AppColors.brand;
       case AlertStatus.resolved:
         return AppColors.success;
+      case AlertStatus.dismissed:
+      case AlertStatus.falsePositive:
+        return AppColors.textMuted;
     }
   }
 }
@@ -335,89 +352,149 @@ class _EvidenceTable extends StatelessWidget {
 }
 
 class _ActionButtons extends StatelessWidget {
-  const _ActionButtons();
+  final FraudAlert alert;
+  final void Function(AlertStatus status, String? note) onSetStatus;
+
+  const _ActionButtons({required this.alert, required this.onSetStatus});
 
   @override
   Widget build(BuildContext context) {
+    final isOpen = alert.status == AlertStatus.newAlert ||
+        alert.status == AlertStatus.investigating;
+    final buttons = <Widget>[
+      if (alert.status == AlertStatus.newAlert)
+        ElevatedButton.icon(
+          onPressed: () => onSetStatus(AlertStatus.investigating, null),
+          icon: const Icon(IconlyLight.search, size: 16),
+          label: const Text('Start Investigation'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.warning,
+            foregroundColor: AppColors.textInverse,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            textStyle:
+                const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          ),
+        ),
+      if (isOpen)
+        OutlinedButton.icon(
+          onPressed: () => _withNote(context, AlertStatus.resolved),
+          icon: const Icon(IconlyBold.tick_square, size: 16),
+          label: const Text('Mark as Resolved'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.success,
+            side: const BorderSide(color: AppColors.success),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            textStyle:
+                const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          ),
+        ),
+      if (isOpen)
+        OutlinedButton.icon(
+          onPressed: () => _withNote(context, AlertStatus.dismissed),
+          icon: const Icon(IconlyLight.close_square, size: 16),
+          label: const Text('Dismiss'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.textSecondary,
+            side: const BorderSide(color: AppColors.borderSoft),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            textStyle:
+                const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          ),
+        ),
+      if (isOpen)
+        OutlinedButton.icon(
+          onPressed: () => _withNote(context, AlertStatus.falsePositive),
+          icon: const Icon(IconlyLight.shield_done, size: 16),
+          label: const Text('Not fraud (false positive)'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.textSecondary,
+            side: const BorderSide(color: AppColors.borderSoft),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            textStyle:
+                const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          ),
+        ),
+    ];
+    if (buttons.isEmpty) return const SizedBox.shrink();
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth > 480;
         if (isWide) {
-          return Row(
-            children: [
-              _InvestigateButton(),
-              const SizedBox(width: 10),
-              _ResolvedButton(),
-              const SizedBox(width: 10),
-              _ExportButton(),
-            ],
-          );
+          return Wrap(spacing: 10, runSpacing: 10, children: buttons);
         }
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _InvestigateButton(),
-            const SizedBox(height: 10),
-            _ResolvedButton(),
-            const SizedBox(height: 10),
-            _ExportButton(),
+            for (var i = 0; i < buttons.length; i++) ...[
+              if (i > 0) const SizedBox(height: 10),
+              buttons[i],
+            ],
           ],
         );
       },
     );
   }
-}
 
-class _InvestigateButton extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton.icon(
-      onPressed: () {},
-      icon: const Icon(IconlyLight.search, size: 16),
-      label: const Text('Start Investigation'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.warning,
-        foregroundColor: AppColors.textInverse,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+  /// Resolving/dismissing is an accountability event — ask for the why.
+  /// The note lands on the flag AND in the chained audit entry.
+  Future<void> _withNote(BuildContext context, AlertStatus status) async {
+    final controller = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+        title: Text(
+          switch (status) {
+            AlertStatus.resolved => 'Resolve alert',
+            AlertStatus.falsePositive => 'Mark as false positive',
+            _ => 'Dismiss alert',
+          },
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        content: TextField(
+          controller: controller,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            hintText: 'What did you find? (optional)',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(
+              switch (status) {
+                AlertStatus.resolved => 'Resolve',
+                AlertStatus.falsePositive => 'Confirm',
+                _ => 'Dismiss',
+              },
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
       ),
     );
-  }
-}
-
-class _ResolvedButton extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      onPressed: () {},
-      icon: const Icon(IconlyBold.tick_square, size: 16),
-      label: const Text('Mark as Resolved'),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: AppColors.success,
-        side: const BorderSide(color: AppColors.success),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-      ),
-    );
-  }
-}
-
-class _ExportButton extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      onPressed: () {},
-      icon: const Icon(IconlyLight.document, size: 16),
-      label: const Text('Export Report'),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: AppColors.textSecondary,
-        side: const BorderSide(color: AppColors.borderSoft),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-      ),
-    );
+    if (confirmed == true) {
+      final note = controller.text.trim();
+      onSetStatus(status, note.isEmpty ? null : note);
+    }
+    controller.dispose();
   }
 }

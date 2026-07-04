@@ -199,6 +199,13 @@ enum AppPermission {
   /// Create / edit / archive customers (also gates quick-add at the till).
   manageCustomers,
 
+  // ── Fraud / Risk ──────────────────────────────────────────────────────────
+  /// View fraud alerts raised by the on-device detection engine.
+  viewFraudAlerts,
+
+  /// Resolve or dismiss a fraud alert (server blocks self-resolution).
+  resolveFraudAlerts,
+
   // ── Procurement ───────────────────────────────────────────────────────────
   /// View purchase orders and procurement history.
   viewProcurement,
@@ -246,6 +253,9 @@ enum AppPermission {
 
   /// Delete or purge audit log entries.
   deleteAuditLogs,
+
+  /// Run the tamper-evidence verification over the audit hash chain.
+  verifyAuditChain,
 
   /// Access data across multiple branches (Business Owner only).
   crossBranchAccess,
@@ -371,6 +381,10 @@ extension AppPermissionX on AppPermission {
         return 'View Customers';
       case AppPermission.manageCustomers:
         return 'Manage Customers';
+      case AppPermission.viewFraudAlerts:
+        return 'View Fraud Alerts';
+      case AppPermission.resolveFraudAlerts:
+        return 'Resolve Fraud Alerts';
       case AppPermission.viewProcurement:
         return 'View Procurement';
       case AppPermission.createPurchaseOrder:
@@ -401,6 +415,8 @@ extension AppPermissionX on AppPermission {
         return 'View Audit Logs';
       case AppPermission.deleteAuditLogs:
         return 'Delete Audit Logs';
+      case AppPermission.verifyAuditChain:
+        return 'Verify Audit Chain';
       case AppPermission.crossBranchAccess:
         return 'Cross-Branch Access';
     }
@@ -515,6 +531,10 @@ extension AppPermissionX on AppPermission {
         return 'crm.view';
       case AppPermission.manageCustomers:
         return 'crm.manage';
+      case AppPermission.viewFraudAlerts:
+        return 'fraud.view';
+      case AppPermission.resolveFraudAlerts:
+        return 'fraud.resolve';
       case AppPermission.viewProcurement:
         return 'procurement.view';
       case AppPermission.createPurchaseOrder:
@@ -543,6 +563,8 @@ extension AppPermissionX on AppPermission {
         return 'audit_logs.view';
       case AppPermission.deleteAuditLogs:
         return 'audit_logs.delete';
+      case AppPermission.verifyAuditChain:
+        return 'audit_logs.verify';
       case AppPermission.crossBranchAccess:
         return 'data.cross_branch_access';
     }

@@ -106,6 +106,11 @@ class RolePermissionMatrix {
       AppPermission.viewCustomers,
       AppPermission.manageCustomers,
 
+      // Fraud — managers police their branch's alerts day-to-day. The server
+      // blocks resolving a flag where the manager is the implicated subject.
+      AppPermission.viewFraudAlerts,
+      AppPermission.resolveFraudAlerts,
+
       // Procurement — managers can create, approve, and receive
       AppPermission.viewProcurement,
       AppPermission.createPurchaseOrder,
@@ -243,6 +248,7 @@ class RolePermissionMatrix {
       AppFeature.productsCatalogue,
       AppFeature.supplierDirectory,
       AppFeature.customerDirectory,
+      AppFeature.fraudAlerts,
       AppFeature.procurement,
       AppFeature.ingredientsManagement,
       AppFeature.recipeManagement,

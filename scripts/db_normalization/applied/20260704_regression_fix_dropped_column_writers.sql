@@ -1,0 +1,34 @@
+-- =============================================================================
+-- REGRESSION FIX — server functions writing dropped columns (2026-07-04)
+--
+-- Root cause: Stage 1 dropped `inventory_levels.variant_id` and Stage 2a dropped
+-- `audit_logs.employee_id` + `audit_logs.action`. The CLIENT code + the
+-- log_permission_change trigger were updated, but two SECURITY DEFINER functions
+-- still wrote the dropped columns and were only reached at runtime:
+--   • apply_business_template  → INSERT audit_logs(... employee_id, action ...)
+--       Symptom: "column employee_id of relation audit_logs does not exist"
+--       on BUSINESS CREATION (surfaced first because the DB was empty).
+--   • maintain_inventory_level → INSERT inventory_levels(... variant_id ...)
+--       Would fail on EVERY stock movement (sale/refund/receipt/adjustment) —
+--       latent only because no sale had run yet.
+--
+-- Both re-created below converged onto the surviving columns
+-- (audit: user_id/action_type; inventory: product_variant_id only).
+--
+-- Exhaustive sweep afterward (functions + RLS policies + CHECK constraints for
+-- all four dropped columns) confirmed no other references remain.
+--
+-- LESSON: dropping a column requires checking every DB object that writes it
+-- (functions, triggers, RPCs), not just the client + the obvious trigger.
+--
+-- ROLLBACK: re-add the columns (see phase1 / stage2a rollbacks) and restore the
+-- prior function bodies.  Applied via connector; see git for the full bodies.
+-- =============================================================================
+
+-- (Full CREATE OR REPLACE bodies were applied via the connector on 2026-07-04.)
+-- apply_business_template: audit insert now
+--   (business_id, user_id, action_type, entity_type, entity_id, description, metadata)
+--   VALUES (p_business_id, auth.uid()::text, 'template_applied', 'business', ...);
+-- maintain_inventory_level: inventory insert now
+--   (id, product_variant_id, branch_id, business_id, quantity, updated_at)
+--   ON CONFLICT (product_variant_id, branch_id) DO UPDATE ...;

@@ -152,6 +152,10 @@ class _MorePageState extends State<MorePage>
         // Customers (CRM): permission + module gate.
         final canSeeCustomers = permService.can(PermissionKeys.navCustomers) &&
             permService.isModuleEnabled('crm');
+        // Fraud & Risk: permission + audit module gate (UI only — the
+        // detection engine runs regardless).
+        final canSeeFraud = permService.can(PermissionKeys.navFraud) &&
+            permService.isModuleEnabled('audit');
         // Sales history: permission only — no module gate (see AppFeature.salesHistory).
         final canSeeSalesHistory = permService.can(
           PermissionKeys.navSalesHistory,
@@ -257,7 +261,7 @@ class _MorePageState extends State<MorePage>
                       ],
 
                       // ADMIN
-                      if (canSeeEmployees || canSeeAuditLogs) ...[
+                      if (canSeeEmployees || canSeeAuditLogs || canSeeFraud) ...[
                         _SectionLabel('ADMIN'),
                         if (canSeeEmployees)
                           _DrawerTile(
@@ -270,6 +274,12 @@ class _MorePageState extends State<MorePage>
                             icon: IconlyLight.shield_done,
                             label: 'Audit Logs',
                             onTap: () => _pushFullPage(const AuditLogPage()),
+                          ),
+                        if (canSeeFraud)
+                          _DrawerTile(
+                            icon: IconlyLight.shield_fail,
+                            label: 'Fraud & Risk',
+                            onTap: () => _navigate(AppRoutes.fraud),
                           ),
                         const SizedBox(height: 4),
                         _Divider(),

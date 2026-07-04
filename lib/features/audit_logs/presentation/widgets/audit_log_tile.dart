@@ -534,6 +534,7 @@ String _badgeLabelFor(AuditLogActionType type) {
     case AuditLogActionType.customerUpdated:
     case AuditLogActionType.purchaseOrderUpdated:
     case AuditLogActionType.businessModuleChanged:
+    case AuditLogActionType.refundSettingsChanged:
       return 'UPDATE';
     case AuditLogActionType.supplierDeleted:
     case AuditLogActionType.ingredientDeleted:
@@ -576,6 +577,12 @@ String _badgeLabelFor(AuditLogActionType type) {
       return 'ARCHIVE';
     case AuditLogActionType.employeeRestored:
       return 'RESTORE';
+    case AuditLogActionType.fraudFlagRaised:
+      return 'ALERT';
+    case AuditLogActionType.fraudFlagResolved:
+      return 'RESOLVE';
+    case AuditLogActionType.auditChainReconciled:
+      return 'SYNC';
     case AuditLogActionType.permissionDenied:
       return 'DENIED';
     case AuditLogActionType.permissionOverrideSet:
@@ -607,11 +614,15 @@ Color _colorFor(AuditLogActionType type) {
     case AuditLogActionType.saleVoided:
     case AuditLogActionType.expenseRejected:
     case AuditLogActionType.syncFailed:
+    case AuditLogActionType.fraudFlagRaised:
       return AppColors.error;
+    case AuditLogActionType.fraudFlagResolved:
+      return AppColors.success;
     case AuditLogActionType.refundCreated:
     case AuditLogActionType.stockUpdated:
     case AuditLogActionType.stockTransferred:
     case AuditLogActionType.syncStarted:
+    case AuditLogActionType.auditChainReconciled:
       return AppColors.brand;
     case AuditLogActionType.discountApplied:
     case AuditLogActionType.stockAdjusted:
@@ -644,6 +655,7 @@ Color _colorFor(AuditLogActionType type) {
     case AuditLogActionType.purchaseOrderUpdated:
     case AuditLogActionType.purchaseOrderSubmitted:
     case AuditLogActionType.businessModuleChanged:
+    case AuditLogActionType.refundSettingsChanged:
       return AppColors.brand;
     case AuditLogActionType.purchaseOrderApproved:
     case AuditLogActionType.purchaseOrderReceived:

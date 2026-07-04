@@ -456,56 +456,56 @@ class _SecurityActivityCard extends StatelessWidget {
     );
   }
 }
+// TODO: fraud flags are not yet implemented on the backend, so this badge is not currently used. It will be added to the Employee Overview card once the feature is available.
+// class _FraudFlagBadge extends StatelessWidget {
+//   final int flagCount;
 
-class _FraudFlagBadge extends StatelessWidget {
-  final int flagCount;
+//   const _FraudFlagBadge({required this.flagCount});
 
-  const _FraudFlagBadge({required this.flagCount});
+//   @override
+//   Widget build(BuildContext context) {
+//     final isClean = flagCount == 0;
+//     final bg = isClean ? AppColors.successSoft : AppColors.errorSoft;
+//     final fg = isClean ? AppColors.success : AppColors.error;
+//     final label = isClean
+//         ? 'None Detected'
+//         : '$flagCount Flag${flagCount > 1 ? 's' : ''}';
 
-  @override
-  Widget build(BuildContext context) {
-    final isClean = flagCount == 0;
-    final bg = isClean ? AppColors.successSoft : AppColors.errorSoft;
-    final fg = isClean ? AppColors.success : AppColors.error;
-    final label = isClean
-        ? 'None Detected'
-        : '$flagCount Flag${flagCount > 1 ? 's' : ''}';
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                isClean
-                    ? Icons.check_circle_outline_rounded
-                    : Icons.flag_rounded,
-                size: 12,
-                color: fg,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: getOutfitStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: fg,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
+//     return Row(
+//       mainAxisSize: MainAxisSize.min,
+//       children: [
+//         Container(
+//           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+//           decoration: BoxDecoration(
+//             color: bg,
+//             borderRadius: BorderRadius.circular(20),
+//           ),
+//           child: Row(
+//             mainAxisSize: MainAxisSize.min,
+//             children: [
+//               Icon(
+//                 isClean
+//                     ? Icons.check_circle_outline_rounded
+//                     : Icons.flag_rounded,
+//                 size: 12,
+//                 color: fg,
+//               ),
+//               const SizedBox(width: 4),
+//               Text(
+//                 label,
+//                 style: getOutfitStyle(
+//                   fontSize: 11,
+//                   fontWeight: FontWeight.w600,
+//                   color: fg,
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ),
+//       ],
+//     );
+//   }
+// }
 
 // ── Overflow Sheet ─────────────────────────────────────────────────────────
 

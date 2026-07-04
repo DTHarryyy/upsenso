@@ -209,28 +209,10 @@ class ModuleSettingsCubit extends Cubit<ModuleSettingsState> {
         continue;
       }
       try {
+        // Already audit-logged when the toggle was applied locally — the
+        // flush only reconciles remote state.
         await sl<PermissionRemoteDs>().setModuleEnabled(businessId, code, enabled);
         await _removePending(code);
-
-        final label = _kModules
-            .firstWhere(
-              (m) => m.code == code,
-              orElse: () => _ModuleInfo(
-                code: code,
-                label: code,
-                description: '',
-                icon: IconlyLight.category,
-              ),
-            )
-            .label;
-        sl<AuditLogService>().log(
-          actionType: AuditLogActionType.businessModuleChanged,
-          entityType: 'module',
-          entityName: label,
-          description: '$label module ${enabled ? 'enabled' : 'disabled'}',
-          metadata: {'module': code, 'enabled': enabled},
-          businessId: businessId,
-        );
 
         final s = state;
         if (s is ModuleSettingsLoaded) {
@@ -243,6 +225,18 @@ class ModuleSettingsCubit extends Cubit<ModuleSettingsState> {
     }
   }
 
+  String _labelFor(String code) => _kModules
+      .firstWhere(
+        (m) => m.code == code,
+        orElse: () => _ModuleInfo(
+          code: code,
+          label: code,
+          description: '',
+          icon: IconlyLight.category,
+        ),
+      )
+      .label;
+
   Future<void> toggle(String code, bool enabled) async {
     final current = state;
     if (current is! ModuleSettingsLoaded) return;
@@ -251,6 +245,19 @@ class ModuleSettingsCubit extends Cubit<ModuleSettingsState> {
     // Write locally first — the change survives even if remote is unreachable.
     await sl<BusinessModulesDao>().saveModules(businessId, {code: enabled});
     await _addPending(code);
+
+    // Audit at the moment the toggle takes local effect — module gates are a
+    // control surface, and an offline toggle must not escape the chain by
+    // waiting for a remote push that may never be observed.
+    sl<AuditLogService>().log(
+      actionType: AuditLogActionType.businessModuleChanged,
+      entityType: 'module',
+      entityName: _labelFor(code),
+      description:
+          '${_labelFor(code)} module ${enabled ? 'enabled' : 'disabled'}',
+      metadata: {'module': code, 'enabled': enabled},
+      businessId: businessId,
+    );
 
     // Refresh the live module gate from the local cache so the toggle takes
     // effect instantly across the app — online or offline. Without this the

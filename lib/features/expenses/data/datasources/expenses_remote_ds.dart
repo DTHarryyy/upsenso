@@ -61,13 +61,27 @@ class ExpensesRemoteDs {
     await client.from('expenses').delete().eq('id', id);
   }
 
+  /// Incremental/paged pull, keyset ordered by (updated_at, id). Omit the cursor
+  /// + limit for a full first-run pull. Note: expenses have no soft-delete
+  /// column, so a hard-deleted expense doesn't propagate to other devices under
+  /// either full or delta pull (unchanged behavior); a future soft-delete
+  /// migration would close that gap.
   Future<List<Map<String, dynamic>>> getExpensesByBusiness(
-      String businessId) async {
-    final response = await client
-        .from('expenses')
-        .select()
-        .eq('business_id', businessId)
-        .order('expense_date', ascending: false);
-    return List<Map<String, dynamic>>.from(response as List);
+    String businessId, {
+    DateTime? afterTs,
+    String? afterId,
+    int? limit,
+  }) async {
+    var filter = client.from('expenses').select().eq('business_id', businessId);
+    if (afterTs != null) {
+      final ts = afterTs.toUtc().toIso8601String();
+      filter = afterId != null
+          ? filter.or('updated_at.gt.$ts,and(updated_at.eq.$ts,id.gt.$afterId)')
+          : filter.gt('updated_at', ts);
+    }
+    final ordered =
+        filter.order('updated_at', ascending: true).order('id', ascending: true);
+    final res = limit != null ? await ordered.limit(limit) : await ordered;
+    return List<Map<String, dynamic>>.from(res);
   }
 }

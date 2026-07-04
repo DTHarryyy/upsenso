@@ -12,14 +12,32 @@ class ProcurementRemoteDs {
 
   // ── Suppliers ───────────────────────────────────────────────────────────────
 
+  /// Incremental/paged pull for suppliers.
+  ///
+  /// **Includes soft-deleted rows** (`is_deleted=true`) on purpose: a delta pull
+  /// keyed on `updated_at` can only propagate a deletion if the tombstone row
+  /// comes through. Filtering `is_deleted=false` here is exactly what previously
+  /// stranded deletes on other devices. Keyset ordered by (`updated_at`, `id`) so
+  /// rows sharing a timestamp are never skipped at a page boundary. Omit the
+  /// cursor + limit for a full (first-run) pull.
   Future<List<Map<String, dynamic>>> getSuppliersByBusiness(
-    String businessId,
-  ) async {
-    return await _client
-        .from('suppliers')
-        .select()
-        .eq('business_id', businessId)
-        .eq('is_deleted', false);
+    String businessId, {
+    DateTime? afterTs,
+    String? afterId,
+    int? limit,
+  }) async {
+    var filter =
+        _client.from('suppliers').select().eq('business_id', businessId);
+    if (afterTs != null) {
+      final ts = afterTs.toUtc().toIso8601String();
+      filter = afterId != null
+          ? filter.or('updated_at.gt.$ts,and(updated_at.eq.$ts,id.gt.$afterId)')
+          : filter.gt('updated_at', ts);
+    }
+    final ordered =
+        filter.order('updated_at', ascending: true).order('id', ascending: true);
+    final res = limit != null ? await ordered.limit(limit) : await ordered;
+    return List<Map<String, dynamic>>.from(res);
   }
 
   Future<void> upsertSupplier(Map<String, dynamic> row) async {
@@ -32,14 +50,27 @@ class ProcurementRemoteDs {
 
   // ── Purchase Orders ─────────────────────────────────────────────────────────
 
+  /// Incremental/paged pull. Includes soft-deleted rows so tombstones propagate
+  /// via delta. Keyset ordered by (updated_at, id); omit cursor + limit for a
+  /// full first-run pull.
   Future<List<Map<String, dynamic>>> getPurchaseOrdersByBusiness(
-    String businessId,
-  ) async {
-    return await _client
-        .from('purchase_orders')
-        .select()
-        .eq('business_id', businessId)
-        .eq('is_deleted', false);
+    String businessId, {
+    DateTime? afterTs,
+    String? afterId,
+    int? limit,
+  }) async {
+    var filter =
+        _client.from('purchase_orders').select().eq('business_id', businessId);
+    if (afterTs != null) {
+      final ts = afterTs.toUtc().toIso8601String();
+      filter = afterId != null
+          ? filter.or('updated_at.gt.$ts,and(updated_at.eq.$ts,id.gt.$afterId)')
+          : filter.gt('updated_at', ts);
+    }
+    final ordered =
+        filter.order('updated_at', ascending: true).order('id', ascending: true);
+    final res = limit != null ? await ordered.limit(limit) : await ordered;
+    return List<Map<String, dynamic>>.from(res);
   }
 
   Future<void> upsertPurchaseOrder(Map<String, dynamic> row) async {
@@ -52,14 +83,27 @@ class ProcurementRemoteDs {
 
   // ── Purchase Order Lines ────────────────────────────────────────────────────
 
+  /// Incremental/paged pull (includes tombstones). Keyset (updated_at, id).
   Future<List<Map<String, dynamic>>> getPurchaseOrderLinesByBusiness(
-    String businessId,
-  ) async {
-    return await _client
+    String businessId, {
+    DateTime? afterTs,
+    String? afterId,
+    int? limit,
+  }) async {
+    var filter = _client
         .from('purchase_order_lines')
         .select()
-        .eq('business_id', businessId)
-        .eq('is_deleted', false);
+        .eq('business_id', businessId);
+    if (afterTs != null) {
+      final ts = afterTs.toUtc().toIso8601String();
+      filter = afterId != null
+          ? filter.or('updated_at.gt.$ts,and(updated_at.eq.$ts,id.gt.$afterId)')
+          : filter.gt('updated_at', ts);
+    }
+    final ordered =
+        filter.order('updated_at', ascending: true).order('id', ascending: true);
+    final res = limit != null ? await ordered.limit(limit) : await ordered;
+    return List<Map<String, dynamic>>.from(res);
   }
 
   Future<void> upsertPurchaseOrderLine(Map<String, dynamic> row) async {
@@ -72,27 +116,54 @@ class ProcurementRemoteDs {
 
   // ── Goods Receipts ──────────────────────────────────────────────────────────
 
+  /// Incremental/paged pull (includes tombstones). Keyset (updated_at, id).
   Future<List<Map<String, dynamic>>> getGoodsReceiptsByBusiness(
-    String businessId,
-  ) async {
-    return await _client
-        .from('goods_receipts')
-        .select()
-        .eq('business_id', businessId)
-        .eq('is_deleted', false);
+    String businessId, {
+    DateTime? afterTs,
+    String? afterId,
+    int? limit,
+  }) async {
+    var filter =
+        _client.from('goods_receipts').select().eq('business_id', businessId);
+    if (afterTs != null) {
+      final ts = afterTs.toUtc().toIso8601String();
+      filter = afterId != null
+          ? filter.or('updated_at.gt.$ts,and(updated_at.eq.$ts,id.gt.$afterId)')
+          : filter.gt('updated_at', ts);
+    }
+    final ordered =
+        filter.order('updated_at', ascending: true).order('id', ascending: true);
+    final res = limit != null ? await ordered.limit(limit) : await ordered;
+    return List<Map<String, dynamic>>.from(res);
   }
 
   Future<void> upsertGoodsReceipt(Map<String, dynamic> row) async {
     await _client.from('goods_receipts').upsert(row);
   }
 
+  /// Incremental/paged pull, keyset (updated_at, id). GR items have no
+  /// soft-delete (append-only children of a receipt), so there is no tombstone
+  /// to carry — delta here is purely a scalability change.
   Future<List<Map<String, dynamic>>> getGoodsReceiptItemsByBusiness(
-    String businessId,
-  ) async {
-    return await _client
+    String businessId, {
+    DateTime? afterTs,
+    String? afterId,
+    int? limit,
+  }) async {
+    var filter = _client
         .from('goods_receipt_items')
         .select()
         .eq('business_id', businessId);
+    if (afterTs != null) {
+      final ts = afterTs.toUtc().toIso8601String();
+      filter = afterId != null
+          ? filter.or('updated_at.gt.$ts,and(updated_at.eq.$ts,id.gt.$afterId)')
+          : filter.gt('updated_at', ts);
+    }
+    final ordered =
+        filter.order('updated_at', ascending: true).order('id', ascending: true);
+    final res = limit != null ? await ordered.limit(limit) : await ordered;
+    return List<Map<String, dynamic>>.from(res);
   }
 
   Future<void> upsertGoodsReceiptItem(Map<String, dynamic> row) async {

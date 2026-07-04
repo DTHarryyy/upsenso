@@ -127,7 +127,12 @@ class AuditLogRepositoryImpl implements IAuditLogRepository {
   AuditLog _toEntity(AuditLogRow row) {
     Map<String, dynamic> meta = {};
     try {
-      meta = Map<String, dynamic>.from(jsonDecode(row.metadata) as Map);
+      var decoded = jsonDecode(row.metadata);
+      // Rows corrupted by the pre-fix double-encoding decode to a String (the
+      // real JSON text) — decode once more so they still display until the
+      // next pull rewrites them cleanly.
+      if (decoded is String) decoded = jsonDecode(decoded);
+      if (decoded is Map) meta = Map<String, dynamic>.from(decoded);
     } catch (e, st) {
       debugPrint('[AuditLogRepo] Malformed metadata for ${row.id}: $e\n$st');
     }
@@ -153,14 +158,15 @@ class AuditLogRepositoryImpl implements IAuditLogRepository {
   /// Maps a raw row fetched live from the server — never persisted locally,
   /// so this mirrors [AuditLogsDao.upsertFromServer]'s defensive handling
   /// rather than sharing code with it (different layer, different output
-  /// type). Same two gaps apply: trg_user_perm_audit / trg_branch_perm_audit
-  /// / trg_module_audit write rows with no `action_type` or `description`.
+  /// type). Trigger-written permission rows (trg_user_perm_audit /
+  /// trg_branch_perm_audit / trg_module_audit) now carry `action_type` and
+  /// `description` like app rows (log_permission_change converged onto the
+  /// app's convention), so the coalesces below are just null guards.
   AuditLog _fromRemoteRow(Map<String, dynamic> row) {
     final actionTypeValue =
         row['action_type'] as String? ?? 'PERMISSION_TABLE_CHANGED';
     final description =
-        row['description'] as String? ??
-        '${row['action']} on ${row['entity_type']}';
+        row['description'] as String? ?? 'Permission change';
     // metadata is jsonb — the Supabase client already decodes it to a Map.
     final metadata = row['metadata'] is Map
         ? Map<String, dynamic>.from(row['metadata'] as Map)

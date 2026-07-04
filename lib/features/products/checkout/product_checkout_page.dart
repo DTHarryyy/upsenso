@@ -223,26 +223,8 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
         transactionId: txId,
       );
 
-      unawaited(
-        sl<AuditLogService>().log(
-          actionType: AuditLogActionType.saleCreated,
-          entityType: 'transaction',
-          entityId: txId,
-          description:
-              'Sale of ${AppFormatters.currency(widget.total)} — ${widget.items.length} item(s)',
-          metadata: {
-            'total': widget.total,
-            'subtotal': widget.subtotal,
-            'tax': widget.tax,
-            'discount': widget.discountAmount,
-            'payment_method': _paymentMethod,
-            'item_count': widget.items.length,
-          },
-          businessId: businessId,
-          branchId: branchId,
-          userId: cashierId,
-        ),
-      );
+      // saleCreated is audit-logged inside CheckoutService.completeSale —
+      // every sale path shares one chained entry point.
 
       // Finishing a held sale: convert + soft-delete the draft so it leaves the
       // Held Sales list and exactly one completed transaction remains.

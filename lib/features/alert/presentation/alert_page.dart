@@ -1,36 +1,67 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:iconly/iconly.dart';
+import 'package:pos/core/audit/audit_log_service.dart';
+import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/breakpoint.dart';
+import 'package:pos/core/database/app_database.dart';
+import 'package:pos/core/database/daos/fraud_flags_dao.dart';
+import 'package:pos/core/permissions/permission_service.dart';
+import 'package:pos/core/session/active_business_context.dart';
 import 'package:pos/features/alert/data/alert_model.dart';
+import 'package:pos/features/alert/presentation/cubit/fraud_cubit.dart';
+import 'package:pos/features/alert/presentation/cubit/fraud_state.dart';
 import 'package:pos/features/alert/presentation/widgets/alert_detail_dialog.dart';
 import 'package:pos/features/alert/presentation/widgets/alert_detail_page.dart';
 import 'package:pos/features/alert/presentation/widgets/alert_filter_bar.dart';
 import 'package:pos/features/alert/presentation/widgets/alert_list_item.dart';
 import 'package:pos/core/widgets/stat_card.dart';
 
-class AlertPage extends StatefulWidget {
+class AlertPage extends StatelessWidget {
   const AlertPage({super.key});
 
   @override
-  State<AlertPage> createState() => _AlertPageState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => FraudCubit(
+        flagsDao: sl<FraudFlagsDao>(),
+        db: sl<AppDatabase>(),
+        permissionService: sl<PermissionService>(),
+        activeBusinessContext: sl<ActiveBusinessContext>(),
+        auditLogService: sl<AuditLogService>(),
+      )..load(),
+      child: const _AlertView(),
+    );
+  }
 }
 
-class _AlertPageState extends State<AlertPage> {
+class _AlertView extends StatefulWidget {
+  const _AlertView();
+
+  @override
+  State<_AlertView> createState() => _AlertViewState();
+}
+
+class _AlertViewState extends State<_AlertView> {
   String _selectedStatus = 'All';
   String _selectedSeverity = 'All Severity';
 
-  List<FraudAlert> get _filteredAlerts {
-    return mockFraudAlerts.where((alert) {
+  List<FraudAlert> _filtered(List<FraudAlert> alerts) {
+    return alerts.where((alert) {
       final statusMatch = _selectedStatus == 'All' ||
-          (_selectedStatus == 'New' &&
-              alert.status == AlertStatus.newAlert) ||
+          (_selectedStatus == 'New' && alert.status == AlertStatus.newAlert) ||
           (_selectedStatus == 'Investigating' &&
               alert.status == AlertStatus.investigating) ||
           (_selectedStatus == 'Resolved' &&
-              alert.status == AlertStatus.resolved);
+              alert.status == AlertStatus.resolved) ||
+          (_selectedStatus == 'Dismissed' &&
+              (alert.status == AlertStatus.dismissed ||
+                  alert.status == AlertStatus.falsePositive));
 
       final severityMatch = _selectedSeverity == 'All Severity' ||
+          (_selectedSeverity == 'Critical' &&
+              alert.severity == AlertSeverity.critical) ||
           (_selectedSeverity == 'High' &&
               alert.severity == AlertSeverity.high) ||
           (_selectedSeverity == 'Medium' &&
@@ -41,74 +72,117 @@ class _AlertPageState extends State<AlertPage> {
     }).toList();
   }
 
-  int get _newCount =>
-      mockFraudAlerts.where((a) => a.status == AlertStatus.newAlert).length;
-
-  int get _highCount =>
-      mockFraudAlerts.where((a) => a.severity == AlertSeverity.high).length;
-
-  int get _investigatingCount =>
-      mockFraudAlerts
-          .where((a) => a.status == AlertStatus.investigating)
-          .length;
-
-  int get _resolvedCount =>
-      mockFraudAlerts.where((a) => a.status == AlertStatus.resolved).length;
-
   void _openDetail(BuildContext context, FraudAlert alert) {
+    final cubit = context.read<FraudCubit>();
+    final canResolve = cubit.canResolveAlert(alert);
+    void onSetStatus(AlertStatus status, String? note) {
+      cubit.setStatus(alert, status, note);
+      Navigator.of(context).pop();
+    }
+
     if (Breakpoints.isDesktop(context)) {
       showDialog(
         context: context,
-        builder: (_) => AlertDetailDialog(alert: alert),
+        builder: (_) => AlertDetailDialog(
+          alert: alert,
+          canResolve: canResolve,
+          onSetStatus: onSetStatus,
+        ),
       );
     } else {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => AlertDetailPage(alert: alert)),
+        MaterialPageRoute(
+          builder: (_) => AlertDetailPage(
+            alert: alert,
+            canResolve: canResolve,
+            onSetStatus: onSetStatus,
+          ),
+        ),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final alerts = _filteredAlerts;
+    return BlocBuilder<FraudCubit, FraudState>(
+      builder: (context, state) {
+        if (state is FraudLoading) {
+          return const Scaffold(
+            backgroundColor: AppColors.background,
+            body: Center(
+              child: CircularProgressIndicator(color: AppColors.brand),
+            ),
+          );
+        }
+        if (state is FraudError) {
+          return Scaffold(
+            backgroundColor: AppColors.background,
+            body: Center(
+              child: Text(
+                state.message,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+          );
+        }
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _PageHeader(totalCount: mockFraudAlerts.length),
-            _StatCardsSection(
-              newCount: _newCount,
-              highCount: _highCount,
-              investigatingCount: _investigatingCount,
-              resolvedCount: _resolvedCount,
+        final all = (state as FraudLoaded).alerts;
+        final alerts = _filtered(all);
+        final newCount =
+            all.where((a) => a.status == AlertStatus.newAlert).length;
+        final highCount = all
+            .where((a) =>
+                a.severity == AlertSeverity.high ||
+                a.severity == AlertSeverity.critical)
+            .length;
+        final investigatingCount =
+            all.where((a) => a.status == AlertStatus.investigating).length;
+        final resolvedCount =
+            all.where((a) => a.status == AlertStatus.resolved).length;
+
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          body: SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _PageHeader(totalCount: all.length),
+                _StatCardsSection(
+                  newCount: newCount,
+                  highCount: highCount,
+                  investigatingCount: investigatingCount,
+                  resolvedCount: resolvedCount,
+                ),
+                AlertFilterBar(
+                  selectedStatus: _selectedStatus,
+                  selectedSeverity: _selectedSeverity,
+                  newCount: newCount,
+                  onStatusChanged: (v) => setState(() => _selectedStatus = v),
+                  onSeverityChanged: (v) =>
+                      setState(() => _selectedSeverity = v),
+                ),
+                Expanded(
+                  child: alerts.isEmpty
+                      ? _EmptyState(hasAny: all.isNotEmpty)
+                      : ListView.separated(
+                          itemCount: alerts.length,
+                          separatorBuilder: (_, _) => const Divider(
+                              height: 1, color: AppColors.borderSoft),
+                          itemBuilder: (context, i) => AlertListItem(
+                            alert: alerts[i],
+                            onTap: () => _openDetail(context, alerts[i]),
+                          ),
+                        ),
+                ),
+              ],
             ),
-            AlertFilterBar(
-              selectedStatus: _selectedStatus,
-              selectedSeverity: _selectedSeverity,
-              newCount: _newCount,
-              onStatusChanged: (v) => setState(() => _selectedStatus = v),
-              onSeverityChanged: (v) => setState(() => _selectedSeverity = v),
-            ),
-            Expanded(
-              child: alerts.isEmpty
-                  ? const _EmptyState()
-                  : ListView.separated(
-                      itemCount: alerts.length,
-                      separatorBuilder: (_, _) => const Divider(
-                          height: 1, color: AppColors.borderSoft),
-                      itemBuilder: (context, i) => AlertListItem(
-                        alert: alerts[i],
-                        onTap: () => _openDetail(context, alerts[i]),
-                      ),
-                    ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -126,7 +200,7 @@ class _PageHeader extends StatelessWidget {
         children: [
           const Expanded(
             child: Text(
-              'Fraud Alerts',
+              'Fraud & Risk',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
@@ -137,15 +211,15 @@ class _PageHeader extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: AppColors.errorSoft,
+              color: totalCount > 0 ? AppColors.errorSoft : AppColors.surfaceAlt,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              '$totalCount alerts',
-              style: const TextStyle(
+              '$totalCount alert${totalCount == 1 ? '' : 's'}',
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: AppColors.error,
+                color: totalCount > 0 ? AppColors.error : AppColors.textMuted,
               ),
             ),
           ),
@@ -206,28 +280,34 @@ class _StatCardsSection extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  final bool hasAny;
+  const _EmptyState({required this.hasAny});
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(IconlyLight.shield_done, size: 48, color: AppColors.textMuted),
-          SizedBox(height: 12),
+          const Icon(IconlyLight.shield_done,
+              size: 48, color: AppColors.textMuted),
+          const SizedBox(height: 12),
           Text(
-            'No alerts found',
-            style: TextStyle(
+            hasAny ? 'No alerts match these filters' : 'No fraud alerts',
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
               color: AppColors.textSecondary,
             ),
           ),
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
           Text(
-            'Try adjusting your filters',
-            style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+            hasAny
+                ? 'Try adjusting your filters'
+                : 'Detection runs automatically — unusual refunds, discounts, '
+                    'stock write-offs, and audit-trail issues will appear here.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
           ),
         ],
       ),

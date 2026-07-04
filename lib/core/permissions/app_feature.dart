@@ -64,6 +64,9 @@ enum AppFeature {
   /// Audit log viewer.
   auditLogs,
 
+  /// Fraud & risk alerts raised by the on-device detection engine.
+  fraudAlerts,
+
   /// Own profile settings page.
   profileSettings,
 
@@ -111,6 +114,8 @@ extension AppFeatureX on AppFeature {
         return 'Recipes';
       case AppFeature.auditLogs:
         return 'Audit Logs';
+      case AppFeature.fraudAlerts:
+        return 'Fraud & Risk';
       case AppFeature.profileSettings:
         return 'Profile Settings';
       case AppFeature.salesHistory:
@@ -149,6 +154,9 @@ extension AppFeatureX on AppFeature {
       case AppFeature.recipeManagement:
         return 'recipes';
       case AppFeature.auditLogs:
+      // Fraud shares the audit module gate — same "security surface", no
+      // separate toggle an insider could flip independently.
+      case AppFeature.fraudAlerts:
         return 'audit';
       // CRM has its own module (seeded as `crm` in the modules catalogue).
       case AppFeature.customerDirectory:
@@ -188,6 +196,8 @@ extension AppFeatureX on AppFeature {
         return 'nav.settings';
       case AppFeature.auditLogs:
         return 'nav.audit_logs';
+      case AppFeature.fraudAlerts:
+        return 'nav.fraud';
       case AppFeature.supplierDirectory:
         return 'nav.suppliers';
       case AppFeature.customerDirectory:

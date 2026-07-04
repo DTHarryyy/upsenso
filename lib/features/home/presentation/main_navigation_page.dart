@@ -154,7 +154,8 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
               final isStackedSubPage =
                   location.startsWith(AppRoutes.suppliers) ||
                   location.startsWith(AppRoutes.purchaseOrders) ||
-                  location.startsWith(AppRoutes.customers);
+                  location.startsWith(AppRoutes.customers) ||
+                  location.startsWith(AppRoutes.fraud);
 
               // GoRouter's StatefulNavigationShell manages the page stack.
               final shell = widget.navigationShell;
@@ -527,6 +528,9 @@ class _AppSidebarState extends State<_AppSidebar>
   bool get _sidebarShowCustomers =>
       _permService.can(PermissionKeys.navCustomers) &&
       _permService.isModuleEnabled('crm');
+  bool get _sidebarShowFraud =>
+      _permService.can(PermissionKeys.navFraud) &&
+      _permService.isModuleEnabled('audit');
   bool get _sidebarShowIngredients =>
       _permService.can(PermissionKeys.navRecipes) &&
       _permService.isModuleEnabled('ingredients');
@@ -858,6 +862,16 @@ class _AppSidebarState extends State<_AppSidebar>
                         expanded: layoutExpanded,
                         onTap: widget.onNavTap,
                       ),
+                      if (_sidebarShowFraud)
+                        _NavItem(
+                          icon: IconlyLight.shield_fail,
+                          activeIcon: IconlyBold.shield_fail,
+                          label: 'Fraud & Risk',
+                          index: 13,
+                          currentIndex: widget.currentIndex,
+                          expanded: layoutExpanded,
+                          onTap: widget.onNavTap,
+                        ),
                     ],
                     const SizedBox(height: 6),
                   ],

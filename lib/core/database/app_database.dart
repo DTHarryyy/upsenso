@@ -66,6 +66,14 @@ import 'package:pos/core/database/tables/refund_settings_table.dart';
 import 'package:pos/core/database/daos/refund_settings_dao.dart';
 import 'package:pos/core/database/tables/customers_table.dart';
 import 'package:pos/core/database/daos/customers_dao.dart';
+import 'package:pos/core/database/tables/fraud_flags_table.dart';
+import 'package:pos/core/database/daos/fraud_flags_dao.dart';
+import 'package:pos/core/database/tables/audit_outbox_table.dart';
+import 'package:pos/core/database/daos/audit_outbox_dao.dart';
+import 'package:pos/core/database/tables/fraud_candidates_table.dart';
+import 'package:pos/core/database/daos/fraud_candidates_dao.dart';
+import 'package:pos/core/database/tables/devices_table.dart';
+import 'package:pos/core/database/daos/devices_dao.dart';
 
 part 'app_database.g.dart';
 
@@ -104,6 +112,10 @@ part 'app_database.g.dart';
     RefundItemsTable,
     RefundSettingsTable,
     CustomersTable,
+    FraudFlagsTable,
+    AuditOutboxTable,
+    FraudCandidatesTable,
+    DevicesTable,
   ],
   daos: [
     AuthContextDao,
@@ -136,6 +148,10 @@ part 'app_database.g.dart';
     RefundsDao,
     RefundSettingsDao,
     CustomersDao,
+    FraudFlagsDao,
+    AuditOutboxDao,
+    FraudCandidatesDao,
+    DevicesDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -156,7 +172,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 52;
+  int get schemaVersion => 56;
 
   @override
   MigrationStrategy get migration {
@@ -903,6 +919,98 @@ class AppDatabase extends _$AppDatabase {
           await customStatement(
             'CREATE INDEX IF NOT EXISTS idx_transactions_customer '
             'ON transactions(customer_id)',
+          );
+        }
+        if (from < 53) {
+          // M1 audit chain — seq/prev_hash/entry_hash/device_uid. Additive;
+          // pre-v53 rows stay NULL (pre-chain segment, verifier skips them).
+          // Rollback: ignore the columns — nothing else reads them.
+          for (final col in [
+            auditLogsTable.seq,
+            auditLogsTable.prevHash,
+            auditLogsTable.entryHash,
+            auditLogsTable.deviceUid,
+          ]) {
+            try {
+              await m.addColumn(auditLogsTable, col);
+            } catch (e, st) {
+              debugPrint('[AppDatabase] v53 audit chain col skipped: $e\n$st');
+            }
+          }
+          // Chain-head lookup runs on every audit write — keep it indexed.
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_audit_chain '
+            'ON audit_logs(business_id, device_uid, seq)',
+          );
+        }
+        if (from < 54) {
+          // M1 fraud engine — fraud_flags + dedupe uniqueness + the local
+          // rule-query indexes (sweeps must stay cheap on low-end devices).
+          // Rollback: DROP TABLE fraud_flags; indexes are harmless if left.
+          try {
+            await m.createTable(fraudFlagsTable);
+          } catch (e, st) {
+            debugPrint('[AppDatabase] v54 fraud_flags create skipped: $e\n$st');
+          }
+          await customStatement(
+            'CREATE UNIQUE INDEX IF NOT EXISTS ux_fraud_flags_dedupe '
+            'ON fraud_flags(business_id, dedupe_key)',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_refunds_rule_scan '
+            'ON refunds(business_id, refunded_by, created_at)',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_stock_ledger_rule_scan '
+            'ON stock_ledger(business_id, reason, created_at)',
+          );
+        }
+        if (from < 55) {
+          // 2026-07-03 false-positive fixes (see
+          // docs/UPSENSO_FRAUD_FALSE_POSITIVE_FIX_PLAN.md): audit outbox
+          // (atomic refund→audit), fraud candidates (confirm-before-flag),
+          // hash_version (canonicalization v2 without re-hashing history).
+          // Rollback: DROP the two tables; the column is ignored by old code.
+          try {
+            await m.createTable(auditOutboxTable);
+          } catch (e, st) {
+            debugPrint('[AppDatabase] v55 audit_outbox create skipped: $e\n$st');
+          }
+          try {
+            await m.createTable(fraudCandidatesTable);
+          } catch (e, st) {
+            debugPrint(
+                '[AppDatabase] v55 fraud_candidates create skipped: $e\n$st');
+          }
+          try {
+            await m.addColumn(auditLogsTable, auditLogsTable.hashVersion);
+          } catch (e, st) {
+            debugPrint('[AppDatabase] v55 hash_version add skipped: $e\n$st');
+          }
+          // ORPHANED_RECORD's NOT EXISTS probes audit_logs by entity_id on
+          // every sweep — unindexed it's a full scan per refund.
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_audit_logs_entity '
+            'ON audit_logs(entity_id)',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_audit_logs_action_scan '
+            'ON audit_logs(business_id, action_type, created_at)',
+          );
+        }
+        if (from < 56) {
+          // Normalize the device label out of every audit_logs row into one
+          // row per chain identity (see the 2026-07-03 fix plan §4c). Additive.
+          // Rollback: DROP TABLE devices; audit_logs.device_id still holds the
+          // legacy per-row label.
+          try {
+            await m.createTable(devicesTable);
+          } catch (e, st) {
+            debugPrint('[AppDatabase] v56 devices create skipped: $e\n$st');
+          }
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_devices_business '
+            'ON devices(business_id)',
           );
         }
       },

@@ -25,6 +25,17 @@ class DeviceInfoService {
     return _cachedLabel!;
   }
 
+  /// Coarse platform bucket for the devices table — stable, no plugin call.
+  String get platform {
+    if (kIsWeb) return 'web';
+    if (Platform.isAndroid) return 'android';
+    if (Platform.isIOS) return 'ios';
+    if (Platform.isWindows) return 'windows';
+    if (Platform.isMacOS) return 'macos';
+    if (Platform.isLinux) return 'linux';
+    return 'unknown';
+  }
+
   Future<String> _resolveLabel() async {
     if (kIsWeb) {
       final info = await _plugin.webBrowserInfo;

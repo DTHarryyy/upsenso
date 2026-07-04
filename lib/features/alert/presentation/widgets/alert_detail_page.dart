@@ -6,8 +6,15 @@ import 'package:pos/features/alert/presentation/widgets/alert_detail_content.dar
 
 class AlertDetailPage extends StatelessWidget {
   final FraudAlert alert;
+  final bool canResolve;
+  final void Function(AlertStatus status, String? note)? onSetStatus;
 
-  const AlertDetailPage({super.key, required this.alert});
+  const AlertDetailPage({
+    super.key,
+    required this.alert,
+    this.canResolve = false,
+    this.onSetStatus,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +45,11 @@ class AlertDetailPage extends StatelessWidget {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
-        child: AlertDetailContent(alert: alert),
+        child: AlertDetailContent(
+          alert: alert,
+          canResolve: canResolve,
+          onSetStatus: onSetStatus,
+        ),
       ),
     );
   }

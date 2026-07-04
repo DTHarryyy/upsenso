@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
@@ -7,6 +9,7 @@ import 'package:pos/core/database/daos/refunds_dao.dart';
 import 'package:pos/core/database/daos/transactions_dao.dart';
 import 'package:pos/core/permissions/app_permission.dart';
 import 'package:pos/core/permissions/permission_service.dart';
+import 'package:pos/core/services/fraud_detection_engine.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/features/inventory/domain/repositories/i_inventory_repository.dart';
 
@@ -23,6 +26,7 @@ class RefundService {
   final IInventoryRepository _inventoryRepository;
   final PermissionService _permissionService;
   final AuditLogService _auditLogService;
+  final FraudDetectionEngine? _fraudEngine;
 
   static const _uuid = Uuid();
 
@@ -33,12 +37,14 @@ class RefundService {
     required IInventoryRepository inventoryRepository,
     required PermissionService permissionService,
     required AuditLogService auditLogService,
+    FraudDetectionEngine? fraudEngine,
   }) : _db = db,
        _transactionsDao = transactionsDao,
        _refundsDao = refundsDao,
        _inventoryRepository = inventoryRepository,
        _permissionService = permissionService,
-       _auditLogService = auditLogService;
+       _auditLogService = auditLogService,
+       _fraudEngine = fraudEngine;
 
   /// Refunds [lines] (transaction-item id, qty to return, and whether that
   /// qty goes back to sellable stock) against [transactionId]. Returns the
@@ -179,32 +185,45 @@ class RefundService {
         branchId: branchId,
         sourceId: refundId,
       );
+
+      // Stage the audit entry INSIDE this transaction: the refund row and its
+      // audit intent now commit or roll back together, closing the window
+      // where a committed refund had no audit row (the "refund with no audit
+      // trail" false positive, 2026-07-03). It materializes into a chained
+      // entry on the next drainOutbox (post-commit below / sweep / sync).
+      final approvedBy = approvalMethod == 'self' ? refundedBy : null;
+      await _auditLogService.enqueueInTransaction(
+        actionType: AuditLogActionType.refundCreated,
+        entityType: 'refund',
+        entityId: refundId,
+        description:
+            'Refunded $itemCount item(s) '
+            '(\$${totalAmount.toStringAsFixed(2)}) for transaction $transactionId',
+        metadata: {
+          'transaction_id': transactionId,
+          'total_amount': totalAmount,
+          'tax_amount': taxAmount,
+          'item_count': itemCount,
+          'restocked_line_count': restockedCount,
+          'not_restocked_line_count': itemCount - restockedCount,
+          'reason': ?reason,
+          'approval_method': ?approvalMethod,
+          'approved_by': ?approvedBy,
+        },
+        businessId: businessId,
+        branchId: branchId,
+        userId: refundedBy,
+      );
     });
 
-    final approvedBy = approvalMethod == 'self' ? refundedBy : null;
-
-    await _auditLogService.log(
-      actionType: AuditLogActionType.refundCreated,
-      entityType: 'refund',
-      entityId: refundId,
-      description:
-          'Refunded $itemCount item(s) '
-          '(\$${totalAmount.toStringAsFixed(2)}) for transaction $transactionId',
-      metadata: {
-        'transaction_id': transactionId,
-        'total_amount': totalAmount,
-        'tax_amount': taxAmount,
-        'item_count': itemCount,
-        'restocked_line_count': restockedCount,
-        'not_restocked_line_count': itemCount - restockedCount,
-        'reason': ?reason,
-        'approval_method': ?approvalMethod,
-        'approved_by': ?approvedBy,
-      },
-      businessId: businessId,
-      branchId: branchId,
-      userId: refundedBy,
-    );
+    // Post-commit, fire-and-forget: materialize the staged audit entry now,
+    // then run the refund rules right away instead of waiting for a sweep.
+    unawaited(_auditLogService.drainOutbox());
+    _fraudEngine?.runIncremental(const {
+      'EXCESSIVE_REFUNDS',
+      'REFUND_STRUCTURING',
+      'QUICK_REFUND',
+    });
 
     return refundId;
   }

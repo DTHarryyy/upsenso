@@ -106,10 +106,17 @@ class PurchaseOrderLinesDao extends DatabaseAccessor<AppDatabase>
         );
   }
 
-  Future<void> upsertFromServer(Map<String, dynamic> row) {
-    return into(purchaseOrderLinesTable).insertOnConflictUpdate(
+  Future<void> upsertFromServer(Map<String, dynamic> row) async {
+    final id = row['id'] as String;
+    final existing = await (select(purchaseOrderLinesTable)
+          ..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (existing != null && existing.syncStatus != SyncStatus.synced.toInt()) {
+      return;
+    }
+    await into(purchaseOrderLinesTable).insertOnConflictUpdate(
       PurchaseOrderLinesTableCompanion.insert(
-        id: row['id'] as String,
+        id: id,
         purchaseOrderId: row['purchase_order_id'] as String,
         businessId: row['business_id'] as String,
         productId: row['product_id'] as String,

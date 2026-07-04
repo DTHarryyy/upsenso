@@ -51,67 +51,119 @@ highest-leverage, most demoable win; CRM fills the biggest functional gap
 
 ## Phase 1 — M1.1 Tamper-Evident Audit Chain  *(~1 week)*
 
-Spec: `UPSENSO_FRAUD_AND_AUDIT_CHAIN_DESIGN.md` Part 1. Self-contained, ships alone.
+Spec: `UPSENSO_FRAUD_AND_AUDIT_CHAIN_DESIGN.md` Part 1 + the **hardened plan**
+(2026-07-03, adversarial-review revision — threat model T1–T14). Built
+2026-07-03; deltas from the original spec are noted inline.
 
-1. [ ] **Canonical serializer** — `lib/core/audit/audit_hash.dart`:
-       `canonicalAuditPayload(...)` (sorted keys, UTC ISO-8601 ms, no sync
-       fields) + `sha256` helper. *Pure, unit-testable first.*
-   - [ ] Tests: stable output, metadata key-order independence, UTC formatting.
-2. [ ] **Drift schema** — add `seq`, `prevHash`, `entryHash` (nullable) to
-       `audit_logs_table.dart`; bump `schemaVersion` 51→52 in `app_database.dart`
-       + `onUpgrade` (3× `ADD COLUMN`).
-3. [ ] **Codegen** — `dart run build_runner build --delete-conflicting-outputs`.
-4. [ ] **Supabase migration** — `<ts>_audit_chain_columns.sql` (additive, with
-       rollback comment). Apply (ask before running the CLI/MCP write).
-5. [ ] **Write path** — update `AuditLogService.log()` to allocate `seq` +
-       compute the chain hash inside one Drift transaction (per-business/device).
-   - [ ] Tests: seq increments per (business, device); genesis; concurrent writes.
-6. [ ] **Verifier** — `lib/core/audit/audit_chain_verifier.dart` (re-walk +
-       detect breaks).
-   - [ ] Tests: clean chain passes; one mutated row → one break at right seq.
-7. [ ] **UI hook** — "Verify integrity" action on the Audit Logs page, gated by
-       `audit_logs.verify` (add the permission key + matrices first).
+1. [x] **Canonical serializer** — `lib/core/audit/audit_hash.dart`. Platform-
+       safe custom JSON encoder (VM/web double-rendering split), second-
+       precision timestamps (Drift stores unix SECONDS), entity_id normalized
+       like the sync mapper (uuid-only server column).
+   - [x] Tests (12): stability, key-order independence, UTC format, int/double
+         equivalence, corrupted-metadata determinism.
+2. [x] **Drift schema** — v52→**53** (52 was taken by CRM): `seq`, `prevHash`,
+       `entryHash` + **`deviceUid`** (the old `device_id` is a non-persistent
+       display label — a real installation uid had to be minted:
+       `lib/core/device/device_identity_service.dart`, secure-storage-backed).
+3. [x] **Codegen** run.
+4. [x] **Supabase migration WRITTEN** —
+       `supabase/migrations/20260703000002_audit_chain_columns.sql`: adds
+       `seq`/`device_uid`/`synced_at` (adopts the pre-existing unused
+       `previous_hash`/`hash` columns), partial unique index `ux_audit_chain`
+       (synced history becomes immutable), `get_audit_chain_heads()` +
+       `get_my_device_chain_head()` RPCs, seeds `audit_logs.verify`
+       (owner-only, matching audit_logs.view). **NOT YET APPLIED.**
+5. [x] **Write path** — chain allocation in one Drift transaction + a write
+       queue; **genesis-resume** (reinstall with surviving uid continues from
+       the server head instead of colliding forever; offline ⇒ fresh uid).
+   - [x] Tests (9): seq/genesis/linking, concurrency, resume-online,
+         rotate-offline, tenant guard.
+6. [x] **Verifier** — `audit_chain_verifier.dart`: per-device walk, pruned-head
+       tolerance, seq-gap/link/hash breaks, online truncation check via the
+       heads RPC (own device only — other devices' lag is not tamper).
+   - [x] Tests (8).
+7. [x] **UI hook** — "Verify integrity" on the Audit Logs page +
+       per-device report dialog (`audit_chain_verify_dialog.dart`), gated by
+       `audit_logs.verify` (owner-only by default, override-grantable).
+8. [x] **Coverage fixes (T9 — the chain only proves what's logged):**
+       `saleCreated` moved into `CheckoutService` (the AI and legacy checkout
+       paths were never logging sales); manual stock movements now log from
+       `StockMovementService`; module toggles log locally immediately (not
+       only after a remote push); refund-approval settings changes now audited
+       (new `refundSettingsChanged`) with old→new values; `productUpdated`
+       now records per-variant `price_changes`.
+9. [x] **Sync hardening** — mapper carries the chain fields; the audit push no
+       longer swallows a 23505 from `ux_audit_chain` (marked failed with a
+       `CHAIN_CONFLICT` marker → consumed by the AUDIT_TAMPER rule).
 
-**CHECKPOINT:** new audit rows carry a valid chain; tampering with a row is
-detected by the verifier; `flutter test` + `dart run tool/diff_matrices.dart` green.
+**CHECKPOINT (code): ✅** chain writes + tamper/truncation detection verified by
+tests; analyze clean; full suite green. **Pending: migration apply + on-device QA.**
 
 ---
 
 ## Phase 2 — M1.2 Fraud Detection Engine  *(~1.5 weeks)*
 
-Spec: `UPSENSO_FRAUD_AND_AUDIT_CHAIN_DESIGN.md` Part 2. Replaces the mock `alert`.
+Spec: Part 2 + hardened plan. Built 2026-07-03. Replaces the mock `alert`.
 
-8.  [ ] **Permissions wiring (do first, per CLAUDE.md order):** add `fraud.view`,
-        `fraud.resolve`, `nav.fraud`, `audit_logs.verify` to `permission_keys.dart`
-        → `AppPermission` values → `AppFeature.fraudAlerts` (module `audit`) →
-        `role_permission_matrix.dart` + `default_permission_matrix.dart`.
-    - [ ] `dart run tool/diff_matrices.dart` must report in-sync.
-9.  [ ] **Drift table** — `fraud_flags_table.dart` + `fraud_flags_dao.dart`
-        (+ unique index on `business_id, dedupe_key`); bump schemaVersion + upgrade;
-        `build_runner`.
-10. [ ] **Supabase migration** — `<ts>_fraud_flags.sql` mirror + RLS
-        (`fraud.view` SELECT, `fraud.resolve` UPDATE, INSERT tenant-scoped, no
-        DELETE). Rollback section. Apply (ask first).
-11. [ ] **Rule framework** — `FraudRule` interface + `FraudScanContext` +
-        `fraud_settings` thresholds.
-12. [ ] **First 5 rules:** `EXCESSIVE_REFUNDS`, `HIGH_DISCOUNT`,
-        `SALE_AFTER_SHIFT`, `INVENTORY_SHRINKAGE`, `AUDIT_TAMPER` (wires Phase 1
-        verifier).
-    - [ ] Tests per rule: positive, negative, boundary, dedupe.
-13. [ ] **Engine** — `fraud_detection_engine.dart`: `runSweep()` + dedupe +
-        notification; register in `di.dart`.
-14. [ ] **Triggers** — post-commit hooks in `CheckoutService` / `RefundService` /
-        `StockMovementService` (incremental) + foreground/periodic full sweep.
-15. [ ] **UI swap** — replace `mockFraudAlerts` with a real `FraudCubit` →
-        `FraudFlagsDao` stream in the existing `alert` feature; add resolve/dismiss
-        (gated by `fraud.resolve`, writes an audit log).
+8.  [x] **Permissions wiring:** `fraud.view` / `fraud.resolve` / `nav.fraud` (+
+        `audit_logs.verify`) → `AppPermission` → `AppFeature.fraudAlerts`
+        (module `audit` — engine itself IGNORES the module gate, T7) → both
+        matrices (Owner all; BM view+resolve+nav, **verify is owner-only** like
+        audit_logs.view; Cashier/Inventory none) → `_moduleCodeForKey` +
+        nav-key mapping → "Fraud & Risk" group in the employee-permissions
+        editor. Matrix sync locked by `test/core/permissions/fraud_permissions_test.dart`.
+9.  [x] **Drift v53→54** — `fraud_flags` table + DAO (insert-if-new dedupe,
+        triage-only `resolve`, `markSuperseded` for cross-device races) +
+        unique `(business_id, dedupe_key)` + **local rule-query indexes** on
+        refunds/stock_ledger.
+10. [x] **Supabase migration WRITTEN** —
+        `supabase/migrations/20260703000003_fraud_flags.sql`: seeds the fraud.*
+        permission codes (roles + templates + recompute — the CRM-gap lesson),
+        table + RLS (SELECT tenant ∧ fraud.view ∧ **branch-scoped**; INSERT
+        tenant; UPDATE fraud.resolve ∧ branch ∧ **self-resolution block**; no
+        DELETE) + **freeze trigger** (only status/resolution fields may ever
+        change — T10). **NOT YET APPLIED.**
+11. [x] **Rule framework** — `FraudRule` + `FraudScanContext` +
+        **hardcoded `FraudDefaults`** (locked decision: no editable
+        `fraud_settings` in v1 — no threshold-tampering surface) + pure
+        `RobustBaseline` (median/MAD, spread-floored, cold-start fallback).
+12. [x] **TEN rules** (spec's `SALE_AFTER_SHIFT`/voids dropped — no shift/void
+        data exists; replaced per the adversarial review):
+        `AUDIT_TAMPER` (critical; verifier + CHAIN_CONFLICT scan),
+        `TIME_REVERSAL` (clock rollback vs chain order), `EXCESSIVE_REFUNDS`
+        (floors + baseline), `REFUND_STRUCTURING` (clustering just under the
+        approval threshold), `QUICK_REFUND` (same-cashier sale→refund in
+        minutes; no-restock boosts), `HIGH_DISCOUNT`, `SHRINKAGE_SPIKE`
+        (cost-weighted), `CONTROL_CHANGE` (audit module off / threshold raised
+        / role change / sensitive+self overrides), `ORPHANED_RECORD` (records
+        written AROUND the audit trail — owner-mirror-gated),
+        `PERMISSION_PROBING` (denial recon).
+    - [x] Tests: 21 rule tests (positive/negative/boundary/dedupe) + 6
+          baseline-math tests.
+13. [x] **Engine** — `fraud_detection_engine.dart`: **no persisted watermark**
+        (T12 — sweeps always rescan the trailing 30d), dedupe insert-if-new,
+        owner-as-subject downgrade, per-rule flag cap + summary aggregation,
+        every new flag writes a **chained** `fraudFlagRaised` audit entry (T8).
+        Registered in DI. 7 engine tests.
+14. [x] **Triggers** — post-commit incremental hooks in `CheckoutService`
+        (HIGH_DISCOUNT), `RefundService` (refund rules), `StockMovementService`
+        (SHRINKAGE_SPIKE); periodic full sweep rides `SyncService.onSyncCompleted`.
+15. [x] **UI swap** — `mockFraudAlerts` deleted; `FraudCubit` →
+        `FraudFlagsDao.watch` (branch-scoped client mirror; employee/branch
+        name resolution); resolve/dismiss with note, gated by `fraud.resolve`
+        + client self-resolution mirror, writes `fraudFlagResolved`; routed
+        for the first time (`/more/fraud`, Branch 13, permission+module
+        guards, sidebar + More-drawer entries). `fraud_flags` push/pull wired
+        into `SyncService` (dedupe-conflict ⇒ supersede, not tamper-signal).
 
-**CHECKPOINT:** real refund/discount/shift/shrinkage abuse raises real flags; a
-broken audit chain raises a CRITICAL flag; manager can triage; cashier denied;
-all tests green.
+**CHECKPOINT (code): ✅** refund/discount/shrinkage/structuring abuse raises
+flags in tests; chain break ⇒ CRITICAL; matrices in sync; **flutter analyze
+clean (1 pre-existing warning), full suite 177 tests green.**
+**Pending: both migrations applied + on-device QA (incl. live RLS
+self-resolution check).**
 
-> **M1 is now shippable.** This is the realistic 1-month (Max 5×) target. Stop
-> here and release if time-boxed; continue if you have runway.
+> **M1 is now shippable** once the two migrations are applied and device QA
+> passes.
 
 ---
 
@@ -241,8 +293,23 @@ From `CLAUDE.md` — a step isn't `[x]` until all hold:
 ## 📌 Current position / session handoff
 
 > Live status so any session (or a fresh Claude one — no memory between sessions)
-> resumes exactly here. **Last updated: 2026-07-02 (M5 code-complete + migrated +
-> QA gaps closed; manual QA still owed).**
+> resumes exactly here. **Last updated: 2026-07-03 (later session) — M1 (audit
+> chain + fraud engine) CODE COMPLETE + BOTH MIGRATIONS APPLIED to prod, per
+> the hardened plan
+> (`C:\Users\User\.claude\plans\check-upsenso-execution-sequence-md-and-majestic-crystal.md`).
+> Phases 0–2 built; analyze clean; 177 tests green.
+> `20260703000002_audit_chain_columns.sql` + `20260703000003_fraud_flags.sql`
+> applied 2026-07-03 via `npx supabase db query --linked --file` (user-approved)
+> and verified read-only: chain columns/index/RPCs present; fraud_flags fully
+> shaped (prod had an EMPTY AI_CONTEXT-era fraud_flags scaffold — adopted
+> in place via ALTERs, legacy permissive `fraud_admin_only` policy dropped);
+> 4 new policies + freeze trigger live; role grants match the client matrices
+> exactly (Owner: all 4 codes; BM: fraud.* only; Cashier/Inventory: none;
+> ×3 businesses). REMAINING: (1) on-device QA — tamper a local row → Verify
+> integrity reports it; refund abuse on a test business → flags appear; BM
+> cannot resolve a flag naming themselves (live RLS); cashier sees no fraud
+> nav; (2) commit (nothing committed yet — the whole M1 diff is in the
+> working tree).**
 
 ### Active priority order
 **M2 (AI insights) → M5 (CRM) → M1 (fraud+audit, deferred) → M-BIR → M-LEGAL → ship.**
@@ -270,7 +337,7 @@ From `CLAUDE.md` — a step isn't `[x]` until all hold:
     `business_modules` rows.
   - **Gates:** `flutter analyze` clean, `flutter test` 83 pass, visual QA done.
 
-### M5 — CRM foundation — CODE COMPLETE + MIGRATED + GAPS CLOSED, manual QA owed
+### M5 — CRM foundation — ✅ DONE (code + both migrations + gaps + QA all confirmed)
 Full customers module built end-to-end, mirroring the procurement/suppliers
 pattern. Reuses the **existing `crm` module** (already seeded + enabled in the
 Supabase `modules` catalogue — no new module invented).
@@ -371,7 +438,8 @@ any manual QA ran:
      override for it even through the UI. Mirrors the existing Suppliers group;
      no `nav.customers` entry (nav keys are never listed — they resolve via the
      access key, matching the established convention).
-   - **Server fix WRITTEN, NOT APPLIED:**
+   - **Server fix WRITTEN + APPLIED (2026-07-03, user ran it directly in the SQL
+     Editor on the live prod project `dmhyfezuravbjpoxjesb`):**
      `supabase/migrations/20260703000001_seed_crm_permissions.sql` — seeds the 3
      codes into `permissions`, wires `role_permissions` (Business Owner +
      Branch Manager full; Cashier `crm.view` only; Inventory Staff none, matching
@@ -379,9 +447,15 @@ any manual QA ran:
      businesses inherit it, and recomputes `effective_permissions` for existing
      employees. Modeled directly on the two prior instances of this exact class
      of bug: `20260627000007_seed_recipe_ingredient_permissions.sql` and
-     `20260615000001_wire_procurement_role_permissions.sql`. **Needs explicit
-     go-ahead before applying** (same as the customers-table migration).
-- **These fixes are UNCOMMITTED** on top of `971e8ae` — see Repo/branch state.
+     `20260615000001_wire_procurement_role_permissions.sql`. **Independently
+     verified live 2026-07-03** via `npx supabase db query --linked` (the
+     Supabase CLI is already authenticated + linked to `dmhyfezuravbjpoxjesb` in
+     this environment — no access token/DB password needed, just `npx supabase
+     <cmd>`): all 3 codes present in `permissions`; `role_permissions` correct
+     across all 3 businesses on this project — Business Owner + Branch Manager
+     get all 3 codes, Cashier gets `crm.view` only, Inventory Staff confirmed
+     **zero** CRM grants (3 role rows, 0 matching grants).
+- These fixes are committed (`4923d68`) and pushed to `origin/main` (`d02db20`).
 
 ### Next action
 - ✅ **Supabase migration applied** 2026-07-02 — `public.customers` exists on
@@ -389,25 +463,77 @@ any manual QA ran:
 - ✅ **Client-side permission/module gaps (#1, #2) fixed + test-locked** 2026-07-02.
 - ✅ **Client-side employee-permission-editor gap (#3) fixed** 2026-07-02 —
   Customers group added.
-- ⬜ **Apply `20260703000001_seed_crm_permissions.sql`** (ask first — same rule as
-  every Supabase write). Until applied, non-owner writes to `customers`
-  (create/edit/archive by anyone but the literal business owner) will fail to
-  sync — silently, since local-first writes still succeed offline.
-- ⬜ **On-device manual QA — NOT YET RUN.** Full checklist in the session's plan
-  file (`C:\Users\User\.claude\plans\steady-launching-puzzle.md`, Part 3):
-  directory CRUD, checkout attribution, purchase history + stats, module-toggle,
-  sync re-check. **Caveat:** as scoped (Owner-account happy path), it will
-  **not** surface gap #3 — `has_permission()`'s owner bypass means the Owner
-  account's writes always pass RLS regardless of the missing permission rows.
-  Catching #3 live requires testing as a **non-owner** role (Branch Manager or
-  Cashier) after the new migration is applied, or trusting the migration-file
-  analysis above.
-- ⬜ **Commit** all gap-fixes + new tests + new migration (needs explicit green
-  light) — planned as a follow-up `fix(m5): …` commit on top of `971e8ae`.
+- ✅ **`20260703000001_seed_crm_permissions.sql` applied** 2026-07-03 by the user
+  directly in the SQL Editor, then **independently verified live** the same day
+  via the Supabase CLI (see below) — all row counts correct across all 3
+  businesses on the project.
+- ✅ **On-device manual QA — confirmed working by user** 2026-07-03 (checklist
+  was in the session's plan file,
+  `C:\Users\User\.claude\plans\steady-launching-puzzle.md`, Part 3). User
+  confirmed the app works end-to-end after both migrations, including the
+  non-owner checkout scenario that gap #3 had broken.
+- ✅ **Committed** (`4923d68`) and **pushed** to `origin/main` (`d02db20`)
+  2026-07-03.
+
+**M5 — CRM foundation is DONE.** Code, both Supabase migrations, permission
+gaps, tests, and manual QA all confirmed. Per the priority order at the top of
+this doc, the next milestone is **Phase 1 + 2 — M1: audit chain + fraud engine**
+(previously deferred so M2/M5 could ship first).
+
+### M1 HOTFIX (2026-07-03) — audit-chain restart false-positives (FIXED, client-only)
+First on-device QA raised **46 false CRITICAL AUDIT_TAMPER flags** + a stuck
+sync queue — no real tampering. Root cause: genesis-resume restarted a
+**restored** device_uid's chain at seq 1 when the server head came back null
+(wiped web IndexedDB + surviving localStorage uid), colliding with the synced
+chain; the collision was then misclassified as tamper. All client-only fixes
+(no migration), analyze clean, full suite **182 green**:
+- **F1** `_resolveResume` now rotates to a fresh uid only when a *restored*
+  uid can't confirm a server head; a freshly-minted uid still starts genesis
+  (added `DeviceIdentityService.wasRestoredFromStorage`).
+- **F2** `AuditLogService.reconcileConflictedTail` re-chains a conflicted
+  unsynced tail past the server head (no audit loss); wired via
+  `SyncService.onChainConflict`.
+- **F3** `AUDIT_TAMPER` is now **verifier-only** — the push-conflict scan is
+  removed (a sync conflict is not a fraud signal; the cryptographic verifier
+  is the reliable tamper signal). *[user decision]*
+- **F4** engine clamps all rule windows to the **M1-install cutoff** (earliest
+  chained audit row) so the first sweep ignores pre-M1 historical noise.
+  *[user decision]*
+- **F5** the 46 false server flags **deleted + verified** (only 1 real
+  historical EXCESSIVE_REFUNDS remains, which F4 now stops re-raising).
+- **Local web instance:** clear browser site data for a clean slate (or let
+  F2 self-heal + F3 stop regeneration on next sync). Dev-only step — prod
+  users are covered by F2.
+
+**Supabase CLI works in this environment** (discovered 2026-07-03) — `npx
+supabase <cmd>` is already authenticated and linked to `dmhyfezuravbjpoxjesb`
+(the `supabase/.temp/` link state + some cached auth persist here; no access
+token or DB password needs to be supplied). Prefer `npx supabase db query
+--linked "<sql>"` for read-only checks going forward instead of asking the user
+to paste queries into the dashboard. Still **ask before anything that writes**
+(`db push`, `migration up`, etc.) — same rule as before, this only changes how
+verification happens, not the apply-migration approval gate. Note:
+`supabase migration list` shows the CLI's own tracking table doesn't have rows
+for `20260702000001`/`20260703000001` (both `remote: ""`) because pasting SQL
+into the dashboard bypasses that bookkeeping table — this is a cosmetic
+tracking gap, not a sign the migrations didn't apply (confirmed applied via
+direct data queries instead).
 - ⬜ Backlog within M5: loyalty (separate `loyalty` module), thread
   `customer_id` through drafts + the AI checkout path, AI "top customers" tool.
 - ⬜ Backlog within M2: optional LLM-rephrasing layer; `getFraudSummary` (waits
   on M1 fraud engine).
+
+**Fraud false-positive incident #2 (2026-07-03, later the same day)** —
+investigated, **not yet fixed**. After refund stress-testing, five alert types
+fired; prod queries proved the integrity/orphan/clock-reversal ones are false
+positives (refund audit rows exist server-side; chains are seq-complete; the
+"clock moved backwards" is a `reconcileConflictedTail` transplant artifact;
+two concurrent instances shared one device_uid; server `fraud_flags` is back
+to 0 rows — flag sync not landing). Full evidence + the P0→P2 fix plan
+(mirror-freshness gate, audit outbox, hash_version v2, confirmation pipeline,
+branch scoping for "All branches", devices-table normalization) live in
+**`docs/UPSENSO_FRAUD_FALSE_POSITIVE_FIX_PLAN.md`** — start there; next action
+is P0 (after committing the M1 working tree).
 
 ### Repo/branch state
 - M2 + M5 are both on `main` as of commit `971e8ae` (2026-07-02). `main` is

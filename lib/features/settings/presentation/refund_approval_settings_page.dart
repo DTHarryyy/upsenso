@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:iconly/iconly.dart';
 
+import 'package:pos/core/audit/audit_log_service.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
@@ -11,6 +12,7 @@ import 'package:pos/core/widgets/app_filled_button.dart';
 import 'package:pos/core/widgets/app_inline_banner.dart';
 import 'package:pos/core/widgets/app_labeled_switch.dart';
 import 'package:pos/core/widgets/app_toast.dart';
+import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/features/pos/data/datasources/refunds_remote_ds.dart';
 
 /// Owner/admin control for refund approval: a toggle + the money threshold above
@@ -31,6 +33,11 @@ class _RefundApprovalSettingsPageState
   bool _loading = true;
   bool _saving = false;
   String? _error;
+
+  // Values as loaded — the audit entry records old → new so the
+  // CONTROL_CHANGE fraud rule can tell a raise/disable from a tighten.
+  bool _loadedRequire = false;
+  double _loadedThreshold = 0;
 
   @override
   void initState() {
@@ -62,6 +69,8 @@ class _RefundApprovalSettingsPageState
         _require = s?.requireApproval ?? false;
         _threshold.text =
             (s?.threshold ?? 0) == 0 ? '' : (s!.threshold).toStringAsFixed(2);
+        _loadedRequire = _require;
+        _loadedThreshold = s?.threshold ?? 0;
         _loading = false;
       });
     } catch (e, st) {
@@ -85,6 +94,19 @@ class _RefundApprovalSettingsPageState
         businessId: bid,
         requireApproval: _require,
         threshold: threshold,
+      );
+      sl<AuditLogService>().log(
+        actionType: AuditLogActionType.refundSettingsChanged,
+        entityType: 'refund_settings',
+        description:
+            'Refund approval ${_require ? 'required over ₱${threshold.toStringAsFixed(2)}' : 'disabled'}',
+        metadata: {
+          'require_approval': _require,
+          'require_approval_before': _loadedRequire,
+          'threshold': threshold,
+          'threshold_before': _loadedThreshold,
+        },
+        businessId: bid,
       );
       if (!mounted) return;
       AppToast.show(context, 'Refund approval settings saved.',

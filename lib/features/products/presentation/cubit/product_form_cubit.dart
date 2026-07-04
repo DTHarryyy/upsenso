@@ -520,12 +520,30 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         }
       }
 
+      // Record per-variant price movement (old → new) — the PRICE_REVERSAL
+      // fraud rule needs it, and it can't be reconstructed later.
+      final updatedVariants =
+          await _productVariantsDao.getByProductId(productId);
+      final oldPriceByName = {for (final v in oldVariants) v.name: v.price};
+      final priceChanges = [
+        for (final v in updatedVariants)
+          if (oldPriceByName.containsKey(v.name) &&
+              oldPriceByName[v.name] != v.price)
+            {
+              'variant': v.name,
+              'old_price': oldPriceByName[v.name],
+              'new_price': v.price,
+            },
+      ];
+
       sl<AuditLogService>().log(
         actionType: AuditLogActionType.productUpdated,
         entityType: 'product',
         entityName: data.name.trim(),
         description: 'Product updated: ${data.name.trim()}',
-        metadata: const {},
+        metadata: {
+          if (priceChanges.isNotEmpty) 'price_changes': priceChanges,
+        },
         businessId: businessId,
       );
 

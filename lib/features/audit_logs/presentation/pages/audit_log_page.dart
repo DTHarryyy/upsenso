@@ -7,10 +7,13 @@ import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/breakpoint.dart';
+import 'package:pos/core/permissions/permission_keys.dart';
+import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/widgets/app_data_table.dart';
 import 'package:pos/core/widgets/app_inline_banner.dart';
 import 'package:pos/core/widgets/app_sub_page_bar.dart';
 import 'package:pos/core/widgets/app_view_toggle.dart';
+import 'package:pos/features/audit_logs/presentation/widgets/audit_chain_verify_dialog.dart';
 import 'package:pos/features/audit_logs/domain/repositories/i_audit_log_repository.dart';
 import 'package:pos/features/audit_logs/presentation/bloc/audit_log_bloc.dart';
 import 'package:pos/features/audit_logs/presentation/bloc/audit_log_event.dart';
@@ -104,6 +107,28 @@ class _AuditLogViewState extends State<_AuditLogView> {
                   viewMode: effectiveMode,
                   onViewModeChanged: _setViewMode,
                 ),
+                // Tamper-evidence check — owner-level (audit_logs.verify).
+                if (sl<PermissionService>().can(PermissionKeys.auditLogsVerify))
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                      child: TextButton.icon(
+                        onPressed: () => showAuditChainVerifyDialog(context),
+                        icon: const Icon(IconlyLight.shield_done, size: 16),
+                        label: Text(
+                          'Verify integrity',
+                          style: AppTextStyles.caption(context).copyWith(
+                            color: AppColors.brand,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.brand,
+                        ),
+                      ),
+                    ),
+                  ),
                 Expanded(child: _Body(viewMode: effectiveMode)),
               ],
             ),

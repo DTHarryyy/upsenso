@@ -86,5 +86,48 @@ void main() {
       expect(row.phone, '0917');
       expect(row.syncStatus, SyncStatus.synced.toInt());
     });
+
+    test('propagates a soft-delete tombstone — is_deleted hides the row',
+        () async {
+      await insert(id: 'c1', syncStatus: SyncStatus.synced);
+
+      await db.customersDao.upsertFromServer({
+        'id': 'c1',
+        'business_id': 'biz-1',
+        'name': 'Maria',
+        'is_active': true,
+        'is_deleted': true,
+        'deleted_at': DateTime(2026, 7, 1).toIso8601String(),
+        'created_at': DateTime(2026, 6, 1).toIso8601String(),
+      });
+
+      final row = await db.customersDao.getById('c1');
+      expect(row!.isDeleted, isTrue);
+      final active =
+          await db.customersDao.watchActiveByBusinessId('biz-1').first;
+      expect(active.where((r) => r.id == 'c1'), isEmpty);
+    });
+
+    test('does NOT overwrite a local row with unsynced changes (pending wins)',
+        () async {
+      await insert(
+        id: 'c1',
+        name: 'Local Edit',
+        syncStatus: SyncStatus.pendingUpdate,
+      );
+
+      await db.customersDao.upsertFromServer({
+        'id': 'c1',
+        'business_id': 'biz-1',
+        'name': 'Server Version',
+        'is_active': true,
+        'is_deleted': false,
+        'created_at': DateTime(2026, 6, 1).toIso8601String(),
+      });
+
+      final row = await db.customersDao.getById('c1');
+      expect(row!.name, 'Local Edit');
+      expect(row.syncStatus, SyncStatus.pendingUpdate.toInt());
+    });
   });
 }

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/auth_context_dao.dart';
+import 'package:pos/core/errors/audit_chain_conflict_exception.dart';
 import 'package:pos/core/session/active_business_context.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/core/database/daos/businesses_dao.dart';
@@ -47,6 +48,10 @@ import 'package:pos/features/procurement/data/datasources/procurement_remote_ds.
 import 'package:pos/core/database/daos/refunds_dao.dart';
 import 'package:pos/features/pos/data/datasources/refunds_remote_ds.dart';
 import 'package:pos/features/settings/data/refund_settings_repository.dart';
+import 'package:pos/core/database/daos/fraud_flags_dao.dart';
+import 'package:pos/features/alert/data/datasources/fraud_flags_remote_ds.dart';
+import 'package:pos/core/database/daos/devices_dao.dart';
+import 'package:pos/core/device/devices_remote_ds.dart';
 
 /// Service to handle synchronization between local Drift DB and Supabase
 class SyncService {
@@ -86,6 +91,10 @@ class SyncService {
   final RefundsDao _refundsDao;
   final RefundsRemoteDs _refundsRemoteDs;
   final RefundSettingsRepository _refundSettingsRepo;
+  final FraudFlagsDao _fraudFlagsDao;
+  final FraudFlagsRemoteDs _fraudFlagsRemoteDs;
+  final DevicesDao _devicesDao;
+  final DevicesRemoteDs _devicesRemoteDs;
 
   // Built lazily from existing deps (no DI change) so duplicate-invoice
   // recovery can re-claim a fresh server number on a 23505 conflict.
@@ -117,6 +126,22 @@ class SyncService {
   /// immediate/connectivity-triggered syncAll() in [init], but reacting to
   /// the real failure can't lose that race — it only fires after it happens.
   void Function(String staleBusinessId)? onTenantRejected;
+
+  /// Invoked (fire-and-forget) after each completed sync cycle — the fraud
+  /// engine hooks its periodic full sweep here: data is freshest right after
+  /// a pull, and the cadence already covers app-resume + connectivity.
+  void Function()? onSyncCompleted;
+
+  /// Invoked when an audit push hits the server's chain index — a benign
+  /// same-device restart (wiped local DB + surviving uid). Wired in DI to
+  /// AuditLogService.reconcileConflictedTail, which re-chains the unsynced
+  /// tail past the server head so it pushes cleanly next cycle.
+  Future<void> Function(String businessId)? onChainConflict;
+
+  /// Materializes staged audit entries into chained rows before they push.
+  /// Wired in DI to AuditLogService.drainOutbox (kept as a callback so
+  /// core/sync doesn't take a hard dependency on the audit service).
+  Future<void> Function()? drainAuditOutbox;
 
   SyncService({
     required AuthContextDao authContextDao,
@@ -155,6 +180,10 @@ class SyncService {
     required RefundsDao refundsDao,
     required RefundsRemoteDs refundsRemoteDs,
     required RefundSettingsRepository refundSettingsRepository,
+    required FraudFlagsDao fraudFlagsDao,
+    required FraudFlagsRemoteDs fraudFlagsRemoteDs,
+    required DevicesDao devicesDao,
+    required DevicesRemoteDs devicesRemoteDs,
   }) : _authContextDao = authContextDao,
        _activeBusinessContext = activeBusinessContext,
        _branchesDao = branchesDao,
@@ -190,7 +219,11 @@ class SyncService {
        _imageService = imageService,
        _refundsDao = refundsDao,
        _refundsRemoteDs = refundsRemoteDs,
-       _refundSettingsRepo = refundSettingsRepository;
+       _refundSettingsRepo = refundSettingsRepository,
+       _fraudFlagsDao = fraudFlagsDao,
+       _fraudFlagsRemoteDs = fraudFlagsRemoteDs,
+       _devicesDao = devicesDao,
+       _devicesRemoteDs = devicesRemoteDs;
 
   /// Resolves the businessId a sync should operate on.
   ///
@@ -204,15 +237,29 @@ class SyncService {
     final active = _activeBusinessContext.businessId;
     final resolved = resolveSyncBusinessId(provided: provided, active: active);
     if (resolved == null && provided != null && provided.trim().isNotEmpty) {
-      debugPrint('[SYNC] Refusing pull for $provided — active business is $active');
+      debugPrint(
+        '[SYNC] Refusing pull for $provided — active business is $active',
+      );
     }
     return resolved;
   }
+
+  /// ── LOCAL-ONLY TEST KILL SWITCH ──────────────────────────────────────────
+  /// When `false`, ALL Supabase sync is disabled — no push, no pull, and no
+  /// background timers/connectivity listeners. The app runs purely against the
+  /// local Drift database, so the offline data layer can be verified in
+  /// isolation. Flip back to `true` to restore normal sync.
+  /// (Added 2026-07-04 for local-DB testing.)
+  static const bool syncEnabled = true;
 
   /// Initialize sync service and listen for connectivity changes.
   /// Guards against being called multiple times (e.g. if MainNavigationPage
   /// is rebuilt) so we never accumulate duplicate listeners.
   void init() {
+    if (!syncEnabled) {
+      debugPrint('[SYNC] Disabled (syncEnabled=false) — local-only test mode.');
+      return;
+    }
     if (_initCalled) return;
     _initCalled = true;
 
@@ -289,6 +336,8 @@ class SyncService {
       await _businessesDao.clearAll();
       await _receiptSettingsRepo.clearAll();
       await _auditLogsDao.clearAll();
+      await _fraudFlagsDao.clearAll();
+      await _devicesDao.clearAll();
       await _employeesDao.clearAll();
       await _suppliersDao.clearAll();
       await _customersDao.clearAll();
@@ -357,7 +406,24 @@ class SyncService {
     void emit() {
       if (!controller.isClosed) {
         controller.add(
-          cat + prod + vars + orders + exp + inv + led + rcpt + audit + emp + sup + po + pol + gr + gri + rcp + rfnd + cust,
+          cat +
+              prod +
+              vars +
+              orders +
+              exp +
+              inv +
+              led +
+              rcpt +
+              audit +
+              emp +
+              sup +
+              po +
+              pol +
+              gr +
+              gri +
+              rcp +
+              rfnd +
+              cust,
         );
       }
     }
@@ -463,6 +529,12 @@ class SyncService {
 
   /// Push all pending local changes to Supabase, then pull from server.
   Future<SyncResult> syncAll({String? businessId}) async {
+    if (!syncEnabled) {
+      return SyncResult(
+        success: true,
+        message: 'Sync disabled — local-only test mode',
+      );
+    }
     if (_isSyncing) {
       // If the caller provided a businessId, keep it so the running sync (or
       // the follow-up pull after it) can use it.  This prevents the common
@@ -496,6 +568,13 @@ class SyncService {
       final orderResult = await _syncTransactions();
       // Refunds push after transactions so the FK parent already exists
       // on the server when the refund row is inserted.
+      // Materialize any staged audit entries, then push audit logs BEFORE the
+      // records they explain (refunds/ledger). Otherwise a refund can reach
+      // the server in a cycle that's interrupted before its audit row does,
+      // leaving a transient "refund with no audit trail" a server-side check
+      // would false-positive on.
+      if (drainAuditOutbox != null) await drainAuditOutbox!();
+      final auditResult = await _syncAuditLogs();
       final refundResult = await _syncRefunds();
       final expenseResult = await _syncExpenses();
       final inventoryResult = await _syncInventoryLevels();
@@ -505,7 +584,8 @@ class SyncService {
       final poResult = await _syncPurchaseOrders();
       final ledgerResult = await _syncStockLedger();
       await _syncReceiptSettings(); // fire-and-forget style; errors logged internally
-      await _syncAuditLogs(); // fire-and-forget style; errors logged internally
+      await _syncDevices(); // fire-and-forget style; errors logged internally
+      final fraudResult = await _syncFraudFlags();
       final employeeResult = await _syncEmployees();
       final supplierResult = await _syncSuppliers();
       final customerResult = await _syncCustomers();
@@ -532,7 +612,9 @@ class SyncService {
           polResult.syncedCount +
           grResult.syncedCount +
           griResult.syncedCount +
-          recipeResult.syncedCount;
+          recipeResult.syncedCount +
+          auditResult.syncedCount +
+          fraudResult.syncedCount;
       final int totalFailed =
           branchResult.failedCount +
           businessResult.failedCount +
@@ -551,7 +633,9 @@ class SyncService {
           polResult.failedCount +
           grResult.failedCount +
           griResult.failedCount +
-          recipeResult.failedCount;
+          recipeResult.failedCount +
+          auditResult.failedCount +
+          fraudResult.failedCount;
 
       // pull kapag may businessId (either provided or from auth context)
       final effectiveBusinessId = _resolveBusinessId(businessId);
@@ -593,6 +677,14 @@ class SyncService {
       );
       if (effectiveBusinessId != null) {
         pullResult = await pullFromServer(effectiveBusinessId);
+      }
+
+      // Post-cycle hook (fraud sweep): after the pull, so rules see the
+      // freshest mirror. Never allowed to affect the sync result.
+      try {
+        onSyncCompleted?.call();
+      } catch (e, st) {
+        debugPrint('[SYNC] onSyncCompleted hook failed: $e\n$st');
       }
 
       return SyncResult(
@@ -884,7 +976,11 @@ class SyncService {
                 'edit elsewhere — discarding local change',
               );
               await _logSupersededConflict(
-                'products', record.id, record.businessId, record.toJson());
+                'products',
+                record.id,
+                record.businessId,
+                record.toJson(),
+              );
             }
             await _productsDao.updateSyncStatus(
               id: record.id,
@@ -980,7 +1076,11 @@ class SyncService {
                 'edit elsewhere — discarding local change',
               );
               await _logSupersededConflict(
-                'product_variants', record.id, record.businessId, record.toJson());
+                'product_variants',
+                record.id,
+                record.businessId,
+                record.toJson(),
+              );
             }
             await _productVariantsDao.updateSyncStatus(
               id: record.id,
@@ -1060,10 +1160,7 @@ class SyncService {
       // upload below entirely.
       if (tx.syncStatus == SyncStatus.pendingUpdate.toInt()) {
         try {
-          await _transactionsRemoteDs.updateTransactionStatus(
-            tx.id,
-            tx.status,
-          );
+          await _transactionsRemoteDs.updateTransactionStatus(tx.id, tx.status);
           await _transactionsDao.updateSyncStatus(
             id: tx.id,
             status: SyncStatus.synced,
@@ -1071,7 +1168,9 @@ class SyncService {
           synced++;
         } catch (e, st) {
           failed++;
-          debugPrint('[SYNC] Transaction ${tx.id} status update FAILED: $e\n$st');
+          debugPrint(
+            '[SYNC] Transaction ${tx.id} status update FAILED: $e\n$st',
+          );
           errors.add('Transaction ${tx.id} status: ${e.toString()}');
           await _transactionsDao.updateSyncStatus(
             id: tx.id,
@@ -1315,9 +1414,7 @@ class SyncService {
   Future<void> _recomputeTransactionStatusFromRefunds(
     String transactionId,
   ) async {
-    final items = await _transactionsDao.getItemsByTransactionId(
-      transactionId,
-    );
+    final items = await _transactionsDao.getItemsByTransactionId(transactionId);
     if (items.isEmpty) return;
     final refundedQty = await _refundsDao.getRefundedQtyByTransactionId(
       transactionId,
@@ -1655,7 +1752,10 @@ class SyncService {
       debugPrint(
         '[SYNC] pullFromServer blocked: $businessId != active $active',
       );
-      return SyncResult(success: false, message: 'Pull blocked: tenant mismatch');
+      return SyncResult(
+        success: false,
+        message: 'Pull blocked: tenant mismatch',
+      );
     }
 
     final online = await isOnline;
@@ -1726,11 +1826,11 @@ class SyncService {
         timestampField: 'updated_at',
         fetchPage: (after, id, lim) =>
             _productsRemoteDs.getInventoryLevelsByBusiness(
-          businessId,
-          afterTs: after,
-          afterId: id,
-          limit: lim,
-        ),
+              businessId,
+              afterTs: after,
+              afterId: id,
+              limit: lim,
+            ),
         applyRow: (row) => _inventoryLevelsDao.upsertFromServer(row),
       );
     } catch (e, st) {
@@ -1746,11 +1846,11 @@ class SyncService {
         timestampField: 'created_at',
         fetchPage: (after, id, lim) =>
             _productsRemoteDs.getStockLedgerByBusiness(
-          businessId,
-          afterTs: after,
-          afterId: id,
-          limit: lim,
-        ),
+              businessId,
+              afterTs: after,
+              afterId: id,
+              limit: lim,
+            ),
         applyRow: (row) => _stockLedgerDao.upsertFromServer(row),
       );
     } catch (e, st) {
@@ -1769,17 +1869,18 @@ class SyncService {
         timestampField: 'updated_at',
         fetchPage: (after, id, lim) =>
             _transactionsRemoteDs.getTransactionsByBusiness(
-          businessId,
-          afterTs: after,
-          afterId: id,
-          limit: lim,
-        ),
+              businessId,
+              afterTs: after,
+              afterId: id,
+              limit: lim,
+            ),
         applyRow: (row) => _transactionsDao.upsertFromServer(row),
         afterPage: (page) async {
           final ids = page.map((r) => r['id'] as String).toList();
           if (ids.isEmpty) return;
-          final items =
-              await _transactionsRemoteDs.getItemsByTransactionIds(ids);
+          final items = await _transactionsRemoteDs.getItemsByTransactionIds(
+            ids,
+          );
           for (final item in items) {
             await _transactionsDao.upsertItemFromServer(item);
           }
@@ -1858,7 +1959,9 @@ class SyncService {
       // since anything pruned is, by definition, already on the server.
       final prunedCount = await _auditLogsDao.pruneOlderThan(auditWindowStart);
       if (prunedCount > 0) {
-        debugPrint('[SYNC] Pruned $prunedCount audit log row(s) past the local window');
+        debugPrint(
+          '[SYNC] Pruned $prunedCount audit log row(s) past the local window',
+        );
       }
     } catch (e, st) {
       failed++;
@@ -1867,10 +1970,24 @@ class SyncService {
     }
 
     try {
+      // Device directory (normalized labels) — small, so a full tenant pull
+      // keeps the owner's verify UI able to name every device, not just the
+      // ones whose audit rows it pulled. RLS keeps it owner/verify-gated.
+      final devices = await _devicesRemoteDs.getByBusiness(businessId);
+      for (final row in devices) {
+        await _devicesDao.upsertFromServer(row);
+        pulled++;
+      }
+    } catch (e, st) {
+      debugPrint('[SYNC] Pull devices failed: $e\n$st');
+    }
+
+    try {
       // Repair rows pulled before the upsert fix that landed with a null
       // business_id (and were therefore missing from reports). No-op once clean.
-      final repaired =
-          await _transactionsDao.backfillNullBusinessId(businessId);
+      final repaired = await _transactionsDao.backfillNullBusinessId(
+        businessId,
+      );
       if (repaired > 0) {
         debugPrint('[SYNC] Backfilled business_id on $repaired transaction(s)');
       }
@@ -1879,13 +1996,19 @@ class SyncService {
     }
 
     try {
-      final expenses = await _expensesRemoteDs.getExpensesByBusiness(
-        businessId,
+      // Delta + paged pull (was a full re-download every cycle).
+      pulled += await _pullIncremental(
+        entity: 'expenses',
+        businessId: businessId,
+        timestampField: 'updated_at',
+        fetchPage: (after, id, lim) => _expensesRemoteDs.getExpensesByBusiness(
+          businessId,
+          afterTs: after,
+          afterId: id,
+          limit: lim,
+        ),
+        applyRow: (row) => _expensesDao.upsertFromServer(row),
       );
-      for (final row in expenses) {
-        await _expensesDao.upsertFromServer(row);
-        pulled++;
-      }
     } catch (e, st) {
       failed++;
       debugPrint('[SYNC] Pull expenses failed: $e\n$st');
@@ -2003,13 +2126,21 @@ class SyncService {
     }
 
     try {
-      final suppliers = await _procurementRemoteDs.getSuppliersByBusiness(
-        businessId,
+      // Delta + paged pull (was a full re-download every cycle). The fetch now
+      // includes soft-deleted rows so tombstones propagate to this device.
+      pulled += await _pullIncremental(
+        entity: 'suppliers',
+        businessId: businessId,
+        timestampField: 'updated_at',
+        fetchPage: (after, id, lim) =>
+            _procurementRemoteDs.getSuppliersByBusiness(
+              businessId,
+              afterTs: after,
+              afterId: id,
+              limit: lim,
+            ),
+        applyRow: (row) => _suppliersDao.upsertFromServer(row),
       );
-      for (final row in suppliers) {
-        await _suppliersDao.upsertFromServer(row);
-        pulled++;
-      }
     } catch (e, st) {
       failed++;
       debugPrint('[SYNC] Pull suppliers failed: $e\n$st');
@@ -2017,13 +2148,20 @@ class SyncService {
     }
 
     try {
-      final customers = await _customerRemoteDs.getCustomersByBusiness(
-        businessId,
+      // Delta + paged pull; fetch includes soft-deleted rows so tombstones
+      // propagate to this device.
+      pulled += await _pullIncremental(
+        entity: 'customers',
+        businessId: businessId,
+        timestampField: 'updated_at',
+        fetchPage: (after, id, lim) => _customerRemoteDs.getCustomersByBusiness(
+          businessId,
+          afterTs: after,
+          afterId: id,
+          limit: lim,
+        ),
+        applyRow: (row) => _customersDao.upsertFromServer(row),
       );
-      for (final row in customers) {
-        await _customersDao.upsertFromServer(row);
-        pulled++;
-      }
     } catch (e, st) {
       failed++;
       debugPrint('[SYNC] Pull customers failed: $e\n$st');
@@ -2031,13 +2169,33 @@ class SyncService {
     }
 
     try {
-      final pos = await _procurementRemoteDs.getPurchaseOrdersByBusiness(
-        businessId,
-      );
-      for (final row in pos) {
-        await _purchaseOrdersDao.upsertFromServer(row);
+      // RLS returns rows only for fraud.view holders (branch-scoped);
+      // everyone else just gets an empty page — not an error.
+      final flags = await _fraudFlagsRemoteDs.getFlagsByBusiness(businessId);
+      for (final row in flags) {
+        await _fraudFlagsDao.upsertFromServer(row);
         pulled++;
       }
+    } catch (e, st) {
+      failed++;
+      debugPrint('[SYNC] Pull fraud flags failed: $e\n$st');
+      errors.add('Pull fraud flags: ${e.toString()}');
+    }
+
+    try {
+      pulled += await _pullIncremental(
+        entity: 'purchase_orders',
+        businessId: businessId,
+        timestampField: 'updated_at',
+        fetchPage: (after, id, lim) =>
+            _procurementRemoteDs.getPurchaseOrdersByBusiness(
+              businessId,
+              afterTs: after,
+              afterId: id,
+              limit: lim,
+            ),
+        applyRow: (row) => _purchaseOrdersDao.upsertFromServer(row),
+      );
     } catch (e, st) {
       failed++;
       debugPrint('[SYNC] Pull purchase orders failed: $e\n$st');
@@ -2045,13 +2203,19 @@ class SyncService {
     }
 
     try {
-      final lines = await _procurementRemoteDs.getPurchaseOrderLinesByBusiness(
-        businessId,
+      pulled += await _pullIncremental(
+        entity: 'purchase_order_lines',
+        businessId: businessId,
+        timestampField: 'updated_at',
+        fetchPage: (after, id, lim) =>
+            _procurementRemoteDs.getPurchaseOrderLinesByBusiness(
+              businessId,
+              afterTs: after,
+              afterId: id,
+              limit: lim,
+            ),
+        applyRow: (row) => _purchaseOrderLinesDao.upsertFromServer(row),
       );
-      for (final row in lines) {
-        await _purchaseOrderLinesDao.upsertFromServer(row);
-        pulled++;
-      }
     } catch (e, st) {
       failed++;
       debugPrint('[SYNC] Pull PO lines failed: $e\n$st');
@@ -2059,20 +2223,32 @@ class SyncService {
     }
 
     try {
-      final receipts = await _procurementRemoteDs.getGoodsReceiptsByBusiness(
-        businessId,
+      pulled += await _pullIncremental(
+        entity: 'goods_receipts',
+        businessId: businessId,
+        timestampField: 'updated_at',
+        fetchPage: (after, id, lim) =>
+            _procurementRemoteDs.getGoodsReceiptsByBusiness(
+              businessId,
+              afterTs: after,
+              afterId: id,
+              limit: lim,
+            ),
+        applyRow: (row) => _goodsReceiptsDao.upsertFromServer(row),
       );
-      for (final row in receipts) {
-        await _goodsReceiptsDao.upsertFromServer(row);
-        pulled++;
-      }
-      final items = await _procurementRemoteDs.getGoodsReceiptItemsByBusiness(
-        businessId,
+      pulled += await _pullIncremental(
+        entity: 'goods_receipt_items',
+        businessId: businessId,
+        timestampField: 'updated_at',
+        fetchPage: (after, id, lim) =>
+            _procurementRemoteDs.getGoodsReceiptItemsByBusiness(
+              businessId,
+              afterTs: after,
+              afterId: id,
+              limit: lim,
+            ),
+        applyRow: (row) => _goodsReceiptItemsDao.upsertFromServer(row),
       );
-      for (final row in items) {
-        await _goodsReceiptItemsDao.upsertFromServer(row);
-        pulled++;
-      }
     } catch (e, st) {
       failed++;
       debugPrint('[SYNC] Pull goods receipts failed: $e\n$st');
@@ -2080,13 +2256,19 @@ class SyncService {
     }
 
     try {
-      final recipeLines = await _productsRemoteDs.getRecipeLinesByBusiness(
-        businessId,
+      pulled += await _pullIncremental(
+        entity: 'recipe_lines',
+        businessId: businessId,
+        timestampField: 'updated_at',
+        fetchPage: (after, id, lim) =>
+            _productsRemoteDs.getRecipeLinesByBusiness(
+              businessId,
+              afterTs: after,
+              afterId: id,
+              limit: lim,
+            ),
+        applyRow: (row) => _recipeLinesDao.upsertFromServer(row),
       );
-      for (final row in recipeLines) {
-        await _recipeLinesDao.upsertFromServer(row);
-        pulled++;
-      }
     } catch (e, st) {
       failed++;
       debugPrint('[SYNC] Pull recipe lines failed: $e\n$st');
@@ -2128,7 +2310,8 @@ class SyncService {
       DateTime? afterTs,
       String? afterId,
       int limit,
-    ) fetchPage,
+    )
+    fetchPage,
     required Future<void> Function(Map<String, dynamic> row) applyRow,
     Future<void> Function(List<Map<String, dynamic>> page)? afterPage,
     DateTime? initialCursorTs,
@@ -2179,36 +2362,152 @@ class SyncService {
     }
   }
 
-  Future<void> _syncAuditLogs() async {
-    final pending = await _auditLogsDao.getPendingSync();
+  Future<({int syncedCount, int failedCount})> _syncAuditLogs() async {
+    const pageSize = 500;
+    int synced = 0;
+    int failed = 0;
+    // Once a row of a device chain fails to push, every higher-seq row of the
+    // SAME chain is held back this cycle — pushing seq N+1 while N is missing
+    // would open a server-side gap that other devices' verifiers read as a
+    // seqGap. getPendingSync() is ordered (device_uid, seq) so this is a
+    // simple contiguous skip. Persisted across pages within this cycle.
+    final blockedDevices = <String>{};
+
+    // Page until a long offline backlog drains: synced rows leave the pending
+    // set, so each page returns the next batch. Stop when a page makes no
+    // progress (only blocked/failed rows remain) to avoid re-fetching them.
+    while (true) {
+      final pending = await _auditLogsDao.getPendingSync(limit: pageSize);
+      if (pending.isEmpty) break;
+
+      var syncedThisPage = 0;
+      var conflicted = false;
+      for (final r in pending) {
+        final deviceUid = r.deviceUid;
+        if (deviceUid != null && blockedDevices.contains(deviceUid)) {
+          continue;
+        }
+        final row = auditLogToRemoteRow(r);
+        try {
+          await _auditLogRemoteDs.upsertLogs([row]);
+          await _auditLogsDao.updateSyncStatus(
+            id: r.id,
+            status: SyncStatus.synced,
+          );
+          synced++;
+          syncedThisPage++;
+        } on AuditChainConflictException catch (e, st) {
+          // Same (business, device, seq) already on the server with different
+          // content — the benign same-device restart (T13: wiped local DB +
+          // surviving uid). NOT tampering: self-heal by re-chaining this
+          // device's unsynced tail past the server head, then stop this cycle
+          // (the re-chained rows push cleanly on the next one).
+          debugPrint(
+            '[SYNC] AuditLog ${r.id} chain conflict — reconciling device tail '
+            '(business=${r.businessId} seq=${r.seq}): $e\n$st',
+          );
+          await _auditLogsDao.updateSyncStatus(
+            id: r.id,
+            status: SyncStatus.failed,
+            error: e.toString(),
+          );
+          if (onChainConflict != null) {
+            await onChainConflict!(r.businessId);
+            conflicted = true;
+            break;
+          }
+          failed++;
+        } catch (e, st) {
+          failed++;
+          if (deviceUid != null) blockedDevices.add(deviceUid);
+          debugPrint(
+            '[SYNC] AuditLog ${r.id} FAILED '
+            '(business=${r.businessId} action=${r.actionType}): $e\n$st',
+          );
+          await _auditLogsDao.updateSyncStatus(
+            id: r.id,
+            status: SyncStatus.failed,
+            error: e.toString(),
+          );
+          // Not covered by syncAll()'s push-error scan (this method returns
+          // void), so flag a stale tenant directly — same signal as every
+          // other tenant-scoped table.
+          if (e is PostgrestException && e.code == '42501') {
+            onTenantRejected?.call(r.businessId);
+          }
+        }
+      }
+
+      // Reconcile handoff, no forward progress, or a partial final page: done.
+      if (conflicted || syncedThisPage == 0 || pending.length < pageSize) {
+        break;
+      }
+    }
+
+    if (synced > 0 || failed > 0) {
+      debugPrint('[SYNC] Audit logs: synced $synced, failed $failed');
+    }
+    return (syncedCount: synced, failedCount: failed);
+  }
+
+  Future<void> _syncDevices() async {
+    final pending = await _devicesDao.getPendingSync();
     if (pending.isEmpty) return;
+    for (final r in pending) {
+      try {
+        await _devicesRemoteDs.upsertDevice(r);
+        await _devicesDao.updateSyncStatus(
+          deviceUid: r.deviceUid,
+          status: SyncStatus.synced,
+        );
+      } catch (e, st) {
+        debugPrint('[SYNC] Device ${r.deviceUid} FAILED: $e\n$st');
+        await _devicesDao.updateSyncStatus(
+          deviceUid: r.deviceUid,
+          status: SyncStatus.failed,
+          error: e.toString(),
+        );
+        if (e is PostgrestException && e.code == '42501') {
+          onTenantRejected?.call(r.businessId);
+        }
+      }
+    }
+  }
+
+  Future<({int syncedCount, int failedCount})> _syncFraudFlags() async {
+    final pending = await _fraudFlagsDao.getPendingSync();
+    if (pending.isEmpty) return (syncedCount: 0, failedCount: 0);
 
     int synced = 0;
     int failed = 0;
 
     for (final r in pending) {
-      final row = auditLogToRemoteRow(r);
       try {
-        await _auditLogRemoteDs.upsertLogs([row]);
-        await _auditLogsDao.updateSyncStatus(
+        if (r.syncStatus == SyncStatus.pendingUpdate.toInt()) {
+          // Triage-only update — anything wider trips the server freeze
+          // trigger by design.
+          await _fraudFlagsRemoteDs.updateTriage(r);
+        } else {
+          await _fraudFlagsRemoteDs.insertFlag(fraudFlagToRemoteRow(r));
+        }
+        await _fraudFlagsDao.updateSyncStatus(
           id: r.id,
           status: SyncStatus.synced,
         );
         synced++;
+      } on FraudFlagDedupeConflict {
+        // Another device already flagged this incident — benign race, not a
+        // tamper signal. Supersede the local duplicate; the canonical row
+        // lands on the next pull.
+        await _fraudFlagsDao.markSuperseded(r.id);
       } catch (e, st) {
         failed++;
-        debugPrint(
-          '[SYNC] AuditLog ${r.id} FAILED '
-          '(business=${r.businessId} action=${r.actionType}): $e\n$st',
-        );
-        await _auditLogsDao.updateSyncStatus(
+        debugPrint('[SYNC] FraudFlag ${r.id} FAILED (${r.ruleCode}): $e\n$st');
+        await _fraudFlagsDao.updateSyncStatus(
           id: r.id,
           status: SyncStatus.failed,
           error: e.toString(),
         );
-        // Not covered by syncAll()'s push-error scan (this method returns
-        // void), so flag a stale tenant directly — same signal as every
-        // other tenant-scoped table.
         if (e is PostgrestException && e.code == '42501') {
           onTenantRejected?.call(r.businessId);
         }
@@ -2216,8 +2515,9 @@ class SyncService {
     }
 
     if (synced > 0 || failed > 0) {
-      debugPrint('[SYNC] Audit logs: synced $synced, failed $failed');
+      debugPrint('[SYNC] Fraud flags: synced $synced, failed $failed');
     }
+    return (syncedCount: synced, failedCount: failed);
   }
 
   Future<SyncResult> _syncEmployees() async {
@@ -2443,7 +2743,9 @@ class SyncService {
               'status': record.status,
               'po_number': record.poNumber,
               'notes': record.notes,
-              'expected_delivery': record.expectedDelivery?.toUtc().toIso8601String(),
+              'expected_delivery': record.expectedDelivery
+                  ?.toUtc()
+                  .toIso8601String(),
               'discount': record.discount,
               'shipping': record.shipping,
               'total_amount': record.totalAmount,

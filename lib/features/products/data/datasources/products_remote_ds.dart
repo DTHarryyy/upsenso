@@ -144,16 +144,16 @@ class ProductsRemoteDs {
   // ── RECIPE LINES ──────────────────────────────────────────────────────────────
 
   /// Fetch a business's recipe lines (bill-of-materials) for pull sync.
+  /// Incremental/paged pull (includes tombstones so soft-deletes propagate).
+  /// Keyset (updated_at, id); omit cursor + limit for a full first-run pull.
   Future<List<Map<String, dynamic>>> getRecipeLinesByBusiness(
-    String businessId,
-  ) async {
-    final response = await client
-        .from('recipe_lines')
-        .select()
-        .eq('business_id', businessId)
-        .eq('is_deleted', false);
-    return List<Map<String, dynamic>>.from(response);
-  }
+    String businessId, {
+    DateTime? afterTs,
+    String? afterId,
+    int? limit,
+  }) =>
+      _pullByBusiness('recipe_lines', businessId, 'updated_at',
+          afterTs: afterTs, afterId: afterId, limit: limit);
 
   Future<void> upsertRecipeLine(Map<String, dynamic> row) async {
     await client.from('recipe_lines').upsert(row);

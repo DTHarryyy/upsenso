@@ -111,10 +111,17 @@ class RecipeLinesDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Upsert a recipe line pulled from Supabase (marks as synced).
-  Future<void> upsertFromServer(Map<String, dynamic> row) {
-    return into(recipeLinesTable).insertOnConflictUpdate(
+  Future<void> upsertFromServer(Map<String, dynamic> row) async {
+    final id = row['id'] as String;
+    final existing = await (select(recipeLinesTable)
+          ..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (existing != null && existing.syncStatus != SyncStatus.synced.toInt()) {
+      return;
+    }
+    await into(recipeLinesTable).insertOnConflictUpdate(
       RecipeLinesTableCompanion.insert(
-        id: row['id'] as String,
+        id: id,
         businessId: row['business_id'] as String,
         productVariantId: row['product_variant_id'] as String,
         ingredientVariantId: row['ingredient_variant_id'] as String,

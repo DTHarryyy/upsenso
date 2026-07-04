@@ -44,6 +44,7 @@ import 'package:pos/features/settings/presentation/settings_shell_page.dart';
 import 'package:pos/features/dashboard/presentation/dashboard_page.dart';
 import 'package:pos/features/reports/presentation/pages/reports_and_analytics.dart';
 import 'package:pos/features/notifications/presentation/pages/notifications_page.dart';
+import 'package:pos/features/alert/presentation/alert_page.dart';
 import 'package:pos/features/audit_logs/presentation/pages/audit_log_page.dart';
 import 'package:pos/features/employees/domain/entities/employee.dart';
 import 'package:pos/features/employees/presentation/pages/employees_page.dart';
@@ -203,6 +204,7 @@ class AppRouter {
           AppRoutes.ingredients: PermissionKeys.navRecipes,
           AppRoutes.customers: PermissionKeys.navCustomers,
           AppRoutes.customerDetail: PermissionKeys.navCustomers,
+          AppRoutes.fraud: PermissionKeys.navFraud,
         };
         final requiredKey = routePermissionGuards[location];
         if (requiredKey != null && !sl<PermissionService>().can(requiredKey)) {
@@ -229,6 +231,7 @@ class AppRouter {
           AppRoutes.poDetail: 'procurement',
           AppRoutes.ingredients: 'ingredients',
           AppRoutes.customers: 'crm',
+          AppRoutes.fraud: 'audit',
           AppRoutes.customerDetail: 'crm',
         };
         final requiredModule = routeModuleGuards[location];
@@ -645,6 +648,18 @@ class AppRouter {
                     },
                   ),
                 ],
+              ),
+            ],
+          ),
+
+          // ── Branch 13: Fraud & Risk alerts ───────────────────────────────
+          // UI gate only (nav.fraud + audit module) — the detection engine
+          // runs regardless of this route's visibility.
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.fraud,
+                builder: (context, _) => const AlertPage(),
               ),
             ],
           ),

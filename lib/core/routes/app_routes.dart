@@ -66,4 +66,7 @@ class AppRoutes {
   // CRM / Customers
   static const String customers = '/more/customers';
   static const String customerDetail = '/more/customers/detail';
+
+  // Fraud & Risk
+  static const String fraud = '/more/fraud';
 }

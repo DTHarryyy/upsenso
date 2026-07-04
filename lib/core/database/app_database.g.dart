@@ -13476,6 +13476,59 @@ class $AuditLogsTableTable extends AuditLogsTable
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _seqMeta = const VerificationMeta('seq');
+  @override
+  late final GeneratedColumn<int> seq = GeneratedColumn<int>(
+    'seq',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _prevHashMeta = const VerificationMeta(
+    'prevHash',
+  );
+  @override
+  late final GeneratedColumn<String> prevHash = GeneratedColumn<String>(
+    'prev_hash',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _entryHashMeta = const VerificationMeta(
+    'entryHash',
+  );
+  @override
+  late final GeneratedColumn<String> entryHash = GeneratedColumn<String>(
+    'entry_hash',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _deviceUidMeta = const VerificationMeta(
+    'deviceUid',
+  );
+  @override
+  late final GeneratedColumn<String> deviceUid = GeneratedColumn<String>(
+    'device_uid',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _hashVersionMeta = const VerificationMeta(
+    'hashVersion',
+  );
+  @override
+  late final GeneratedColumn<int> hashVersion = GeneratedColumn<int>(
+    'hash_version',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _syncStatusMeta = const VerificationMeta(
     'syncStatus',
   );
@@ -13524,6 +13577,11 @@ class $AuditLogsTableTable extends AuditLogsTable
     metadata,
     deviceId,
     createdAt,
+    seq,
+    prevHash,
+    entryHash,
+    deviceUid,
+    hashVersion,
     syncStatus,
     lastSyncAttempt,
     syncError,
@@ -13620,6 +13678,39 @@ class $AuditLogsTableTable extends AuditLogsTable
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
+    if (data.containsKey('seq')) {
+      context.handle(
+        _seqMeta,
+        seq.isAcceptableOrUnknown(data['seq']!, _seqMeta),
+      );
+    }
+    if (data.containsKey('prev_hash')) {
+      context.handle(
+        _prevHashMeta,
+        prevHash.isAcceptableOrUnknown(data['prev_hash']!, _prevHashMeta),
+      );
+    }
+    if (data.containsKey('entry_hash')) {
+      context.handle(
+        _entryHashMeta,
+        entryHash.isAcceptableOrUnknown(data['entry_hash']!, _entryHashMeta),
+      );
+    }
+    if (data.containsKey('device_uid')) {
+      context.handle(
+        _deviceUidMeta,
+        deviceUid.isAcceptableOrUnknown(data['device_uid']!, _deviceUidMeta),
+      );
+    }
+    if (data.containsKey('hash_version')) {
+      context.handle(
+        _hashVersionMeta,
+        hashVersion.isAcceptableOrUnknown(
+          data['hash_version']!,
+          _hashVersionMeta,
+        ),
+      );
+    }
     if (data.containsKey('sync_status')) {
       context.handle(
         _syncStatusMeta,
@@ -13694,6 +13785,26 @@ class $AuditLogsTableTable extends AuditLogsTable
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      seq: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}seq'],
+      ),
+      prevHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}prev_hash'],
+      ),
+      entryHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entry_hash'],
+      ),
+      deviceUid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}device_uid'],
+      ),
+      hashVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}hash_version'],
+      ),
       syncStatus: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}sync_status'],
@@ -13730,6 +13841,25 @@ class AuditLogRow extends DataClass implements Insertable<AuditLogRow> {
   final String deviceId;
   final DateTime createdAt;
 
+  /// Monotonic counter per (business_id, device_uid); clock-independent order.
+  final int? seq;
+
+  /// `entry_hash` of the previous row in this device chain; genesis = 64 zeros.
+  final String? prevHash;
+
+  /// SHA-256 over prev_hash + canonical payload (see audit_hash.dart).
+  final String? entryHash;
+
+  /// Stable installation uid (DeviceIdentityService) — NOT the display label
+  /// in [deviceId], which is non-unique and regenerated per cold start.
+  final String? deviceUid;
+
+  /// Canonicalization version the stored hash was computed under. NULL/1 =
+  /// legacy rows (hash recompute skipped by the verifier; link/seq checks
+  /// still run); 2+ = current rules in audit_hash.dart. Lets the canonical
+  /// form evolve without mass-false-positiving history.
+  final int? hashVersion;
+
   /// 0=pendingUpload, 3=synced, 4=failed  (audit logs are append-only)
   final int syncStatus;
   final DateTime? lastSyncAttempt;
@@ -13746,6 +13876,11 @@ class AuditLogRow extends DataClass implements Insertable<AuditLogRow> {
     required this.metadata,
     required this.deviceId,
     required this.createdAt,
+    this.seq,
+    this.prevHash,
+    this.entryHash,
+    this.deviceUid,
+    this.hashVersion,
     required this.syncStatus,
     this.lastSyncAttempt,
     this.syncError,
@@ -13766,6 +13901,21 @@ class AuditLogRow extends DataClass implements Insertable<AuditLogRow> {
     map['metadata'] = Variable<String>(metadata);
     map['device_id'] = Variable<String>(deviceId);
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || seq != null) {
+      map['seq'] = Variable<int>(seq);
+    }
+    if (!nullToAbsent || prevHash != null) {
+      map['prev_hash'] = Variable<String>(prevHash);
+    }
+    if (!nullToAbsent || entryHash != null) {
+      map['entry_hash'] = Variable<String>(entryHash);
+    }
+    if (!nullToAbsent || deviceUid != null) {
+      map['device_uid'] = Variable<String>(deviceUid);
+    }
+    if (!nullToAbsent || hashVersion != null) {
+      map['hash_version'] = Variable<int>(hashVersion);
+    }
     map['sync_status'] = Variable<int>(syncStatus);
     if (!nullToAbsent || lastSyncAttempt != null) {
       map['last_sync_attempt'] = Variable<DateTime>(lastSyncAttempt);
@@ -13791,6 +13941,19 @@ class AuditLogRow extends DataClass implements Insertable<AuditLogRow> {
       metadata: Value(metadata),
       deviceId: Value(deviceId),
       createdAt: Value(createdAt),
+      seq: seq == null && nullToAbsent ? const Value.absent() : Value(seq),
+      prevHash: prevHash == null && nullToAbsent
+          ? const Value.absent()
+          : Value(prevHash),
+      entryHash: entryHash == null && nullToAbsent
+          ? const Value.absent()
+          : Value(entryHash),
+      deviceUid: deviceUid == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deviceUid),
+      hashVersion: hashVersion == null && nullToAbsent
+          ? const Value.absent()
+          : Value(hashVersion),
       syncStatus: Value(syncStatus),
       lastSyncAttempt: lastSyncAttempt == null && nullToAbsent
           ? const Value.absent()
@@ -13818,6 +13981,11 @@ class AuditLogRow extends DataClass implements Insertable<AuditLogRow> {
       metadata: serializer.fromJson<String>(json['metadata']),
       deviceId: serializer.fromJson<String>(json['deviceId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      seq: serializer.fromJson<int?>(json['seq']),
+      prevHash: serializer.fromJson<String?>(json['prevHash']),
+      entryHash: serializer.fromJson<String?>(json['entryHash']),
+      deviceUid: serializer.fromJson<String?>(json['deviceUid']),
+      hashVersion: serializer.fromJson<int?>(json['hashVersion']),
       syncStatus: serializer.fromJson<int>(json['syncStatus']),
       lastSyncAttempt: serializer.fromJson<DateTime?>(json['lastSyncAttempt']),
       syncError: serializer.fromJson<String?>(json['syncError']),
@@ -13838,6 +14006,11 @@ class AuditLogRow extends DataClass implements Insertable<AuditLogRow> {
       'metadata': serializer.toJson<String>(metadata),
       'deviceId': serializer.toJson<String>(deviceId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'seq': serializer.toJson<int?>(seq),
+      'prevHash': serializer.toJson<String?>(prevHash),
+      'entryHash': serializer.toJson<String?>(entryHash),
+      'deviceUid': serializer.toJson<String?>(deviceUid),
+      'hashVersion': serializer.toJson<int?>(hashVersion),
       'syncStatus': serializer.toJson<int>(syncStatus),
       'lastSyncAttempt': serializer.toJson<DateTime?>(lastSyncAttempt),
       'syncError': serializer.toJson<String?>(syncError),
@@ -13856,6 +14029,11 @@ class AuditLogRow extends DataClass implements Insertable<AuditLogRow> {
     String? metadata,
     String? deviceId,
     DateTime? createdAt,
+    Value<int?> seq = const Value.absent(),
+    Value<String?> prevHash = const Value.absent(),
+    Value<String?> entryHash = const Value.absent(),
+    Value<String?> deviceUid = const Value.absent(),
+    Value<int?> hashVersion = const Value.absent(),
     int? syncStatus,
     Value<DateTime?> lastSyncAttempt = const Value.absent(),
     Value<String?> syncError = const Value.absent(),
@@ -13871,6 +14049,11 @@ class AuditLogRow extends DataClass implements Insertable<AuditLogRow> {
     metadata: metadata ?? this.metadata,
     deviceId: deviceId ?? this.deviceId,
     createdAt: createdAt ?? this.createdAt,
+    seq: seq.present ? seq.value : this.seq,
+    prevHash: prevHash.present ? prevHash.value : this.prevHash,
+    entryHash: entryHash.present ? entryHash.value : this.entryHash,
+    deviceUid: deviceUid.present ? deviceUid.value : this.deviceUid,
+    hashVersion: hashVersion.present ? hashVersion.value : this.hashVersion,
     syncStatus: syncStatus ?? this.syncStatus,
     lastSyncAttempt: lastSyncAttempt.present
         ? lastSyncAttempt.value
@@ -13898,6 +14081,13 @@ class AuditLogRow extends DataClass implements Insertable<AuditLogRow> {
       metadata: data.metadata.present ? data.metadata.value : this.metadata,
       deviceId: data.deviceId.present ? data.deviceId.value : this.deviceId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      seq: data.seq.present ? data.seq.value : this.seq,
+      prevHash: data.prevHash.present ? data.prevHash.value : this.prevHash,
+      entryHash: data.entryHash.present ? data.entryHash.value : this.entryHash,
+      deviceUid: data.deviceUid.present ? data.deviceUid.value : this.deviceUid,
+      hashVersion: data.hashVersion.present
+          ? data.hashVersion.value
+          : this.hashVersion,
       syncStatus: data.syncStatus.present
           ? data.syncStatus.value
           : this.syncStatus,
@@ -13922,6 +14112,11 @@ class AuditLogRow extends DataClass implements Insertable<AuditLogRow> {
           ..write('metadata: $metadata, ')
           ..write('deviceId: $deviceId, ')
           ..write('createdAt: $createdAt, ')
+          ..write('seq: $seq, ')
+          ..write('prevHash: $prevHash, ')
+          ..write('entryHash: $entryHash, ')
+          ..write('deviceUid: $deviceUid, ')
+          ..write('hashVersion: $hashVersion, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('lastSyncAttempt: $lastSyncAttempt, ')
           ..write('syncError: $syncError')
@@ -13942,6 +14137,11 @@ class AuditLogRow extends DataClass implements Insertable<AuditLogRow> {
     metadata,
     deviceId,
     createdAt,
+    seq,
+    prevHash,
+    entryHash,
+    deviceUid,
+    hashVersion,
     syncStatus,
     lastSyncAttempt,
     syncError,
@@ -13961,6 +14161,11 @@ class AuditLogRow extends DataClass implements Insertable<AuditLogRow> {
           other.metadata == this.metadata &&
           other.deviceId == this.deviceId &&
           other.createdAt == this.createdAt &&
+          other.seq == this.seq &&
+          other.prevHash == this.prevHash &&
+          other.entryHash == this.entryHash &&
+          other.deviceUid == this.deviceUid &&
+          other.hashVersion == this.hashVersion &&
           other.syncStatus == this.syncStatus &&
           other.lastSyncAttempt == this.lastSyncAttempt &&
           other.syncError == this.syncError);
@@ -13978,6 +14183,11 @@ class AuditLogsTableCompanion extends UpdateCompanion<AuditLogRow> {
   final Value<String> metadata;
   final Value<String> deviceId;
   final Value<DateTime> createdAt;
+  final Value<int?> seq;
+  final Value<String?> prevHash;
+  final Value<String?> entryHash;
+  final Value<String?> deviceUid;
+  final Value<int?> hashVersion;
   final Value<int> syncStatus;
   final Value<DateTime?> lastSyncAttempt;
   final Value<String?> syncError;
@@ -13994,6 +14204,11 @@ class AuditLogsTableCompanion extends UpdateCompanion<AuditLogRow> {
     this.metadata = const Value.absent(),
     this.deviceId = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.seq = const Value.absent(),
+    this.prevHash = const Value.absent(),
+    this.entryHash = const Value.absent(),
+    this.deviceUid = const Value.absent(),
+    this.hashVersion = const Value.absent(),
     this.syncStatus = const Value.absent(),
     this.lastSyncAttempt = const Value.absent(),
     this.syncError = const Value.absent(),
@@ -14011,6 +14226,11 @@ class AuditLogsTableCompanion extends UpdateCompanion<AuditLogRow> {
     this.metadata = const Value.absent(),
     this.deviceId = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.seq = const Value.absent(),
+    this.prevHash = const Value.absent(),
+    this.entryHash = const Value.absent(),
+    this.deviceUid = const Value.absent(),
+    this.hashVersion = const Value.absent(),
     this.syncStatus = const Value.absent(),
     this.lastSyncAttempt = const Value.absent(),
     this.syncError = const Value.absent(),
@@ -14034,6 +14254,11 @@ class AuditLogsTableCompanion extends UpdateCompanion<AuditLogRow> {
     Expression<String>? metadata,
     Expression<String>? deviceId,
     Expression<DateTime>? createdAt,
+    Expression<int>? seq,
+    Expression<String>? prevHash,
+    Expression<String>? entryHash,
+    Expression<String>? deviceUid,
+    Expression<int>? hashVersion,
     Expression<int>? syncStatus,
     Expression<DateTime>? lastSyncAttempt,
     Expression<String>? syncError,
@@ -14051,6 +14276,11 @@ class AuditLogsTableCompanion extends UpdateCompanion<AuditLogRow> {
       if (metadata != null) 'metadata': metadata,
       if (deviceId != null) 'device_id': deviceId,
       if (createdAt != null) 'created_at': createdAt,
+      if (seq != null) 'seq': seq,
+      if (prevHash != null) 'prev_hash': prevHash,
+      if (entryHash != null) 'entry_hash': entryHash,
+      if (deviceUid != null) 'device_uid': deviceUid,
+      if (hashVersion != null) 'hash_version': hashVersion,
       if (syncStatus != null) 'sync_status': syncStatus,
       if (lastSyncAttempt != null) 'last_sync_attempt': lastSyncAttempt,
       if (syncError != null) 'sync_error': syncError,
@@ -14070,6 +14300,11 @@ class AuditLogsTableCompanion extends UpdateCompanion<AuditLogRow> {
     Value<String>? metadata,
     Value<String>? deviceId,
     Value<DateTime>? createdAt,
+    Value<int?>? seq,
+    Value<String?>? prevHash,
+    Value<String?>? entryHash,
+    Value<String?>? deviceUid,
+    Value<int?>? hashVersion,
     Value<int>? syncStatus,
     Value<DateTime?>? lastSyncAttempt,
     Value<String?>? syncError,
@@ -14087,6 +14322,11 @@ class AuditLogsTableCompanion extends UpdateCompanion<AuditLogRow> {
       metadata: metadata ?? this.metadata,
       deviceId: deviceId ?? this.deviceId,
       createdAt: createdAt ?? this.createdAt,
+      seq: seq ?? this.seq,
+      prevHash: prevHash ?? this.prevHash,
+      entryHash: entryHash ?? this.entryHash,
+      deviceUid: deviceUid ?? this.deviceUid,
+      hashVersion: hashVersion ?? this.hashVersion,
       syncStatus: syncStatus ?? this.syncStatus,
       lastSyncAttempt: lastSyncAttempt ?? this.lastSyncAttempt,
       syncError: syncError ?? this.syncError,
@@ -14130,6 +14370,21 @@ class AuditLogsTableCompanion extends UpdateCompanion<AuditLogRow> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (seq.present) {
+      map['seq'] = Variable<int>(seq.value);
+    }
+    if (prevHash.present) {
+      map['prev_hash'] = Variable<String>(prevHash.value);
+    }
+    if (entryHash.present) {
+      map['entry_hash'] = Variable<String>(entryHash.value);
+    }
+    if (deviceUid.present) {
+      map['device_uid'] = Variable<String>(deviceUid.value);
+    }
+    if (hashVersion.present) {
+      map['hash_version'] = Variable<int>(hashVersion.value);
+    }
     if (syncStatus.present) {
       map['sync_status'] = Variable<int>(syncStatus.value);
     }
@@ -14159,6 +14414,11 @@ class AuditLogsTableCompanion extends UpdateCompanion<AuditLogRow> {
           ..write('metadata: $metadata, ')
           ..write('deviceId: $deviceId, ')
           ..write('createdAt: $createdAt, ')
+          ..write('seq: $seq, ')
+          ..write('prevHash: $prevHash, ')
+          ..write('entryHash: $entryHash, ')
+          ..write('deviceUid: $deviceUid, ')
+          ..write('hashVersion: $hashVersion, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('lastSyncAttempt: $lastSyncAttempt, ')
           ..write('syncError: $syncError, ')
@@ -25426,6 +25686,2731 @@ class CustomersTableCompanion extends UpdateCompanion<CustomerRow> {
   }
 }
 
+class $FraudFlagsTableTable extends FraudFlagsTable
+    with TableInfo<$FraudFlagsTableTable, FraudFlagRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FraudFlagsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _ruleCodeMeta = const VerificationMeta(
+    'ruleCode',
+  );
+  @override
+  late final GeneratedColumn<String> ruleCode = GeneratedColumn<String>(
+    'rule_code',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _severityMeta = const VerificationMeta(
+    'severity',
+  );
+  @override
+  late final GeneratedColumn<String> severity = GeneratedColumn<String>(
+    'severity',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('new'),
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _subjectUserIdMeta = const VerificationMeta(
+    'subjectUserId',
+  );
+  @override
+  late final GeneratedColumn<String> subjectUserId = GeneratedColumn<String>(
+    'subject_user_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _evidenceMeta = const VerificationMeta(
+    'evidence',
+  );
+  @override
+  late final GeneratedColumn<String> evidence = GeneratedColumn<String>(
+    'evidence',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  static const VerificationMeta _relatedIdsMeta = const VerificationMeta(
+    'relatedIds',
+  );
+  @override
+  late final GeneratedColumn<String> relatedIds = GeneratedColumn<String>(
+    'related_ids',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  static const VerificationMeta _resolvedByMeta = const VerificationMeta(
+    'resolvedBy',
+  );
+  @override
+  late final GeneratedColumn<String> resolvedBy = GeneratedColumn<String>(
+    'resolved_by',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _resolutionNoteMeta = const VerificationMeta(
+    'resolutionNote',
+  );
+  @override
+  late final GeneratedColumn<String> resolutionNote = GeneratedColumn<String>(
+    'resolution_note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _detectedAtMeta = const VerificationMeta(
+    'detectedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> detectedAt = GeneratedColumn<DateTime>(
+    'detected_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _clientUpdatedAtMeta = const VerificationMeta(
+    'clientUpdatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> clientUpdatedAt =
+      GeneratedColumn<DateTime>(
+        'client_updated_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+        defaultValue: currentDateAndTime,
+      );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _dedupeKeyMeta = const VerificationMeta(
+    'dedupeKey',
+  );
+  @override
+  late final GeneratedColumn<String> dedupeKey = GeneratedColumn<String>(
+    'dedupe_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+    'syncStatus',
+  );
+  @override
+  late final GeneratedColumn<int> syncStatus = GeneratedColumn<int>(
+    'sync_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastSyncAttemptMeta = const VerificationMeta(
+    'lastSyncAttempt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastSyncAttempt =
+      GeneratedColumn<DateTime>(
+        'last_sync_attempt',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _syncErrorMeta = const VerificationMeta(
+    'syncError',
+  );
+  @override
+  late final GeneratedColumn<String> syncError = GeneratedColumn<String>(
+    'sync_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    businessId,
+    branchId,
+    ruleCode,
+    severity,
+    status,
+    title,
+    description,
+    subjectUserId,
+    evidence,
+    relatedIds,
+    resolvedBy,
+    resolutionNote,
+    detectedAt,
+    createdAt,
+    updatedAt,
+    clientUpdatedAt,
+    deletedAt,
+    dedupeKey,
+    syncStatus,
+    lastSyncAttempt,
+    syncError,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'fraud_flags';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FraudFlagRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    }
+    if (data.containsKey('rule_code')) {
+      context.handle(
+        _ruleCodeMeta,
+        ruleCode.isAcceptableOrUnknown(data['rule_code']!, _ruleCodeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_ruleCodeMeta);
+    }
+    if (data.containsKey('severity')) {
+      context.handle(
+        _severityMeta,
+        severity.isAcceptableOrUnknown(data['severity']!, _severityMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_severityMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_descriptionMeta);
+    }
+    if (data.containsKey('subject_user_id')) {
+      context.handle(
+        _subjectUserIdMeta,
+        subjectUserId.isAcceptableOrUnknown(
+          data['subject_user_id']!,
+          _subjectUserIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('evidence')) {
+      context.handle(
+        _evidenceMeta,
+        evidence.isAcceptableOrUnknown(data['evidence']!, _evidenceMeta),
+      );
+    }
+    if (data.containsKey('related_ids')) {
+      context.handle(
+        _relatedIdsMeta,
+        relatedIds.isAcceptableOrUnknown(data['related_ids']!, _relatedIdsMeta),
+      );
+    }
+    if (data.containsKey('resolved_by')) {
+      context.handle(
+        _resolvedByMeta,
+        resolvedBy.isAcceptableOrUnknown(data['resolved_by']!, _resolvedByMeta),
+      );
+    }
+    if (data.containsKey('resolution_note')) {
+      context.handle(
+        _resolutionNoteMeta,
+        resolutionNote.isAcceptableOrUnknown(
+          data['resolution_note']!,
+          _resolutionNoteMeta,
+        ),
+      );
+    }
+    if (data.containsKey('detected_at')) {
+      context.handle(
+        _detectedAtMeta,
+        detectedAt.isAcceptableOrUnknown(data['detected_at']!, _detectedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_detectedAtMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('client_updated_at')) {
+      context.handle(
+        _clientUpdatedAtMeta,
+        clientUpdatedAt.isAcceptableOrUnknown(
+          data['client_updated_at']!,
+          _clientUpdatedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('dedupe_key')) {
+      context.handle(
+        _dedupeKeyMeta,
+        dedupeKey.isAcceptableOrUnknown(data['dedupe_key']!, _dedupeKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dedupeKeyMeta);
+    }
+    if (data.containsKey('sync_status')) {
+      context.handle(
+        _syncStatusMeta,
+        syncStatus.isAcceptableOrUnknown(data['sync_status']!, _syncStatusMeta),
+      );
+    }
+    if (data.containsKey('last_sync_attempt')) {
+      context.handle(
+        _lastSyncAttemptMeta,
+        lastSyncAttempt.isAcceptableOrUnknown(
+          data['last_sync_attempt']!,
+          _lastSyncAttemptMeta,
+        ),
+      );
+    }
+    if (data.containsKey('sync_error')) {
+      context.handle(
+        _syncErrorMeta,
+        syncError.isAcceptableOrUnknown(data['sync_error']!, _syncErrorMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  FraudFlagRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FraudFlagRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      ),
+      ruleCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rule_code'],
+      )!,
+      severity: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}severity'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      )!,
+      subjectUserId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}subject_user_id'],
+      ),
+      evidence: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}evidence'],
+      )!,
+      relatedIds: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}related_ids'],
+      )!,
+      resolvedBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}resolved_by'],
+      ),
+      resolutionNote: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}resolution_note'],
+      ),
+      detectedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}detected_at'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      clientUpdatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}client_updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      dedupeKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}dedupe_key'],
+      )!,
+      syncStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sync_status'],
+      )!,
+      lastSyncAttempt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_sync_attempt'],
+      ),
+      syncError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_error'],
+      ),
+    );
+  }
+
+  @override
+  $FraudFlagsTableTable createAlias(String alias) {
+    return $FraudFlagsTableTable(attachedDatabase, alias);
+  }
+}
+
+class FraudFlagRow extends DataClass implements Insertable<FraudFlagRow> {
+  final String id;
+  final String businessId;
+  final String? branchId;
+
+  /// Rule identifier, e.g. 'EXCESSIVE_REFUNDS' (see FraudRule.code).
+  final String ruleCode;
+
+  /// 'low' | 'medium' | 'high' | 'critical'
+  final String severity;
+
+  /// 'new' | 'investigating' | 'resolved' | 'dismissed'
+  final String status;
+  final String title;
+  final String description;
+
+  /// auth.uid() of the implicated employee (same id space as
+  /// transactions.cashier_id / refunds.refunded_by); null when no single
+  /// subject. The server blocks this user from resolving the flag.
+  final String? subjectUserId;
+
+  /// JSON list of structured evidence factors ({fact, value, baseline, ...}).
+  final String evidence;
+
+  /// JSON list of source record ids (transactions, refunds, ledger rows).
+  final String relatedIds;
+  final String? resolvedBy;
+  final String? resolutionNote;
+  final DateTime detectedAt;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime clientUpdatedAt;
+  final DateTime? deletedAt;
+
+  /// Deterministic per-incident key, e.g.
+  /// `EXCESSIVE_REFUNDS|userId|2026-07-03`. Unique per business (index
+  /// created in the v54 migration; Drift table files don't declare indexes).
+  final String dedupeKey;
+
+  /// 0=pendingUpload, 1=pendingUpdate, 3=synced, 4=failed
+  final int syncStatus;
+  final DateTime? lastSyncAttempt;
+  final String? syncError;
+  const FraudFlagRow({
+    required this.id,
+    required this.businessId,
+    this.branchId,
+    required this.ruleCode,
+    required this.severity,
+    required this.status,
+    required this.title,
+    required this.description,
+    this.subjectUserId,
+    required this.evidence,
+    required this.relatedIds,
+    this.resolvedBy,
+    this.resolutionNote,
+    required this.detectedAt,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.clientUpdatedAt,
+    this.deletedAt,
+    required this.dedupeKey,
+    required this.syncStatus,
+    this.lastSyncAttempt,
+    this.syncError,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['business_id'] = Variable<String>(businessId);
+    if (!nullToAbsent || branchId != null) {
+      map['branch_id'] = Variable<String>(branchId);
+    }
+    map['rule_code'] = Variable<String>(ruleCode);
+    map['severity'] = Variable<String>(severity);
+    map['status'] = Variable<String>(status);
+    map['title'] = Variable<String>(title);
+    map['description'] = Variable<String>(description);
+    if (!nullToAbsent || subjectUserId != null) {
+      map['subject_user_id'] = Variable<String>(subjectUserId);
+    }
+    map['evidence'] = Variable<String>(evidence);
+    map['related_ids'] = Variable<String>(relatedIds);
+    if (!nullToAbsent || resolvedBy != null) {
+      map['resolved_by'] = Variable<String>(resolvedBy);
+    }
+    if (!nullToAbsent || resolutionNote != null) {
+      map['resolution_note'] = Variable<String>(resolutionNote);
+    }
+    map['detected_at'] = Variable<DateTime>(detectedAt);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['client_updated_at'] = Variable<DateTime>(clientUpdatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    map['dedupe_key'] = Variable<String>(dedupeKey);
+    map['sync_status'] = Variable<int>(syncStatus);
+    if (!nullToAbsent || lastSyncAttempt != null) {
+      map['last_sync_attempt'] = Variable<DateTime>(lastSyncAttempt);
+    }
+    if (!nullToAbsent || syncError != null) {
+      map['sync_error'] = Variable<String>(syncError);
+    }
+    return map;
+  }
+
+  FraudFlagsTableCompanion toCompanion(bool nullToAbsent) {
+    return FraudFlagsTableCompanion(
+      id: Value(id),
+      businessId: Value(businessId),
+      branchId: branchId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(branchId),
+      ruleCode: Value(ruleCode),
+      severity: Value(severity),
+      status: Value(status),
+      title: Value(title),
+      description: Value(description),
+      subjectUserId: subjectUserId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(subjectUserId),
+      evidence: Value(evidence),
+      relatedIds: Value(relatedIds),
+      resolvedBy: resolvedBy == null && nullToAbsent
+          ? const Value.absent()
+          : Value(resolvedBy),
+      resolutionNote: resolutionNote == null && nullToAbsent
+          ? const Value.absent()
+          : Value(resolutionNote),
+      detectedAt: Value(detectedAt),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      clientUpdatedAt: Value(clientUpdatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      dedupeKey: Value(dedupeKey),
+      syncStatus: Value(syncStatus),
+      lastSyncAttempt: lastSyncAttempt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSyncAttempt),
+      syncError: syncError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncError),
+    );
+  }
+
+  factory FraudFlagRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FraudFlagRow(
+      id: serializer.fromJson<String>(json['id']),
+      businessId: serializer.fromJson<String>(json['businessId']),
+      branchId: serializer.fromJson<String?>(json['branchId']),
+      ruleCode: serializer.fromJson<String>(json['ruleCode']),
+      severity: serializer.fromJson<String>(json['severity']),
+      status: serializer.fromJson<String>(json['status']),
+      title: serializer.fromJson<String>(json['title']),
+      description: serializer.fromJson<String>(json['description']),
+      subjectUserId: serializer.fromJson<String?>(json['subjectUserId']),
+      evidence: serializer.fromJson<String>(json['evidence']),
+      relatedIds: serializer.fromJson<String>(json['relatedIds']),
+      resolvedBy: serializer.fromJson<String?>(json['resolvedBy']),
+      resolutionNote: serializer.fromJson<String?>(json['resolutionNote']),
+      detectedAt: serializer.fromJson<DateTime>(json['detectedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      clientUpdatedAt: serializer.fromJson<DateTime>(json['clientUpdatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      dedupeKey: serializer.fromJson<String>(json['dedupeKey']),
+      syncStatus: serializer.fromJson<int>(json['syncStatus']),
+      lastSyncAttempt: serializer.fromJson<DateTime?>(json['lastSyncAttempt']),
+      syncError: serializer.fromJson<String?>(json['syncError']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'businessId': serializer.toJson<String>(businessId),
+      'branchId': serializer.toJson<String?>(branchId),
+      'ruleCode': serializer.toJson<String>(ruleCode),
+      'severity': serializer.toJson<String>(severity),
+      'status': serializer.toJson<String>(status),
+      'title': serializer.toJson<String>(title),
+      'description': serializer.toJson<String>(description),
+      'subjectUserId': serializer.toJson<String?>(subjectUserId),
+      'evidence': serializer.toJson<String>(evidence),
+      'relatedIds': serializer.toJson<String>(relatedIds),
+      'resolvedBy': serializer.toJson<String?>(resolvedBy),
+      'resolutionNote': serializer.toJson<String?>(resolutionNote),
+      'detectedAt': serializer.toJson<DateTime>(detectedAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'clientUpdatedAt': serializer.toJson<DateTime>(clientUpdatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'dedupeKey': serializer.toJson<String>(dedupeKey),
+      'syncStatus': serializer.toJson<int>(syncStatus),
+      'lastSyncAttempt': serializer.toJson<DateTime?>(lastSyncAttempt),
+      'syncError': serializer.toJson<String?>(syncError),
+    };
+  }
+
+  FraudFlagRow copyWith({
+    String? id,
+    String? businessId,
+    Value<String?> branchId = const Value.absent(),
+    String? ruleCode,
+    String? severity,
+    String? status,
+    String? title,
+    String? description,
+    Value<String?> subjectUserId = const Value.absent(),
+    String? evidence,
+    String? relatedIds,
+    Value<String?> resolvedBy = const Value.absent(),
+    Value<String?> resolutionNote = const Value.absent(),
+    DateTime? detectedAt,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    DateTime? clientUpdatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+    String? dedupeKey,
+    int? syncStatus,
+    Value<DateTime?> lastSyncAttempt = const Value.absent(),
+    Value<String?> syncError = const Value.absent(),
+  }) => FraudFlagRow(
+    id: id ?? this.id,
+    businessId: businessId ?? this.businessId,
+    branchId: branchId.present ? branchId.value : this.branchId,
+    ruleCode: ruleCode ?? this.ruleCode,
+    severity: severity ?? this.severity,
+    status: status ?? this.status,
+    title: title ?? this.title,
+    description: description ?? this.description,
+    subjectUserId: subjectUserId.present
+        ? subjectUserId.value
+        : this.subjectUserId,
+    evidence: evidence ?? this.evidence,
+    relatedIds: relatedIds ?? this.relatedIds,
+    resolvedBy: resolvedBy.present ? resolvedBy.value : this.resolvedBy,
+    resolutionNote: resolutionNote.present
+        ? resolutionNote.value
+        : this.resolutionNote,
+    detectedAt: detectedAt ?? this.detectedAt,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    clientUpdatedAt: clientUpdatedAt ?? this.clientUpdatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    dedupeKey: dedupeKey ?? this.dedupeKey,
+    syncStatus: syncStatus ?? this.syncStatus,
+    lastSyncAttempt: lastSyncAttempt.present
+        ? lastSyncAttempt.value
+        : this.lastSyncAttempt,
+    syncError: syncError.present ? syncError.value : this.syncError,
+  );
+  FraudFlagRow copyWithCompanion(FraudFlagsTableCompanion data) {
+    return FraudFlagRow(
+      id: data.id.present ? data.id.value : this.id,
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      ruleCode: data.ruleCode.present ? data.ruleCode.value : this.ruleCode,
+      severity: data.severity.present ? data.severity.value : this.severity,
+      status: data.status.present ? data.status.value : this.status,
+      title: data.title.present ? data.title.value : this.title,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      subjectUserId: data.subjectUserId.present
+          ? data.subjectUserId.value
+          : this.subjectUserId,
+      evidence: data.evidence.present ? data.evidence.value : this.evidence,
+      relatedIds: data.relatedIds.present
+          ? data.relatedIds.value
+          : this.relatedIds,
+      resolvedBy: data.resolvedBy.present
+          ? data.resolvedBy.value
+          : this.resolvedBy,
+      resolutionNote: data.resolutionNote.present
+          ? data.resolutionNote.value
+          : this.resolutionNote,
+      detectedAt: data.detectedAt.present
+          ? data.detectedAt.value
+          : this.detectedAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      clientUpdatedAt: data.clientUpdatedAt.present
+          ? data.clientUpdatedAt.value
+          : this.clientUpdatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      dedupeKey: data.dedupeKey.present ? data.dedupeKey.value : this.dedupeKey,
+      syncStatus: data.syncStatus.present
+          ? data.syncStatus.value
+          : this.syncStatus,
+      lastSyncAttempt: data.lastSyncAttempt.present
+          ? data.lastSyncAttempt.value
+          : this.lastSyncAttempt,
+      syncError: data.syncError.present ? data.syncError.value : this.syncError,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FraudFlagRow(')
+          ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
+          ..write('branchId: $branchId, ')
+          ..write('ruleCode: $ruleCode, ')
+          ..write('severity: $severity, ')
+          ..write('status: $status, ')
+          ..write('title: $title, ')
+          ..write('description: $description, ')
+          ..write('subjectUserId: $subjectUserId, ')
+          ..write('evidence: $evidence, ')
+          ..write('relatedIds: $relatedIds, ')
+          ..write('resolvedBy: $resolvedBy, ')
+          ..write('resolutionNote: $resolutionNote, ')
+          ..write('detectedAt: $detectedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('clientUpdatedAt: $clientUpdatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('dedupeKey: $dedupeKey, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncAttempt: $lastSyncAttempt, ')
+          ..write('syncError: $syncError')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hashAll([
+    id,
+    businessId,
+    branchId,
+    ruleCode,
+    severity,
+    status,
+    title,
+    description,
+    subjectUserId,
+    evidence,
+    relatedIds,
+    resolvedBy,
+    resolutionNote,
+    detectedAt,
+    createdAt,
+    updatedAt,
+    clientUpdatedAt,
+    deletedAt,
+    dedupeKey,
+    syncStatus,
+    lastSyncAttempt,
+    syncError,
+  ]);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FraudFlagRow &&
+          other.id == this.id &&
+          other.businessId == this.businessId &&
+          other.branchId == this.branchId &&
+          other.ruleCode == this.ruleCode &&
+          other.severity == this.severity &&
+          other.status == this.status &&
+          other.title == this.title &&
+          other.description == this.description &&
+          other.subjectUserId == this.subjectUserId &&
+          other.evidence == this.evidence &&
+          other.relatedIds == this.relatedIds &&
+          other.resolvedBy == this.resolvedBy &&
+          other.resolutionNote == this.resolutionNote &&
+          other.detectedAt == this.detectedAt &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.clientUpdatedAt == this.clientUpdatedAt &&
+          other.deletedAt == this.deletedAt &&
+          other.dedupeKey == this.dedupeKey &&
+          other.syncStatus == this.syncStatus &&
+          other.lastSyncAttempt == this.lastSyncAttempt &&
+          other.syncError == this.syncError);
+}
+
+class FraudFlagsTableCompanion extends UpdateCompanion<FraudFlagRow> {
+  final Value<String> id;
+  final Value<String> businessId;
+  final Value<String?> branchId;
+  final Value<String> ruleCode;
+  final Value<String> severity;
+  final Value<String> status;
+  final Value<String> title;
+  final Value<String> description;
+  final Value<String?> subjectUserId;
+  final Value<String> evidence;
+  final Value<String> relatedIds;
+  final Value<String?> resolvedBy;
+  final Value<String?> resolutionNote;
+  final Value<DateTime> detectedAt;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime> clientUpdatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<String> dedupeKey;
+  final Value<int> syncStatus;
+  final Value<DateTime?> lastSyncAttempt;
+  final Value<String?> syncError;
+  final Value<int> rowid;
+  const FraudFlagsTableCompanion({
+    this.id = const Value.absent(),
+    this.businessId = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.ruleCode = const Value.absent(),
+    this.severity = const Value.absent(),
+    this.status = const Value.absent(),
+    this.title = const Value.absent(),
+    this.description = const Value.absent(),
+    this.subjectUserId = const Value.absent(),
+    this.evidence = const Value.absent(),
+    this.relatedIds = const Value.absent(),
+    this.resolvedBy = const Value.absent(),
+    this.resolutionNote = const Value.absent(),
+    this.detectedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.clientUpdatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.dedupeKey = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.lastSyncAttempt = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FraudFlagsTableCompanion.insert({
+    required String id,
+    required String businessId,
+    this.branchId = const Value.absent(),
+    required String ruleCode,
+    required String severity,
+    this.status = const Value.absent(),
+    required String title,
+    required String description,
+    this.subjectUserId = const Value.absent(),
+    this.evidence = const Value.absent(),
+    this.relatedIds = const Value.absent(),
+    this.resolvedBy = const Value.absent(),
+    this.resolutionNote = const Value.absent(),
+    required DateTime detectedAt,
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.clientUpdatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    required String dedupeKey,
+    this.syncStatus = const Value.absent(),
+    this.lastSyncAttempt = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       businessId = Value(businessId),
+       ruleCode = Value(ruleCode),
+       severity = Value(severity),
+       title = Value(title),
+       description = Value(description),
+       detectedAt = Value(detectedAt),
+       dedupeKey = Value(dedupeKey);
+  static Insertable<FraudFlagRow> custom({
+    Expression<String>? id,
+    Expression<String>? businessId,
+    Expression<String>? branchId,
+    Expression<String>? ruleCode,
+    Expression<String>? severity,
+    Expression<String>? status,
+    Expression<String>? title,
+    Expression<String>? description,
+    Expression<String>? subjectUserId,
+    Expression<String>? evidence,
+    Expression<String>? relatedIds,
+    Expression<String>? resolvedBy,
+    Expression<String>? resolutionNote,
+    Expression<DateTime>? detectedAt,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? clientUpdatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<String>? dedupeKey,
+    Expression<int>? syncStatus,
+    Expression<DateTime>? lastSyncAttempt,
+    Expression<String>? syncError,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (businessId != null) 'business_id': businessId,
+      if (branchId != null) 'branch_id': branchId,
+      if (ruleCode != null) 'rule_code': ruleCode,
+      if (severity != null) 'severity': severity,
+      if (status != null) 'status': status,
+      if (title != null) 'title': title,
+      if (description != null) 'description': description,
+      if (subjectUserId != null) 'subject_user_id': subjectUserId,
+      if (evidence != null) 'evidence': evidence,
+      if (relatedIds != null) 'related_ids': relatedIds,
+      if (resolvedBy != null) 'resolved_by': resolvedBy,
+      if (resolutionNote != null) 'resolution_note': resolutionNote,
+      if (detectedAt != null) 'detected_at': detectedAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (clientUpdatedAt != null) 'client_updated_at': clientUpdatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (dedupeKey != null) 'dedupe_key': dedupeKey,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (lastSyncAttempt != null) 'last_sync_attempt': lastSyncAttempt,
+      if (syncError != null) 'sync_error': syncError,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FraudFlagsTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? businessId,
+    Value<String?>? branchId,
+    Value<String>? ruleCode,
+    Value<String>? severity,
+    Value<String>? status,
+    Value<String>? title,
+    Value<String>? description,
+    Value<String?>? subjectUserId,
+    Value<String>? evidence,
+    Value<String>? relatedIds,
+    Value<String?>? resolvedBy,
+    Value<String?>? resolutionNote,
+    Value<DateTime>? detectedAt,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime>? clientUpdatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<String>? dedupeKey,
+    Value<int>? syncStatus,
+    Value<DateTime?>? lastSyncAttempt,
+    Value<String?>? syncError,
+    Value<int>? rowid,
+  }) {
+    return FraudFlagsTableCompanion(
+      id: id ?? this.id,
+      businessId: businessId ?? this.businessId,
+      branchId: branchId ?? this.branchId,
+      ruleCode: ruleCode ?? this.ruleCode,
+      severity: severity ?? this.severity,
+      status: status ?? this.status,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      subjectUserId: subjectUserId ?? this.subjectUserId,
+      evidence: evidence ?? this.evidence,
+      relatedIds: relatedIds ?? this.relatedIds,
+      resolvedBy: resolvedBy ?? this.resolvedBy,
+      resolutionNote: resolutionNote ?? this.resolutionNote,
+      detectedAt: detectedAt ?? this.detectedAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      clientUpdatedAt: clientUpdatedAt ?? this.clientUpdatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      dedupeKey: dedupeKey ?? this.dedupeKey,
+      syncStatus: syncStatus ?? this.syncStatus,
+      lastSyncAttempt: lastSyncAttempt ?? this.lastSyncAttempt,
+      syncError: syncError ?? this.syncError,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
+    }
+    if (ruleCode.present) {
+      map['rule_code'] = Variable<String>(ruleCode.value);
+    }
+    if (severity.present) {
+      map['severity'] = Variable<String>(severity.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (subjectUserId.present) {
+      map['subject_user_id'] = Variable<String>(subjectUserId.value);
+    }
+    if (evidence.present) {
+      map['evidence'] = Variable<String>(evidence.value);
+    }
+    if (relatedIds.present) {
+      map['related_ids'] = Variable<String>(relatedIds.value);
+    }
+    if (resolvedBy.present) {
+      map['resolved_by'] = Variable<String>(resolvedBy.value);
+    }
+    if (resolutionNote.present) {
+      map['resolution_note'] = Variable<String>(resolutionNote.value);
+    }
+    if (detectedAt.present) {
+      map['detected_at'] = Variable<DateTime>(detectedAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (clientUpdatedAt.present) {
+      map['client_updated_at'] = Variable<DateTime>(clientUpdatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (dedupeKey.present) {
+      map['dedupe_key'] = Variable<String>(dedupeKey.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<int>(syncStatus.value);
+    }
+    if (lastSyncAttempt.present) {
+      map['last_sync_attempt'] = Variable<DateTime>(lastSyncAttempt.value);
+    }
+    if (syncError.present) {
+      map['sync_error'] = Variable<String>(syncError.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FraudFlagsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
+          ..write('branchId: $branchId, ')
+          ..write('ruleCode: $ruleCode, ')
+          ..write('severity: $severity, ')
+          ..write('status: $status, ')
+          ..write('title: $title, ')
+          ..write('description: $description, ')
+          ..write('subjectUserId: $subjectUserId, ')
+          ..write('evidence: $evidence, ')
+          ..write('relatedIds: $relatedIds, ')
+          ..write('resolvedBy: $resolvedBy, ')
+          ..write('resolutionNote: $resolutionNote, ')
+          ..write('detectedAt: $detectedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('clientUpdatedAt: $clientUpdatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('dedupeKey: $dedupeKey, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncAttempt: $lastSyncAttempt, ')
+          ..write('syncError: $syncError, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $AuditOutboxTableTable extends AuditOutboxTable
+    with TableInfo<$AuditOutboxTableTable, AuditOutboxRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AuditOutboxTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _payloadMeta = const VerificationMeta(
+    'payload',
+  );
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+    'payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _attemptsMeta = const VerificationMeta(
+    'attempts',
+  );
+  @override
+  late final GeneratedColumn<int> attempts = GeneratedColumn<int>(
+    'attempts',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastErrorMeta = const VerificationMeta(
+    'lastError',
+  );
+  @override
+  late final GeneratedColumn<String> lastError = GeneratedColumn<String>(
+    'last_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    payload,
+    attempts,
+    lastError,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'audit_outbox';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AuditOutboxRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('payload')) {
+      context.handle(
+        _payloadMeta,
+        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    if (data.containsKey('attempts')) {
+      context.handle(
+        _attemptsMeta,
+        attempts.isAcceptableOrUnknown(data['attempts']!, _attemptsMeta),
+      );
+    }
+    if (data.containsKey('last_error')) {
+      context.handle(
+        _lastErrorMeta,
+        lastError.isAcceptableOrUnknown(data['last_error']!, _lastErrorMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AuditOutboxRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AuditOutboxRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      payload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload'],
+      )!,
+      attempts: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}attempts'],
+      )!,
+      lastError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_error'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AuditOutboxTableTable createAlias(String alias) {
+    return $AuditOutboxTableTable(attachedDatabase, alias);
+  }
+}
+
+class AuditOutboxRow extends DataClass implements Insertable<AuditOutboxRow> {
+  final int id;
+
+  /// JSON-encoded audit intent (action_type, entity, description, metadata,
+  /// business/branch/user ids, enqueued_at) — see AuditLogService.
+  final String payload;
+  final int attempts;
+  final String? lastError;
+  final DateTime createdAt;
+  const AuditOutboxRow({
+    required this.id,
+    required this.payload,
+    required this.attempts,
+    this.lastError,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['payload'] = Variable<String>(payload);
+    map['attempts'] = Variable<int>(attempts);
+    if (!nullToAbsent || lastError != null) {
+      map['last_error'] = Variable<String>(lastError);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  AuditOutboxTableCompanion toCompanion(bool nullToAbsent) {
+    return AuditOutboxTableCompanion(
+      id: Value(id),
+      payload: Value(payload),
+      attempts: Value(attempts),
+      lastError: lastError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastError),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory AuditOutboxRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AuditOutboxRow(
+      id: serializer.fromJson<int>(json['id']),
+      payload: serializer.fromJson<String>(json['payload']),
+      attempts: serializer.fromJson<int>(json['attempts']),
+      lastError: serializer.fromJson<String?>(json['lastError']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'payload': serializer.toJson<String>(payload),
+      'attempts': serializer.toJson<int>(attempts),
+      'lastError': serializer.toJson<String?>(lastError),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  AuditOutboxRow copyWith({
+    int? id,
+    String? payload,
+    int? attempts,
+    Value<String?> lastError = const Value.absent(),
+    DateTime? createdAt,
+  }) => AuditOutboxRow(
+    id: id ?? this.id,
+    payload: payload ?? this.payload,
+    attempts: attempts ?? this.attempts,
+    lastError: lastError.present ? lastError.value : this.lastError,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  AuditOutboxRow copyWithCompanion(AuditOutboxTableCompanion data) {
+    return AuditOutboxRow(
+      id: data.id.present ? data.id.value : this.id,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      attempts: data.attempts.present ? data.attempts.value : this.attempts,
+      lastError: data.lastError.present ? data.lastError.value : this.lastError,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AuditOutboxRow(')
+          ..write('id: $id, ')
+          ..write('payload: $payload, ')
+          ..write('attempts: $attempts, ')
+          ..write('lastError: $lastError, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, payload, attempts, lastError, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AuditOutboxRow &&
+          other.id == this.id &&
+          other.payload == this.payload &&
+          other.attempts == this.attempts &&
+          other.lastError == this.lastError &&
+          other.createdAt == this.createdAt);
+}
+
+class AuditOutboxTableCompanion extends UpdateCompanion<AuditOutboxRow> {
+  final Value<int> id;
+  final Value<String> payload;
+  final Value<int> attempts;
+  final Value<String?> lastError;
+  final Value<DateTime> createdAt;
+  const AuditOutboxTableCompanion({
+    this.id = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.attempts = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  AuditOutboxTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String payload,
+    this.attempts = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : payload = Value(payload);
+  static Insertable<AuditOutboxRow> custom({
+    Expression<int>? id,
+    Expression<String>? payload,
+    Expression<int>? attempts,
+    Expression<String>? lastError,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (payload != null) 'payload': payload,
+      if (attempts != null) 'attempts': attempts,
+      if (lastError != null) 'last_error': lastError,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  AuditOutboxTableCompanion copyWith({
+    Value<int>? id,
+    Value<String>? payload,
+    Value<int>? attempts,
+    Value<String?>? lastError,
+    Value<DateTime>? createdAt,
+  }) {
+    return AuditOutboxTableCompanion(
+      id: id ?? this.id,
+      payload: payload ?? this.payload,
+      attempts: attempts ?? this.attempts,
+      lastError: lastError ?? this.lastError,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
+    if (attempts.present) {
+      map['attempts'] = Variable<int>(attempts.value);
+    }
+    if (lastError.present) {
+      map['last_error'] = Variable<String>(lastError.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AuditOutboxTableCompanion(')
+          ..write('id: $id, ')
+          ..write('payload: $payload, ')
+          ..write('attempts: $attempts, ')
+          ..write('lastError: $lastError, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $FraudCandidatesTableTable extends FraudCandidatesTable
+    with TableInfo<$FraudCandidatesTableTable, FraudCandidateRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FraudCandidatesTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dedupeKeyMeta = const VerificationMeta(
+    'dedupeKey',
+  );
+  @override
+  late final GeneratedColumn<String> dedupeKey = GeneratedColumn<String>(
+    'dedupe_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ruleCodeMeta = const VerificationMeta(
+    'ruleCode',
+  );
+  @override
+  late final GeneratedColumn<String> ruleCode = GeneratedColumn<String>(
+    'rule_code',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _signatureMeta = const VerificationMeta(
+    'signature',
+  );
+  @override
+  late final GeneratedColumn<String> signature = GeneratedColumn<String>(
+    'signature',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _firstSeenAtMeta = const VerificationMeta(
+    'firstSeenAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> firstSeenAt = GeneratedColumn<DateTime>(
+    'first_seen_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastSeenAtMeta = const VerificationMeta(
+    'lastSeenAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastSeenAt = GeneratedColumn<DateTime>(
+    'last_seen_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _seenCountMeta = const VerificationMeta(
+    'seenCount',
+  );
+  @override
+  late final GeneratedColumn<int> seenCount = GeneratedColumn<int>(
+    'seen_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _watermarkAtFirstSeenMeta =
+      const VerificationMeta('watermarkAtFirstSeen');
+  @override
+  late final GeneratedColumn<DateTime> watermarkAtFirstSeen =
+      GeneratedColumn<DateTime>(
+        'watermark_at_first_seen',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  @override
+  List<GeneratedColumn> get $columns => [
+    businessId,
+    dedupeKey,
+    ruleCode,
+    signature,
+    firstSeenAt,
+    lastSeenAt,
+    seenCount,
+    watermarkAtFirstSeen,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'fraud_candidates';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FraudCandidateRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('dedupe_key')) {
+      context.handle(
+        _dedupeKeyMeta,
+        dedupeKey.isAcceptableOrUnknown(data['dedupe_key']!, _dedupeKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dedupeKeyMeta);
+    }
+    if (data.containsKey('rule_code')) {
+      context.handle(
+        _ruleCodeMeta,
+        ruleCode.isAcceptableOrUnknown(data['rule_code']!, _ruleCodeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_ruleCodeMeta);
+    }
+    if (data.containsKey('signature')) {
+      context.handle(
+        _signatureMeta,
+        signature.isAcceptableOrUnknown(data['signature']!, _signatureMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_signatureMeta);
+    }
+    if (data.containsKey('first_seen_at')) {
+      context.handle(
+        _firstSeenAtMeta,
+        firstSeenAt.isAcceptableOrUnknown(
+          data['first_seen_at']!,
+          _firstSeenAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_firstSeenAtMeta);
+    }
+    if (data.containsKey('last_seen_at')) {
+      context.handle(
+        _lastSeenAtMeta,
+        lastSeenAt.isAcceptableOrUnknown(
+          data['last_seen_at']!,
+          _lastSeenAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_lastSeenAtMeta);
+    }
+    if (data.containsKey('seen_count')) {
+      context.handle(
+        _seenCountMeta,
+        seenCount.isAcceptableOrUnknown(data['seen_count']!, _seenCountMeta),
+      );
+    }
+    if (data.containsKey('watermark_at_first_seen')) {
+      context.handle(
+        _watermarkAtFirstSeenMeta,
+        watermarkAtFirstSeen.isAcceptableOrUnknown(
+          data['watermark_at_first_seen']!,
+          _watermarkAtFirstSeenMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {businessId, dedupeKey};
+  @override
+  FraudCandidateRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FraudCandidateRow(
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      dedupeKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}dedupe_key'],
+      )!,
+      ruleCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rule_code'],
+      )!,
+      signature: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}signature'],
+      )!,
+      firstSeenAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}first_seen_at'],
+      )!,
+      lastSeenAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_seen_at'],
+      )!,
+      seenCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}seen_count'],
+      )!,
+      watermarkAtFirstSeen: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}watermark_at_first_seen'],
+      ),
+    );
+  }
+
+  @override
+  $FraudCandidatesTableTable createAlias(String alias) {
+    return $FraudCandidatesTableTable(attachedDatabase, alias);
+  }
+}
+
+class FraudCandidateRow extends DataClass
+    implements Insertable<FraudCandidateRow> {
+  final String businessId;
+
+  /// Same deterministic incident key the flag would carry.
+  final String dedupeKey;
+  final String ruleCode;
+
+  /// Stable fingerprint of the observation (encoded evidence) — a changed
+  /// signature means a different observation and restarts confirmation.
+  final String signature;
+  final DateTime firstSeenAt;
+  final DateTime lastSeenAt;
+  final int seenCount;
+
+  /// audit_logs pull watermark at first sighting — promotion of
+  /// mirror-dependent rules requires the mirror to have advanced since.
+  final DateTime? watermarkAtFirstSeen;
+  const FraudCandidateRow({
+    required this.businessId,
+    required this.dedupeKey,
+    required this.ruleCode,
+    required this.signature,
+    required this.firstSeenAt,
+    required this.lastSeenAt,
+    required this.seenCount,
+    this.watermarkAtFirstSeen,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['business_id'] = Variable<String>(businessId);
+    map['dedupe_key'] = Variable<String>(dedupeKey);
+    map['rule_code'] = Variable<String>(ruleCode);
+    map['signature'] = Variable<String>(signature);
+    map['first_seen_at'] = Variable<DateTime>(firstSeenAt);
+    map['last_seen_at'] = Variable<DateTime>(lastSeenAt);
+    map['seen_count'] = Variable<int>(seenCount);
+    if (!nullToAbsent || watermarkAtFirstSeen != null) {
+      map['watermark_at_first_seen'] = Variable<DateTime>(watermarkAtFirstSeen);
+    }
+    return map;
+  }
+
+  FraudCandidatesTableCompanion toCompanion(bool nullToAbsent) {
+    return FraudCandidatesTableCompanion(
+      businessId: Value(businessId),
+      dedupeKey: Value(dedupeKey),
+      ruleCode: Value(ruleCode),
+      signature: Value(signature),
+      firstSeenAt: Value(firstSeenAt),
+      lastSeenAt: Value(lastSeenAt),
+      seenCount: Value(seenCount),
+      watermarkAtFirstSeen: watermarkAtFirstSeen == null && nullToAbsent
+          ? const Value.absent()
+          : Value(watermarkAtFirstSeen),
+    );
+  }
+
+  factory FraudCandidateRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FraudCandidateRow(
+      businessId: serializer.fromJson<String>(json['businessId']),
+      dedupeKey: serializer.fromJson<String>(json['dedupeKey']),
+      ruleCode: serializer.fromJson<String>(json['ruleCode']),
+      signature: serializer.fromJson<String>(json['signature']),
+      firstSeenAt: serializer.fromJson<DateTime>(json['firstSeenAt']),
+      lastSeenAt: serializer.fromJson<DateTime>(json['lastSeenAt']),
+      seenCount: serializer.fromJson<int>(json['seenCount']),
+      watermarkAtFirstSeen: serializer.fromJson<DateTime?>(
+        json['watermarkAtFirstSeen'],
+      ),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'businessId': serializer.toJson<String>(businessId),
+      'dedupeKey': serializer.toJson<String>(dedupeKey),
+      'ruleCode': serializer.toJson<String>(ruleCode),
+      'signature': serializer.toJson<String>(signature),
+      'firstSeenAt': serializer.toJson<DateTime>(firstSeenAt),
+      'lastSeenAt': serializer.toJson<DateTime>(lastSeenAt),
+      'seenCount': serializer.toJson<int>(seenCount),
+      'watermarkAtFirstSeen': serializer.toJson<DateTime?>(
+        watermarkAtFirstSeen,
+      ),
+    };
+  }
+
+  FraudCandidateRow copyWith({
+    String? businessId,
+    String? dedupeKey,
+    String? ruleCode,
+    String? signature,
+    DateTime? firstSeenAt,
+    DateTime? lastSeenAt,
+    int? seenCount,
+    Value<DateTime?> watermarkAtFirstSeen = const Value.absent(),
+  }) => FraudCandidateRow(
+    businessId: businessId ?? this.businessId,
+    dedupeKey: dedupeKey ?? this.dedupeKey,
+    ruleCode: ruleCode ?? this.ruleCode,
+    signature: signature ?? this.signature,
+    firstSeenAt: firstSeenAt ?? this.firstSeenAt,
+    lastSeenAt: lastSeenAt ?? this.lastSeenAt,
+    seenCount: seenCount ?? this.seenCount,
+    watermarkAtFirstSeen: watermarkAtFirstSeen.present
+        ? watermarkAtFirstSeen.value
+        : this.watermarkAtFirstSeen,
+  );
+  FraudCandidateRow copyWithCompanion(FraudCandidatesTableCompanion data) {
+    return FraudCandidateRow(
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      dedupeKey: data.dedupeKey.present ? data.dedupeKey.value : this.dedupeKey,
+      ruleCode: data.ruleCode.present ? data.ruleCode.value : this.ruleCode,
+      signature: data.signature.present ? data.signature.value : this.signature,
+      firstSeenAt: data.firstSeenAt.present
+          ? data.firstSeenAt.value
+          : this.firstSeenAt,
+      lastSeenAt: data.lastSeenAt.present
+          ? data.lastSeenAt.value
+          : this.lastSeenAt,
+      seenCount: data.seenCount.present ? data.seenCount.value : this.seenCount,
+      watermarkAtFirstSeen: data.watermarkAtFirstSeen.present
+          ? data.watermarkAtFirstSeen.value
+          : this.watermarkAtFirstSeen,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FraudCandidateRow(')
+          ..write('businessId: $businessId, ')
+          ..write('dedupeKey: $dedupeKey, ')
+          ..write('ruleCode: $ruleCode, ')
+          ..write('signature: $signature, ')
+          ..write('firstSeenAt: $firstSeenAt, ')
+          ..write('lastSeenAt: $lastSeenAt, ')
+          ..write('seenCount: $seenCount, ')
+          ..write('watermarkAtFirstSeen: $watermarkAtFirstSeen')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    businessId,
+    dedupeKey,
+    ruleCode,
+    signature,
+    firstSeenAt,
+    lastSeenAt,
+    seenCount,
+    watermarkAtFirstSeen,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FraudCandidateRow &&
+          other.businessId == this.businessId &&
+          other.dedupeKey == this.dedupeKey &&
+          other.ruleCode == this.ruleCode &&
+          other.signature == this.signature &&
+          other.firstSeenAt == this.firstSeenAt &&
+          other.lastSeenAt == this.lastSeenAt &&
+          other.seenCount == this.seenCount &&
+          other.watermarkAtFirstSeen == this.watermarkAtFirstSeen);
+}
+
+class FraudCandidatesTableCompanion extends UpdateCompanion<FraudCandidateRow> {
+  final Value<String> businessId;
+  final Value<String> dedupeKey;
+  final Value<String> ruleCode;
+  final Value<String> signature;
+  final Value<DateTime> firstSeenAt;
+  final Value<DateTime> lastSeenAt;
+  final Value<int> seenCount;
+  final Value<DateTime?> watermarkAtFirstSeen;
+  final Value<int> rowid;
+  const FraudCandidatesTableCompanion({
+    this.businessId = const Value.absent(),
+    this.dedupeKey = const Value.absent(),
+    this.ruleCode = const Value.absent(),
+    this.signature = const Value.absent(),
+    this.firstSeenAt = const Value.absent(),
+    this.lastSeenAt = const Value.absent(),
+    this.seenCount = const Value.absent(),
+    this.watermarkAtFirstSeen = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FraudCandidatesTableCompanion.insert({
+    required String businessId,
+    required String dedupeKey,
+    required String ruleCode,
+    required String signature,
+    required DateTime firstSeenAt,
+    required DateTime lastSeenAt,
+    this.seenCount = const Value.absent(),
+    this.watermarkAtFirstSeen = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : businessId = Value(businessId),
+       dedupeKey = Value(dedupeKey),
+       ruleCode = Value(ruleCode),
+       signature = Value(signature),
+       firstSeenAt = Value(firstSeenAt),
+       lastSeenAt = Value(lastSeenAt);
+  static Insertable<FraudCandidateRow> custom({
+    Expression<String>? businessId,
+    Expression<String>? dedupeKey,
+    Expression<String>? ruleCode,
+    Expression<String>? signature,
+    Expression<DateTime>? firstSeenAt,
+    Expression<DateTime>? lastSeenAt,
+    Expression<int>? seenCount,
+    Expression<DateTime>? watermarkAtFirstSeen,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (businessId != null) 'business_id': businessId,
+      if (dedupeKey != null) 'dedupe_key': dedupeKey,
+      if (ruleCode != null) 'rule_code': ruleCode,
+      if (signature != null) 'signature': signature,
+      if (firstSeenAt != null) 'first_seen_at': firstSeenAt,
+      if (lastSeenAt != null) 'last_seen_at': lastSeenAt,
+      if (seenCount != null) 'seen_count': seenCount,
+      if (watermarkAtFirstSeen != null)
+        'watermark_at_first_seen': watermarkAtFirstSeen,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FraudCandidatesTableCompanion copyWith({
+    Value<String>? businessId,
+    Value<String>? dedupeKey,
+    Value<String>? ruleCode,
+    Value<String>? signature,
+    Value<DateTime>? firstSeenAt,
+    Value<DateTime>? lastSeenAt,
+    Value<int>? seenCount,
+    Value<DateTime?>? watermarkAtFirstSeen,
+    Value<int>? rowid,
+  }) {
+    return FraudCandidatesTableCompanion(
+      businessId: businessId ?? this.businessId,
+      dedupeKey: dedupeKey ?? this.dedupeKey,
+      ruleCode: ruleCode ?? this.ruleCode,
+      signature: signature ?? this.signature,
+      firstSeenAt: firstSeenAt ?? this.firstSeenAt,
+      lastSeenAt: lastSeenAt ?? this.lastSeenAt,
+      seenCount: seenCount ?? this.seenCount,
+      watermarkAtFirstSeen: watermarkAtFirstSeen ?? this.watermarkAtFirstSeen,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (dedupeKey.present) {
+      map['dedupe_key'] = Variable<String>(dedupeKey.value);
+    }
+    if (ruleCode.present) {
+      map['rule_code'] = Variable<String>(ruleCode.value);
+    }
+    if (signature.present) {
+      map['signature'] = Variable<String>(signature.value);
+    }
+    if (firstSeenAt.present) {
+      map['first_seen_at'] = Variable<DateTime>(firstSeenAt.value);
+    }
+    if (lastSeenAt.present) {
+      map['last_seen_at'] = Variable<DateTime>(lastSeenAt.value);
+    }
+    if (seenCount.present) {
+      map['seen_count'] = Variable<int>(seenCount.value);
+    }
+    if (watermarkAtFirstSeen.present) {
+      map['watermark_at_first_seen'] = Variable<DateTime>(
+        watermarkAtFirstSeen.value,
+      );
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FraudCandidatesTableCompanion(')
+          ..write('businessId: $businessId, ')
+          ..write('dedupeKey: $dedupeKey, ')
+          ..write('ruleCode: $ruleCode, ')
+          ..write('signature: $signature, ')
+          ..write('firstSeenAt: $firstSeenAt, ')
+          ..write('lastSeenAt: $lastSeenAt, ')
+          ..write('seenCount: $seenCount, ')
+          ..write('watermarkAtFirstSeen: $watermarkAtFirstSeen, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DevicesTableTable extends DevicesTable
+    with TableInfo<$DevicesTableTable, DeviceRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DevicesTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _deviceUidMeta = const VerificationMeta(
+    'deviceUid',
+  );
+  @override
+  late final GeneratedColumn<String> deviceUid = GeneratedColumn<String>(
+    'device_uid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _labelMeta = const VerificationMeta('label');
+  @override
+  late final GeneratedColumn<String> label = GeneratedColumn<String>(
+    'label',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _platformMeta = const VerificationMeta(
+    'platform',
+  );
+  @override
+  late final GeneratedColumn<String> platform = GeneratedColumn<String>(
+    'platform',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('unknown'),
+  );
+  static const VerificationMeta _firstSeenAtMeta = const VerificationMeta(
+    'firstSeenAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> firstSeenAt = GeneratedColumn<DateTime>(
+    'first_seen_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _lastSeenAtMeta = const VerificationMeta(
+    'lastSeenAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastSeenAt = GeneratedColumn<DateTime>(
+    'last_seen_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+    'syncStatus',
+  );
+  @override
+  late final GeneratedColumn<int> syncStatus = GeneratedColumn<int>(
+    'sync_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastSyncAttemptMeta = const VerificationMeta(
+    'lastSyncAttempt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastSyncAttempt =
+      GeneratedColumn<DateTime>(
+        'last_sync_attempt',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _syncErrorMeta = const VerificationMeta(
+    'syncError',
+  );
+  @override
+  late final GeneratedColumn<String> syncError = GeneratedColumn<String>(
+    'sync_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    deviceUid,
+    businessId,
+    label,
+    platform,
+    firstSeenAt,
+    lastSeenAt,
+    syncStatus,
+    lastSyncAttempt,
+    syncError,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'devices';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DeviceRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('device_uid')) {
+      context.handle(
+        _deviceUidMeta,
+        deviceUid.isAcceptableOrUnknown(data['device_uid']!, _deviceUidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_deviceUidMeta);
+    }
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('label')) {
+      context.handle(
+        _labelMeta,
+        label.isAcceptableOrUnknown(data['label']!, _labelMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_labelMeta);
+    }
+    if (data.containsKey('platform')) {
+      context.handle(
+        _platformMeta,
+        platform.isAcceptableOrUnknown(data['platform']!, _platformMeta),
+      );
+    }
+    if (data.containsKey('first_seen_at')) {
+      context.handle(
+        _firstSeenAtMeta,
+        firstSeenAt.isAcceptableOrUnknown(
+          data['first_seen_at']!,
+          _firstSeenAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_seen_at')) {
+      context.handle(
+        _lastSeenAtMeta,
+        lastSeenAt.isAcceptableOrUnknown(
+          data['last_seen_at']!,
+          _lastSeenAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('sync_status')) {
+      context.handle(
+        _syncStatusMeta,
+        syncStatus.isAcceptableOrUnknown(data['sync_status']!, _syncStatusMeta),
+      );
+    }
+    if (data.containsKey('last_sync_attempt')) {
+      context.handle(
+        _lastSyncAttemptMeta,
+        lastSyncAttempt.isAcceptableOrUnknown(
+          data['last_sync_attempt']!,
+          _lastSyncAttemptMeta,
+        ),
+      );
+    }
+    if (data.containsKey('sync_error')) {
+      context.handle(
+        _syncErrorMeta,
+        syncError.isAcceptableOrUnknown(data['sync_error']!, _syncErrorMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {deviceUid};
+  @override
+  DeviceRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DeviceRow(
+      deviceUid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}device_uid'],
+      )!,
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      label: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}label'],
+      )!,
+      platform: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}platform'],
+      )!,
+      firstSeenAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}first_seen_at'],
+      )!,
+      lastSeenAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_seen_at'],
+      )!,
+      syncStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sync_status'],
+      )!,
+      lastSyncAttempt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_sync_attempt'],
+      ),
+      syncError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_error'],
+      ),
+    );
+  }
+
+  @override
+  $DevicesTableTable createAlias(String alias) {
+    return $DevicesTableTable(attachedDatabase, alias);
+  }
+}
+
+class DeviceRow extends DataClass implements Insertable<DeviceRow> {
+  /// Stable installation uid (DeviceIdentityService) — the chain key.
+  final String deviceUid;
+  final String businessId;
+
+  /// Human label, e.g. "Pixel 7 · Android 14" / "Web · chrome". Resolved once.
+  final String label;
+
+  /// 'web' | 'android' | 'ios' | 'windows' | 'macos' | 'linux' | 'unknown'.
+  final String platform;
+  final DateTime firstSeenAt;
+  final DateTime lastSeenAt;
+
+  /// 0=pendingUpload, 1=pendingUpdate, 3=synced, 4=failed
+  final int syncStatus;
+  final DateTime? lastSyncAttempt;
+  final String? syncError;
+  const DeviceRow({
+    required this.deviceUid,
+    required this.businessId,
+    required this.label,
+    required this.platform,
+    required this.firstSeenAt,
+    required this.lastSeenAt,
+    required this.syncStatus,
+    this.lastSyncAttempt,
+    this.syncError,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['device_uid'] = Variable<String>(deviceUid);
+    map['business_id'] = Variable<String>(businessId);
+    map['label'] = Variable<String>(label);
+    map['platform'] = Variable<String>(platform);
+    map['first_seen_at'] = Variable<DateTime>(firstSeenAt);
+    map['last_seen_at'] = Variable<DateTime>(lastSeenAt);
+    map['sync_status'] = Variable<int>(syncStatus);
+    if (!nullToAbsent || lastSyncAttempt != null) {
+      map['last_sync_attempt'] = Variable<DateTime>(lastSyncAttempt);
+    }
+    if (!nullToAbsent || syncError != null) {
+      map['sync_error'] = Variable<String>(syncError);
+    }
+    return map;
+  }
+
+  DevicesTableCompanion toCompanion(bool nullToAbsent) {
+    return DevicesTableCompanion(
+      deviceUid: Value(deviceUid),
+      businessId: Value(businessId),
+      label: Value(label),
+      platform: Value(platform),
+      firstSeenAt: Value(firstSeenAt),
+      lastSeenAt: Value(lastSeenAt),
+      syncStatus: Value(syncStatus),
+      lastSyncAttempt: lastSyncAttempt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSyncAttempt),
+      syncError: syncError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncError),
+    );
+  }
+
+  factory DeviceRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DeviceRow(
+      deviceUid: serializer.fromJson<String>(json['deviceUid']),
+      businessId: serializer.fromJson<String>(json['businessId']),
+      label: serializer.fromJson<String>(json['label']),
+      platform: serializer.fromJson<String>(json['platform']),
+      firstSeenAt: serializer.fromJson<DateTime>(json['firstSeenAt']),
+      lastSeenAt: serializer.fromJson<DateTime>(json['lastSeenAt']),
+      syncStatus: serializer.fromJson<int>(json['syncStatus']),
+      lastSyncAttempt: serializer.fromJson<DateTime?>(json['lastSyncAttempt']),
+      syncError: serializer.fromJson<String?>(json['syncError']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'deviceUid': serializer.toJson<String>(deviceUid),
+      'businessId': serializer.toJson<String>(businessId),
+      'label': serializer.toJson<String>(label),
+      'platform': serializer.toJson<String>(platform),
+      'firstSeenAt': serializer.toJson<DateTime>(firstSeenAt),
+      'lastSeenAt': serializer.toJson<DateTime>(lastSeenAt),
+      'syncStatus': serializer.toJson<int>(syncStatus),
+      'lastSyncAttempt': serializer.toJson<DateTime?>(lastSyncAttempt),
+      'syncError': serializer.toJson<String?>(syncError),
+    };
+  }
+
+  DeviceRow copyWith({
+    String? deviceUid,
+    String? businessId,
+    String? label,
+    String? platform,
+    DateTime? firstSeenAt,
+    DateTime? lastSeenAt,
+    int? syncStatus,
+    Value<DateTime?> lastSyncAttempt = const Value.absent(),
+    Value<String?> syncError = const Value.absent(),
+  }) => DeviceRow(
+    deviceUid: deviceUid ?? this.deviceUid,
+    businessId: businessId ?? this.businessId,
+    label: label ?? this.label,
+    platform: platform ?? this.platform,
+    firstSeenAt: firstSeenAt ?? this.firstSeenAt,
+    lastSeenAt: lastSeenAt ?? this.lastSeenAt,
+    syncStatus: syncStatus ?? this.syncStatus,
+    lastSyncAttempt: lastSyncAttempt.present
+        ? lastSyncAttempt.value
+        : this.lastSyncAttempt,
+    syncError: syncError.present ? syncError.value : this.syncError,
+  );
+  DeviceRow copyWithCompanion(DevicesTableCompanion data) {
+    return DeviceRow(
+      deviceUid: data.deviceUid.present ? data.deviceUid.value : this.deviceUid,
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      label: data.label.present ? data.label.value : this.label,
+      platform: data.platform.present ? data.platform.value : this.platform,
+      firstSeenAt: data.firstSeenAt.present
+          ? data.firstSeenAt.value
+          : this.firstSeenAt,
+      lastSeenAt: data.lastSeenAt.present
+          ? data.lastSeenAt.value
+          : this.lastSeenAt,
+      syncStatus: data.syncStatus.present
+          ? data.syncStatus.value
+          : this.syncStatus,
+      lastSyncAttempt: data.lastSyncAttempt.present
+          ? data.lastSyncAttempt.value
+          : this.lastSyncAttempt,
+      syncError: data.syncError.present ? data.syncError.value : this.syncError,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeviceRow(')
+          ..write('deviceUid: $deviceUid, ')
+          ..write('businessId: $businessId, ')
+          ..write('label: $label, ')
+          ..write('platform: $platform, ')
+          ..write('firstSeenAt: $firstSeenAt, ')
+          ..write('lastSeenAt: $lastSeenAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncAttempt: $lastSyncAttempt, ')
+          ..write('syncError: $syncError')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    deviceUid,
+    businessId,
+    label,
+    platform,
+    firstSeenAt,
+    lastSeenAt,
+    syncStatus,
+    lastSyncAttempt,
+    syncError,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DeviceRow &&
+          other.deviceUid == this.deviceUid &&
+          other.businessId == this.businessId &&
+          other.label == this.label &&
+          other.platform == this.platform &&
+          other.firstSeenAt == this.firstSeenAt &&
+          other.lastSeenAt == this.lastSeenAt &&
+          other.syncStatus == this.syncStatus &&
+          other.lastSyncAttempt == this.lastSyncAttempt &&
+          other.syncError == this.syncError);
+}
+
+class DevicesTableCompanion extends UpdateCompanion<DeviceRow> {
+  final Value<String> deviceUid;
+  final Value<String> businessId;
+  final Value<String> label;
+  final Value<String> platform;
+  final Value<DateTime> firstSeenAt;
+  final Value<DateTime> lastSeenAt;
+  final Value<int> syncStatus;
+  final Value<DateTime?> lastSyncAttempt;
+  final Value<String?> syncError;
+  final Value<int> rowid;
+  const DevicesTableCompanion({
+    this.deviceUid = const Value.absent(),
+    this.businessId = const Value.absent(),
+    this.label = const Value.absent(),
+    this.platform = const Value.absent(),
+    this.firstSeenAt = const Value.absent(),
+    this.lastSeenAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.lastSyncAttempt = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DevicesTableCompanion.insert({
+    required String deviceUid,
+    required String businessId,
+    required String label,
+    this.platform = const Value.absent(),
+    this.firstSeenAt = const Value.absent(),
+    this.lastSeenAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.lastSyncAttempt = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : deviceUid = Value(deviceUid),
+       businessId = Value(businessId),
+       label = Value(label);
+  static Insertable<DeviceRow> custom({
+    Expression<String>? deviceUid,
+    Expression<String>? businessId,
+    Expression<String>? label,
+    Expression<String>? platform,
+    Expression<DateTime>? firstSeenAt,
+    Expression<DateTime>? lastSeenAt,
+    Expression<int>? syncStatus,
+    Expression<DateTime>? lastSyncAttempt,
+    Expression<String>? syncError,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (deviceUid != null) 'device_uid': deviceUid,
+      if (businessId != null) 'business_id': businessId,
+      if (label != null) 'label': label,
+      if (platform != null) 'platform': platform,
+      if (firstSeenAt != null) 'first_seen_at': firstSeenAt,
+      if (lastSeenAt != null) 'last_seen_at': lastSeenAt,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (lastSyncAttempt != null) 'last_sync_attempt': lastSyncAttempt,
+      if (syncError != null) 'sync_error': syncError,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DevicesTableCompanion copyWith({
+    Value<String>? deviceUid,
+    Value<String>? businessId,
+    Value<String>? label,
+    Value<String>? platform,
+    Value<DateTime>? firstSeenAt,
+    Value<DateTime>? lastSeenAt,
+    Value<int>? syncStatus,
+    Value<DateTime?>? lastSyncAttempt,
+    Value<String?>? syncError,
+    Value<int>? rowid,
+  }) {
+    return DevicesTableCompanion(
+      deviceUid: deviceUid ?? this.deviceUid,
+      businessId: businessId ?? this.businessId,
+      label: label ?? this.label,
+      platform: platform ?? this.platform,
+      firstSeenAt: firstSeenAt ?? this.firstSeenAt,
+      lastSeenAt: lastSeenAt ?? this.lastSeenAt,
+      syncStatus: syncStatus ?? this.syncStatus,
+      lastSyncAttempt: lastSyncAttempt ?? this.lastSyncAttempt,
+      syncError: syncError ?? this.syncError,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (deviceUid.present) {
+      map['device_uid'] = Variable<String>(deviceUid.value);
+    }
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (label.present) {
+      map['label'] = Variable<String>(label.value);
+    }
+    if (platform.present) {
+      map['platform'] = Variable<String>(platform.value);
+    }
+    if (firstSeenAt.present) {
+      map['first_seen_at'] = Variable<DateTime>(firstSeenAt.value);
+    }
+    if (lastSeenAt.present) {
+      map['last_seen_at'] = Variable<DateTime>(lastSeenAt.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<int>(syncStatus.value);
+    }
+    if (lastSyncAttempt.present) {
+      map['last_sync_attempt'] = Variable<DateTime>(lastSyncAttempt.value);
+    }
+    if (syncError.present) {
+      map['sync_error'] = Variable<String>(syncError.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DevicesTableCompanion(')
+          ..write('deviceUid: $deviceUid, ')
+          ..write('businessId: $businessId, ')
+          ..write('label: $label, ')
+          ..write('platform: $platform, ')
+          ..write('firstSeenAt: $firstSeenAt, ')
+          ..write('lastSeenAt: $lastSeenAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncAttempt: $lastSyncAttempt, ')
+          ..write('syncError: $syncError, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -25493,6 +28478,15 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $RefundSettingsTableTable refundSettingsTable =
       $RefundSettingsTableTable(this);
   late final $CustomersTableTable customersTable = $CustomersTableTable(this);
+  late final $FraudFlagsTableTable fraudFlagsTable = $FraudFlagsTableTable(
+    this,
+  );
+  late final $AuditOutboxTableTable auditOutboxTable = $AuditOutboxTableTable(
+    this,
+  );
+  late final $FraudCandidatesTableTable fraudCandidatesTable =
+      $FraudCandidatesTableTable(this);
+  late final $DevicesTableTable devicesTable = $DevicesTableTable(this);
   late final AuthContextDao authContextDao = AuthContextDao(
     this as AppDatabase,
   );
@@ -25556,6 +28550,14 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this as AppDatabase,
   );
   late final CustomersDao customersDao = CustomersDao(this as AppDatabase);
+  late final FraudFlagsDao fraudFlagsDao = FraudFlagsDao(this as AppDatabase);
+  late final AuditOutboxDao auditOutboxDao = AuditOutboxDao(
+    this as AppDatabase,
+  );
+  late final FraudCandidatesDao fraudCandidatesDao = FraudCandidatesDao(
+    this as AppDatabase,
+  );
+  late final DevicesDao devicesDao = DevicesDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -25594,6 +28596,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     refundItemsTable,
     refundSettingsTable,
     customersTable,
+    fraudFlagsTable,
+    auditOutboxTable,
+    fraudCandidatesTable,
+    devicesTable,
   ];
 }
 
@@ -31858,6 +34864,11 @@ typedef $$AuditLogsTableTableCreateCompanionBuilder =
       Value<String> metadata,
       Value<String> deviceId,
       Value<DateTime> createdAt,
+      Value<int?> seq,
+      Value<String?> prevHash,
+      Value<String?> entryHash,
+      Value<String?> deviceUid,
+      Value<int?> hashVersion,
       Value<int> syncStatus,
       Value<DateTime?> lastSyncAttempt,
       Value<String?> syncError,
@@ -31876,6 +34887,11 @@ typedef $$AuditLogsTableTableUpdateCompanionBuilder =
       Value<String> metadata,
       Value<String> deviceId,
       Value<DateTime> createdAt,
+      Value<int?> seq,
+      Value<String?> prevHash,
+      Value<String?> entryHash,
+      Value<String?> deviceUid,
+      Value<int?> hashVersion,
       Value<int> syncStatus,
       Value<DateTime?> lastSyncAttempt,
       Value<String?> syncError,
@@ -31943,6 +34959,31 @@ class $$AuditLogsTableTableFilterComposer
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get seq => $composableBuilder(
+    column: $table.seq,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get prevHash => $composableBuilder(
+    column: $table.prevHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entryHash => $composableBuilder(
+    column: $table.entryHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deviceUid => $composableBuilder(
+    column: $table.deviceUid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get hashVersion => $composableBuilder(
+    column: $table.hashVersion,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -32026,6 +35067,31 @@ class $$AuditLogsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get seq => $composableBuilder(
+    column: $table.seq,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get prevHash => $composableBuilder(
+    column: $table.prevHash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entryHash => $composableBuilder(
+    column: $table.entryHash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deviceUid => $composableBuilder(
+    column: $table.deviceUid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get hashVersion => $composableBuilder(
+    column: $table.hashVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get syncStatus => $composableBuilder(
     column: $table.syncStatus,
     builder: (column) => ColumnOrderings(column),
@@ -32092,6 +35158,23 @@ class $$AuditLogsTableTableAnnotationComposer
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
+  GeneratedColumn<int> get seq =>
+      $composableBuilder(column: $table.seq, builder: (column) => column);
+
+  GeneratedColumn<String> get prevHash =>
+      $composableBuilder(column: $table.prevHash, builder: (column) => column);
+
+  GeneratedColumn<String> get entryHash =>
+      $composableBuilder(column: $table.entryHash, builder: (column) => column);
+
+  GeneratedColumn<String> get deviceUid =>
+      $composableBuilder(column: $table.deviceUid, builder: (column) => column);
+
+  GeneratedColumn<int> get hashVersion => $composableBuilder(
+    column: $table.hashVersion,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get syncStatus => $composableBuilder(
     column: $table.syncStatus,
     builder: (column) => column,
@@ -32150,6 +35233,11 @@ class $$AuditLogsTableTableTableManager
                 Value<String> metadata = const Value.absent(),
                 Value<String> deviceId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<int?> seq = const Value.absent(),
+                Value<String?> prevHash = const Value.absent(),
+                Value<String?> entryHash = const Value.absent(),
+                Value<String?> deviceUid = const Value.absent(),
+                Value<int?> hashVersion = const Value.absent(),
                 Value<int> syncStatus = const Value.absent(),
                 Value<DateTime?> lastSyncAttempt = const Value.absent(),
                 Value<String?> syncError = const Value.absent(),
@@ -32166,6 +35254,11 @@ class $$AuditLogsTableTableTableManager
                 metadata: metadata,
                 deviceId: deviceId,
                 createdAt: createdAt,
+                seq: seq,
+                prevHash: prevHash,
+                entryHash: entryHash,
+                deviceUid: deviceUid,
+                hashVersion: hashVersion,
                 syncStatus: syncStatus,
                 lastSyncAttempt: lastSyncAttempt,
                 syncError: syncError,
@@ -32184,6 +35277,11 @@ class $$AuditLogsTableTableTableManager
                 Value<String> metadata = const Value.absent(),
                 Value<String> deviceId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<int?> seq = const Value.absent(),
+                Value<String?> prevHash = const Value.absent(),
+                Value<String?> entryHash = const Value.absent(),
+                Value<String?> deviceUid = const Value.absent(),
+                Value<int?> hashVersion = const Value.absent(),
                 Value<int> syncStatus = const Value.absent(),
                 Value<DateTime?> lastSyncAttempt = const Value.absent(),
                 Value<String?> syncError = const Value.absent(),
@@ -32200,6 +35298,11 @@ class $$AuditLogsTableTableTableManager
                 metadata: metadata,
                 deviceId: deviceId,
                 createdAt: createdAt,
+                seq: seq,
+                prevHash: prevHash,
+                entryHash: entryHash,
+                deviceUid: deviceUid,
+                hashVersion: hashVersion,
                 syncStatus: syncStatus,
                 lastSyncAttempt: lastSyncAttempt,
                 syncError: syncError,
@@ -37823,6 +40926,1315 @@ typedef $$CustomersTableTableProcessedTableManager =
       CustomerRow,
       PrefetchHooks Function()
     >;
+typedef $$FraudFlagsTableTableCreateCompanionBuilder =
+    FraudFlagsTableCompanion Function({
+      required String id,
+      required String businessId,
+      Value<String?> branchId,
+      required String ruleCode,
+      required String severity,
+      Value<String> status,
+      required String title,
+      required String description,
+      Value<String?> subjectUserId,
+      Value<String> evidence,
+      Value<String> relatedIds,
+      Value<String?> resolvedBy,
+      Value<String?> resolutionNote,
+      required DateTime detectedAt,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime> clientUpdatedAt,
+      Value<DateTime?> deletedAt,
+      required String dedupeKey,
+      Value<int> syncStatus,
+      Value<DateTime?> lastSyncAttempt,
+      Value<String?> syncError,
+      Value<int> rowid,
+    });
+typedef $$FraudFlagsTableTableUpdateCompanionBuilder =
+    FraudFlagsTableCompanion Function({
+      Value<String> id,
+      Value<String> businessId,
+      Value<String?> branchId,
+      Value<String> ruleCode,
+      Value<String> severity,
+      Value<String> status,
+      Value<String> title,
+      Value<String> description,
+      Value<String?> subjectUserId,
+      Value<String> evidence,
+      Value<String> relatedIds,
+      Value<String?> resolvedBy,
+      Value<String?> resolutionNote,
+      Value<DateTime> detectedAt,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime> clientUpdatedAt,
+      Value<DateTime?> deletedAt,
+      Value<String> dedupeKey,
+      Value<int> syncStatus,
+      Value<DateTime?> lastSyncAttempt,
+      Value<String?> syncError,
+      Value<int> rowid,
+    });
+
+class $$FraudFlagsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $FraudFlagsTableTable> {
+  $$FraudFlagsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ruleCode => $composableBuilder(
+    column: $table.ruleCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get severity => $composableBuilder(
+    column: $table.severity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get subjectUserId => $composableBuilder(
+    column: $table.subjectUserId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get evidence => $composableBuilder(
+    column: $table.evidence,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get relatedIds => $composableBuilder(
+    column: $table.relatedIds,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get resolvedBy => $composableBuilder(
+    column: $table.resolvedBy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get resolutionNote => $composableBuilder(
+    column: $table.resolutionNote,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get detectedAt => $composableBuilder(
+    column: $table.detectedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get clientUpdatedAt => $composableBuilder(
+    column: $table.clientUpdatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dedupeKey => $composableBuilder(
+    column: $table.dedupeKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$FraudFlagsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $FraudFlagsTableTable> {
+  $$FraudFlagsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ruleCode => $composableBuilder(
+    column: $table.ruleCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get severity => $composableBuilder(
+    column: $table.severity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get subjectUserId => $composableBuilder(
+    column: $table.subjectUserId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get evidence => $composableBuilder(
+    column: $table.evidence,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get relatedIds => $composableBuilder(
+    column: $table.relatedIds,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get resolvedBy => $composableBuilder(
+    column: $table.resolvedBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get resolutionNote => $composableBuilder(
+    column: $table.resolutionNote,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get detectedAt => $composableBuilder(
+    column: $table.detectedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get clientUpdatedAt => $composableBuilder(
+    column: $table.clientUpdatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dedupeKey => $composableBuilder(
+    column: $table.dedupeKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$FraudFlagsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FraudFlagsTableTable> {
+  $$FraudFlagsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
+
+  GeneratedColumn<String> get ruleCode =>
+      $composableBuilder(column: $table.ruleCode, builder: (column) => column);
+
+  GeneratedColumn<String> get severity =>
+      $composableBuilder(column: $table.severity, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get subjectUserId => $composableBuilder(
+    column: $table.subjectUserId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get evidence =>
+      $composableBuilder(column: $table.evidence, builder: (column) => column);
+
+  GeneratedColumn<String> get relatedIds => $composableBuilder(
+    column: $table.relatedIds,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get resolvedBy => $composableBuilder(
+    column: $table.resolvedBy,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get resolutionNote => $composableBuilder(
+    column: $table.resolutionNote,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get detectedAt => $composableBuilder(
+    column: $table.detectedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get clientUpdatedAt => $composableBuilder(
+    column: $table.clientUpdatedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get dedupeKey =>
+      $composableBuilder(column: $table.dedupeKey, builder: (column) => column);
+
+  GeneratedColumn<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get syncError =>
+      $composableBuilder(column: $table.syncError, builder: (column) => column);
+}
+
+class $$FraudFlagsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FraudFlagsTableTable,
+          FraudFlagRow,
+          $$FraudFlagsTableTableFilterComposer,
+          $$FraudFlagsTableTableOrderingComposer,
+          $$FraudFlagsTableTableAnnotationComposer,
+          $$FraudFlagsTableTableCreateCompanionBuilder,
+          $$FraudFlagsTableTableUpdateCompanionBuilder,
+          (
+            FraudFlagRow,
+            BaseReferences<_$AppDatabase, $FraudFlagsTableTable, FraudFlagRow>,
+          ),
+          FraudFlagRow,
+          PrefetchHooks Function()
+        > {
+  $$FraudFlagsTableTableTableManager(
+    _$AppDatabase db,
+    $FraudFlagsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FraudFlagsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FraudFlagsTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FraudFlagsTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> businessId = const Value.absent(),
+                Value<String?> branchId = const Value.absent(),
+                Value<String> ruleCode = const Value.absent(),
+                Value<String> severity = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> description = const Value.absent(),
+                Value<String?> subjectUserId = const Value.absent(),
+                Value<String> evidence = const Value.absent(),
+                Value<String> relatedIds = const Value.absent(),
+                Value<String?> resolvedBy = const Value.absent(),
+                Value<String?> resolutionNote = const Value.absent(),
+                Value<DateTime> detectedAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime> clientUpdatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<String> dedupeKey = const Value.absent(),
+                Value<int> syncStatus = const Value.absent(),
+                Value<DateTime?> lastSyncAttempt = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FraudFlagsTableCompanion(
+                id: id,
+                businessId: businessId,
+                branchId: branchId,
+                ruleCode: ruleCode,
+                severity: severity,
+                status: status,
+                title: title,
+                description: description,
+                subjectUserId: subjectUserId,
+                evidence: evidence,
+                relatedIds: relatedIds,
+                resolvedBy: resolvedBy,
+                resolutionNote: resolutionNote,
+                detectedAt: detectedAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                clientUpdatedAt: clientUpdatedAt,
+                deletedAt: deletedAt,
+                dedupeKey: dedupeKey,
+                syncStatus: syncStatus,
+                lastSyncAttempt: lastSyncAttempt,
+                syncError: syncError,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String businessId,
+                Value<String?> branchId = const Value.absent(),
+                required String ruleCode,
+                required String severity,
+                Value<String> status = const Value.absent(),
+                required String title,
+                required String description,
+                Value<String?> subjectUserId = const Value.absent(),
+                Value<String> evidence = const Value.absent(),
+                Value<String> relatedIds = const Value.absent(),
+                Value<String?> resolvedBy = const Value.absent(),
+                Value<String?> resolutionNote = const Value.absent(),
+                required DateTime detectedAt,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime> clientUpdatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                required String dedupeKey,
+                Value<int> syncStatus = const Value.absent(),
+                Value<DateTime?> lastSyncAttempt = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FraudFlagsTableCompanion.insert(
+                id: id,
+                businessId: businessId,
+                branchId: branchId,
+                ruleCode: ruleCode,
+                severity: severity,
+                status: status,
+                title: title,
+                description: description,
+                subjectUserId: subjectUserId,
+                evidence: evidence,
+                relatedIds: relatedIds,
+                resolvedBy: resolvedBy,
+                resolutionNote: resolutionNote,
+                detectedAt: detectedAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                clientUpdatedAt: clientUpdatedAt,
+                deletedAt: deletedAt,
+                dedupeKey: dedupeKey,
+                syncStatus: syncStatus,
+                lastSyncAttempt: lastSyncAttempt,
+                syncError: syncError,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$FraudFlagsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FraudFlagsTableTable,
+      FraudFlagRow,
+      $$FraudFlagsTableTableFilterComposer,
+      $$FraudFlagsTableTableOrderingComposer,
+      $$FraudFlagsTableTableAnnotationComposer,
+      $$FraudFlagsTableTableCreateCompanionBuilder,
+      $$FraudFlagsTableTableUpdateCompanionBuilder,
+      (
+        FraudFlagRow,
+        BaseReferences<_$AppDatabase, $FraudFlagsTableTable, FraudFlagRow>,
+      ),
+      FraudFlagRow,
+      PrefetchHooks Function()
+    >;
+typedef $$AuditOutboxTableTableCreateCompanionBuilder =
+    AuditOutboxTableCompanion Function({
+      Value<int> id,
+      required String payload,
+      Value<int> attempts,
+      Value<String?> lastError,
+      Value<DateTime> createdAt,
+    });
+typedef $$AuditOutboxTableTableUpdateCompanionBuilder =
+    AuditOutboxTableCompanion Function({
+      Value<int> id,
+      Value<String> payload,
+      Value<int> attempts,
+      Value<String?> lastError,
+      Value<DateTime> createdAt,
+    });
+
+class $$AuditOutboxTableTableFilterComposer
+    extends Composer<_$AppDatabase, $AuditOutboxTableTable> {
+  $$AuditOutboxTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get attempts => $composableBuilder(
+    column: $table.attempts,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AuditOutboxTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $AuditOutboxTableTable> {
+  $$AuditOutboxTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get attempts => $composableBuilder(
+    column: $table.attempts,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AuditOutboxTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AuditOutboxTableTable> {
+  $$AuditOutboxTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumn<int> get attempts =>
+      $composableBuilder(column: $table.attempts, builder: (column) => column);
+
+  GeneratedColumn<String> get lastError =>
+      $composableBuilder(column: $table.lastError, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$AuditOutboxTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AuditOutboxTableTable,
+          AuditOutboxRow,
+          $$AuditOutboxTableTableFilterComposer,
+          $$AuditOutboxTableTableOrderingComposer,
+          $$AuditOutboxTableTableAnnotationComposer,
+          $$AuditOutboxTableTableCreateCompanionBuilder,
+          $$AuditOutboxTableTableUpdateCompanionBuilder,
+          (
+            AuditOutboxRow,
+            BaseReferences<
+              _$AppDatabase,
+              $AuditOutboxTableTable,
+              AuditOutboxRow
+            >,
+          ),
+          AuditOutboxRow,
+          PrefetchHooks Function()
+        > {
+  $$AuditOutboxTableTableTableManager(
+    _$AppDatabase db,
+    $AuditOutboxTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AuditOutboxTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AuditOutboxTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AuditOutboxTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> payload = const Value.absent(),
+                Value<int> attempts = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => AuditOutboxTableCompanion(
+                id: id,
+                payload: payload,
+                attempts: attempts,
+                lastError: lastError,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String payload,
+                Value<int> attempts = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => AuditOutboxTableCompanion.insert(
+                id: id,
+                payload: payload,
+                attempts: attempts,
+                lastError: lastError,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AuditOutboxTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AuditOutboxTableTable,
+      AuditOutboxRow,
+      $$AuditOutboxTableTableFilterComposer,
+      $$AuditOutboxTableTableOrderingComposer,
+      $$AuditOutboxTableTableAnnotationComposer,
+      $$AuditOutboxTableTableCreateCompanionBuilder,
+      $$AuditOutboxTableTableUpdateCompanionBuilder,
+      (
+        AuditOutboxRow,
+        BaseReferences<_$AppDatabase, $AuditOutboxTableTable, AuditOutboxRow>,
+      ),
+      AuditOutboxRow,
+      PrefetchHooks Function()
+    >;
+typedef $$FraudCandidatesTableTableCreateCompanionBuilder =
+    FraudCandidatesTableCompanion Function({
+      required String businessId,
+      required String dedupeKey,
+      required String ruleCode,
+      required String signature,
+      required DateTime firstSeenAt,
+      required DateTime lastSeenAt,
+      Value<int> seenCount,
+      Value<DateTime?> watermarkAtFirstSeen,
+      Value<int> rowid,
+    });
+typedef $$FraudCandidatesTableTableUpdateCompanionBuilder =
+    FraudCandidatesTableCompanion Function({
+      Value<String> businessId,
+      Value<String> dedupeKey,
+      Value<String> ruleCode,
+      Value<String> signature,
+      Value<DateTime> firstSeenAt,
+      Value<DateTime> lastSeenAt,
+      Value<int> seenCount,
+      Value<DateTime?> watermarkAtFirstSeen,
+      Value<int> rowid,
+    });
+
+class $$FraudCandidatesTableTableFilterComposer
+    extends Composer<_$AppDatabase, $FraudCandidatesTableTable> {
+  $$FraudCandidatesTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dedupeKey => $composableBuilder(
+    column: $table.dedupeKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ruleCode => $composableBuilder(
+    column: $table.ruleCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get signature => $composableBuilder(
+    column: $table.signature,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get firstSeenAt => $composableBuilder(
+    column: $table.firstSeenAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastSeenAt => $composableBuilder(
+    column: $table.lastSeenAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get seenCount => $composableBuilder(
+    column: $table.seenCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get watermarkAtFirstSeen => $composableBuilder(
+    column: $table.watermarkAtFirstSeen,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$FraudCandidatesTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $FraudCandidatesTableTable> {
+  $$FraudCandidatesTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dedupeKey => $composableBuilder(
+    column: $table.dedupeKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ruleCode => $composableBuilder(
+    column: $table.ruleCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get signature => $composableBuilder(
+    column: $table.signature,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get firstSeenAt => $composableBuilder(
+    column: $table.firstSeenAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastSeenAt => $composableBuilder(
+    column: $table.lastSeenAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get seenCount => $composableBuilder(
+    column: $table.seenCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get watermarkAtFirstSeen => $composableBuilder(
+    column: $table.watermarkAtFirstSeen,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$FraudCandidatesTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FraudCandidatesTableTable> {
+  $$FraudCandidatesTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get dedupeKey =>
+      $composableBuilder(column: $table.dedupeKey, builder: (column) => column);
+
+  GeneratedColumn<String> get ruleCode =>
+      $composableBuilder(column: $table.ruleCode, builder: (column) => column);
+
+  GeneratedColumn<String> get signature =>
+      $composableBuilder(column: $table.signature, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get firstSeenAt => $composableBuilder(
+    column: $table.firstSeenAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastSeenAt => $composableBuilder(
+    column: $table.lastSeenAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get seenCount =>
+      $composableBuilder(column: $table.seenCount, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get watermarkAtFirstSeen => $composableBuilder(
+    column: $table.watermarkAtFirstSeen,
+    builder: (column) => column,
+  );
+}
+
+class $$FraudCandidatesTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FraudCandidatesTableTable,
+          FraudCandidateRow,
+          $$FraudCandidatesTableTableFilterComposer,
+          $$FraudCandidatesTableTableOrderingComposer,
+          $$FraudCandidatesTableTableAnnotationComposer,
+          $$FraudCandidatesTableTableCreateCompanionBuilder,
+          $$FraudCandidatesTableTableUpdateCompanionBuilder,
+          (
+            FraudCandidateRow,
+            BaseReferences<
+              _$AppDatabase,
+              $FraudCandidatesTableTable,
+              FraudCandidateRow
+            >,
+          ),
+          FraudCandidateRow,
+          PrefetchHooks Function()
+        > {
+  $$FraudCandidatesTableTableTableManager(
+    _$AppDatabase db,
+    $FraudCandidatesTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FraudCandidatesTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FraudCandidatesTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$FraudCandidatesTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> businessId = const Value.absent(),
+                Value<String> dedupeKey = const Value.absent(),
+                Value<String> ruleCode = const Value.absent(),
+                Value<String> signature = const Value.absent(),
+                Value<DateTime> firstSeenAt = const Value.absent(),
+                Value<DateTime> lastSeenAt = const Value.absent(),
+                Value<int> seenCount = const Value.absent(),
+                Value<DateTime?> watermarkAtFirstSeen = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FraudCandidatesTableCompanion(
+                businessId: businessId,
+                dedupeKey: dedupeKey,
+                ruleCode: ruleCode,
+                signature: signature,
+                firstSeenAt: firstSeenAt,
+                lastSeenAt: lastSeenAt,
+                seenCount: seenCount,
+                watermarkAtFirstSeen: watermarkAtFirstSeen,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String businessId,
+                required String dedupeKey,
+                required String ruleCode,
+                required String signature,
+                required DateTime firstSeenAt,
+                required DateTime lastSeenAt,
+                Value<int> seenCount = const Value.absent(),
+                Value<DateTime?> watermarkAtFirstSeen = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FraudCandidatesTableCompanion.insert(
+                businessId: businessId,
+                dedupeKey: dedupeKey,
+                ruleCode: ruleCode,
+                signature: signature,
+                firstSeenAt: firstSeenAt,
+                lastSeenAt: lastSeenAt,
+                seenCount: seenCount,
+                watermarkAtFirstSeen: watermarkAtFirstSeen,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$FraudCandidatesTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FraudCandidatesTableTable,
+      FraudCandidateRow,
+      $$FraudCandidatesTableTableFilterComposer,
+      $$FraudCandidatesTableTableOrderingComposer,
+      $$FraudCandidatesTableTableAnnotationComposer,
+      $$FraudCandidatesTableTableCreateCompanionBuilder,
+      $$FraudCandidatesTableTableUpdateCompanionBuilder,
+      (
+        FraudCandidateRow,
+        BaseReferences<
+          _$AppDatabase,
+          $FraudCandidatesTableTable,
+          FraudCandidateRow
+        >,
+      ),
+      FraudCandidateRow,
+      PrefetchHooks Function()
+    >;
+typedef $$DevicesTableTableCreateCompanionBuilder =
+    DevicesTableCompanion Function({
+      required String deviceUid,
+      required String businessId,
+      required String label,
+      Value<String> platform,
+      Value<DateTime> firstSeenAt,
+      Value<DateTime> lastSeenAt,
+      Value<int> syncStatus,
+      Value<DateTime?> lastSyncAttempt,
+      Value<String?> syncError,
+      Value<int> rowid,
+    });
+typedef $$DevicesTableTableUpdateCompanionBuilder =
+    DevicesTableCompanion Function({
+      Value<String> deviceUid,
+      Value<String> businessId,
+      Value<String> label,
+      Value<String> platform,
+      Value<DateTime> firstSeenAt,
+      Value<DateTime> lastSeenAt,
+      Value<int> syncStatus,
+      Value<DateTime?> lastSyncAttempt,
+      Value<String?> syncError,
+      Value<int> rowid,
+    });
+
+class $$DevicesTableTableFilterComposer
+    extends Composer<_$AppDatabase, $DevicesTableTable> {
+  $$DevicesTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get deviceUid => $composableBuilder(
+    column: $table.deviceUid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get platform => $composableBuilder(
+    column: $table.platform,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get firstSeenAt => $composableBuilder(
+    column: $table.firstSeenAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastSeenAt => $composableBuilder(
+    column: $table.lastSeenAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DevicesTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $DevicesTableTable> {
+  $$DevicesTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get deviceUid => $composableBuilder(
+    column: $table.deviceUid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get platform => $composableBuilder(
+    column: $table.platform,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get firstSeenAt => $composableBuilder(
+    column: $table.firstSeenAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastSeenAt => $composableBuilder(
+    column: $table.lastSeenAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DevicesTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DevicesTableTable> {
+  $$DevicesTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get deviceUid =>
+      $composableBuilder(column: $table.deviceUid, builder: (column) => column);
+
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get label =>
+      $composableBuilder(column: $table.label, builder: (column) => column);
+
+  GeneratedColumn<String> get platform =>
+      $composableBuilder(column: $table.platform, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get firstSeenAt => $composableBuilder(
+    column: $table.firstSeenAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastSeenAt => $composableBuilder(
+    column: $table.lastSeenAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastSyncAttempt => $composableBuilder(
+    column: $table.lastSyncAttempt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get syncError =>
+      $composableBuilder(column: $table.syncError, builder: (column) => column);
+}
+
+class $$DevicesTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DevicesTableTable,
+          DeviceRow,
+          $$DevicesTableTableFilterComposer,
+          $$DevicesTableTableOrderingComposer,
+          $$DevicesTableTableAnnotationComposer,
+          $$DevicesTableTableCreateCompanionBuilder,
+          $$DevicesTableTableUpdateCompanionBuilder,
+          (
+            DeviceRow,
+            BaseReferences<_$AppDatabase, $DevicesTableTable, DeviceRow>,
+          ),
+          DeviceRow,
+          PrefetchHooks Function()
+        > {
+  $$DevicesTableTableTableManager(_$AppDatabase db, $DevicesTableTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DevicesTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DevicesTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DevicesTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> deviceUid = const Value.absent(),
+                Value<String> businessId = const Value.absent(),
+                Value<String> label = const Value.absent(),
+                Value<String> platform = const Value.absent(),
+                Value<DateTime> firstSeenAt = const Value.absent(),
+                Value<DateTime> lastSeenAt = const Value.absent(),
+                Value<int> syncStatus = const Value.absent(),
+                Value<DateTime?> lastSyncAttempt = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DevicesTableCompanion(
+                deviceUid: deviceUid,
+                businessId: businessId,
+                label: label,
+                platform: platform,
+                firstSeenAt: firstSeenAt,
+                lastSeenAt: lastSeenAt,
+                syncStatus: syncStatus,
+                lastSyncAttempt: lastSyncAttempt,
+                syncError: syncError,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String deviceUid,
+                required String businessId,
+                required String label,
+                Value<String> platform = const Value.absent(),
+                Value<DateTime> firstSeenAt = const Value.absent(),
+                Value<DateTime> lastSeenAt = const Value.absent(),
+                Value<int> syncStatus = const Value.absent(),
+                Value<DateTime?> lastSyncAttempt = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DevicesTableCompanion.insert(
+                deviceUid: deviceUid,
+                businessId: businessId,
+                label: label,
+                platform: platform,
+                firstSeenAt: firstSeenAt,
+                lastSeenAt: lastSeenAt,
+                syncStatus: syncStatus,
+                lastSyncAttempt: lastSyncAttempt,
+                syncError: syncError,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DevicesTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DevicesTableTable,
+      DeviceRow,
+      $$DevicesTableTableFilterComposer,
+      $$DevicesTableTableOrderingComposer,
+      $$DevicesTableTableAnnotationComposer,
+      $$DevicesTableTableCreateCompanionBuilder,
+      $$DevicesTableTableUpdateCompanionBuilder,
+      (DeviceRow, BaseReferences<_$AppDatabase, $DevicesTableTable, DeviceRow>),
+      DeviceRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -37911,4 +42323,12 @@ class $AppDatabaseManager {
       $$RefundSettingsTableTableTableManager(_db, _db.refundSettingsTable);
   $$CustomersTableTableTableManager get customersTable =>
       $$CustomersTableTableTableManager(_db, _db.customersTable);
+  $$FraudFlagsTableTableTableManager get fraudFlagsTable =>
+      $$FraudFlagsTableTableTableManager(_db, _db.fraudFlagsTable);
+  $$AuditOutboxTableTableTableManager get auditOutboxTable =>
+      $$AuditOutboxTableTableTableManager(_db, _db.auditOutboxTable);
+  $$FraudCandidatesTableTableTableManager get fraudCandidatesTable =>
+      $$FraudCandidatesTableTableTableManager(_db, _db.fraudCandidatesTable);
+  $$DevicesTableTableTableManager get devicesTable =>
+      $$DevicesTableTableTableManager(_db, _db.devicesTable);
 }

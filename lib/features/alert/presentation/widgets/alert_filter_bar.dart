@@ -19,10 +19,17 @@ class AlertFilterBar extends StatelessWidget {
     required this.onSeverityChanged,
   });
 
-  static const _statuses = ['All', 'New', 'Investigating', 'Resolved'];
+  static const _statuses = [
+    'All',
+    'New',
+    'Investigating',
+    'Resolved',
+    'Dismissed',
+  ];
 
   static final _severityItems = [
     AppDropdownItem(value: 'All Severity', label: 'All Severity'),
+    AppDropdownItem(value: 'Critical', label: 'Critical'),
     AppDropdownItem(value: 'High', label: 'High'),
     AppDropdownItem(value: 'Medium', label: 'Medium'),
     AppDropdownItem(value: 'Low', label: 'Low'),

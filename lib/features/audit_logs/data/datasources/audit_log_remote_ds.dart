@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:pos/core/errors/audit_chain_conflict_exception.dart';
+
 class AuditLogRemoteDs {
   final SupabaseClient _client;
 
@@ -10,10 +12,49 @@ class AuditLogRemoteDs {
     try {
       await _client.from('audit_logs').insert(rows);
     } on PostgrestException catch (e) {
-      // 23505 = unique_violation: row already synced from a previous attempt.
-      if (e.code == '23505') return;
+      if (e.code == '23505') {
+        // Which constraint fired matters: a duplicate id is a benign
+        // re-push, but a ux_audit_chain hit means the server holds a
+        // DIFFERENT row at this (business, device, seq) — the tamper signal
+        // T3 exists to catch. Never swallow that one.
+        final text = '${e.message} ${e.details ?? ''}';
+        if (text.contains('ux_audit_chain')) {
+          throw AuditChainConflictException(
+            auditLogId: rows.first['id'] as String? ?? '',
+            detail: e.message,
+          );
+        }
+        return;
+      }
       rethrow;
     }
+  }
+
+  /// Server-side head of THIS device's chain — genesis-resume after a
+  /// reinstall (see AuditChainHeadResolver). Tenant-scoped SECURITY DEFINER
+  /// RPC; returns null when the server has no chain for this uid.
+  Future<({int seq, String hash})?> fetchMyDeviceChainHead(
+    String deviceUid,
+  ) async {
+    final res = await _client
+        .rpc('get_my_device_chain_head', params: {'p_device_uid': deviceUid})
+        .timeout(const Duration(seconds: 5));
+    if (res is List && res.isNotEmpty) {
+      final row = Map<String, dynamic>.from(res.first as Map);
+      final seq = (row['max_seq'] as num?)?.toInt();
+      final hash = row['head_hash'] as String?;
+      if (seq != null && hash != null) return (seq: seq, hash: hash);
+    }
+    return null;
+  }
+
+  /// All device chain heads for the caller's business — powers the verify
+  /// UI's truncation check. Gated server-side by audit_logs.verify.
+  Future<List<Map<String, dynamic>>> fetchChainHeads() async {
+    final res = await _client
+        .rpc('get_audit_chain_heads')
+        .timeout(const Duration(seconds: 8));
+    return List<Map<String, dynamic>>.from(res as List);
   }
 
   /// Audit logs for a business, ordered by (created_at, id) ascending for the

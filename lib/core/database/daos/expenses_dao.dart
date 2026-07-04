@@ -112,10 +112,18 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
-  Future<void> upsertFromServer(Map<String, dynamic> row) {
-    return into(expensesTable).insertOnConflictUpdate(
+  Future<void> upsertFromServer(Map<String, dynamic> row) async {
+    final id = row['id'] as String;
+    // Never overwrite a local row with unsynced changes (offline edit wins).
+    final existing = await (select(expensesTable)
+          ..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (existing != null && existing.syncStatus != SyncStatus.synced.toInt()) {
+      return;
+    }
+    await into(expensesTable).insertOnConflictUpdate(
       ExpensesTableCompanion.insert(
-        id: row['id'] as String,
+        id: id,
         businessId: row['business_id'] as String,
         branchId: Value(row['branch_id'] as String?),
         branchName: Value(row['branch_name'] as String?),

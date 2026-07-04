@@ -316,6 +316,28 @@ const _kGroups = <_PermGroup>[
     ],
   ),
   _PermGroup(
+    label: 'Fraud & Risk',
+    description: 'Alerts raised by the on-device fraud detection engine',
+    icon: IconlyLight.shield_done,
+    permissions: [
+      _PermEntry(
+        'fraud.view',
+        'View Fraud Alerts',
+        'See fraud and risk alerts for their branch',
+      ),
+      _PermEntry(
+        'fraud.resolve',
+        'Resolve Fraud Alerts',
+        'Investigate, resolve, or dismiss alerts (never their own)',
+      ),
+      _PermEntry(
+        'audit_logs.verify',
+        'Verify Audit Chain',
+        'Run the tamper-evidence check over the audit trail',
+      ),
+    ],
+  ),
+  _PermGroup(
     label: 'Procurement',
     description: 'Purchase orders, receiving and supplier management',
     icon: IconlyLight.work,

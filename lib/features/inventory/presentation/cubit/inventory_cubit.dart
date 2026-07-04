@@ -2,10 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:pos/core/audit/audit_log_service.dart';
-import 'package:pos/core/config/di.dart';
 import 'package:pos/core/errors/app_error_mapper.dart';
-import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/features/inventory/data/inventory_data.dart';
 import 'package:pos/features/inventory/domain/repositories/i_inventory_repository.dart';
 import 'package:pos/core/widgets/app_view_toggle.dart';
@@ -103,24 +100,8 @@ class InventoryCubit extends Cubit<InventoryState> {
       note: note,
     );
 
-    final entityLabel = variantName.isNotEmpty
-        ? '$productName · $variantName'
-        : productName;
-    sl<AuditLogService>().log(
-      actionType: AuditLogActionType.stockAdjusted,
-      entityType: 'inventory',
-      entityName: entityLabel,
-      description:
-          '${isIncoming ? 'Stock in' : 'Stock out'}: $quantity unit(s) of $entityLabel — $reason',
-      metadata: {
-        'is_incoming': isIncoming,
-        'quantity': quantity,
-        'reason': reason,
-        'note': ?note,
-      },
-      businessId: businessId,
-      branchId: branchId,
-    );
+    // stockAdjusted is audit-logged inside StockMovementService.apply —
+    // every manual movement path shares one chained entry point.
 
     // The watcher will trigger a reload automatically.
     // For optimistic update, trigger immediately.

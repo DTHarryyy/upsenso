@@ -87,6 +87,7 @@ Future<Widget> bootstrap() async {
       await sl<PermissionService>().loadEnabledModules(bid);
     }
     // Sync from Supabase in the background — does not block startup.
+
     sl<PermissionService>().syncPermissions(u.id).ignore();
     if (bid != null && bid.isNotEmpty) {
       sl<PermissionService>().syncModules(bid).ignore();
@@ -236,6 +237,8 @@ Future<void> _initNobodyWho() async {
   try {
     await nobodywho.NobodyWho.init();
   } catch (e, st) {
-    debugPrint('NobodyWho init failed: $e\n$st — rule-based parser will be used');
+    debugPrint(
+      'NobodyWho init failed: $e\n$st — rule-based parser will be used',
+    );
   }
 }

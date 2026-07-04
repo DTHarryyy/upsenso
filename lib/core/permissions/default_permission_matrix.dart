@@ -67,10 +67,13 @@ abstract final class DefaultPermissionMatrix {
     PermissionKeys.settingsEditBranch: true,
     PermissionKeys.auditLogsView: false,
     PermissionKeys.auditLogsDelete: false,
+    PermissionKeys.auditLogsVerify: false,
     PermissionKeys.suppliersView: true,
     PermissionKeys.suppliersManage: true,
     PermissionKeys.crmView: true,
     PermissionKeys.crmManage: true,
+    PermissionKeys.fraudView: true,
+    PermissionKeys.fraudResolve: true,
     PermissionKeys.procurementView: true,
     PermissionKeys.procurementCreatePo: true,
     PermissionKeys.procurementApprovePo: true,
@@ -96,6 +99,7 @@ abstract final class DefaultPermissionMatrix {
     PermissionKeys.navProcurement: true,
     PermissionKeys.navRecipes: true,
     PermissionKeys.navCustomers: true,
+    PermissionKeys.navFraud: true,
     PermissionKeys.dataCrossBranchAccess: false,
   };
 
@@ -142,12 +146,15 @@ abstract final class DefaultPermissionMatrix {
     PermissionKeys.settingsEditBranch: false,
     PermissionKeys.auditLogsView: false,
     PermissionKeys.auditLogsDelete: false,
+    PermissionKeys.auditLogsVerify: false,
     PermissionKeys.suppliersView: false,
     PermissionKeys.suppliersManage: false,
     // Cashiers can look up/attach an EXISTING customer at the till, but not
     // create/edit them (quick-add stays manager-level).
     PermissionKeys.crmView: true,
     PermissionKeys.crmManage: false,
+    PermissionKeys.fraudView: false,
+    PermissionKeys.fraudResolve: false,
     PermissionKeys.procurementView: false,
     PermissionKeys.procurementCreatePo: false,
     PermissionKeys.procurementApprovePo: false,
@@ -173,6 +180,7 @@ abstract final class DefaultPermissionMatrix {
     PermissionKeys.navProcurement: false,
     PermissionKeys.navRecipes: false,
     PermissionKeys.navCustomers: false,
+    PermissionKeys.navFraud: false,
     PermissionKeys.dataCrossBranchAccess: false,
   };
 
@@ -219,10 +227,13 @@ abstract final class DefaultPermissionMatrix {
     PermissionKeys.settingsEditBranch: false,
     PermissionKeys.auditLogsView: false,
     PermissionKeys.auditLogsDelete: false,
+    PermissionKeys.auditLogsVerify: false,
     PermissionKeys.suppliersView: true,
     PermissionKeys.suppliersManage: true,
     PermissionKeys.crmView: false,
     PermissionKeys.crmManage: false,
+    PermissionKeys.fraudView: false,
+    PermissionKeys.fraudResolve: false,
     PermissionKeys.procurementView: true,
     PermissionKeys.procurementCreatePo: false,
     PermissionKeys.procurementApprovePo: false,
@@ -248,6 +259,7 @@ abstract final class DefaultPermissionMatrix {
     PermissionKeys.navProcurement: true,
     PermissionKeys.navRecipes: true,
     PermissionKeys.navCustomers: false,
+    PermissionKeys.navFraud: false,
     PermissionKeys.dataCrossBranchAccess: false,
   };
 }

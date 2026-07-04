@@ -60,6 +60,23 @@ enum AuditLogActionType {
   // ── Settings ─────────────────────────────────────────────────────────────
   businessModuleChanged,
 
+  /// Refund approval controls changed (require-approval toggle / threshold) —
+  /// watched by the CONTROL_CHANGE fraud rule, since the threshold is the
+  /// number refund structuring hides under.
+  refundSettingsChanged,
+
+  // ── Fraud engine ─────────────────────────────────────────────────────────
+  /// The engine raised a new fraud flag — chained, so deleting the flag
+  /// locally still leaves a tamper-evident trace that it existed.
+  fraudFlagRaised,
+
+  /// A fraud flag was resolved/dismissed (who + status in metadata).
+  fraudFlagResolved,
+
+  /// A conflicted device chain tail was re-chained past the server head
+  /// (benign same-device restart) — seq range in metadata.
+  auditChainReconciled,
+
   // ── Permissions ──────────────────────────────────────────────────────────
   /// A user attempted an action they are not authorised to perform.
   permissionDenied,
@@ -185,6 +202,14 @@ extension AuditLogActionTypeX on AuditLogActionType {
         return 'CUSTOMER_ARCHIVED';
       case AuditLogActionType.businessModuleChanged:
         return 'BUSINESS_MODULE_CHANGED';
+      case AuditLogActionType.refundSettingsChanged:
+        return 'REFUND_SETTINGS_CHANGED';
+      case AuditLogActionType.fraudFlagRaised:
+        return 'FRAUD_FLAG_RAISED';
+      case AuditLogActionType.fraudFlagResolved:
+        return 'FRAUD_FLAG_RESOLVED';
+      case AuditLogActionType.auditChainReconciled:
+        return 'AUDIT_CHAIN_RECONCILED';
       case AuditLogActionType.permissionDenied:
         return 'PERMISSION_DENIED';
       case AuditLogActionType.permissionOverrideSet:
@@ -307,6 +332,14 @@ extension AuditLogActionTypeX on AuditLogActionType {
         return 'Customer Archived';
       case AuditLogActionType.businessModuleChanged:
         return 'Module Setting Changed';
+      case AuditLogActionType.refundSettingsChanged:
+        return 'Refund Approval Settings Changed';
+      case AuditLogActionType.fraudFlagRaised:
+        return 'Fraud Alert Raised';
+      case AuditLogActionType.fraudFlagResolved:
+        return 'Fraud Alert Resolved';
+      case AuditLogActionType.auditChainReconciled:
+        return 'Audit Chain Reconciled';
       case AuditLogActionType.permissionDenied:
         return 'Permission Denied';
       case AuditLogActionType.permissionOverrideSet:

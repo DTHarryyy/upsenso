@@ -109,10 +109,17 @@ class SuppliersDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
-  Future<void> upsertFromServer(Map<String, dynamic> row) {
-    return into(suppliersTable).insertOnConflictUpdate(
+  Future<void> upsertFromServer(Map<String, dynamic> row) async {
+    final id = row['id'] as String;
+    // Never overwrite a local row that still has unsynced changes — a failed
+    // push followed by a pull would otherwise silently discard the offline edit.
+    final existing = await getById(id);
+    if (existing != null && existing.syncStatus != SyncStatus.synced.toInt()) {
+      return;
+    }
+    await into(suppliersTable).insertOnConflictUpdate(
       SuppliersTableCompanion.insert(
-        id: row['id'] as String,
+        id: id,
         businessId: row['business_id'] as String,
         name: row['name'] as String,
         contactName: Value(row['contact_name'] as String?),

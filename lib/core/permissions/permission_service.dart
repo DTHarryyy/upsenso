@@ -192,6 +192,8 @@ class PermissionService {
         return const ['settings.view'];
       case 'nav.audit_logs':
         return const ['audit_logs.view'];
+      case 'nav.fraud':
+        return const ['fraud.view'];
       case 'nav.sales_history':
         return const ['pos.view_own_sales', 'pos.view_all_sales'];
       case 'nav.held_sales':
@@ -235,6 +237,9 @@ class PermissionService {
       case 'recipes':
         return 'recipes';
       case 'audit_logs':
+      // Fraud shares the audit module gate (see AppFeature.fraudAlerts) —
+      // the engine itself runs regardless; this only gates the UI surface.
+      case 'fraud':
         return 'audit';
       default:
         return null;

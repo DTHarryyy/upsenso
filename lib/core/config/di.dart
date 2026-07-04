@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:pos/core/env/app_env.dart';
 import 'package:pos/core/security/secure_storage_service.dart';
 import 'package:pos/core/device/device_info_service.dart';
+import 'package:pos/core/device/device_identity_service.dart';
 
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/auth_context_dao.dart';
@@ -96,7 +97,26 @@ import 'package:pos/core/database/daos/refund_settings_dao.dart';
 import 'package:pos/core/services/refund_service.dart';
 import 'package:pos/features/pos/data/datasources/refunds_remote_ds.dart';
 import 'package:pos/core/database/daos/audit_logs_dao.dart';
+import 'package:pos/core/database/daos/audit_outbox_dao.dart';
+import 'package:pos/core/database/daos/devices_dao.dart';
+import 'package:pos/core/device/devices_remote_ds.dart';
 import 'package:pos/core/audit/audit_log_service.dart';
+import 'package:pos/core/audit/audit_chain_verifier.dart';
+import 'package:pos/core/database/daos/fraud_flags_dao.dart';
+import 'package:pos/core/database/daos/fraud_candidates_dao.dart';
+import 'package:pos/features/alert/data/datasources/fraud_flags_remote_ds.dart';
+import 'package:pos/core/services/fraud_detection_engine.dart';
+import 'package:pos/core/services/fraud_maintenance_service.dart';
+import 'package:pos/core/services/fraud_rules/rules/audit_tamper_rule.dart';
+import 'package:pos/core/services/fraud_rules/rules/control_change_rule.dart';
+import 'package:pos/core/services/fraud_rules/rules/excessive_refunds_rule.dart';
+import 'package:pos/core/services/fraud_rules/rules/high_discount_rule.dart';
+import 'package:pos/core/services/fraud_rules/rules/orphaned_record_rule.dart';
+import 'package:pos/core/services/fraud_rules/rules/permission_probing_rule.dart';
+import 'package:pos/core/services/fraud_rules/rules/quick_refund_rule.dart';
+import 'package:pos/core/services/fraud_rules/rules/refund_structuring_rule.dart';
+import 'package:pos/core/services/fraud_rules/rules/shrinkage_spike_rule.dart';
+import 'package:pos/core/services/fraud_rules/rules/time_reversal_rule.dart';
 import 'package:pos/features/audit_logs/data/datasources/audit_log_remote_ds.dart';
 import 'package:pos/features/audit_logs/data/repositories/audit_log_repository_impl.dart';
 import 'package:pos/features/audit_logs/domain/repositories/i_audit_log_repository.dart';
@@ -377,7 +397,23 @@ Future<void> initDI() async {
       refundsDao: sl<RefundsDao>(),
       refundsRemoteDs: sl<RefundsRemoteDs>(),
       refundSettingsRepository: sl<RefundSettingsRepository>(),
-    ),
+      fraudFlagsDao: sl<FraudFlagsDao>(),
+      fraudFlagsRemoteDs: sl<FraudFlagsRemoteDs>(),
+      devicesDao: sl<DevicesDao>(),
+      devicesRemoteDs: sl<DevicesRemoteDs>(),
+    )
+      ..onSyncCompleted = () {
+        // One-time cleanup of the 2026-07-03 false-positive flags runs before
+        // the sweep (idempotent + permission-gated; no-ops once done). Then
+        // the periodic full fraud sweep rides the sync cadence — data is
+        // freshest right after a pull. Fire-and-forget by design.
+        sl<FraudMaintenanceService>().runIfNeeded().whenComplete(
+              () => sl<FraudDetectionEngine>().runSweep(),
+            );
+      }
+      ..drainAuditOutbox = (() => sl<AuditLogService>().drainOutbox())
+      ..onChainConflict = ((businessId) =>
+          sl<AuditLogService>().reconcileConflictedTail(businessId)),
   );
 
   // ── AI Assistant services ──────────────────────────────────────────────
@@ -415,6 +451,13 @@ Future<void> initDI() async {
   );
 
   sl.registerLazySingleton<AuditLogsDao>(() => AuditLogsDao(sl<AppDatabase>()));
+  sl.registerLazySingleton<AuditOutboxDao>(
+    () => AuditOutboxDao(sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<DevicesDao>(() => DevicesDao(sl<AppDatabase>()));
+  sl.registerLazySingleton<DevicesRemoteDs>(
+    () => DevicesRemoteDs(sl<SupabaseClient>()),
+  );
   sl.registerLazySingleton<AuditLogRemoteDs>(
     () => AuditLogRemoteDs(sl<SupabaseClient>()),
   );
@@ -426,12 +469,71 @@ Future<void> initDI() async {
     ),
   );
   sl.registerLazySingleton<DeviceInfoService>(() => DeviceInfoService());
+  sl.registerLazySingleton<DeviceIdentityService>(
+    () => DeviceIdentityService(prefs: sl<SharedPreferences>()),
+  );
   sl.registerLazySingleton<AuditLogService>(
     () => AuditLogService(
       dao: sl<AuditLogsDao>(),
+      outboxDao: sl<AuditOutboxDao>(),
+      devicesDao: sl<DevicesDao>(),
       authContextDao: sl<AuthContextDao>(),
       activeBusinessContext: sl<ActiveBusinessContext>(),
       deviceInfoService: sl<DeviceInfoService>(),
+      deviceIdentityService: sl<DeviceIdentityService>(),
+      chainHeadResolver: (deviceUid) =>
+          sl<AuditLogRemoteDs>().fetchMyDeviceChainHead(deviceUid),
+    ),
+  );
+  sl.registerLazySingleton<AuditChainVerifier>(
+    () => AuditChainVerifier(
+      dao: sl<AuditLogsDao>(),
+      devicesDao: sl<DevicesDao>(),
+      deviceIdentityService: sl<DeviceIdentityService>(),
+      fetchChainHeads: () => sl<AuditLogRemoteDs>().fetchChainHeads(),
+    ),
+  );
+
+  // ── Fraud detection ────────────────────────────────────────────────────
+  sl.registerLazySingleton<FraudFlagsDao>(
+    () => FraudFlagsDao(sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<FraudCandidatesDao>(
+    () => FraudCandidatesDao(sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<FraudFlagsRemoteDs>(
+    () => FraudFlagsRemoteDs(sl<SupabaseClient>()),
+  );
+  sl.registerLazySingleton<FraudMaintenanceService>(
+    () => FraudMaintenanceService(
+      prefs: sl<SharedPreferences>(),
+      flagsDao: sl<FraudFlagsDao>(),
+      permissionService: sl<PermissionService>(),
+      activeBusinessContext: sl<ActiveBusinessContext>(),
+      auditLogService: sl<AuditLogService>(),
+    ),
+  );
+  sl.registerLazySingleton<FraudDetectionEngine>(
+    () => FraudDetectionEngine(
+      db: sl<AppDatabase>(),
+      flagsDao: sl<FraudFlagsDao>(),
+      candidatesDao: sl<FraudCandidatesDao>(),
+      syncStateDao: sl<SyncStateDao>(),
+      auditLogService: sl<AuditLogService>(),
+      permissionService: sl<PermissionService>(),
+      activeBusinessContext: sl<ActiveBusinessContext>(),
+      rules: [
+        AuditTamperRule(verifier: sl<AuditChainVerifier>()),
+        TimeReversalRule(),
+        ExcessiveRefundsRule(),
+        RefundStructuringRule(),
+        QuickRefundRule(),
+        HighDiscountRule(),
+        ShrinkageSpikeRule(),
+        ControlChangeRule(),
+        OrphanedRecordRule(),
+        PermissionProbingRule(),
+      ],
     ),
   );
 
@@ -516,6 +618,8 @@ Future<void> initDI() async {
       ledgerDao: sl<StockLedgerDao>(),
       levelsDao: sl<InventoryLevelsDao>(),
       variantsDao: sl<ProductVariantsDao>(),
+      auditLogService: sl<AuditLogService>(),
+      fraudEngine: sl<FraudDetectionEngine>(),
     ),
   );
 
@@ -545,6 +649,8 @@ Future<void> initDI() async {
       transactionsDao: sl<TransactionsDao>(),
       inventoryRepository: sl<IInventoryRepository>(),
       invoiceNumberService: sl<InvoiceNumberService>(),
+      auditLogService: sl<AuditLogService>(),
+      fraudEngine: sl<FraudDetectionEngine>(),
     ),
   );
 
@@ -556,6 +662,7 @@ Future<void> initDI() async {
       inventoryRepository: sl<IInventoryRepository>(),
       permissionService: sl<PermissionService>(),
       auditLogService: sl<AuditLogService>(),
+      fraudEngine: sl<FraudDetectionEngine>(),
     ),
   );
 

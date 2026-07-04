@@ -65,10 +65,17 @@ class GoodsReceiptItemsDao extends DatabaseAccessor<AppDatabase>
     return (delete(goodsReceiptItemsTable)..where((t) => t.id.equals(id))).go();
   }
 
-  Future<void> upsertFromServer(Map<String, dynamic> row) {
-    return into(goodsReceiptItemsTable).insertOnConflictUpdate(
+  Future<void> upsertFromServer(Map<String, dynamic> row) async {
+    final id = row['id'] as String;
+    final existing = await (select(goodsReceiptItemsTable)
+          ..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (existing != null && existing.syncStatus != SyncStatus.synced.toInt()) {
+      return;
+    }
+    await into(goodsReceiptItemsTable).insertOnConflictUpdate(
       GoodsReceiptItemsTableCompanion.insert(
-        id: row['id'] as String,
+        id: id,
         businessId: row['business_id'] as String,
         goodsReceiptId: row['goods_receipt_id'] as String,
         purchaseOrderLineId: row['purchase_order_line_id'] as String,

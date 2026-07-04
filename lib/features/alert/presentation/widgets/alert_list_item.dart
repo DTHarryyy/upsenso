@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/features/alert/data/alert_model.dart';
+import 'package:pos/features/alert/presentation/widgets/alert_icons.dart';
 
 class AlertListItem extends StatelessWidget {
   final FraudAlert alert;
@@ -24,7 +25,7 @@ class AlertListItem extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _AlertTypeIcon(type: alert.type, severity: alert.severity),
+              _AlertTypeIcon(ruleCode: alert.ruleCode, severity: alert.severity),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
@@ -125,10 +126,10 @@ class _MetaItem extends StatelessWidget {
 }
 
 class _AlertTypeIcon extends StatelessWidget {
-  final AlertType type;
+  final String ruleCode;
   final AlertSeverity severity;
 
-  const _AlertTypeIcon({required this.type, required this.severity});
+  const _AlertTypeIcon({required this.ruleCode, required this.severity});
 
   @override
   Widget build(BuildContext context) {
@@ -139,27 +140,13 @@ class _AlertTypeIcon extends StatelessWidget {
         color: _bgColor,
         borderRadius: BorderRadius.circular(22),
       ),
-      child: Icon(_icon, color: _iconColor, size: 20),
+      child: Icon(alertIconFor(ruleCode), color: _iconColor, size: 20),
     );
-  }
-
-  IconData get _icon {
-    switch (type) {
-      case AlertType.refund:
-        return IconlyLight.arrow_left;
-      case AlertType.priceOverride:
-        return IconlyLight.time_circle;
-      case AlertType.shiftHours:
-        return IconlyLight.time_circle;
-      case AlertType.inventoryShrinkage:
-        return IconlyBold.danger;
-      case AlertType.transferMismatch:
-        return IconlyLight.info_circle;
-    }
   }
 
   Color get _iconColor {
     switch (severity) {
+      case AlertSeverity.critical:
       case AlertSeverity.high:
         return AppColors.error;
       case AlertSeverity.medium:
@@ -171,6 +158,7 @@ class _AlertTypeIcon extends StatelessWidget {
 
   Color get _bgColor {
     switch (severity) {
+      case AlertSeverity.critical:
       case AlertSeverity.high:
         return AppColors.errorSoft;
       case AlertSeverity.medium:
@@ -206,6 +194,8 @@ class _SeverityChip extends StatelessWidget {
 
   String get _label {
     switch (severity) {
+      case AlertSeverity.critical:
+        return 'critical';
       case AlertSeverity.high:
         return 'high';
       case AlertSeverity.medium:
@@ -217,6 +207,7 @@ class _SeverityChip extends StatelessWidget {
 
   Color get _bg {
     switch (severity) {
+      case AlertSeverity.critical:
       case AlertSeverity.high:
         return AppColors.error;
       case AlertSeverity.medium:
@@ -228,6 +219,7 @@ class _SeverityChip extends StatelessWidget {
 
   Color get _fg {
     switch (severity) {
+      case AlertSeverity.critical:
       case AlertSeverity.high:
         return AppColors.textInverse;
       case AlertSeverity.medium:
@@ -261,16 +253,7 @@ class _StatusChip extends StatelessWidget {
     );
   }
 
-  String get _label {
-    switch (status) {
-      case AlertStatus.newAlert:
-        return 'New';
-      case AlertStatus.investigating:
-        return 'Investigating';
-      case AlertStatus.resolved:
-        return 'Resolved';
-    }
-  }
+  String get _label => status.label;
 
   Color get _bg {
     switch (status) {
@@ -280,6 +263,9 @@ class _StatusChip extends StatelessWidget {
         return AppColors.brandSoft;
       case AlertStatus.resolved:
         return AppColors.successSoft;
+      case AlertStatus.dismissed:
+      case AlertStatus.falsePositive:
+        return AppColors.surfaceAlt;
     }
   }
 
@@ -291,6 +277,9 @@ class _StatusChip extends StatelessWidget {
         return AppColors.brand;
       case AlertStatus.resolved:
         return AppColors.success;
+      case AlertStatus.dismissed:
+      case AlertStatus.falsePositive:
+        return AppColors.textMuted;
     }
   }
 }
