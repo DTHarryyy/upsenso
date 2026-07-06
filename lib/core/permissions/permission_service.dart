@@ -225,7 +225,6 @@ class PermissionService {
       case 'employees':
         return 'employees';
       case 'reports':
-      case 'insights':
         return 'reports';
       case 'suppliers':
       case 'procurement':

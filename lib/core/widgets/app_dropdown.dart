@@ -1,7 +1,10 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/widgets/app_search_bar.dart';
 
 /// A single item entry for [AppDropdown].
 class AppDropdownItem<T> {
@@ -40,6 +43,11 @@ class AppDropdown<T> extends FormField<T> {
   /// Called when the user taps the "add new item" action row.
   final VoidCallback? onAddItem;
 
+  /// Shows a search field pinned atop the option list that filters items by
+  /// label — use for lists too long to scan, e.g. audit log action types.
+  final bool searchable;
+  final String searchHint;
+
   AppDropdown({
     super.key,
     T? value,
@@ -49,6 +57,8 @@ class AppDropdown<T> extends FormField<T> {
     this.dense = false,
     this.addItemLabel,
     this.onAddItem,
+    this.searchable = false,
+    this.searchHint = 'Search...',
     super.validator,
     super.autovalidateMode = AutovalidateMode.disabled,
   }) : super(
@@ -102,19 +112,36 @@ class _AppDropdownState<T> extends FormFieldState<T> {
     final box = context.findRenderObject() as RenderBox;
     final size = box.size;
     final globalPos = box.localToGlobal(Offset.zero);
-    final screenHeight = MediaQuery.of(context).size.height;
+    final screenSize = MediaQuery.of(context).size;
+    final screenHeight = screenSize.height;
     final spaceBelow = screenHeight - globalPos.dy - size.height;
-    final openUpward = spaceBelow < 264;
+    // A search field adds its own row above the option list, so a searchable
+    // panel needs more headroom before it's worth flipping upward.
+    final openUpward = spaceBelow < (_w.searchable ? 320 : 264);
+
+    // Filter rows can squeeze the trigger down to a third of the screen —
+    // don't force option labels to wrap to match it. Grow the panel to a
+    // comfortable minimum, but stop short of running off the screen edge.
+    const minPanelWidth = 200.0;
+    const screenMargin = 16.0;
+    final maxAvailableWidth = screenSize.width - globalPos.dx - screenMargin;
+    final panelWidth = math.min(
+      math.max(size.width, minPanelWidth),
+      math.max(size.width, maxAvailableWidth),
+    );
 
     _overlay = OverlayEntry(
       builder: (overlayCtx) => _OverlayDropdown<T>(
         link: _layerLink,
         triggerWidth: size.width,
+        panelWidth: panelWidth,
         triggerHeight: size.height,
         openUpward: openUpward,
         items: _w.items,
         selectedValue: value,
         addItemLabel: _w.addItemLabel,
+        searchable: _w.searchable,
+        searchHint: _w.searchHint,
         onAddItem: _w.onAddItem != null
             ? () {
                 _closeOverlay();
@@ -145,11 +172,19 @@ class _AppDropdownState<T> extends FormFieldState<T> {
   Widget _buildWidget() {
     final displayError = errorText; // from FormFieldState (validator result)
     final hasError = displayError != null;
-    final borderColor = hasError
-        ? AppColors.error
+    // Border only surfaces for error/focus states; otherwise the trigger is
+    // a flat, borderless chip that relies on shadow for separation.
+    final border = hasError
+        ? Border.all(color: AppColors.error, width: 1)
         : _isOpen
-        ? AppColors.brand
-        : AppColors.borderSoft;
+        ? Border.all(color: AppColors.brand, width: 1)
+        : null;
+    // Dense dropdowns are filter controls — the hint ("All X") is itself a
+    // meaningful selection, not an unfilled required field, so it reads as
+    // primary text rather than the muted placeholder color forms use.
+    final textColor = _w.dense
+        ? AppColors.textPrimary
+        : (_selected != null ? AppColors.textPrimary : AppColors.textMuted);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -162,13 +197,20 @@ class _AppDropdownState<T> extends FormFieldState<T> {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               padding: EdgeInsets.symmetric(
-                horizontal: 12,
+                horizontal: 8,
                 vertical: _w.dense ? 12 : 14,
               ),
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: borderColor, width: 1),
+                border: border,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Row(
                 children: [
@@ -184,10 +226,10 @@ class _AppDropdownState<T> extends FormFieldState<T> {
                         fontWeight: _w.dense
                             ? FontWeight.w500
                             : FontWeight.normal,
-                        color: _selected != null
-                            ? AppColors.textPrimary
-                            : AppColors.textMuted,
+                        color: textColor,
                       ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                   ),
                   AnimatedRotation(
@@ -220,9 +262,10 @@ class _AppDropdownState<T> extends FormFieldState<T> {
   }
 }
 
-class _OverlayDropdown<T> extends StatelessWidget {
+class _OverlayDropdown<T> extends StatefulWidget {
   final LayerLink link;
   final double triggerWidth;
+  final double panelWidth;
   final double triggerHeight;
   final bool openUpward;
   final List<AppDropdownItem<T>> items;
@@ -231,10 +274,13 @@ class _OverlayDropdown<T> extends StatelessWidget {
   final VoidCallback? onAddItem;
   final ValueChanged<T> onSelected;
   final VoidCallback onDismiss;
+  final bool searchable;
+  final String searchHint;
 
   const _OverlayDropdown({
     required this.link,
     required this.triggerWidth,
+    required this.panelWidth,
     required this.triggerHeight,
     required this.openUpward,
     required this.items,
@@ -243,16 +289,33 @@ class _OverlayDropdown<T> extends StatelessWidget {
     required this.onDismiss,
     this.addItemLabel,
     this.onAddItem,
+    this.searchable = false,
+    this.searchHint = 'Search...',
   });
 
   @override
+  State<_OverlayDropdown<T>> createState() => _OverlayDropdownState<T>();
+}
+
+class _OverlayDropdownState<T> extends State<_OverlayDropdown<T>> {
+  String _query = '';
+
+  List<AppDropdownItem<T>> get _filteredItems {
+    if (_query.isEmpty) return widget.items;
+    final q = _query.toLowerCase();
+    return widget.items.where((i) => i.label.toLowerCase().contains(q)).toList();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final filteredItems = _filteredItems;
+
     return Stack(
       children: [
         // Full-screen tap barrier to dismiss
         Positioned.fill(
           child: GestureDetector(
-            onTap: onDismiss,
+            onTap: widget.onDismiss,
             behavior: HitTestBehavior.translucent,
             child: const SizedBox.expand(),
           ),
@@ -260,83 +323,104 @@ class _OverlayDropdown<T> extends StatelessWidget {
 
         // Floating panel
         CompositedTransformFollower(
-          link: link,
+          link: widget.link,
           showWhenUnlinked: false,
-          targetAnchor: openUpward ? Alignment.topLeft : Alignment.bottomLeft,
-          followerAnchor: openUpward ? Alignment.bottomLeft : Alignment.topLeft,
-          offset: Offset(0, openUpward ? -4 : 4),
+          targetAnchor: widget.openUpward
+              ? Alignment.topLeft
+              : Alignment.bottomLeft,
+          followerAnchor: widget.openUpward
+              ? Alignment.bottomLeft
+              : Alignment.topLeft,
+          offset: Offset(0, widget.openUpward ? -4 : 4),
           child: SizedBox(
-            width: triggerWidth,
+            width: widget.panelWidth,
             child: Material(
               color: Colors.transparent,
               child: Container(
-                constraints: const BoxConstraints(maxHeight: 260),
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.brand, width: 1.5),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.brand.withValues(alpha: 0.12),
+                      color: Colors.black.withValues(alpha: 0.12),
                       blurRadius: 16,
                       offset: const Offset(0, 6),
-                    ),
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.06),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(11),
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // ── Add item action ────────────────────────────
-                        if (onAddItem != null) ...[
-                          _AddItemRow(
-                            label: addItemLabel ?? 'Add Item',
-                            onTap: onAddItem!,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // ── Search field ──────────────────────────────────
+                      if (widget.searchable) ...[
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
+                          child: AppSearchBar(
+                            hint: widget.searchHint,
+                            onChanged: (v) => setState(() => _query = v),
                           ),
-                          const Divider(
-                            height: 1,
-                            thickness: 1,
-                            color: AppColors.borderSoft,
-                          ),
-                        ],
-
-                        // ── Selectable items ───────────────────────────
-                        if (items.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 14,
-                            ),
-                            child: Text(
-                              'No items yet',
-                              style: getOutfitStyle(
-                                color: AppColors.textMuted,
-                                fontSize: 13,
-                              ),
-                            ),
-                          )
-                        else
-                          ...items.asMap().entries.map((entry) {
-                            final item = entry.value;
-                            final isLast = entry.key == items.length - 1;
-                            final isSelected = item.value == selectedValue;
-                            return _DropdownOption(
-                              item: item,
-                              isSelected: isSelected,
-                              isLast: isLast,
-                              onTap: () => onSelected(item.value),
-                            );
-                          }),
+                        ),
+                        const Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: AppColors.borderSoft,
+                        ),
                       ],
-                    ),
+
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 260),
+                        child: SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // ── Add item action ──────────────────────
+                              if (widget.onAddItem != null) ...[
+                                _AddItemRow(
+                                  label: widget.addItemLabel ?? 'Add Item',
+                                  onTap: widget.onAddItem!,
+                                ),
+                                const Divider(
+                                  height: 1,
+                                  thickness: 1,
+                                  color: AppColors.borderSoft,
+                                ),
+                              ],
+
+                              // ── Selectable items ─────────────────────
+                              if (filteredItems.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 14,
+                                  ),
+                                  child: Text(
+                                    widget.items.isEmpty
+                                        ? 'No items yet'
+                                        : 'No matches found',
+                                    style: getOutfitStyle(
+                                      color: AppColors.textMuted,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                )
+                              else
+                                ...filteredItems.map((item) {
+                                  final isSelected =
+                                      item.value == widget.selectedValue;
+                                  return _DropdownOption(
+                                    item: item,
+                                    isSelected: isSelected,
+                                    onTap: () => widget.onSelected(item.value),
+                                  );
+                                }),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -412,13 +496,11 @@ class _AddItemRowState extends State<_AddItemRow> {
 class _DropdownOption<T> extends StatefulWidget {
   final AppDropdownItem<T> item;
   final bool isSelected;
-  final bool isLast;
   final VoidCallback onTap;
 
   const _DropdownOption({
     required this.item,
     required this.isSelected,
-    required this.isLast,
     required this.onTap,
   });
 
@@ -449,12 +531,7 @@ class _DropdownOptionState<T> extends State<_DropdownOption<T>> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          decoration: BoxDecoration(
-            color: bg,
-            border: widget.isLast
-                ? null
-                : const Border(bottom: BorderSide(color: AppColors.borderSoft)),
-          ),
+          decoration: BoxDecoration(color: bg),
           child: Row(
             children: [
               if (widget.item.icon != null) ...[

@@ -18,7 +18,6 @@ import 'package:pos/features/expenses/presentation/widgets/add_expense_sheet.dar
 import 'package:pos/features/expenses/presentation/widgets/expense_card_view.dart';
 import 'package:pos/features/expenses/presentation/widgets/expense_filter_bar.dart';
 import 'package:pos/features/expenses/presentation/widgets/expense_stats_row.dart';
-import 'package:pos/features/expenses/presentation/widgets/expense_status_tabs.dart';
 import 'package:pos/features/expenses/presentation/widgets/expense_table_view.dart';
 
 class ExpensesPage extends StatelessWidget {
@@ -75,7 +74,9 @@ class _ExpensesViewState extends State<_ExpensesView> {
       listener: (ctx, s) => _startWatching(),
       child: Scaffold(
         backgroundColor: AppColors.background,
-        appBar: AppSubPageBar(title: 'Expenses'),
+        appBar: Breakpoints.isPhone(context)
+            ? AppSubPageBar(title: 'Expenses')
+            : null,
         floatingActionButton: const _AddFab(),
         body: BlocBuilder<ExpensesCubit, ExpensesState>(
           builder: (context, state) {
@@ -109,7 +110,7 @@ class _AddFab extends StatelessWidget {
         canApprove: context.read<ExpensesCubit>().canApprove,
       ),
       backgroundColor: AppColors.brand,
-      icon: const Icon(IconlyBold.plus, color: Colors.white),
+      icon: const Icon(Icons.add, color: Colors.white),
       label: Text(
         'Add Expense',
         style: getOutfitStyle(
@@ -156,12 +157,9 @@ class _LoadedBody extends StatelessWidget {
           categoryFilter: state.categoryFilter,
           categories: _categories,
           onCategoryChanged: cubit.setCategoryFilter,
-        ),
-        const SizedBox(height: 10),
-        ExpenseStatusTabs(
-          selected: state.statusFilter,
+          statusFilter: state.statusFilter,
+          onStatusChanged: cubit.setStatusFilter,
           pendingCount: state.pendingCount,
-          onSelected: cubit.setStatusFilter,
         ),
         const SizedBox(height: 12),
         if (state.viewMode == ExpensesViewMode.table)

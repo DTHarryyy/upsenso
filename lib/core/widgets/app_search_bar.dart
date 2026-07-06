@@ -56,47 +56,67 @@ class _AppSearchBarState extends State<AppSearchBar> {
   Widget build(BuildContext context) {
     const radius = 12.0;
 
-    return TextField(
-      controller: _controller,
-      onChanged: widget.onChanged,
-      style: getOutfitStyle(color: AppColors.textPrimary, fontSize: 14),
-      decoration: InputDecoration(
-        hintText: widget.hint,
-        hintStyle: getOutfitStyle(color: AppColors.textMuted, fontSize: 14),
-        filled: true,
-        fillColor: AppColors.surface,
-        isDense: false,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 13,
-        ),
-        prefixIcon: const Padding(
-          padding: EdgeInsets.only(left: 12, right: 8),
-          child: Icon(IconlyLight.search, color: AppColors.textMuted, size: 20),
-        ),
-        prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-        suffixIcon: _hasText
-            ? IconButton(
-                icon: const Icon(
-                  Icons.close,
-                  size: 18,
-                  color: AppColors.textMuted,
-                ),
-                splashRadius: 16,
-                onPressed: _clear,
-              )
-            : null,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radius),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radius),
-          borderSide: const BorderSide(color: AppColors.borderSoft, width: 1),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radius),
-          borderSide: const BorderSide(color: AppColors.brand, width: 1.5),
+    return Container(
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: _controller,
+        onChanged: widget.onChanged,
+        style: getOutfitStyle(color: AppColors.textPrimary, fontSize: 14),
+
+        decoration: InputDecoration(
+          hintText: widget.hint,
+          hintStyle: getOutfitStyle(color: AppColors.textPrimary, fontSize: 14),
+          filled: true,
+          fillColor: AppColors.surface,
+          isDense: false,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 13,
+          ),
+          prefixIcon: const Padding(
+            padding: EdgeInsets.only(left: 12, right: 8),
+            child: Icon(
+              IconlyLight.search,
+              color: AppColors.textPrimary,
+              size: 20,
+            ),
+          ),
+
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 0,
+            minHeight: 0,
+          ),
+          suffixIcon: _hasText
+              ? IconButton(
+                  icon: const Icon(
+                    Icons.close,
+                    size: 18,
+                    color: AppColors.textPrimary,
+                  ),
+                  splashRadius: 16,
+                  onPressed: _clear,
+                )
+              : null,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(radius),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(radius),
+            borderSide: const BorderSide(color: AppColors.borderSoft, width: 1),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(radius),
+            borderSide: const BorderSide(color: AppColors.brand, width: 1.5),
+          ),
         ),
       ),
     );

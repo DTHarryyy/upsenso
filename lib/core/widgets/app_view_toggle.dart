@@ -21,8 +21,9 @@ class AppViewToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     final showingCards = current == AppViewMode.cards;
     final target = showingCards ? AppViewMode.table : AppViewMode.cards;
-    final icon =
-        showingCards ? Icons.table_rows_rounded : Icons.grid_view_rounded;
+    final icon = showingCards
+        ? Icons.table_rows_rounded
+        : Icons.grid_view_rounded;
 
     return Tooltip(
       message: showingCards ? 'Switch to table view' : 'Switch to card view',
@@ -33,9 +34,16 @@ class AppViewToggle extends StatelessWidget {
           height: 44,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: AppColors.surfaceAlt,
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.borderSoft),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: Icon(icon, size: 20, color: AppColors.textSecondary),
         ),

@@ -190,11 +190,13 @@ class _AuditLogSkeletonState extends State<AuditLogSkeleton>
 
   // ── Table skeleton ─────────────────────────────────────────────────────────
   //
-  // Mirrors AppDataTable in fixed-width mode with _kColumns:
-  //   [Timestamp:130, Action:110, Entity:140, User:120, Branch:120,
-  //    Device/IP:140, Details:60]  columnGap:12
+  // Mirrors AppDataTable in flex mode with _kColumns — the columns share the
+  // full container width (no horizontal scroll), so the skeleton stretches to
+  // the same width as the real table.
+  //   flex: [Timestamp:12, Action:13, Entity:14, User:12, Branch:12,
+  //          Device/IP:14, Details:6]  columnGap:12
 
-  static const _kColWidths = [130.0, 110.0, 140.0, 120.0, 120.0, 140.0, 60.0];
+  static const _kColFlex = [12, 13, 14, 12, 12, 14, 6];
   static const _kColGap = 12.0;
 
   Widget _buildTable(
@@ -209,11 +211,11 @@ class _AuditLogSkeletonState extends State<AuditLogSkeleton>
       final children = <Widget>[];
       for (var i = 0; i < cells.length; i++) {
         children.add(
-          SizedBox(
-            width: _kColWidths[i],
+          Expanded(
+            flex: _kColFlex[i],
             child: Align(
               // Last column (Details) is center-aligned.
-              alignment: i == _kColWidths.length - 1
+              alignment: i == _kColFlex.length - 1
                   ? Alignment.center
                   : Alignment.centerLeft,
               child: cells[i],
@@ -316,30 +318,25 @@ class _AuditLogSkeletonState extends State<AuditLogSkeleton>
           ],
         ),
         clipBehavior: Clip.antiAlias,
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: IntrinsicWidth(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Header.
-                row(
-                  isHeader: true,
-                  cells: [
-                    box(width: 68, height: 11),
-                    box(width: 48, height: 11),
-                    box(width: 55, height: 11),
-                    box(width: 42, height: 11),
-                    box(width: 50, height: 11),
-                    box(width: 62, height: 11),
-                    box(width: 28, height: 11),
-                  ],
-                ),
-                // Six skeleton rows.
-                ...List.generate(6, dataRow),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header.
+            row(
+              isHeader: true,
+              cells: [
+                box(width: 68, height: 11),
+                box(width: 48, height: 11),
+                box(width: 55, height: 11),
+                box(width: 42, height: 11),
+                box(width: 50, height: 11),
+                box(width: 62, height: 11),
+                box(width: 28, height: 11),
               ],
             ),
-          ),
+            // Six skeleton rows.
+            ...List.generate(6, dataRow),
+          ],
         ),
       ),
     );

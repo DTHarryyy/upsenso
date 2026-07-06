@@ -7,7 +7,6 @@ import 'package:pos/core/config/di.dart';
 import 'package:pos/core/permissions/role_permission_matrix.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
-import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/core/permissions/permission_keys.dart';
@@ -403,7 +402,8 @@ class _EmployeeList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hPad = Breakpoints.horizontalPadding(context);
+    // Fixed 16px inset to match the dashboard — the app-wide page standard.
+    const hPad = 16.0;
 
     return ListView.separated(
       padding: EdgeInsets.fromLTRB(hPad, 8, hPad, 16),
@@ -529,7 +529,8 @@ class _EmployeeSkeletonList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hPad = Breakpoints.horizontalPadding(context);
+    // Fixed 16px inset to match the dashboard — the app-wide page standard.
+    const hPad = 16.0;
 
     return ListView.separated(
       padding: EdgeInsets.fromLTRB(hPad, 8, hPad, 16),

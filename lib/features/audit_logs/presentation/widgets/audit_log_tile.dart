@@ -2,6 +2,8 @@
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/utils/formatters.dart';
+import 'package:pos/core/widgets/app_bottom_sheet_scaffold.dart';
+import 'package:pos/core/widgets/app_modal.dart';
 import 'package:pos/core/widgets/table_action_button.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/features/audit_logs/domain/entities/audit_log.dart';
@@ -136,122 +138,92 @@ List<Widget> auditLogTableCells(
   ];
 }
 
-// ── Details bottom sheet ───────────────────────────────────────────────────
+// ── Details modal (adaptive) ────────────────────────────────────────────────
 
-/// Shows a bottom sheet (or dialog on desktop) with the log's full metadata.
+/// Shows the log's full metadata — a bottom sheet on phones, a centred dialog
+/// on tablet/desktop. Presentation is chosen by [showAppModal] and the chrome
+/// adapts via [AppBottomSheetScaffold].
 void showAuditLogDetails(BuildContext context, AuditLog log) {
-  showModalBottomSheet(
+  showAppModal(
     context: context,
-    backgroundColor: AppColors.surface,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    builder: (_) => AppBottomSheetScaffold(
+      title: log.description,
+      titleTrailing: _ActionBadge(type: log.actionType),
+      child: _AuditLogDetailBody(log: log),
     ),
-    isScrollControlled: true,
-    builder: (_) => _AuditLogDetailSheet(log: log),
   );
 }
 
-class _AuditLogDetailSheet extends StatelessWidget {
-  final AuditLog log;
-  const _AuditLogDetailSheet({required this.log});
+/// Coloured action label chip reused in the details header.
+class _ActionBadge extends StatelessWidget {
+  final AuditLogActionType type;
+  const _ActionBadge({required this.type});
 
   @override
   Widget build(BuildContext context) {
-    final color = _colorFor(log.actionType);
-    return DraggableScrollableSheet(
-      initialChildSize: 0.55,
-      minChildSize: 0.35,
-      maxChildSize: 0.9,
-      expand: false,
-      builder: (_, controller) => Column(
+    final color = _colorFor(type);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        _badgeLabelFor(type),
+        style: getOutfitStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
+    );
+  }
+}
+
+class _AuditLogDetailBody extends StatelessWidget {
+  final AuditLog log;
+  const _AuditLogDetailBody({required this.log});
+
+  @override
+  Widget build(BuildContext context) {
+    // SingleChildScrollView so the body hugs its content (short logs stay a
+    // compact dialog) but still scrolls when metadata is long.
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Handle
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.borderSoft,
-                borderRadius: BorderRadius.circular(2),
+          const Divider(height: 1, color: AppColors.borderSoft),
+          const SizedBox(height: 16),
+          _DetailRow(
+            'Timestamp',
+            '${AppFormatters.shortDate(log.createdAt.toLocal())}  ${AppFormatters.time12h(log.createdAt.toLocal())}',
+          ),
+          _DetailRow(
+            'Entity',
+            '${_capitalize(log.entityType)}'
+                '${log.entityName != null && log.entityName!.isNotEmpty ? ' · ${log.entityName}' : ''}',
+          ),
+          _DetailRow('User', log.userName ?? log.userId),
+          _DetailRow('Branch', log.branchName ?? 'All Branches'),
+          _DetailRow('Device', log.deviceId),
+          if (log.metadata.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              'METADATA',
+              style: getOutfitStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textMuted,
+                letterSpacing: 0.8,
               ),
             ),
-          ),
-          // Header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    _badgeLabelFor(log.actionType),
-                    style: getOutfitStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: color,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    log.description,
-                    style: getOutfitStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1, color: AppColors.borderSoft),
-          // Body
-          Expanded(
-            child: ListView(
-              controller: controller,
-              padding: const EdgeInsets.all(20),
-              children: [
-                _DetailRow(
-                  'Timestamp',
-                  '${AppFormatters.shortDate(log.createdAt.toLocal())}  ${AppFormatters.time12h(log.createdAt.toLocal())}',
-                ),
-                _DetailRow(
-                  'Entity',
-                  '${_capitalize(log.entityType)}'
-                      '${log.entityName != null && log.entityName!.isNotEmpty ? ' · ${log.entityName}' : ''}',
-                ),
-                _DetailRow('User', log.userName ?? log.userId),
-                _DetailRow('Branch', log.branchName ?? 'All Branches'),
-                _DetailRow('Device', log.deviceId),
-                if (log.metadata.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    'METADATA',
-                    style: getOutfitStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textMuted,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  ...log.metadata.entries
-                      .where((e) => !e.key.startsWith('_'))
-                      .map((e) => _DetailRow(_formatKey(e.key), '${e.value}')),
-                ],
-              ],
-            ),
-          ),
+            const SizedBox(height: 8),
+            ...log.metadata.entries
+                .where((e) => !e.key.startsWith('_'))
+                .map((e) => _DetailRow(_formatKey(e.key), '${e.value}')),
+          ],
         ],
       ),
     );

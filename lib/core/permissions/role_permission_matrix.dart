@@ -89,7 +89,6 @@ class RolePermissionMatrix {
       AppPermission.viewInventoryAnalytics,
       AppPermission.viewInventoryReports,
       AppPermission.exportReports,
-      AppPermission.viewInsights,
 
       // Employees (within branch only)
       AppPermission.viewEmployees,

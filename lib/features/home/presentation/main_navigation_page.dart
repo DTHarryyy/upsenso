@@ -43,6 +43,11 @@ class MainNavigationPage extends StatefulWidget {
 
 class _MainNavigationPageState extends State<MainNavigationPage> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
+  // Keeps the shell's element (and all page-local state — view-mode toggles,
+  // scroll offsets, form input) alive when the layout flips between the phone
+  // and tablet trees on a resize across 600 px. Without it, crossing the
+  // breakpoint reparents the shell and wipes that state.
+  final _shellKey = GlobalKey();
   // Initialised in didChangeDependencies so we can read the screen width.
   // Desktop (≥1024 px) → expanded; tablet (600–1023 px) → collapsed icons.
   bool _sidebarExpanded = true;
@@ -158,7 +163,12 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                   location.startsWith(AppRoutes.fraud);
 
               // GoRouter's StatefulNavigationShell manages the page stack.
-              final shell = widget.navigationShell;
+              // A GlobalKey preserves the whole page subtree's state when the
+              // phone/tablet layout swap moves it to a different tree position.
+              final shell = KeyedSubtree(
+                key: _shellKey,
+                child: widget.navigationShell,
+              );
 
               if (isTablet) {
                 return _SyncStatusProvider(

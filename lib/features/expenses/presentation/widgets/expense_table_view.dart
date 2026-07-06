@@ -38,6 +38,7 @@ class ExpenseTableView extends StatelessWidget {
       columns: _kColumns,
       rowCount: items.length,
       columnGap: 12,
+      stretchToFill: true,
       emptyState: const ExpenseEmptyState(),
       rowCellsBuilder: (ctx, i) => _buildCells(ctx, items[i]),
     );

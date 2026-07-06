@@ -62,7 +62,10 @@ class _AuditLogViewState extends State<_AuditLogView> {
   Future<void> _loadViewMode() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(_kViewModeKey);
-    if (saved != null && mounted) {
+    // Skip if the user already toggled the view while this load was in
+    // flight — applying the stale saved value now would silently revert
+    // their tap.
+    if (saved != null && mounted && _viewMode == null) {
       setState(() {
         _viewMode = AppViewMode.values.firstWhere(
           (m) => m.name == saved,
@@ -141,14 +144,17 @@ class _AuditLogViewState extends State<_AuditLogView> {
 
 // ── Table columns definition ────────────────────────────────────────────────
 
+// Flex (not fixed) widths so the table fills the whole container width on
+// tablet/desktop instead of leaving dead space on the right. Ratios roughly
+// preserve the old pixel proportions.
 const _kColumns = [
-  AppTableColumn(label: 'Timestamp', width: 130),
-  AppTableColumn(label: 'Action', width: 110),
-  AppTableColumn(label: 'Entity', width: 140),
-  AppTableColumn(label: 'User', width: 120),
-  AppTableColumn(label: 'Branch', width: 120),
-  AppTableColumn(label: 'Device / IP', width: 140),
-  AppTableColumn(label: 'Details', width: 60, align: TextAlign.center),
+  AppTableColumn(label: 'Timestamp', flex: 12),
+  AppTableColumn(label: 'Action', flex: 13),
+  AppTableColumn(label: 'Entity', flex: 14),
+  AppTableColumn(label: 'User', flex: 12),
+  AppTableColumn(label: 'Branch', flex: 12),
+  AppTableColumn(label: 'Device / IP', flex: 14),
+  AppTableColumn(label: 'Details', flex: 6, align: TextAlign.center),
 ];
 
 // ── Body ────────────────────────────────────────────────────────────────────
@@ -315,10 +321,9 @@ class _LoadMoreFooter extends StatelessWidget {
                 isFetchingOlder
                     ? 'Loading older entries…'
                     : (error != null ? 'Retry' : 'Load more'),
-                style: AppTextStyles.body(context).copyWith(
-                  color: AppColors.brand,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: AppTextStyles.body(
+                  context,
+                ).copyWith(color: AppColors.brand, fontWeight: FontWeight.w600),
               ),
               style: TextButton.styleFrom(foregroundColor: AppColors.brand),
             ),

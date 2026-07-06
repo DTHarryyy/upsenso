@@ -20,8 +20,6 @@ import 'package:pos/features/dashboard/presentation/widgets/payment_methods_char
 import 'package:pos/features/dashboard/presentation/widgets/sales_trend_chart.dart';
 import 'package:pos/core/widgets/stat_card.dart';
 import 'package:pos/features/dashboard/presentation/widgets/top_selling_items.dart';
-import 'package:pos/features/insights/presentation/cubit/insights_cubit.dart';
-import 'package:pos/features/insights/presentation/widgets/insight_card.dart';
 
 class DashboardPage extends StatefulWidget {
   final VoidCallback? onNewSale;
@@ -34,20 +32,17 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   late final DashboardCubit _cubit;
-  late final InsightsCubit _insightsCubit;
 
   @override
   void initState() {
     super.initState();
     _cubit = DashboardCubit(sl());
-    _insightsCubit = InsightsCubit(sl());
     WidgetsBinding.instance.addPostFrameCallback((_) => _triggerLoad());
   }
 
   @override
   void dispose() {
     _cubit.close();
-    _insightsCubit.close();
     super.dispose();
   }
 
@@ -62,26 +57,16 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  /// Loads both the dashboard data and the (permission-scoped) insight card for
-  /// the given session + branch. The insight card self-hides when the role
-  /// lacks `insights.view`, so it's loaded unconditionally here.
+  /// Loads the dashboard data for the given session + branch.
   void _loadFor(AuthAuthenticated authState, String? branchId) {
     final businessId = authState.user.businessId ?? '';
     _cubit.startWatching(businessId: businessId, branchId: branchId);
-    _insightsCubit.load(
-      businessId: businessId,
-      cashierId: authState.user.id,
-      branchId: branchId,
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider.value(value: _cubit),
-        BlocProvider.value(value: _insightsCubit),
-      ],
+    return BlocProvider.value(
+      value: _cubit,
       child: MultiBlocListener(
         listeners: [
           BlocListener<AuthBloc, AuthState>(
@@ -130,10 +115,6 @@ class _DashboardPageState extends State<DashboardPage> {
                             _StatCardsRow(data: data, isLoading: isLoading),
 
                             const SizedBox(height: 16),
-
-                            // ── AI Insights ── (self-hides when the role lacks
-                            // insights.view or there's nothing to report)
-                            const InsightCard(),
 
                             // ── Row 1: Sales Trend + Top Selling Items ──
                             // On wide screens they sit side by side (flex 3 : 2)

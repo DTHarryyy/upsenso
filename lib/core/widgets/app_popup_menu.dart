@@ -79,10 +79,7 @@ class AppPopupMenu<T> extends StatelessWidget {
       elevation: 6,
       shadowColor: Colors.black.withValues(alpha: 0.10),
       // Outer shape matches the app's card / dropdown radius.
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: AppColors.borderSoft),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       onSelected: onSelected,
       itemBuilder: (_) => items
           .map(
@@ -99,7 +96,13 @@ class AppPopupMenu<T> extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.borderSoft),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

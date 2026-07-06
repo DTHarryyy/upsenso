@@ -51,11 +51,6 @@ abstract final class PermissionKeys {
   static const String reportsViewAll = 'reports.view_all';
   static const String reportsExport = 'reports.export';
 
-  // ── Insights ──────────────────────────────────────────────────────────────
-  // Proactive AI insight card (M2). Gated by the `reports` module — see
-  // PermissionService._moduleCodeForKey.
-  static const String insightsView = 'insights.view';
-
   // ── Employees ─────────────────────────────────────────────────────────────
   static const String employeesView = 'employees.view';
   static const String employeesCreate = 'employees.create';
@@ -156,7 +151,6 @@ abstract final class PermissionKeys {
     reportsViewBranch,
     reportsViewAll,
     reportsExport,
-    insightsView,
     employeesView,
     employeesCreate,
     employeesEdit,

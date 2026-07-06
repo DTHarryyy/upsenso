@@ -51,6 +51,12 @@ class AppDataTable extends StatelessWidget {
   /// Horizontal gap inserted between every pair of columns. Defaults to 0.
   final double columnGap;
 
+  /// Fixed-width tables only: when true and the container is wider than the
+  /// columns need, every column is scaled up proportionally so the table fills
+  /// the full width instead of leaving a gap on the right. When space is tight
+  /// it still falls back to horizontal scrolling, so it never overflows.
+  final bool stretchToFill;
+
   const AppDataTable({
     super.key,
     required this.columns,
@@ -59,36 +65,18 @@ class AppDataTable extends StatelessWidget {
     this.emptyState,
     this.onRowTap,
     this.columnGap = 0,
+    this.stretchToFill = false,
   });
 
   static const double _rowH = 16.0;
+
+  /// Horizontal padding baked into the header/row containers (16 each side).
+  static const double _rowHPadding = 32.0;
 
   bool get _flexMode => columns.every((c) => c.isFlexColumn);
 
   @override
   Widget build(BuildContext context) {
-    final body = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _HeaderRow(columns: columns, columnGap: columnGap),
-        if (rowCount == 0)
-          emptyState ?? const _DefaultEmpty()
-        else
-          Column(
-            children: List.generate(rowCount, (i) {
-              return _DataRow(
-                columns: columns,
-                cells: rowCellsBuilder(context, i),
-                verticalPadding: _rowH,
-                isEven: i.isEven,
-                onTap: onRowTap?.call(i),
-                columnGap: columnGap,
-              );
-            }),
-          ),
-      ],
-    );
-
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -104,11 +92,59 @@ class AppDataTable extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: _flexMode
-          ? body
-          : SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: IntrinsicWidth(child: body),
-            ),
+          ? _buildBody(context)
+          : stretchToFill
+          ? LayoutBuilder(builder: _buildStretchable)
+          : _horizontalScroll(context),
+    );
+  }
+
+  Widget _buildStretchable(BuildContext context, BoxConstraints constraints) {
+    final gaps = columnGap * (columns.length - 1);
+    final sumWidths = columns.fold<double>(0, (s, c) => s + (c.width ?? 0));
+    final intrinsic = sumWidths + gaps + _rowHPadding;
+    if (constraints.maxWidth.isFinite &&
+        constraints.maxWidth > intrinsic &&
+        sumWidths > 0) {
+      // 0.5px cushion so float rounding never tips the row into an overflow.
+      final scale =
+          (constraints.maxWidth - gaps - _rowHPadding - 0.5) / sumWidths;
+      return _buildBody(context, widthScale: scale);
+    }
+    return _horizontalScroll(context);
+  }
+
+  Widget _horizontalScroll(BuildContext context) => SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    child: IntrinsicWidth(child: _buildBody(context)),
+  );
+
+  Widget _buildBody(BuildContext context, {double widthScale = 1}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _HeaderRow(
+          columns: columns,
+          columnGap: columnGap,
+          widthScale: widthScale,
+        ),
+        if (rowCount == 0)
+          emptyState ?? const _DefaultEmpty()
+        else
+          Column(
+            children: List.generate(rowCount, (i) {
+              return _DataRow(
+                columns: columns,
+                cells: rowCellsBuilder(context, i),
+                verticalPadding: _rowH,
+                isEven: i.isEven,
+                onTap: onRowTap?.call(i),
+                columnGap: columnGap,
+                widthScale: widthScale,
+              );
+            }),
+          ),
+      ],
     );
   }
 }
@@ -118,7 +154,12 @@ class AppDataTable extends StatelessWidget {
 class _HeaderRow extends StatelessWidget {
   final List<AppTableColumn> columns;
   final double columnGap;
-  const _HeaderRow({required this.columns, required this.columnGap});
+  final double widthScale;
+  const _HeaderRow({
+    required this.columns,
+    required this.columnGap,
+    this.widthScale = 1,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -153,7 +194,7 @@ class _HeaderRow extends StatelessWidget {
       } else {
         result.add(
           SizedBox(
-            width: c.width,
+            width: c.width! * widthScale,
             child: Align(
               alignment: c.align == TextAlign.right
                   ? Alignment.centerRight
@@ -182,6 +223,7 @@ class _DataRow extends StatefulWidget {
   final bool isEven;
   final VoidCallback? onTap;
   final double columnGap;
+  final double widthScale;
 
   const _DataRow({
     required this.columns,
@@ -190,6 +232,7 @@ class _DataRow extends StatefulWidget {
     this.isEven = true,
     this.onTap,
     this.columnGap = 0,
+    this.widthScale = 1,
   });
 
   @override
@@ -261,7 +304,7 @@ class _DataRowState extends State<_DataRow> {
       } else {
         result.add(
           SizedBox(
-            width: c.width,
+            width: c.width! * widget.widthScale,
             child: Align(
               alignment: c.align == TextAlign.right
                   ? Alignment.centerRight

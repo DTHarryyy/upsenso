@@ -40,12 +40,10 @@ class ReportNavChipBar extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final segmentWidth = constraints.maxWidth / tabs.length;
-          // Fill exactly what the parent hands us (e.g. the pinned header's
-          // fixed extent minus this bar's own border) instead of a hardcoded
-          // height — a mismatch there is a hard overflow, not just a clip.
-          final segmentHeight = constraints.maxHeight.isFinite
-              ? constraints.maxHeight
-              : 40.0;
+          // A compact fixed segment height keeps the pill balanced instead of
+          // stretching to the pinned header's full extent. The header centres
+          // this bar with loose constraints, so a fixed height can't overflow.
+          const segmentHeight = 30.0;
           return CupertinoSlidingSegmentedControl<int>(
             groupValue: selectedIndex,
             backgroundColor: Colors.transparent,
@@ -84,14 +82,17 @@ class _SegmentContent extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(tab.icon, size: 16, color: fg),
-        const SizedBox(width: 7),
+        Icon(tab.icon, size: 15, color: fg),
+        const SizedBox(width: 6),
         Flexible(
           child: Text(
             tab.label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
+            // Fixed 12px label — caption scales up on desktop, which made the
+            // tabs read oversized next to their compact height.
             style: AppTextStyles.caption(context).copyWith(
+              fontSize: 12,
               color: fg,
               fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
             ),

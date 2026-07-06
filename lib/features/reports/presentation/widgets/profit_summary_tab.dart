@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
+import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/widgets/app_data_table.dart';
 import 'package:pos/core/widgets/report_section.dart';
 import 'package:pos/core/widgets/stat_card.dart';
@@ -15,14 +16,34 @@ class ProfitSummaryTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final chart = ProfitBarChart(trend: data.profitTrend);
+    final table = _ProfitTrendTable(trend: data.profitTrend);
+    // Desktop has the width to place the chart and breakdown side by side;
+    // tablet and phone stack them so neither gets squeezed. Empty periods
+    // render nothing in the table, so fall back to stacking to avoid a lone
+    // half-width chart with dead space beside it.
+    final hasRows = data.profitTrend.any((p) => p.label.isNotEmpty);
+    final sideBySide = Breakpoints.isDesktop(context) && hasRows;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _ProfitOverview(data: data),
         const SizedBox(height: 20),
-        ProfitBarChart(trend: data.profitTrend),
-        const SizedBox(height: 16),
-        _ProfitTrendTable(trend: data.profitTrend),
+        if (sideBySide)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: chart),
+              const SizedBox(width: 16),
+              Expanded(child: table),
+            ],
+          )
+        else ...[
+          chart,
+          const SizedBox(height: 16),
+          table,
+        ],
       ],
     );
   }

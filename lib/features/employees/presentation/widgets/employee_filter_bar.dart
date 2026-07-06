@@ -1,22 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/const/app_colors.dart';
-import 'package:pos/core/const/font_utils.dart';
-import 'package:pos/core/widgets/app_filter_button.dart';
-import 'package:pos/core/widgets/app_filter_chip.dart';
+import 'package:pos/core/widgets/app_dropdown.dart';
 import 'package:pos/core/widgets/app_search_bar.dart';
-import 'package:pos/core/widgets/app_section_label.dart';
 import 'package:pos/features/business/domain/entities/branch.dart';
 import 'package:pos/features/employees/presentation/bloc/employee_bloc.dart';
 import 'package:pos/features/employees/presentation/bloc/employee_event.dart';
 import 'package:pos/features/employees/presentation/bloc/employee_state.dart';
 
 const _kRoles = [
-  (role: 'Branch Manager', color: AppColors.brand),
-  (role: 'Cashier', color: AppColors.brand),
-  (role: 'Inventory Staff', color: AppColors.brand),
-  (role: 'Business Owner', color: AppColors.brand),
+  'Branch Manager',
+  'Cashier',
+  'Inventory Staff',
+  'Business Owner',
 ];
+
+String _statusValue(bool? isActive) => switch (isActive) {
+  true => 'active',
+  false => 'inactive',
+  null => '',
+};
+
+bool? _statusFromValue(String? value) => switch (value) {
+  'active' => true,
+  'inactive' => false,
+  _ => null,
+};
 
 class EmployeeFilterBar extends StatefulWidget {
   final List<Branch> branches;
@@ -44,259 +53,96 @@ class _EmployeeFilterBarState extends State<EmployeeFilterBar> {
     return null;
   }
 
-  void _showFilterSheet(EmployeeLoaded? loaded) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => _FilterSheet(
-        bloc: context.read<EmployeeBloc>(),
-        loaded: loaded,
-        branches: widget.branches,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final showBranchFilter = widget.branches.length >= 2;
+
     return Container(
       color: AppColors.surface,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Search + filter icon
-          Row(
-            children: [
-              Expanded(
-                child: AppSearchBar(
-                  controller: _searchController,
-                  hint: 'Search employees…',
-                  onChanged: (q) =>
-                      context.read<EmployeeBloc>().add(SearchEmployees(q)),
-                ),
-              ),
-              const SizedBox(width: 10),
-              BlocBuilder<EmployeeBloc, EmployeeState>(
-                buildWhen: (p, c) {
-                  final pf = _resolveLoaded(p);
-                  final cf = _resolveLoaded(c);
-                  return (pf?.isActiveFilter != cf?.isActiveFilter) ||
-                      (pf?.branchFilter != cf?.branchFilter);
-                },
-                builder: (context, state) {
-                  final loaded = _resolveLoaded(state);
-                  return AppFilterButton(
-                    hasActiveFilters:
-                        loaded?.isActiveFilter != null ||
-                        loaded?.branchFilter != null,
-                    onTap: () => _showFilterSheet(loaded),
-                  );
-                },
-              ),
-            ],
+          AppSearchBar(
+            controller: _searchController,
+            hint: 'Search employees…',
+            onChanged: (q) =>
+                context.read<EmployeeBloc>().add(SearchEmployees(q)),
           ),
-
-          // Role quick-filter chips
           const SizedBox(height: 10),
+
+          // Role / Status / Branch dropdown filters
           BlocBuilder<EmployeeBloc, EmployeeState>(
-            buildWhen: (p, c) =>
-                _resolveLoaded(p)?.roleFilter != _resolveLoaded(c)?.roleFilter,
+            buildWhen: (p, c) {
+              final pf = _resolveLoaded(p);
+              final cf = _resolveLoaded(c);
+              return pf?.roleFilter != cf?.roleFilter ||
+                  pf?.isActiveFilter != cf?.isActiveFilter ||
+                  pf?.branchFilter != cf?.branchFilter;
+            },
             builder: (context, state) {
               final loaded = _resolveLoaded(state);
-              return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    AppFilterChip(
-                      label: 'All',
-                      isSelected: loaded?.roleFilter == null,
-                      onTap: () => context.read<EmployeeBloc>().add(
-                        const SetRoleFilter(null),
+              return Row(
+                children: [
+                  Expanded(
+                    child: AppDropdown<String>(
+                      value: loaded?.roleFilter,
+                      hint: 'All Roles',
+                      dense: true,
+                      items: [
+                        const AppDropdownItem(value: '', label: 'All Roles'),
+                        for (final role in _kRoles)
+                          AppDropdownItem(value: role, label: role),
+                      ],
+                      onChanged: (v) => context.read<EmployeeBloc>().add(
+                        SetRoleFilter((v == null || v.isEmpty) ? null : v),
                       ),
                     ),
-                    for (final entry in _kRoles) ...[
-                      const SizedBox(width: 8),
-                      AppFilterChip(
-                        label: entry.role,
-                        isSelected: loaded?.roleFilter == entry.role,
-                        selectedColor: entry.color,
-                        onTap: () => context.read<EmployeeBloc>().add(
-                          SetRoleFilter(
-                            loaded?.roleFilter == entry.role
-                                ? null
-                                : entry.role,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: AppDropdown<String>(
+                      value: _statusValue(loaded?.isActiveFilter),
+                      hint: 'All Status',
+                      dense: true,
+                      items: const [
+                        AppDropdownItem(value: '', label: 'All Status'),
+                        AppDropdownItem(value: 'active', label: 'Active'),
+                        AppDropdownItem(value: 'inactive', label: 'Inactive'),
+                      ],
+                      onChanged: (v) => context.read<EmployeeBloc>().add(
+                        SetStatusFilter(_statusFromValue(v)),
+                      ),
+                    ),
+                  ),
+                  if (showBranchFilter) ...[
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: AppDropdown<String>(
+                        value: loaded?.branchFilter,
+                        hint: 'All Branches',
+                        dense: true,
+                        items: [
+                          const AppDropdownItem(
+                            value: '',
+                            label: 'All Branches',
                           ),
+                          for (final branch in widget.branches)
+                            AppDropdownItem(
+                              value: branch.id,
+                              label: branch.name,
+                            ),
+                        ],
+                        onChanged: (v) => context.read<EmployeeBloc>().add(
+                          SetBranchFilter((v == null || v.isEmpty) ? null : v),
                         ),
                       ),
-                    ],
+                    ),
                   ],
-                ),
+                ],
               );
             },
           ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Filter bottom sheet ─────────────────────────────────────────────────────
-
-class _FilterSheet extends StatefulWidget {
-  final EmployeeBloc bloc;
-  final EmployeeLoaded? loaded;
-  final List<Branch> branches;
-
-  const _FilterSheet({required this.bloc, required this.branches, this.loaded});
-
-  @override
-  State<_FilterSheet> createState() => _FilterSheetState();
-}
-
-class _FilterSheetState extends State<_FilterSheet> {
-  late bool? _isActiveFilter;
-  late String? _branchFilter;
-
-  @override
-  void initState() {
-    super.initState();
-    _isActiveFilter = widget.loaded?.isActiveFilter;
-    _branchFilter = widget.loaded?.branchFilter;
-  }
-
-  void _setStatus(bool? value) {
-    setState(() => _isActiveFilter = value);
-    widget.bloc.add(SetStatusFilter(value));
-  }
-
-  void _setBranch(String? branchId) {
-    setState(() => _branchFilter = branchId);
-    widget.bloc.add(SetBranchFilter(branchId));
-  }
-
-  void _clearAll() {
-    setState(() {
-      _isActiveFilter = null;
-      _branchFilter = null;
-    });
-    widget.bloc.add(const SetStatusFilter(null));
-    widget.bloc.add(const SetBranchFilter(null));
-  }
-
-  bool get _hasFilters => _isActiveFilter != null || _branchFilter != null;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        24,
-        20,
-        24,
-        20 + MediaQuery.of(context).padding.bottom,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Handle
-          Center(
-            child: Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.borderSoft,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          Row(
-            children: [
-              Text(
-                'Filters',
-                style: getOutfitStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const Spacer(),
-              if (_hasFilters)
-                GestureDetector(
-                  onTap: _clearAll,
-                  child: Text(
-                    'Clear all',
-                    style: getOutfitStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.brand,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          // ── Status ────────────────────────────────────────────────────
-          AppSectionLabel(label: 'STATUS'),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              AppFilterChip(
-                label: 'All',
-                isSelected: _isActiveFilter == null,
-                onTap: () => _setStatus(null),
-              ),
-              AppFilterChip(
-                label: 'Active',
-                isSelected: _isActiveFilter == true,
-                selectedColor: AppColors.success,
-                onTap: () => _setStatus(_isActiveFilter == true ? null : true),
-              ),
-              AppFilterChip(
-                label: 'Inactive',
-                isSelected: _isActiveFilter == false,
-                selectedColor: AppColors.textMuted,
-                onTap: () =>
-                    _setStatus(_isActiveFilter == false ? null : false),
-              ),
-            ],
-          ),
-
-          if (widget.branches.isNotEmpty) ...[
-            const SizedBox(height: 20),
-
-            // ── Branch ────────────────────────────────────────────────
-            AppSectionLabel(label: 'BRANCH'),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                AppFilterChip(
-                  label: 'All',
-                  isSelected: _branchFilter == null,
-                  onTap: () => _setBranch(null),
-                ),
-                for (final branch in widget.branches)
-                  AppFilterChip(
-                    label: branch.name,
-                    isSelected: _branchFilter == branch.id,
-                    onTap: () => _setBranch(
-                      _branchFilter == branch.id ? null : branch.id,
-                    ),
-                  ),
-              ],
-            ),
-          ],
-
-          const SizedBox(height: 24),
         ],
       ),
     );

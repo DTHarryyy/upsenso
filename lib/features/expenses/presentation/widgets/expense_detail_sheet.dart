@@ -2,27 +2,45 @@ import 'package:flutter/material.dart';
 import 'package:iconly/iconly.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/features/expenses/domain/expense_item.dart';
 import 'package:pos/features/expenses/presentation/cubit/expenses_cubit.dart';
 import 'package:pos/features/expenses/presentation/widgets/expense_status_badge.dart';
 
+/// Phone opens a draggable bottom sheet; tablet/desktop get a centered dialog —
+/// same content, presented the way each form factor expects.
 void showExpenseDetail(
   BuildContext context,
   ExpenseItem item,
   bool canApprove,
 ) {
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (_) => BlocProvider.value(
-      value: context.read<ExpensesCubit>(),
-      child: _ExpenseDetailSheet(item: item, canApprove: canApprove),
-    ),
-  );
+  final cubit = context.read<ExpensesCubit>();
+
+  if (Breakpoints.isTablet(context)) {
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.4),
+      builder: (_) => BlocProvider.value(
+        value: cubit,
+        child: _ExpenseDetailDialog(item: item, canApprove: canApprove),
+      ),
+    );
+  } else {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => BlocProvider.value(
+        value: cubit,
+        child: _ExpenseDetailSheet(item: item, canApprove: canApprove),
+      ),
+    );
+  }
 }
+
+// ── Phone: bottom sheet ──────────────────────────────────────────────────────
 
 class _ExpenseDetailSheet extends StatelessWidget {
   final ExpenseItem item;
@@ -32,17 +50,6 @@ class _ExpenseDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (statusBg, statusText, statusLabel) = expenseStatusStyle(item.status);
-    final dateStr = AppFormatters.shortDate(item.expenseDate);
-    final cubit = context.read<ExpensesCubit>();
-    final submittedByLabel = item.submittedById == cubit.currentUserId
-        ? '${item.submittedByName} (You)'
-        : item.submittedByName;
-    final approvedByLabel =
-        item.approvedById != null && item.approvedById == cubit.currentUserId
-        ? '${item.approvedByName} (You)'
-        : item.approvedByName;
-
     return DraggableScrollableSheet(
       initialChildSize: 0.75,
       minChildSize: 0.5,
@@ -66,205 +73,319 @@ class _ExpenseDetailSheet extends StatelessWidget {
                 ),
               ),
             ),
-            Container(
-              margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.brand, AppColors.brandDark],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      IconlyLight.paper,
-                      color: Colors.white,
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item.vendor,
-                          style: getOutfitStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${item.category} · $dateStr',
-                          style: getOutfitStyle(
-                            fontSize: 13,
-                            color: Colors.white.withValues(alpha: 0.8),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        AppFormatters.currency(item.amount),
-                        style: getOutfitStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: statusBg,
-                          borderRadius: BorderRadius.circular(100),
-                        ),
-                        child: Text(
-                          statusLabel,
-                          style: getOutfitStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: statusText,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+            _DetailHeaderCard(item: item),
             Expanded(
               child: ListView(
                 controller: scrollController,
                 padding: const EdgeInsets.all(16),
-                children: [
-                  _DetailCard(
-                    children: [
-                      _DetailRow(
-                        icon: Icons.calendar_month,
-                        label: 'Date',
-                        value: dateStr,
-                        iconColor: AppColors.info,
-                        iconBg: AppColors.infoSoft,
-                      ),
-                      const _DetailDivider(),
-                      _DetailRow(
-                        icon: Icons.work,
-                        label: 'Branch',
-                        value: item.branchName ?? 'All Branches',
-                        iconColor: AppColors.fraudMedium,
-                        iconBg: AppColors.fraudMedium.withValues(alpha: 0.2),
-                      ),
-                      const _DetailDivider(),
-                      _DetailRow(
-                        icon: Icons.person,
-                        label: 'Submitted By',
-
-                        iconColor: AppColors.syncing,
-                        iconBg: AppColors.syncing.withValues(alpha: 0.2),
-                        value: submittedByLabel,
-                      ),
-                      if (approvedByLabel != null) ...[
-                        const _DetailDivider(),
-                        _DetailRow(
-                          icon: Icons.check_circle,
-                          label: 'Approved By',
-                          value: approvedByLabel,
-                          iconColor: AppColors.success,
-                          iconBg: AppColors.successSoft,
-                        ),
-                      ],
-                    ],
-                  ),
-                  if (item.note != null && item.note!.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    _NoteCard(note: item.note!),
-                  ],
-                  const SizedBox(height: 16),
-                  if (canApprove && item.status == ExpenseStatus.pending) ...[
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              cubit.rejectExpense(item.id);
-                              Navigator.pop(context);
-                            },
-                            icon: const Icon(
-                              IconlyLight.close_square,
-                              size: 16,
-                            ),
-                            label: Text(
-                              'Reject',
-                              style: getOutfitStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.error,
-                              ),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.error,
-                              side: const BorderSide(color: AppColors.error),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          flex: 2,
-                          child: FilledButton.icon(
-                            onPressed: () {
-                              cubit.approveExpense(item.id);
-                              Navigator.pop(context);
-                            },
-                            icon: const Icon(IconlyLight.tick_square, size: 16),
-                            label: Text(
-                              'Approve',
-                              style: getOutfitStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textInverse,
-                              ),
-                            ),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.success,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                  const SizedBox(height: 8),
-                ],
+                children: [_DetailBody(item: item, canApprove: canApprove)],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Tablet / desktop: dialog ─────────────────────────────────────────────────
+
+class _ExpenseDetailDialog extends StatelessWidget {
+  final ExpenseItem item;
+  final bool canApprove;
+
+  const _ExpenseDetailDialog({required this.item, required this.canApprove});
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 12, 0),
+                child: Row(
+                  children: [
+                    Text(
+                      'Expense Details',
+                      style: getOutfitStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const Spacer(),
+                    _CloseButton(),
+                  ],
+                ),
+              ),
+              _DetailHeaderCard(item: item),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: _DetailBody(item: item, canApprove: canApprove),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CloseButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.pop(context),
+      child: Container(
+        padding: const EdgeInsets.all(7),
+        decoration: BoxDecoration(
+          color: AppColors.inputFill,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Icon(
+          Icons.close_rounded,
+          size: 18,
+          color: AppColors.textMuted,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Shared content ───────────────────────────────────────────────────────────
+
+/// Gradient banner with vendor, amount and status — shared by both presentations.
+class _DetailHeaderCard extends StatelessWidget {
+  final ExpenseItem item;
+  const _DetailHeaderCard({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final (statusBg, statusText, statusLabel) = expenseStatusStyle(item.status);
+    final dateStr = AppFormatters.shortDate(item.expenseDate);
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppColors.brand, AppColors.brandDark],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              IconlyLight.paper,
+              color: Colors.white,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.vendor,
+                  style: getOutfitStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${item.category} · $dateStr',
+                  style: getOutfitStyle(
+                    fontSize: 13,
+                    color: Colors.white.withValues(alpha: 0.8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                AppFormatters.currency(item.amount),
+                style: getOutfitStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: statusBg,
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                child: Text(
+                  statusLabel,
+                  style: getOutfitStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: statusText,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Detail rows, optional note and the approve/reject actions.
+class _DetailBody extends StatelessWidget {
+  final ExpenseItem item;
+  final bool canApprove;
+  const _DetailBody({required this.item, required this.canApprove});
+
+  @override
+  Widget build(BuildContext context) {
+    final dateStr = AppFormatters.shortDate(item.expenseDate);
+    final cubit = context.read<ExpensesCubit>();
+    final submittedByLabel = item.submittedById == cubit.currentUserId
+        ? '${item.submittedByName} (You)'
+        : item.submittedByName;
+    final approvedByLabel =
+        item.approvedById != null && item.approvedById == cubit.currentUserId
+        ? '${item.approvedByName} (You)'
+        : item.approvedByName;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _DetailCard(
+          children: [
+            _DetailRow(
+              icon: Icons.calendar_month,
+              label: 'Date',
+              value: dateStr,
+              iconColor: AppColors.info,
+              iconBg: AppColors.infoSoft,
+            ),
+            const _DetailDivider(),
+            _DetailRow(
+              icon: Icons.work,
+              label: 'Branch',
+              value: item.branchName ?? 'All Branches',
+              iconColor: AppColors.fraudMedium,
+              iconBg: AppColors.fraudMedium.withValues(alpha: 0.2),
+            ),
+            const _DetailDivider(),
+            _DetailRow(
+              icon: Icons.person,
+              label: 'Submitted By',
+              iconColor: AppColors.syncing,
+              iconBg: AppColors.syncing.withValues(alpha: 0.2),
+              value: submittedByLabel,
+            ),
+            if (approvedByLabel != null) ...[
+              const _DetailDivider(),
+              _DetailRow(
+                icon: Icons.check_circle,
+                label: 'Approved By',
+                value: approvedByLabel,
+                iconColor: AppColors.success,
+                iconBg: AppColors.successSoft,
+              ),
+            ],
+          ],
+        ),
+        if (item.note != null && item.note!.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _NoteCard(note: item.note!),
+        ],
+        const SizedBox(height: 16),
+        if (canApprove && item.status == ExpenseStatus.pending) ...[
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    cubit.rejectExpense(item.id);
+                    Navigator.pop(context);
+                  },
+                  icon: const Icon(IconlyLight.close_square, size: 16),
+                  label: Text(
+                    'Reject',
+                    style: getOutfitStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.error,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.error,
+                    side: const BorderSide(color: AppColors.error),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: FilledButton.icon(
+                  onPressed: () {
+                    cubit.approveExpense(item.id);
+                    Navigator.pop(context);
+                  },
+                  icon: const Icon(IconlyLight.tick_square, size: 16),
+                  label: Text(
+                    'Approve',
+                    style: getOutfitStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textInverse,
+                    ),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.success,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+        const SizedBox(height: 8),
+      ],
     );
   }
 }

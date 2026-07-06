@@ -245,7 +245,9 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
                 ? _selectedTab
                 : 0;
 
-            final hp = Breakpoints.horizontalPadding(context);
+            // Match the dashboard's fixed 16px page inset — it's the app-wide
+            // standard, so every page reads with the same edge spacing.
+            const hp = 16.0;
             final isPhone = Breakpoints.isPhone(context);
 
             final navBar = ReportNavChipBar(
@@ -253,6 +255,9 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
               selectedIndex: effectiveSelectedTab,
               onTabSelected: (i) => setState(() => _selectedTab = i),
             );
+            // A comfortable per-tab width so the segmented control sizes to its
+            // tabs instead of stretching the whole row on wide screens.
+            final navMaxWidth = visibleTabs.length * 130.0;
             final controls = ReportsControls(
               period: _period,
               customRangeLabel: _customRangeLabel,
@@ -260,7 +265,8 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
               exportButton: _ExportDropdown(
                 isExportingPdf: _exportingPdf,
                 isExportingExcel: _exportingExcel,
-                onExportPdf: () => _onExportPdf(data, businessName, branchLabel),
+                onExportPdf: () =>
+                    _onExportPdf(data, businessName, branchLabel),
                 onExportExcel: () =>
                     _onExportExcel(data, businessName, branchLabel),
               ),
@@ -286,12 +292,31 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
                       pinned: true,
                       delegate: _NavBarDelegate(
                         horizontalPadding: hp,
+                        // On phone the controls sit above with their own 16px
+                        // top inset, so the nav only needs a small gap. On
+                        // tablet+ the nav is the topmost element, so give it the
+                        // dashboard's 16px top to match.
+                        topPadding: isPhone ? 4 : 16,
                         child: isPhone
-                            ? navBar
+                            ? Center(child: navBar)
                             : Row(
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
-                                  Expanded(child: navBar),
+                                  // Cap the segmented control's width so it
+                                  // doesn't stretch the full row on wide
+                                  // screens, while still shrinking to fit a
+                                  // narrow tablet. Controls stay pinned right.
+                                  Flexible(
+                                    child: Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: ConstrainedBox(
+                                        constraints: BoxConstraints(
+                                          maxWidth: navMaxWidth,
+                                        ),
+                                        child: navBar,
+                                      ),
+                                    ),
+                                  ),
                                   const SizedBox(width: 16),
                                   controls,
                                 ],
@@ -372,10 +397,21 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
 class _NavBarDelegate extends SliverPersistentHeaderDelegate {
   final Widget child;
   final double horizontalPadding;
+  final double topPadding;
 
-  _NavBarDelegate({required this.child, required this.horizontalPadding});
+  _NavBarDelegate({
+    required this.child,
+    required this.horizontalPadding,
+    required this.topPadding,
+  });
 
-  static const double _height = 66;
+  // The segmented nav bar fills whatever extent it's handed, so keep the
+  // content region fixed and let top padding drive the total height — that way
+  // the header can line up with the dashboard's 16px inset without squashing.
+  static const double _contentHeight = 48;
+  static const double _bottomPadding = 14;
+
+  double get _height => topPadding + _contentHeight + _bottomPadding;
 
   @override
   double get minExtent => _height;
@@ -383,17 +419,28 @@ class _NavBarDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => _height;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     return Container(
       color: AppColors.background,
-      padding: EdgeInsets.fromLTRB(horizontalPadding, 4, horizontalPadding, 14),
+      padding: EdgeInsets.fromLTRB(
+        horizontalPadding,
+        topPadding,
+        horizontalPadding,
+        _bottomPadding,
+      ),
       child: child,
     );
   }
 
   @override
   bool shouldRebuild(covariant _NavBarDelegate old) =>
-      old.child != child || old.horizontalPadding != horizontalPadding;
+      old.child != child ||
+      old.horizontalPadding != horizontalPadding ||
+      old.topPadding != topPadding;
 }
 
 // ─── Export dropdown ──────────────────────────────────────────────────────────

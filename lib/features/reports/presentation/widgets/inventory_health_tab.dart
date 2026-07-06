@@ -98,27 +98,36 @@ class _InventoryHealthTabState extends State<InventoryHealthTab>
   AppViewMode _view = AppViewMode.table;
   _SubView _subView = _SubView.products;
   late final AnimationController _shimmerCtrl;
+  bool _viewResolved = false;
 
   @override
   void initState() {
     super.initState();
-    final saved = sl<SharedPreferences>().getString(_kViewPrefKey);
-    if (saved != null) {
-      // Respect an explicit prior choice on any screen size.
-      _view = saved == AppViewMode.cards.name
-          ? AppViewMode.cards
-          : AppViewMode.table;
-    } else {
-      // First visit: cards read better on phone, table makes better use of
-      // the extra width on tablet/desktop.
-      _view = Breakpoints.isPhone(context)
-          ? AppViewMode.cards
-          : AppViewMode.table;
-    }
     _shimmerCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Resolve the initial view once — MediaQuery isn't readable in initState.
+    // A saved choice wins on any screen size; otherwise cards read better on
+    // phone and a table uses the extra width on tablet/desktop. Guarded so a
+    // later MediaQuery change (rotation, resize) can't clobber the user's pick.
+    if (_viewResolved) return;
+    _viewResolved = true;
+    final saved = sl<SharedPreferences>().getString(_kViewPrefKey);
+    if (saved != null) {
+      _view = saved == AppViewMode.cards.name
+          ? AppViewMode.cards
+          : AppViewMode.table;
+    } else {
+      _view = Breakpoints.isPhone(context)
+          ? AppViewMode.cards
+          : AppViewMode.table;
+    }
   }
 
   @override
