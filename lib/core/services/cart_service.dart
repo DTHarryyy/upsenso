@@ -62,6 +62,7 @@ class CartService extends ChangeNotifier {
             variant: i.variant,
             unitPrice: i.unitPrice,
             taxRate: i.taxRate,
+            unit: i.unit,
           )..qty = i.qty,
         ),
       );
@@ -90,6 +91,7 @@ class CartService extends ChangeNotifier {
     required String variant,
     required double unitPrice,
     double? taxRate,
+    String? unit,
     double qty = 1,
   }) {
     final idx = _items.indexWhere((i) => i.variantId == variantId);
@@ -102,6 +104,7 @@ class CartService extends ChangeNotifier {
         variant: variant,
         unitPrice: unitPrice,
         taxRate: taxRate,
+        unit: unit,
       );
       item.qty = qty;
       _items.add(item);

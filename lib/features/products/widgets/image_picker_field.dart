@@ -12,12 +12,17 @@ class ImagePickerField extends StatelessWidget {
   final VoidCallback onClear;
   final bool isLoading;
 
+  /// Renders a compact 64×64 square thumbnail instead of the full-width picker.
+  /// Used inline beside the product name so the photo doesn't add scroll.
+  final bool compact;
+
   const ImagePickerField({
     super.key,
     required this.imagePath,
     required this.onPick,
     required this.onClear,
     this.isLoading = false,
+    this.compact = false,
   });
 
   Future<void> _showSourcePicker(BuildContext context) async {
@@ -69,6 +74,8 @@ class ImagePickerField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (compact) return _buildCompact(context);
+
     if (isLoading) {
       return Container(
         width: double.infinity,
@@ -155,6 +162,97 @@ class ImagePickerField extends StatelessWidget {
     }
 
     return _emptyPicker(context);
+  }
+
+  Widget _buildCompact(BuildContext context) {
+    // Fills whatever square box the parent gives it (see the Basics card's
+    // AspectRatio), so the thumbnail scales to match the fields beside it.
+    Widget frame(Widget child) => GestureDetector(
+      onTap: () => _showSourcePicker(context),
+      child: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          color: AppColors.inputFill,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.borderSoft, width: 1.5),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: child,
+      ),
+    );
+
+    if (isLoading) {
+      return frame(
+        const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+
+    if (imagePath != null) {
+      final isNetwork = imagePath!.startsWith('http');
+      return Stack(
+        children: [
+          frame(
+            isNetwork
+                ? Image.network(
+                    imagePath!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (ctx, err, stack) => _compactEmpty(),
+                  )
+                : Image.file(
+                    File(imagePath!),
+                    fit: BoxFit.cover,
+                    errorBuilder: (ctx, err, stack) => _compactEmpty(),
+                  ),
+          ),
+          Positioned(
+            top: 6,
+            right: 6,
+            child: GestureDetector(
+              onTap: onClear,
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                padding: const EdgeInsets.all(3),
+                child: const Icon(
+                  IconlyLight.close_square,
+                  color: Colors.white,
+                  size: 14,
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return frame(_compactEmpty());
+  }
+
+  Widget _compactEmpty() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(IconlyLight.camera, size: 24, color: AppColors.textMuted),
+        const SizedBox(height: 5),
+        Text(
+          'Photo',
+          style: getOutfitStyle(
+            color: AppColors.textMuted,
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _emptyPicker(BuildContext context) {

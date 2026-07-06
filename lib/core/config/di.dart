@@ -99,6 +99,7 @@ import 'package:pos/features/pos/data/datasources/refunds_remote_ds.dart';
 import 'package:pos/core/database/daos/audit_logs_dao.dart';
 import 'package:pos/core/database/daos/audit_outbox_dao.dart';
 import 'package:pos/core/database/daos/devices_dao.dart';
+import 'package:pos/core/database/daos/product_barcodes_dao.dart';
 import 'package:pos/core/device/devices_remote_ds.dart';
 import 'package:pos/core/audit/audit_log_service.dart';
 import 'package:pos/core/audit/audit_chain_verifier.dart';
@@ -370,6 +371,7 @@ Future<void> initDI() async {
       inventoryLevelsDao: sl<InventoryLevelsDao>(),
       productsDao: sl<ProductsDao>(),
       productVariantsDao: sl<ProductVariantsDao>(),
+      productBarcodesDao: sl<ProductBarcodesDao>(),
       stockLedgerDao: sl<StockLedgerDao>(),
       transactionsDao: sl<TransactionsDao>(),
       draftSalesDao: sl<DraftSalesDao>(),
@@ -554,6 +556,9 @@ Future<void> initDI() async {
   sl.registerLazySingleton<RecipeLinesDao>(
     () => RecipeLinesDao(sl<AppDatabase>()),
   );
+  sl.registerLazySingleton<ProductBarcodesDao>(
+    () => ProductBarcodesDao(sl<AppDatabase>()),
+  );
   sl.registerLazySingleton<IIngredientsRepository>(
     () => IngredientsRepository(
       productsDao: sl<ProductsDao>(),
@@ -670,6 +675,7 @@ Future<void> initDI() async {
     () => ProductsRepository(
       productsDao: sl<ProductsDao>(),
       variantsDao: sl<ProductVariantsDao>(),
+      barcodesDao: sl<ProductBarcodesDao>(),
       categoriesDao: sl<CategoriesDao>(),
       levelsDao: sl<InventoryLevelsDao>(),
     ),

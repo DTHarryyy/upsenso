@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:uuid/uuid.dart';
 
 import 'connection/connection.dart' as db_connect;
 
@@ -74,6 +75,8 @@ import 'package:pos/core/database/tables/fraud_candidates_table.dart';
 import 'package:pos/core/database/daos/fraud_candidates_dao.dart';
 import 'package:pos/core/database/tables/devices_table.dart';
 import 'package:pos/core/database/daos/devices_dao.dart';
+import 'package:pos/core/database/tables/product_barcodes_table.dart';
+import 'package:pos/core/database/daos/product_barcodes_dao.dart';
 
 part 'app_database.g.dart';
 
@@ -116,6 +119,7 @@ part 'app_database.g.dart';
     AuditOutboxTable,
     FraudCandidatesTable,
     DevicesTable,
+    ProductBarcodesTable,
   ],
   daos: [
     AuthContextDao,
@@ -152,6 +156,7 @@ part 'app_database.g.dart';
     AuditOutboxDao,
     FraudCandidatesDao,
     DevicesDao,
+    ProductBarcodesDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -172,7 +177,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 56;
+  int get schemaVersion => 57;
 
   @override
   MigrationStrategy get migration {
@@ -1013,7 +1018,69 @@ class AppDatabase extends _$AppDatabase {
             'ON devices(business_id)',
           );
         }
+        if (from < 57) {
+          // Normalize barcodes into their own 1-to-many table so a variant can
+          // carry several codes (the old single column could only comma-join,
+          // which broke exact-match scan resolution). Additive.
+          // Rollback: DROP TABLE product_barcodes (variant.barcode still holds
+          // the legacy comma-joined value).
+          try {
+            await m.createTable(productBarcodesTable);
+          } catch (e, st) {
+            debugPrint('[AppDatabase] v57 product_barcodes create skipped: $e\n$st');
+          }
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_product_barcodes_business '
+            'ON product_barcodes(business_id)',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_product_barcodes_variant '
+            'ON product_barcodes(variant_id)',
+          );
+          await _backfillProductBarcodes();
+          // Local units never synced (Supabase lacked the column) — re-queue
+          // weighed variants so their unit pushes on the next sync.
+          await customStatement(
+            "UPDATE product_variants SET sync_status = 1 "
+            "WHERE unit IS NOT NULL AND TRIM(unit) != '' AND sync_status = 3",
+          );
+        }
       },
     );
+  }
+
+  /// One-time upgrade backfill: split each variant's (possibly comma-joined)
+  /// `barcode` into normalized `product_barcodes` rows, queued for upload so the
+  /// server receives them. Runs inside the migration.
+  Future<void> _backfillProductBarcodes() async {
+    final rows = await customSelect(
+      "SELECT id AS vid, business_id AS bid, barcode AS bc FROM product_variants "
+      "WHERE barcode IS NOT NULL AND TRIM(barcode) != ''",
+    ).get();
+    const uuid = Uuid();
+    final now = DateTime.now();
+    for (final r in rows) {
+      final vid = r.read<String>('vid');
+      final bid = r.read<String>('bid');
+      final raw = r.read<String>('bc');
+      final seen = <String>{};
+      var idx = 0;
+      for (final part in raw.split(',')) {
+        final code = part.trim();
+        if (code.isEmpty || !seen.add(code)) continue;
+        await into(productBarcodesTable).insert(
+          ProductBarcodesTableCompanion.insert(
+            id: uuid.v4(),
+            businessId: bid,
+            variantId: vid,
+            code: code,
+            isPrimary: Value(idx == 0),
+            createdAt: Value(now),
+            localUpdatedAt: Value(now),
+          ),
+        );
+        idx++;
+      }
+    }
   }
 }

@@ -101,7 +101,7 @@ class ProductFormState {
   });
 
   factory ProductFormState.initial() => const ProductFormState(
-        mode: ProductFormMode.simple,
+        mode: ProductFormMode.advanced,
         hasVariants: false,
         trackingMethod: TrackingMethod.productStock,
         trackInventory: false,
@@ -179,18 +179,20 @@ class VariantFormData {
   final String name;
   final String price;
   final String? costPrice;
+  final String? retailPrice;
   final String? stock;
   final String? lowStockAlert;
-  final String? barcode;
+  final List<String> barcodes;
   final List<RecipeLineFormEntry> recipeLines;
 
   const VariantFormData({
     required this.name,
     required this.price,
     this.costPrice,
+    this.retailPrice,
     this.stock,
     this.lowStockAlert,
-    this.barcode,
+    this.barcodes = const [],
     this.recipeLines = const [],
   });
 }
@@ -211,6 +213,9 @@ class ProductFormData {
   // Shared
   final String name;
   final String sellBy;
+
+  /// Unit of measure for weighed products (kg/g/L/ml); null = per-piece.
+  final String? unit;
   final List<String> barcodes;
   final String? sku;
   final List<VariantFormData> variants;
@@ -232,6 +237,7 @@ class ProductFormData {
     this.stock,
     this.lowStockAlert,
     required this.sellBy,
+    this.unit,
     required this.barcodes,
     this.sku,
     required this.variants,

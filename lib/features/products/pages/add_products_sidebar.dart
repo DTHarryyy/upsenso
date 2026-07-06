@@ -17,13 +17,6 @@ extension _AddProductsViewSidebar on _AddProductsViewState {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── Mode toggle ──
-            ProductSidebarLabel(label: 'Mode'),
-            const SizedBox(height: 8),
-            ProductModeToggle(mode: state.mode, onChanged: cubit.switchMode),
-
-            const SizedBox(height: 24),
-
             // ── Product preview ──
             ProductSidebarLabel(label: 'Preview'),
             const SizedBox(height: 8),
@@ -204,11 +197,8 @@ extension _AddProductsViewSidebar on _AddProductsViewState {
   }
 
   Widget _buildPreviewPrice(ProductFormState state) {
-    final ctrl = state.mode == ProductFormMode.simple
-        ? _simplePriceController
-        : _sellingPriceController;
     return ValueListenableBuilder<TextEditingValue>(
-      valueListenable: ctrl,
+      valueListenable: _sellingPriceController,
       builder: (_, priceVal, _) {
         final raw = priceVal.text.trim();
         final price = double.tryParse(raw);

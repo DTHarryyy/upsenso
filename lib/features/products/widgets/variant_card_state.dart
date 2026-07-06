@@ -6,12 +6,15 @@ import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/products/data/holder/variant_form.dart';
 import 'package:pos/features/products/presentation/cubit/product_form_state.dart';
-import 'package:pos/features/products/widgets/barcode_toggle_field.dart';
+import 'package:pos/features/products/widgets/barcodes_editor.dart';
 
 class VariantCard extends StatefulWidget {
   final int index;
   final VariantForm form;
   final bool isFraction;
+
+  /// Unit of measure shown in the stock label when [isFraction] (kg/g/L/ml).
+  final String unitLabel;
   final bool trackInventory;
   final bool canDelete;
   final VoidCallback onDelete;
@@ -21,17 +24,22 @@ class VariantCard extends StatefulWidget {
   final bool isRecipeMode;
   final VoidCallback? onEditRecipe;
 
+  /// Generates a unique barcode for this variant's Auto button.
+  final Future<String?> Function()? onGenerateBarcode;
+
   const VariantCard({
     super.key,
     required this.index,
     required this.form,
     required this.isFraction,
+    this.unitLabel = 'kg',
     required this.trackInventory,
     required this.canDelete,
     required this.onDelete,
     this.stockReadOnly = false,
     this.isRecipeMode = false,
     this.onEditRecipe,
+    this.onGenerateBarcode,
   });
 
   @override
@@ -194,8 +202,9 @@ class VariantCardState extends State<VariantCard> {
                               textInputAction: TextInputAction.next,
                               decoration: deco.copyWith(
                                 hintText: isFraction ? '0.000' : '0',
-                                labelText:
-                                    isFraction ? 'Stock (kg) *' : 'Stock *',
+                                labelText: isFraction
+                                    ? 'Stock (${widget.unitLabel}) *'
+                                    : 'Stock *',
                                 filled: true,
                                 fillColor: widget.stockReadOnly
                                     ? AppColors.surfaceAlt
@@ -254,8 +263,17 @@ class VariantCardState extends State<VariantCard> {
 
           const SizedBox(height: 8),
 
-          // Barcode (per-variant, toggleable)
-          BarcodeToggleField(controller: widget.form.barcode),
+          // Barcodes (per-variant, multiple, toggleable)
+          BarcodesEditor(
+            controllers: widget.form.barcodes,
+            onGenerate: widget.onGenerateBarcode,
+            onAdd: () =>
+                setState(() => widget.form.barcodes.add(TextEditingController())),
+            onRemove: (i) => setState(() {
+              if (widget.form.barcodes.length <= 1) return;
+              widget.form.barcodes.removeAt(i).dispose();
+            }),
+          ),
         ],
       ),
     );

@@ -65,9 +65,7 @@ extension _AddProductsViewMoreOptions on _AddProductsViewState {
                         if (!state.moreOptionsExpanded) ...[
                           const SizedBox(height: 2),
                           Text(
-                            state.mode == ProductFormMode.simple
-                                ? 'Photo · Barcode · Sold by weight'
-                                : 'Variants · Ingredients · Photo · SKU · Tax',
+                            'Variants · Weight · SKU · Retail · Tax',
                             style: getOutfitStyle(
                               color: AppColors.textMuted,
                               fontSize: 12,
@@ -94,9 +92,7 @@ extension _AddProductsViewMoreOptions on _AddProductsViewState {
             duration: const Duration(milliseconds: 240),
             curve: Curves.easeInOut,
             child: state.moreOptionsExpanded
-                ? (state.mode == ProductFormMode.simple
-                      ? _buildSimpleMoreOptionsBody(state, cubit)
-                      : _buildMoreOptionsBody(state, cubit))
+                ? _buildMoreOptionsBody(state, cubit)
                 : const SizedBox(width: double.infinity, height: 0),
           ),
         ],
@@ -104,90 +100,42 @@ extension _AddProductsViewMoreOptions on _AddProductsViewState {
     );
   }
 
-  // ── Simple — More Options body ─────────────────────────────────────────────
+  // ── More Options body — Suggested retail price · SKU · Tax ─────────────────
 
-  Widget _buildSimpleMoreOptionsBody(
-    ProductFormState state,
-    ProductFormCubit cubit,
-  ) {
+  Widget _buildMoreOptionsBody(ProductFormState state, ProductFormCubit cubit) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        ToggleRow(
-          icon: Icons.straighten_rounded,
-          label: 'Sold by weight',
-          subtitle: 'Price per kg, litre, or other unit',
-          enabled: _sellBy == 'fraction',
-          onChanged: (v) => _setState(() => _sellBy = v ? 'fraction' : 'unit'),
+        _buildProductTypeSection(state, cubit),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: Divider(height: 1, color: AppColors.borderSoft),
         ),
-        ToggleRow(
-          icon: Icons.image_outlined,
-          label: 'Product photo',
-          subtitle: 'Add a photo for faster recognition',
-          enabled: _showImagePicker || state.imagePath != null,
-          onChanged: (v) {
-            _setState(() => _showImagePicker = v);
-            if (!v) cubit.clearImage();
+        _buildRetailPriceSection(state),
+        SkuSectionToggle(
+          controller: _skuController,
+          onAutoSku: () {
+            final sku = context.read<ProductFormCubit>().generateSku(
+              _nameController.text,
+            );
+            if (sku.isNotEmpty) _setState(() => _skuController.text = sku);
           },
         ),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          child: (_showImagePicker || state.imagePath != null)
-              ? Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: ImagePickerField(
-                    imagePath: state.imagePath,
-                    onPick: (source) => cubit.pickImage(source),
-                    onClear: cubit.clearImage,
-                    isLoading: state.isUploadingImage,
-                  ),
-                )
-              : const SizedBox(width: double.infinity, height: 0),
-        ),
-        ToggleRow(
-          icon: Icons.qr_code_rounded,
-          label: 'Barcode',
-          subtitle: 'Scan or type the product barcode',
-          enabled: _showSimpleBarcode,
-          onChanged: (v) => _setState(() {
-            _showSimpleBarcode = v;
-            if (!v) _simpleBarcodeController.clear();
-          }),
-        ),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          child: _showSimpleBarcode
-              ? Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: TextFormField(
-                    controller: _simpleBarcodeController,
-                    keyboardType: TextInputType.number,
-                    textInputAction: TextInputAction.done,
-                    decoration: appInputDeco('Scan or type barcode').copyWith(
-                      prefixIcon: const Icon(
-                        Icons.qr_code_rounded,
-                        size: 17,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                    style: getOutfitStyle(color: AppColors.textPrimary),
-                  ),
-                )
-              : const SizedBox(width: double.infinity, height: 0),
-        ),
+        _buildTaxSection(),
         const SizedBox(height: 4),
       ],
     );
   }
 
-  // ── Advanced — More Options body ──────────────────────────────────────────
-
-  Widget _buildMoreOptionsBody(ProductFormState state, ProductFormCubit cubit) {
+  // Product-type switches — variants, sold-by-weight (+ unit picker), recipe.
+  Widget _buildProductTypeSection(
+    ProductFormState state,
+    ProductFormCubit cubit,
+  ) {
+    final canRecipe = sl<PermissionService>().canAccessFeature(
+      AppFeature.recipeManagement,
+    );
     final isFraction = _sellBy == 'fraction';
-    final isAllBranchesEdit =
-        widget.productToEdit != null && cubit.selectedBranchId == null;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -199,9 +147,51 @@ extension _AddProductsViewMoreOptions on _AddProductsViewState {
           enabled: state.hasVariants,
           onChanged: cubit.setHasVariants,
         ),
-        if (sl<PermissionService>().canAccessFeature(
-          AppFeature.recipeManagement,
-        ))
+        ToggleRow(
+          icon: Icons.straighten_rounded,
+          label: 'Sold by weight',
+          subtitle: 'Price per kg, litre, or other unit',
+          enabled: isFraction,
+          onChanged: (v) => _setState(() => _sellBy = v ? 'fraction' : 'unit'),
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          child: isFraction
+              ? Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Priced per unit',
+                        style: getOutfitStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _kWeightUnits
+                            .map(
+                              (u) => AppFilterChip(
+                                label: u,
+                                isSelected: _selectedUnit == u,
+                                onTap: () =>
+                                    _setState(() => _selectedUnit = u),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ],
+                  ),
+                )
+              : const SizedBox(width: double.infinity, height: 0),
+        ),
+        if (canRecipe)
           ToggleRow(
             icon: Icons.blender_outlined,
             label: 'Made from ingredients',
@@ -209,147 +199,17 @@ extension _AddProductsViewMoreOptions on _AddProductsViewState {
             enabled: state.trackingMethod == TrackingMethod.recipe,
             onChanged: (v) => _onRecipeModeChanged(v, cubit, state),
           ),
-        if (!state.hasVariants &&
-            state.trackingMethod == TrackingMethod.productStock) ...[
-          ToggleRow(
-            icon: Icons.inventory_2_outlined,
-            label: 'Track stock',
-            subtitle: 'Show stock counts and low-stock alerts',
-            enabled: state.trackInventory,
-            onChanged: cubit.setTrackInventory,
-          ),
-          AnimatedSize(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
-            child: state.trackInventory
-                ? Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Opacity(
-                                opacity: isAllBranchesEdit ? 0.6 : 1.0,
-                                child: TextFormField(
-                                  controller: _stockController,
-                                  readOnly: isAllBranchesEdit,
-                                  keyboardType: isFraction
-                                      ? const TextInputType.numberWithOptions(
-                                          decimal: true)
-                                      : TextInputType.number,
-                                  inputFormatters: isFraction
-                                      ? [
-                                          FilteringTextInputFormatter.allow(
-                                              RegExp(r'^\d*\.?\d{0,3}')),
-                                        ]
-                                      : [
-                                          FilteringTextInputFormatter.digitsOnly,
-                                        ],
-                                  textInputAction: TextInputAction.next,
-                                  decoration: appInputDeco(
-                                    isFraction ? '0.000' : '0',
-                                    label: isFraction ? 'Stock (kg)' : 'Stock',
-                                    fillColor: isAllBranchesEdit
-                                        ? AppColors.surfaceAlt
-                                        : null,
-                                  ),
-                                  style: getOutfitStyle(
-                                      color: AppColors.textPrimary,
-                                      fontSize: 16),
-                                  validator: (v) {
-                                    if (!isAllBranchesEdit &&
-                                        state.trackInventory &&
-                                        (v == null || v.trim().isEmpty)) {
-                                      return 'Stock is required';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: TextFormField(
-                                controller: _lowStockController,
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                ],
-                                textInputAction: TextInputAction.done,
-                                decoration: appInputDeco('e.g. 5',
-                                    label: 'Low stock alert'),
-                                style: getOutfitStyle(
-                                    color: AppColors.textPrimary, fontSize: 16),
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (isAllBranchesEdit) ...[
-                          const SizedBox(height: 10),
-                          _buildInfoBanner(
-                            'Showing total stock across all branches. '
-                            'To adjust stock for a specific branch, use the Inventory page.',
-                            icon: Icons.info_outline_rounded,
-                            color: AppColors.info,
-                            background: AppColors.infoSoft,
-                          ),
-                        ],
-                      ],
-                    ),
-                  )
-                : const SizedBox(width: double.infinity, height: 0),
-          ),
-        ],
-        ToggleRow(
-          icon: Icons.straighten_rounded,
-          label: 'Sold by weight',
-          subtitle: 'Price per kg, litre, or other unit',
-          enabled: _sellBy == 'fraction',
-          onChanged: (v) => _setState(() => _sellBy = v ? 'fraction' : 'unit'),
-        ),
-        ToggleRow(
-          icon: Icons.image_outlined,
-          label: 'Product photo',
-          subtitle: 'Add a photo for faster recognition',
-          enabled: _showImagePicker || state.imagePath != null,
-          onChanged: (v) {
-            _setState(() => _showImagePicker = v);
-            if (!v) cubit.clearImage();
-          },
-        ),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          child: (_showImagePicker || state.imagePath != null)
-              ? Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: ImagePickerField(
-                    imagePath: state.imagePath,
-                    onPick: (source) => cubit.pickImage(source),
-                    onClear: cubit.clearImage,
-                    isLoading: state.isUploadingImage,
-                  ),
-                )
-              : const SizedBox(width: double.infinity, height: 0),
-        ),
-        BarcodesSectionToggle(
-          controllers: _barcodeControllers,
-          onAdd: _addBarcode,
-          onRemove: _removeBarcode,
-        ),
-        SkuSectionToggle(
-          controller: _skuController,
-          onAutoSku: () {
-            final sku = context.read<ProductFormCubit>().generateSku(
-              _nameController.text,
-            );
-            if (sku.isNotEmpty) _setState(() => _skuController.text = sku);
-          },
-        ),
-        // Retail price (toggleable)
+      ],
+    );
+  }
+
+  // Suggested retail price — checkbox reveal + adaptive editor (single or
+  // per-variant). SRP is stored per variant, so a variant product shows one
+  // input per variant.
+  Widget _buildRetailPriceSection(ProductFormState state) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
         ToggleRow(
           icon: Icons.price_change_outlined,
           label: 'Suggested retail price',
@@ -357,7 +217,7 @@ extension _AddProductsViewMoreOptions on _AddProductsViewState {
           enabled: _showRetailPrice,
           onChanged: (v) => _setState(() {
             _showRetailPrice = v;
-            if (!v) _retailPriceController.clear();
+            if (!v) _clearRetailPrices();
           }),
         ),
         AnimatedSize(
@@ -366,109 +226,81 @@ extension _AddProductsViewMoreOptions on _AddProductsViewState {
           child: _showRetailPrice
               ? Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      TextFormField(
-                        controller: _retailPriceController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d*\.?\d{0,2}'),
-                          ),
-                        ],
-                        textInputAction: TextInputAction.done,
-                        decoration: appInputDeco(
-                          '0.00',
-                          label: 'Suggested retail price',
-                          prefixText: '₱ ',
-                        ),
-                        style: getOutfitStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 16,
-                        ),
-                      ),
-                      ValueListenableBuilder<TextEditingValue>(
-                        valueListenable: _retailPriceController,
-                        builder: (context, retailVal, child) =>
-                            ValueListenableBuilder<TextEditingValue>(
-                              valueListenable: _sellingPriceController,
-                              builder: (context, sellVal, child) {
-                                final srp = double.tryParse(
-                                  retailVal.text.trim(),
-                                );
-                                final sell = double.tryParse(
-                                  sellVal.text.trim(),
-                                );
-                                if (srp == null || sell == null || srp <= 0) {
-                                  return const SizedBox.shrink();
-                                }
-                                final diff = sell - srp;
-                                final pct = (diff / srp * 100).abs();
-                                final isAbove = diff > 0.005;
-                                final isBelow = diff < -0.005;
-                                final Color bg = isAbove
-                                    ? AppColors.warningSoft
-                                    : isBelow
-                                    ? AppColors.successSoft
-                                    : AppColors.surfaceAlt;
-                                final Color fg = isAbove
-                                    ? AppColors.warning
-                                    : isBelow
-                                    ? AppColors.success
-                                    : AppColors.textMuted;
-                                final String lbl = isAbove
-                                    ? '${pct.toStringAsFixed(1)}% above SRP — selling above suggested price'
-                                    : isBelow
-                                    ? '${pct.toStringAsFixed(1)}% below SRP'
-                                    : 'Selling at SRP';
-                                final IconData ico = isAbove
-                                    ? Icons.arrow_upward_rounded
-                                    : isBelow
-                                    ? Icons.arrow_downward_rounded
-                                    : Icons.horizontal_rule_rounded;
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 8),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: bg,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(ico, size: 12, color: fg),
-                                        const SizedBox(width: 4),
-                                        Flexible(
-                                          child: Text(
-                                            lbl,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: getOutfitStyle(
-                                              color: fg,
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                      ),
-                    ],
-                  ),
+                  child: state.hasVariants
+                      ? _buildPerVariantRetail()
+                      : _buildSingleRetail(),
                 )
               : const SizedBox(width: double.infinity, height: 0),
         ),
-        // VAT / sales tax (toggleable)
+      ],
+    );
+  }
+
+  Widget _buildSingleRetail() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AppMoneyField(
+          controller: _retailPriceController,
+          label: 'Suggested retail price',
+          textInputAction: TextInputAction.done,
+        ),
+        _buildSrpBadge(_retailPriceController, _sellingPriceController),
+      ],
+    );
+  }
+
+  Widget _buildPerVariantRetail() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: _variants.asMap().entries.map((entry) {
+        final i = entry.key;
+        final v = entry.value;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: v.name,
+                builder: (context, nameVal, child) {
+                  final name = nameVal.text.trim();
+                  return Text(
+                    name.isEmpty ? 'Variant ${i + 1}' : name,
+                    style: getOutfitStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 6),
+              AppMoneyField(
+                controller: v.retail,
+                label: 'Suggested retail price',
+                textInputAction: TextInputAction.done,
+              ),
+              _buildSrpBadge(v.retail, v.price),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  void _clearRetailPrices() {
+    _retailPriceController.clear();
+    for (final v in _variants) {
+      v.retail.clear();
+    }
+  }
+
+  // VAT / sales tax — toggle + rate field.
+  Widget _buildTaxSection() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
         ToggleRow(
           icon: Icons.receipt_long_outlined,
           label: 'VAT or sales tax',
@@ -513,44 +345,6 @@ extension _AddProductsViewMoreOptions on _AddProductsViewState {
                       }
                       return null;
                     },
-                  ),
-                )
-              : const SizedBox(width: double.infinity, height: 0),
-        ),
-        // Track expiry
-        ToggleRow(
-          icon: Icons.event_rounded,
-          label: 'Track expiry',
-          subtitle: 'Enable for perishable or dated items',
-          enabled: state.trackExpiry,
-          onChanged: context.read<ProductFormCubit>().setTrackExpiry,
-        ),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          child: state.trackExpiry
-              ? Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: TextFormField(
-                    controller: _expiryController,
-                    readOnly: true,
-                    onTap: _pickExpiryDate,
-                    decoration: appInputDeco('dd/mm/yyyy', label: 'Expiry date')
-                        .copyWith(
-                          suffixIcon: const Icon(
-                            Icons.calendar_today_rounded,
-                            size: 17,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                    style: getOutfitStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 16,
-                    ),
-                    validator: (_) =>
-                        (state.trackExpiry && state.expiryDate == null)
-                        ? 'Please select an expiry date'
-                        : null,
                   ),
                 )
               : const SizedBox(width: double.infinity, height: 0),

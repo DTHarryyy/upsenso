@@ -14,6 +14,7 @@ import 'package:pos/core/database/daos/expenses_dao.dart';
 import 'package:pos/core/database/daos/inventory_levels_dao.dart';
 import 'package:pos/core/database/daos/products_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
+import 'package:pos/core/database/daos/product_barcodes_dao.dart';
 import 'package:pos/core/database/daos/stock_ledger_dao.dart';
 import 'package:pos/core/database/daos/transactions_dao.dart';
 import 'package:pos/core/database/daos/draft_sales_dao.dart';
@@ -64,6 +65,7 @@ class SyncService {
   final InventoryLevelsDao _inventoryLevelsDao;
   final ProductsDao _productsDao;
   final ProductVariantsDao _productVariantsDao;
+  final ProductBarcodesDao _productBarcodesDao;
   final StockLedgerDao _stockLedgerDao;
   final TransactionsDao _transactionsDao;
   final DraftSalesDao _draftSalesDao;
@@ -153,6 +155,7 @@ class SyncService {
     required InventoryLevelsDao inventoryLevelsDao,
     required ProductsDao productsDao,
     required ProductVariantsDao productVariantsDao,
+    required ProductBarcodesDao productBarcodesDao,
     required StockLedgerDao stockLedgerDao,
     required TransactionsDao transactionsDao,
     required DraftSalesDao draftSalesDao,
@@ -193,6 +196,7 @@ class SyncService {
        _inventoryLevelsDao = inventoryLevelsDao,
        _productsDao = productsDao,
        _productVariantsDao = productVariantsDao,
+       _productBarcodesDao = productBarcodesDao,
        _stockLedgerDao = stockLedgerDao,
        _transactionsDao = transactionsDao,
        _draftSalesDao = draftSalesDao,
@@ -329,6 +333,7 @@ class SyncService {
       await _refundsDao.clearAll();
       await _transactionsDao.clearAll();
       await _draftSalesDao.clearAll();
+      await _productBarcodesDao.clearAll();
       await _productVariantsDao.clearAll();
       await _productsDao.clearAll();
       await _categoriesDao.clearAll();
@@ -363,6 +368,7 @@ class SyncService {
       _categoriesDao.getPendingSync().then<int>((r) => r.length),
       _productsDao.getPendingSync().then<int>((r) => r.length),
       _productVariantsDao.getPendingSync().then<int>((r) => r.length),
+      _productBarcodesDao.getPendingSync().then<int>((r) => r.length),
       _transactionsDao.getPendingSync().then<int>((r) => r.length),
       _refundsDao.getPendingSync().then<int>((r) => r.length),
       _expensesDao.getPendingSync().then<int>((r) => r.length),
@@ -386,6 +392,7 @@ class SyncService {
     int cat = 0,
         prod = 0,
         vars = 0,
+        pbc = 0,
         orders = 0,
         exp = 0,
         inv = 0,
@@ -409,6 +416,7 @@ class SyncService {
           cat +
               prod +
               vars +
+              pbc +
               orders +
               exp +
               inv +
@@ -438,6 +446,10 @@ class SyncService {
     });
     final s3 = _productVariantsDao.watchPendingSyncCount().listen((n) {
       vars = n;
+      emit();
+    });
+    final s19 = _productBarcodesDao.watchPendingSyncCount().listen((n) {
+      pbc = n;
       emit();
     });
     final s4 = _transactionsDao.watchPendingSyncCount().listen((n) {
@@ -521,6 +533,7 @@ class SyncService {
       s16.cancel();
       s17.cancel();
       s18.cancel();
+      s19.cancel();
       controller.close();
     };
 
@@ -565,6 +578,7 @@ class SyncService {
       final categoryResult = await _syncCategories();
       final productResult = await _syncProducts();
       final variantResult = await _syncProductVariants();
+      final barcodeResult = await _syncProductBarcodes();
       final orderResult = await _syncTransactions();
       // Refunds push after transactions so the FK parent already exists
       // on the server when the refund row is inserted.
@@ -600,6 +614,7 @@ class SyncService {
           categoryResult.syncedCount +
           productResult.syncedCount +
           variantResult.syncedCount +
+          barcodeResult.syncedCount +
           orderResult.syncedCount +
           refundResult.syncedCount +
           expenseResult.syncedCount +
@@ -621,6 +636,7 @@ class SyncService {
           categoryResult.failedCount +
           productResult.failedCount +
           variantResult.failedCount +
+          barcodeResult.failedCount +
           orderResult.failedCount +
           refundResult.failedCount +
           expenseResult.failedCount +
@@ -652,6 +668,7 @@ class SyncService {
           ...categoryResult.errors,
           ...productResult.errors,
           ...variantResult.errors,
+          ...barcodeResult.errors,
           ...orderResult.errors,
           ...refundResult.errors,
           ...expenseResult.errors,
@@ -694,6 +711,7 @@ class SyncService {
             categoryResult.success &&
             productResult.success &&
             variantResult.success &&
+            barcodeResult.success &&
             orderResult.success &&
             refundResult.success &&
             expenseResult.success &&
@@ -709,7 +727,7 @@ class SyncService {
             recipeResult.success &&
             pullResult.success,
         message:
-            '${branchResult.message}; ${businessResult.message}; ${categoryResult.message}; ${productResult.message}; ${variantResult.message}; ${orderResult.message}; ${refundResult.message}; ${expenseResult.message}; ${inventoryResult.message}; ${ledgerResult.message}; ${employeeResult.message}; ${supplierResult.message}; ${customerResult.message}; ${poResult.message}; ${polResult.message}; ${grResult.message}; ${griResult.message}; ${recipeResult.message}; ${pullResult.message}',
+            '${branchResult.message}; ${businessResult.message}; ${categoryResult.message}; ${productResult.message}; ${variantResult.message}; ${barcodeResult.message}; ${orderResult.message}; ${refundResult.message}; ${expenseResult.message}; ${inventoryResult.message}; ${ledgerResult.message}; ${employeeResult.message}; ${supplierResult.message}; ${customerResult.message}; ${poResult.message}; ${polResult.message}; ${grResult.message}; ${griResult.message}; ${recipeResult.message}; ${pullResult.message}',
         syncedCount: totalSynced + pullResult.syncedCount,
         failedCount: totalFailed + pullResult.failedCount,
         errors: [
@@ -718,6 +736,7 @@ class SyncService {
           ...categoryResult.errors,
           ...productResult.errors,
           ...variantResult.errors,
+          ...barcodeResult.errors,
           ...orderResult.errors,
           ...refundResult.errors,
           ...expenseResult.errors,
@@ -1044,6 +1063,7 @@ class SyncService {
               stock: record.stock,
               sku: record.sku,
               barcode: record.barcode,
+              unit: record.unit,
               trackExpiry: record.trackExpiry,
               expiryDate: record.expiryDate?.millisecondsSinceEpoch,
               isActive: record.isActive,
@@ -1065,6 +1085,7 @@ class SyncService {
               stock: record.stock,
               sku: record.sku,
               barcode: record.barcode,
+              unit: record.unit,
               trackExpiry: record.trackExpiry,
               expiryDate: record.expiryDate?.millisecondsSinceEpoch,
               isActive: record.isActive,
@@ -1134,6 +1155,85 @@ class SyncService {
     return SyncResult(
       success: failed == 0,
       message: 'Variants: synced $synced, failed $failed',
+      syncedCount: synced,
+      failedCount: failed,
+      errors: errors,
+    );
+  }
+
+  // sync product barcodes — normalized 1-to-many, pushed AFTER variants (FK).
+
+  Future<SyncResult> _syncProductBarcodes() async {
+    final pending = await _productBarcodesDao.getPendingSync();
+    int synced = 0;
+    int failed = 0;
+    final errors = <String>[];
+
+    for (final record in pending) {
+      final status = SyncStatusExtension.fromInt(record.syncStatus);
+      try {
+        switch (status) {
+          case SyncStatus.pendingUpload:
+          case SyncStatus.pendingUpdate:
+          case SyncStatus.failed:
+            await _productsRemoteDs.upsertProductBarcode(
+              id: record.id,
+              businessId: record.businessId,
+              variantId: record.variantId,
+              code: record.code,
+              isPrimary: record.isPrimary,
+            );
+            await _productBarcodesDao.updateSyncStatus(
+              id: record.id,
+              status: SyncStatus.synced,
+            );
+            synced++;
+
+          case SyncStatus.pendingDelete:
+            await _productsRemoteDs.softDeleteProductBarcode(record.id);
+            await _productBarcodesDao.hardDelete(record.id);
+            synced++;
+
+          case SyncStatus.synced:
+            break;
+        }
+      } catch (e, st) {
+        // FK violation: parent variant is locally synced but missing from
+        // Supabase (e.g. remote reset). Re-queue the variant so the next cycle
+        // uploads it before retrying this barcode — mirrors _syncProductVariants.
+        if (e is PostgrestException &&
+            e.code == '23503' &&
+            (status == SyncStatus.pendingUpload ||
+                status == SyncStatus.pendingUpdate ||
+                status == SyncStatus.failed) &&
+            await _productVariantsDao.getById(record.variantId) != null) {
+          await _productVariantsDao.updateSyncStatus(
+            id: record.variantId,
+            status: SyncStatus.pendingUpload,
+          );
+          debugPrint(
+            '[SYNC] Barcode ${record.code}: variant missing on server, '
+            're-queuing variant for upload',
+          );
+          continue;
+        }
+        // 23505: an offline-created code collided with the (business_id, code)
+        // unique index. Surface just this barcode as failed — never block the
+        // rest of the product's sync.
+        failed++;
+        debugPrint('[SYNC] Barcode ${record.code} FAILED: $e\n$st');
+        errors.add('Barcode ${record.code}: ${e.toString()}');
+        await _productBarcodesDao.updateSyncStatus(
+          id: record.id,
+          status: SyncStatus.failed,
+          error: e.toString(),
+        );
+      }
+    }
+
+    return SyncResult(
+      success: failed == 0,
+      message: 'Barcodes: synced $synced, failed $failed',
       syncedCount: synced,
       failedCount: failed,
       errors: errors,
@@ -1817,6 +1917,25 @@ class SyncService {
       failed++;
       debugPrint('[SYNC] Pull variants failed: $e\n$st');
       errors.add('Pull variants: ${e.toString()}');
+    }
+
+    try {
+      pulled += await _pullIncremental(
+        entity: 'product_barcodes',
+        businessId: businessId,
+        timestampField: 'updated_at',
+        fetchPage: (after, id, lim) => _productsRemoteDs.getBarcodesByBusiness(
+          businessId,
+          afterTs: after,
+          afterId: id,
+          limit: lim,
+        ),
+        applyRow: (row) => _productBarcodesDao.upsertFromServer(row),
+      );
+    } catch (e, st) {
+      failed++;
+      debugPrint('[SYNC] Pull product barcodes failed: $e\n$st');
+      errors.add('Pull product barcodes: ${e.toString()}');
     }
 
     try {

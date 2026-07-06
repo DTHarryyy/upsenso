@@ -18,6 +18,7 @@ export 'app_filter_chip.dart';
 export 'app_inline_banner.dart';
 export 'app_input_decoration.dart';
 export 'app_labeled_switch.dart';
+export 'app_money_field.dart';
 export 'app_modal.dart';
 export 'network_error_view.dart';
 export 'app_search_bar.dart';

@@ -172,6 +172,20 @@ class ProductsDao extends DatabaseAccessor<AppDatabase>
         .getSingleOrNull();
   }
 
+  /// True if any product in the business already uses [barcode] at product
+  /// level. Complements [ProductVariantsDao.barcodeExists] for uniqueness.
+  Future<bool> barcodeExists(String barcode, String businessId) async {
+    final rows =
+        await (select(productsTable)
+              ..where(
+                (t) =>
+                    t.barcode.equals(barcode) & t.businessId.equals(businessId),
+              )
+              ..limit(1))
+            .get();
+    return rows.isNotEmpty;
+  }
+
   /// Clear all products (e.g., on logout).
   Future<void> clearAll() {
     return delete(productsTable).go();

@@ -212,6 +212,7 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
         stock: Value((row['stock'] as num?)?.toDouble() ?? 0.0),
         sku: Value(row['sku'] as String?),
         barcode: Value(row['barcode'] as String?),
+        unit: Value(row['unit'] as String?),
         trackExpiry: Value((row['track_expiry'] as bool?) ?? false),
         expiryDate: Value(
           row['expiry_date'] != null
@@ -242,6 +243,20 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
               t.syncStatus.isNotIn([SyncStatus.pendingDelete.toInt()]),
         ))
         .getSingleOrNull();
+  }
+
+  /// True if any variant in the business already uses [barcode].
+  /// Used to keep auto-generated barcodes collision-free.
+  Future<bool> barcodeExists(String barcode, String businessId) async {
+    final rows =
+        await (select(productVariantsTable)
+              ..where(
+                (t) =>
+                    t.barcode.equals(barcode) & t.businessId.equals(businessId),
+              )
+              ..limit(1))
+            .get();
+    return rows.isNotEmpty;
   }
 
   /// Clear all variants (e.g., on logout).
@@ -305,9 +320,11 @@ class ProductVariantsDao extends DatabaseAccessor<AppDatabase>
       name: data.name,
       price: data.price,
       costPrice: data.costPrice,
+      retailPrice: data.retailPrice,
       stock: data.stock,
       sku: data.sku,
       barcode: data.barcode,
+      unit: data.unit,
       isActive: data.isActive,
     );
   }

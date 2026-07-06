@@ -1,223 +1,135 @@
 part of 'add_products.dart';
 
 extension _AddProductsViewSections on _AddProductsViewState {
-  // ── Simple section ─────────────────────────────────────────────────────────
-
-  Widget _buildSimpleSection(ProductFormState state, ProductFormCubit cubit) {
-    return AppSectionCard(
-      title: 'Basic Info',
-      icon: Icons.info_outline_rounded,
-      children: [
-        TextFormField(
-          controller: _nameController,
-          focusNode: _nameFocusNode,
-          autofocus: true,
-          textCapitalization: TextCapitalization.words,
-          textInputAction: TextInputAction.next,
-          decoration: appInputDeco(
-            'e.g. Espresso, White Rice 5kg…',
-            label: 'Product name',
-          ),
-          style: getOutfitStyle(color: AppColors.textPrimary, fontSize: 16),
-          validator: (v) => (v == null || v.trim().isEmpty)
-              ? 'Product name is required'
-              : null,
-        ),
-        const SizedBox(height: 14),
-        const AppFieldLabel('Category'),
-        AppDropdown<String>(
-          value: state.selectedCategoryId,
-          hint: 'No category',
-          addItemLabel: 'Add Category',
-          onAddItem: _showAddCategorySheet,
-          items: state.categories
-              .map((c) => AppDropdownItem(value: c.id, label: c.name))
-              .toList(),
-          onChanged: cubit.selectCategory,
-        ),
-        const SizedBox(height: 14),
-        TextFormField(
-          controller: _simplePriceController,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-          ],
-          textInputAction: TextInputAction.next,
-          decoration: appInputDeco('0.00', label: 'Price', prefixText: '₱ '),
-          style: getOutfitStyle(
-            color: AppColors.textPrimary,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          ),
-          validator: (v) =>
-              (v == null || v.trim().isEmpty) ? 'Price is required' : null,
-        ),
-      ],
-    );
-  }
-
-  // ── Advanced — Basic Info ─────────────────────────────────────────────────
+  // ── Basics (photo + name + category) ───────────────────────────────────────
 
   Widget _buildBasicInfoSection(
     ProductFormState state,
     ProductFormCubit cubit,
   ) {
     return AppSectionCard(
-      title: 'Basic Info',
+      title: 'Basics',
       icon: Icons.info_outline_rounded,
       children: [
-        TextFormField(
-          controller: _nameController,
-          focusNode: _nameFocusNode,
-          textCapitalization: TextCapitalization.words,
-          textInputAction: TextInputAction.next,
-          decoration: appInputDeco(
-            'e.g. Espresso, White Rice 5kg…',
-            label: 'Product name',
-          ),
-          style: getOutfitStyle(color: AppColors.textPrimary, fontSize: 16),
-          validator: (v) => (v == null || v.trim().isEmpty)
-              ? 'Product name is required'
-              : null,
-        ),
-        const SizedBox(height: 14),
-        const AppFieldLabel('Category'),
-        AppDropdown<String>(
-          value: state.selectedCategoryId,
-          hint: 'No category',
-          addItemLabel: 'Add Category',
-          onAddItem: _showAddCategorySheet,
-          items: state.categories
-              .map((c) => AppDropdownItem(value: c.id, label: c.name))
-              .toList(),
-          onChanged: cubit.selectCategory,
+        // A square photo on the left, sized to span both stacked fields (name
+        // + category) on the right for a balanced two-row block.
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // The placeholder is the affordance, so there's no separate
+            // "add photo" toggle.
+            SizedBox(
+              width: 116,
+              height: 116,
+              child: ImagePickerField(
+                compact: true,
+                imagePath: state.imagePath,
+                onPick: (source) => cubit.pickImage(source),
+                onClear: cubit.clearImage,
+                isLoading: state.isUploadingImage,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextFormField(
+                    controller: _nameController,
+                    focusNode: _nameFocusNode,
+                    textCapitalization: TextCapitalization.words,
+                    textInputAction: TextInputAction.next,
+                    decoration: appInputDeco(
+                      'e.g. Espresso, White Rice 5kg…',
+                      label: 'Product name',
+                    ),
+                    style: getOutfitStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 16,
+                    ),
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Product name is required'
+                        : null,
+                  ),
+                  const SizedBox(height: 12),
+                  AppDropdown<String>(
+                    value: state.selectedCategoryId,
+                    hint: 'No category',
+                    addItemLabel: 'Add Category',
+                    onAddItem: _showAddCategorySheet,
+                    items: state.categories
+                        .map(
+                          (c) => AppDropdownItem(value: c.id, label: c.name),
+                        )
+                        .toList(),
+                    onChanged: cubit.selectCategory,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  // ── Advanced — Pricing (no-variants) ─────────────────────────────────────
+  // ── Track-stock header trailing (shared by Pricing + Variants cards) ───────
+
+  Widget _trackStockTrailing(ProductFormState state, ProductFormCubit cubit) {
+    return GestureDetector(
+      onTap: () => cubit.setTrackInventory(!state.trackInventory),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Track stock',
+            style: getOutfitStyle(
+              color: state.trackInventory
+                  ? AppColors.brand
+                  : AppColors.textMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Checkbox(
+            value: state.trackInventory,
+            onChanged: (v) => cubit.setTrackInventory(v ?? false),
+            activeColor: AppColors.brand,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
+            side: BorderSide(color: AppColors.borderSoft, width: 1.5),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Pricing & Inventory (no-variants) ──────────────────────────────────────
 
   Widget _buildPricingSection(ProductFormState state, ProductFormCubit cubit) {
+    final isFraction = _sellBy == 'fraction';
+    final isAllBranchesEdit =
+        widget.productToEdit != null && cubit.selectedBranchId == null;
+
     return AppSectionCard(
       title: 'Pricing & Inventory',
       icon: Icons.attach_money_rounded,
+      trailing: _trackStockTrailing(state, cubit),
       children: [
-        TextFormField(
+        AppMoneyField(
           controller: _sellingPriceController,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-          ],
-          textInputAction: TextInputAction.next,
-          decoration: appInputDeco(
-            '0.00',
-            label: 'Selling price',
-            prefixText: '₱ ',
-          ),
-          style: getOutfitStyle(
-            color: AppColors.textPrimary,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          ),
+          label: 'Selling price',
+          emphasized: true,
           validator: (v) => (v == null || v.trim().isEmpty)
               ? 'Selling price is required'
               : null,
         ),
-        // Live tax-inclusive preview
-        ValueListenableBuilder<TextEditingValue>(
-          valueListenable: _sellingPriceController,
-          builder: (context, sellVal, child) =>
-              ValueListenableBuilder<TextEditingValue>(
-                valueListenable: _taxController,
-                builder: (context, taxVal, child) {
-                  final base = double.tryParse(sellVal.text.trim());
-                  final taxPct = double.tryParse(taxVal.text.trim());
-                  if (base == null ||
-                      base <= 0 ||
-                      taxPct == null ||
-                      taxPct <= 0) {
-                    return const SizedBox.shrink();
-                  }
-                  final taxAmt = base * taxPct / 100;
-                  final finalPrice = base + taxAmt;
-                  final taxStr = taxPct % 1 == 0
-                      ? taxPct.toInt().toString()
-                      : taxPct.toStringAsFixed(1);
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 10),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 9,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.brandSoft,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: AppColors.brand.withAlpha(40),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.receipt_outlined,
-                            size: 14,
-                            color: AppColors.brand,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text.rich(
-                              TextSpan(
-                                children: [
-                                  TextSpan(
-                                    text: 'Customer sees  ',
-                                    style: getOutfitStyle(
-                                      color: AppColors.brand,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  TextSpan(
-                                    text: '₱${finalPrice.toStringAsFixed(2)}',
-                                    style: getOutfitStyle(
-                                      color: AppColors.brand,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  TextSpan(
-                                    text:
-                                        '   ₱${base.toStringAsFixed(2)} + ₱${taxAmt.toStringAsFixed(2)} ($taxStr% tax)',
-                                    style: getOutfitStyle(
-                                      color: AppColors.textSecondary,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-        ),
+        _buildTaxInclusivePreview(),
         const SizedBox(height: 14),
-        TextFormField(
+        AppMoneyField(
           controller: _costPriceController,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-          ],
-          textInputAction: TextInputAction.next,
-          decoration: appInputDeco(
-            '0.00',
-            label: 'Cost price',
-            prefixText: '₱ ',
-          ),
-          style: getOutfitStyle(color: AppColors.textPrimary, fontSize: 16),
+          label: 'Cost price',
         ),
         // Recipe summary row (no-variants mode)
         AnimatedSize(
@@ -242,7 +154,271 @@ extension _AddProductsViewSections on _AddProductsViewState {
                 )
               : const SizedBox(width: double.infinity, height: 0),
         ),
+        // Stock + low-stock fields — revealed by the header Track-stock checkbox.
+        _buildStockFields(state, isFraction, isAllBranchesEdit),
+        const SizedBox(height: 14),
+        const Divider(height: 1, color: AppColors.borderSoft),
+        const SizedBox(height: 8),
+        BarcodesEditor(
+          controllers: _barcodeControllers,
+          onGenerate: cubit.generateUniqueBarcode,
+          onAdd: _addBarcode,
+          onRemove: _removeBarcode,
+        ),
       ],
+    );
+  }
+
+  // Live tax-inclusive "Customer sees ₱X" hint under the selling price.
+  Widget _buildTaxInclusivePreview() {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: _sellingPriceController,
+      builder: (context, sellVal, child) =>
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _taxController,
+            builder: (context, taxVal, child) {
+              final base = double.tryParse(sellVal.text.trim());
+              final taxPct = double.tryParse(taxVal.text.trim());
+              if (base == null || base <= 0 || taxPct == null || taxPct <= 0) {
+                return const SizedBox.shrink();
+              }
+              final taxAmt = base * taxPct / 100;
+              final finalPrice = base + taxAmt;
+              final taxStr = taxPct % 1 == 0
+                  ? taxPct.toInt().toString()
+                  : taxPct.toStringAsFixed(1);
+              return Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 9,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.brandSoft,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.brand.withAlpha(40)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.receipt_outlined,
+                        size: 14,
+                        color: AppColors.brand,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(
+                                text: 'Customer sees  ',
+                                style: getOutfitStyle(
+                                  color: AppColors.brand,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              TextSpan(
+                                text: '₱${finalPrice.toStringAsFixed(2)}',
+                                style: getOutfitStyle(
+                                  color: AppColors.brand,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              TextSpan(
+                                text:
+                                    '   ₱${base.toStringAsFixed(2)} + ₱${taxAmt.toStringAsFixed(2)} ($taxStr% tax)',
+                                style: getOutfitStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+    );
+  }
+
+  // Above/below-SRP margin badge comparing [retailCtrl] against [priceCtrl].
+  Widget _buildSrpBadge(
+    TextEditingController retailCtrl,
+    TextEditingController priceCtrl,
+  ) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: retailCtrl,
+      builder: (context, retailVal, child) =>
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: priceCtrl,
+            builder: (context, sellVal, child) {
+              final srp = double.tryParse(retailVal.text.trim());
+              final sell = double.tryParse(sellVal.text.trim());
+              if (srp == null || sell == null || srp <= 0) {
+                return const SizedBox.shrink();
+              }
+              final diff = sell - srp;
+              final pct = (diff / srp * 100).abs();
+              final isAbove = diff > 0.005;
+              final isBelow = diff < -0.005;
+              final Color bg = isAbove
+                  ? AppColors.warningSoft
+                  : isBelow
+                  ? AppColors.successSoft
+                  : AppColors.surfaceAlt;
+              final Color fg = isAbove
+                  ? AppColors.warning
+                  : isBelow
+                  ? AppColors.success
+                  : AppColors.textMuted;
+              final String lbl = isAbove
+                  ? '${pct.toStringAsFixed(1)}% above SRP — selling above suggested price'
+                  : isBelow
+                  ? '${pct.toStringAsFixed(1)}% below SRP'
+                  : 'Selling at SRP';
+              final IconData ico = isAbove
+                  ? Icons.arrow_upward_rounded
+                  : isBelow
+                  ? Icons.arrow_downward_rounded
+                  : Icons.horizontal_rule_rounded;
+              return Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: bg,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(ico, size: 12, color: fg),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          lbl,
+                          overflow: TextOverflow.ellipsis,
+                          style: getOutfitStyle(
+                            color: fg,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+    );
+  }
+
+  // Stock + low-stock alert fields, revealed when Track stock is on.
+  Widget _buildStockFields(
+    ProductFormState state,
+    bool isFraction,
+    bool isAllBranchesEdit,
+  ) {
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeInOut,
+      child: state.trackInventory
+          ? Padding(
+              padding: const EdgeInsets.only(top: 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Opacity(
+                          opacity: isAllBranchesEdit ? 0.6 : 1.0,
+                          child: TextFormField(
+                            controller: _stockController,
+                            readOnly: isAllBranchesEdit,
+                            keyboardType: isFraction
+                                ? const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  )
+                                : TextInputType.number,
+                            inputFormatters: isFraction
+                                ? [
+                                    FilteringTextInputFormatter.allow(
+                                      RegExp(r'^\d*\.?\d{0,3}'),
+                                    ),
+                                  ]
+                                : [FilteringTextInputFormatter.digitsOnly],
+                            textInputAction: TextInputAction.next,
+                            decoration: appInputDeco(
+                              isFraction ? 'e.g. 1.5' : 'e.g. 100',
+                              label: isFraction
+                                  ? 'Stock on hand ($_selectedUnit)'
+                                  : 'Stock on hand',
+                              fillColor: isAllBranchesEdit
+                                  ? AppColors.surfaceAlt
+                                  : null,
+                            ),
+                            style: getOutfitStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 16,
+                            ),
+                            validator: (v) {
+                              if (!isAllBranchesEdit &&
+                                  state.trackInventory &&
+                                  (v == null || v.trim().isEmpty)) {
+                                return 'Stock is required';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _lowStockController,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                          textInputAction: TextInputAction.done,
+                          decoration: appInputDeco(
+                            'e.g. 5',
+                            label: 'Low stock alert',
+                          ),
+                          style: getOutfitStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (isAllBranchesEdit) ...[
+                    const SizedBox(height: 10),
+                    _buildInfoBanner(
+                      'Showing total stock across all branches. '
+                      'To adjust stock for a specific branch, use the Inventory page.',
+                      icon: Icons.info_outline_rounded,
+                      color: AppColors.info,
+                      background: AppColors.infoSoft,
+                    ),
+                  ],
+                ],
+              ),
+            )
+          : const SizedBox(width: double.infinity, height: 0),
     );
   }
 
@@ -304,7 +480,7 @@ extension _AddProductsViewSections on _AddProductsViewState {
     );
   }
 
-  // ── Advanced — Variants ───────────────────────────────────────────────────
+  // ── Variants ───────────────────────────────────────────────────────────────
 
   Widget _buildVariantsSection(ProductFormState state, ProductFormCubit cubit) {
     final isFraction = _sellBy == 'fraction';
@@ -314,32 +490,7 @@ extension _AddProductsViewSections on _AddProductsViewState {
     return AppSectionCard(
       title: 'Variants',
       icon: Icons.tune_rounded,
-      trailing: GestureDetector(
-        onTap: () => cubit.setTrackInventory(!state.trackInventory),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Track stock',
-              style: getOutfitStyle(
-                color: state.trackInventory
-                    ? AppColors.brand
-                    : AppColors.textMuted,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            Checkbox(
-              value: state.trackInventory,
-              onChanged: (v) => cubit.setTrackInventory(v ?? false),
-              activeColor: AppColors.brand,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              visualDensity: VisualDensity.compact,
-              side: BorderSide(color: AppColors.borderSoft, width: 1.5),
-            ),
-          ],
-        ),
-      ),
+      trailing: _trackStockTrailing(state, cubit),
       children: [
         if (widget.initialBarcode?.isNotEmpty == true) ...[
           _buildInfoBanner(
@@ -362,6 +513,7 @@ extension _AddProductsViewSections on _AddProductsViewState {
               index: i + 1,
               form: v,
               isFraction: isFraction,
+              unitLabel: _selectedUnit,
               trackInventory: state.trackInventory,
               canDelete: _variants.length > 1,
               onDelete: () => _setState(() {
@@ -371,6 +523,7 @@ extension _AddProductsViewSections on _AddProductsViewState {
               stockReadOnly: isAllBranchesEdit,
               isRecipeMode: isRecipe,
               onEditRecipe: () => _showVariantRecipeSheet(context, i),
+              onGenerateBarcode: cubit.generateUniqueBarcode,
             ),
           );
         }),
@@ -407,5 +560,4 @@ extension _AddProductsViewSections on _AddProductsViewState {
       ],
     );
   }
-
 }

@@ -3,6 +3,7 @@ import 'package:pos/core/database/daos/categories_dao.dart';
 import 'package:pos/core/database/daos/inventory_levels_dao.dart';
 import 'package:pos/core/database/daos/products_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
+import 'package:pos/core/database/daos/product_barcodes_dao.dart';
 import 'package:pos/features/products/domain/entities/category.dart';
 import 'package:pos/features/products/domain/entities/inventory_level.dart';
 import 'package:pos/features/products/domain/entities/product.dart';
@@ -12,16 +13,19 @@ import 'package:pos/features/products/domain/repositories/i_products_repository.
 class ProductsRepository implements IProductsRepository {
   final ProductsDao _productsDao;
   final ProductVariantsDao _variantsDao;
+  final ProductBarcodesDao _barcodesDao;
   final CategoriesDao _categoriesDao;
   final InventoryLevelsDao _levelsDao;
 
   const ProductsRepository({
     required ProductsDao productsDao,
     required ProductVariantsDao variantsDao,
+    required ProductBarcodesDao barcodesDao,
     required CategoriesDao categoriesDao,
     required InventoryLevelsDao levelsDao,
   }) : _productsDao = productsDao,
        _variantsDao = variantsDao,
+       _barcodesDao = barcodesDao,
        _categoriesDao = categoriesDao,
        _levelsDao = levelsDao;
 
@@ -55,6 +59,14 @@ class ProductsRepository implements IProductsRepository {
     String barcode,
     String businessId,
   ) async {
+    // 1. Normalized store first — the authoritative multi-barcode source.
+    final bc = await _barcodesDao.getByCode(barcode, businessId);
+    if (bc != null) {
+      final v = await _variantsDao.getById(bc.variantId);
+      if (v != null) return _mapVariant(v);
+    }
+    // 2. Legacy fallback (variant.barcode) — backfilled-redundant, but defends
+    // against any pre-migration row not yet in product_barcodes.
     final row = await _variantsDao.getByBarcode(barcode, businessId);
     return row == null ? null : _mapVariant(row);
   }
@@ -105,9 +117,11 @@ class ProductsRepository implements IProductsRepository {
         name: row.name,
         price: row.price,
         costPrice: row.costPrice,
+        retailPrice: row.retailPrice,
         stock: row.stock,
         sku: row.sku,
         barcode: row.barcode,
+        unit: row.unit,
         isActive: row.isActive,
         trackStock: row.trackStock,
         lowStockAlert: row.lowStockAlert,

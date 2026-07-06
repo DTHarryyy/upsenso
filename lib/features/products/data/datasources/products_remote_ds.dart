@@ -177,6 +177,7 @@ class ProductsRemoteDs {
     required double stock,
     String? sku,
     String? barcode,
+    String? unit,
     bool trackExpiry = false,
     int? expiryDate,
     required bool isActive,
@@ -193,6 +194,7 @@ class ProductsRemoteDs {
       'stock': stock,
       'sku': sku,
       'barcode': barcode,
+      'unit': unit,
       'track_expiry': trackExpiry,
       'expiry_date': expiryDate,
       'is_active': isActive,
@@ -211,6 +213,7 @@ class ProductsRemoteDs {
     required double stock,
     String? sku,
     String? barcode,
+    String? unit,
     bool trackExpiry = false,
     int? expiryDate,
     required bool isActive,
@@ -226,6 +229,7 @@ class ProductsRemoteDs {
           'stock': stock,
           'sku': sku,
           'barcode': barcode,
+          'unit': unit,
           'track_expiry': trackExpiry,
           'expiry_date': expiryDate,
           'is_active': isActive,
@@ -268,6 +272,47 @@ class ProductsRemoteDs {
           afterId: afterId,
           limit: limit,
           extraEq: const {'is_active': true});
+
+  // ── PRODUCT BARCODES ──────────────────────────────────────────────────────
+  // Normalized 1-to-many barcodes per variant. A code is unique per business
+  // (partial unique index WHERE is_deleted = false). Soft-delete only so
+  // removals propagate via the delta-pull.
+
+  Future<void> upsertProductBarcode({
+    required String id,
+    required String businessId,
+    required String variantId,
+    required String code,
+    required bool isPrimary,
+  }) async {
+    await client.from('product_barcodes').upsert({
+      'id': id,
+      'business_id': businessId,
+      'variant_id': variantId,
+      'code': code,
+      'is_primary': isPrimary,
+    });
+  }
+
+  Future<void> softDeleteProductBarcode(String id) async {
+    await client
+        .from('product_barcodes')
+        .update({
+          'is_deleted': true,
+          'deleted_at': DateTime.now().toUtc().toIso8601String(),
+        })
+        .eq('id', id);
+  }
+
+  /// Incremental/paged pull (includes tombstones so soft-deletes propagate).
+  Future<List<Map<String, dynamic>>> getBarcodesByBusiness(
+    String businessId, {
+    DateTime? afterTs,
+    String? afterId,
+    int? limit,
+  }) =>
+      _pullByBusiness('product_barcodes', businessId, 'updated_at',
+          afterTs: afterTs, afterId: afterId, limit: limit);
 
   // ── INVENTORY LEVELS ────────────────────────────────────────────────────────
 

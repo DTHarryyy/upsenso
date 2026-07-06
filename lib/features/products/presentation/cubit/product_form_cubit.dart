@@ -12,8 +12,10 @@ import 'package:pos/core/database/daos/categories_dao.dart';
 import 'package:pos/core/database/daos/inventory_levels_dao.dart';
 import 'package:pos/core/database/daos/products_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
+import 'package:pos/core/database/daos/product_barcodes_dao.dart';
 import 'package:pos/core/database/daos/recipe_lines_dao.dart';
 import 'package:pos/core/sync/sync_status.dart';
+import 'package:pos/core/utils/barcode_generator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pos/core/services/image_service.dart';
 import 'product_form_state.dart';
@@ -33,6 +35,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   final _categoriesDao = sl<CategoriesDao>();
   final _productsDao = sl<ProductsDao>();
   final _productVariantsDao = sl<ProductVariantsDao>();
+  final _productBarcodesDao = sl<ProductBarcodesDao>();
   final _recipeLinesDao = sl<RecipeLinesDao>();
   final _imageService = sl<ImageService>();
   final _levelsDao = sl<InventoryLevelsDao>();
@@ -151,6 +154,74 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     return '$prefix-$suffix';
   }
 
+  // ── Barcode generation ────────────────────────────────────────────────────
+
+  /// Generates a valid EAN-13 barcode guaranteed not to collide with any
+  /// existing product/variant barcode in this business. Random 11-digit payload
+  /// makes collisions astronomically rare; we still re-roll on the off chance.
+  Future<String> generateUniqueBarcode() async {
+    for (var attempt = 0; attempt < 20; attempt++) {
+      final code = generateEan13();
+      final taken =
+          await _productBarcodesDao.codeExists(code, businessId) ||
+          await _productVariantsDao.barcodeExists(code, businessId) ||
+          await _productsDao.barcodeExists(code, businessId);
+      if (!taken) return code;
+    }
+    return generateEan13();
+  }
+
+  /// variantId → its active barcode codes (primary first). Used to prefill the
+  /// edit form from the normalized store.
+  Future<Map<String, List<String>>> loadBarcodesForVariants(
+    List<String> variantIds,
+  ) async {
+    final result = <String, List<String>>{};
+    for (final id in variantIds) {
+      final rows = await _productBarcodesDao.getByVariantId(id);
+      if (rows.isNotEmpty) result[id] = rows.map((r) => r.code).toList();
+    }
+    return result;
+  }
+
+  /// Returns a user-facing error if a barcode is duplicated within the form or
+  /// already belongs to a different product; null when the set is valid.
+  /// [productId] is the product being edited (its own variants don't collide).
+  Future<String?> _validateBarcodes(
+    ProductFormData data,
+    bool hasVariants, {
+    String? productId,
+  }) async {
+    final codes = <String>[];
+    if (hasVariants) {
+      for (final v in data.variants) {
+        codes.addAll(v.barcodes.map((c) => c.trim()).where((c) => c.isNotEmpty));
+      }
+    } else {
+      codes.addAll(data.barcodes.map((c) => c.trim()).where((c) => c.isNotEmpty));
+    }
+
+    final unique = <String>{};
+    for (final code in codes) {
+      if (!unique.add(code)) {
+        return 'The barcode "$code" is used more than once.';
+      }
+    }
+
+    final ownVariantIds = <String>{};
+    if (productId != null) {
+      final existing = await _productVariantsDao.getByProductId(productId);
+      ownVariantIds.addAll(existing.map((v) => v.id));
+    }
+    for (final code in unique) {
+      final row = await _productBarcodesDao.getByCode(code, businessId);
+      if (row != null && !ownVariantIds.contains(row.variantId)) {
+        return 'Barcode "$code" is already used by another product.';
+      }
+    }
+    return null;
+  }
+
   // ── Edit existing product ─────────────────────────────────────────────────
 
   /// Initialise cubit state from an existing product (called when editing).
@@ -158,9 +229,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     final method = TrackingMethodX.fromCode(product.trackingMethod);
     emit(
       state.copyWith(
-        mode: product.hasVariants
-            ? ProductFormMode.advanced
-            : ProductFormMode.simple,
+        mode: ProductFormMode.advanced,
         hasVariants: product.hasVariants,
         trackingMethod: method,
         selectedCategoryId: product.categoryId,
@@ -279,6 +348,20 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       final isAdvanced = state.mode == ProductFormMode.advanced;
       final hasVariants = isAdvanced && state.hasVariants;
 
+      final barcodeError = await _validateBarcodes(
+        data,
+        hasVariants,
+        productId: productId,
+      );
+      if (barcodeError != null) {
+        emit(state.copyWith(
+          isSaving: false,
+          isSavingDraft: false,
+          error: barcodeError,
+        ));
+        return;
+      }
+
       final tax = (data.taxPercent?.trim().isNotEmpty == true)
           ? double.tryParse(data.taxPercent!)
           : null;
@@ -325,11 +408,6 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       }
       final reusedIds = <String>{};
 
-      final variantBarcode = data.barcodes
-          .map((s) => s.trim())
-          .where((s) => s.isNotEmpty)
-          .join(',');
-
       // variantName → newId — used to restore saved levels after insert.
       final variantNameToNewId = <String, String>{};
       final seeds = <({String variantId, double qty})>[];
@@ -345,14 +423,14 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           final vCost = (v.costPrice?.trim().isNotEmpty == true)
               ? double.tryParse(v.costPrice!)
               : null;
+          final vRetail = (v.retailPrice?.trim().isNotEmpty == true)
+              ? double.tryParse(v.retailPrice!)
+              : null;
           final vStock = state.trackInventory
               ? (double.tryParse(v.stock ?? '') ?? 0.0)
               : 0.0;
           final vLowAlert = (v.lowStockAlert?.trim().isNotEmpty == true)
               ? int.tryParse(v.lowStockAlert!)
-              : null;
-          final vBarcode = (v.barcode?.trim().isNotEmpty == true)
-              ? v.barcode!.trim()
               : null;
           companions.add(
             ProductVariantsTableCompanion.insert(
@@ -362,8 +440,10 @@ class ProductFormCubit extends Cubit<ProductFormState> {
               name: name,
               price: Value(vPrice),
               costPrice: Value(vCost),
-              retailPrice: const Value(null),
-              barcode: Value(vBarcode),
+              retailPrice: Value(vRetail),
+              // Barcodes now live in product_barcodes (see replaceForVariant).
+              barcode: const Value(null),
+              unit: Value(data.unit),
               stock: Value(vStock),
               lowStockAlert: Value(vLowAlert),
               trackStock: Value(state.trackInventory),
@@ -408,7 +488,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             price: Value(finalPrice),
             costPrice: Value(cost),
             retailPrice: Value(retail),
-            barcode: Value(variantBarcode.isNotEmpty ? variantBarcode : null),
+            // Barcodes now live in product_barcodes (see replaceForVariant).
+            barcode: const Value(null),
+            unit: Value(data.unit),
             stock: Value(stockValue),
             lowStockAlert: Value(lowAlert),
             trackStock: Value(state.trackInventory),
@@ -465,6 +547,26 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           .where((id) => !reusedIds.contains(id))
           .toList();
       await _productVariantsDao.markDeleteByIds(idsToDelete);
+
+      // Barcodes: soft-delete those of removed variants, then reconcile each
+      // surviving variant's set into the normalized store.
+      for (final id in idsToDelete) {
+        await _productBarcodesDao.markDeleteByVariantId(id);
+      }
+      if (hasVariants) {
+        for (final v in data.variants) {
+          final name = v.name.trim().isEmpty ? 'Default' : v.name.trim();
+          final id = variantNameToNewId[name];
+          if (id != null) {
+            await _productBarcodesDao.replaceForVariant(id, businessId, v.barcodes);
+          }
+        }
+      } else {
+        final id = variantNameToNewId['Default'];
+        if (id != null) {
+          await _productBarcodesDao.replaceForVariant(id, businessId, data.barcodes);
+        }
+      }
 
       // Re-link saved inventory levels to new variant UUIDs.
       // For each new variant, restore all branch levels from before the edit —
@@ -568,6 +670,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         stock: data.stock,
         lowStockAlert: data.lowStockAlert,
         sellBy: data.sellBy,
+        unit: data.unit,
         barcodes: data.barcodes,
         sku: data.sku,
         variants: data.variants,
@@ -589,6 +692,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         stock: data.stock,
         lowStockAlert: data.lowStockAlert,
         sellBy: data.sellBy,
+        unit: data.unit,
         barcodes: data.barcodes,
         sku: data.sku,
         variants: data.variants,
@@ -612,12 +716,15 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       final isFraction = data.sellBy == 'fraction';
       final hasVariants = isAdvanced && state.hasVariants;
 
-      // Build barcode string for the Default variant (Advanced + No Variants).
-      // When hasVariants=true, barcodes live at variant level — not product level.
-      final variantBarcode = data.barcodes
-          .map((s) => s.trim())
-          .where((s) => s.isNotEmpty)
-          .join(',');
+      final barcodeError = await _validateBarcodes(data, hasVariants);
+      if (barcodeError != null) {
+        emit(state.copyWith(
+          isSaving: false,
+          isSavingDraft: false,
+          error: barcodeError,
+        ));
+        return;
+      }
 
       // Parse tax (stored at product level)
       final tax = (data.taxPercent?.trim().isNotEmpty == true)
@@ -657,14 +764,14 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           final vCost = (v.costPrice?.trim().isNotEmpty == true)
               ? double.tryParse(v.costPrice!)
               : null;
+          final vRetail = (v.retailPrice?.trim().isNotEmpty == true)
+              ? double.tryParse(v.retailPrice!)
+              : null;
           final vStock = state.trackInventory
               ? (double.tryParse(v.stock ?? '') ?? 0.0)
               : 0.0;
           final vLowAlert = (v.lowStockAlert?.trim().isNotEmpty == true)
               ? int.tryParse(v.lowStockAlert!)
-              : null;
-          final vBarcode = (v.barcode?.trim().isNotEmpty == true)
-              ? v.barcode!.trim()
               : null;
           companions.add(
             ProductVariantsTableCompanion.insert(
@@ -674,8 +781,10 @@ class ProductFormCubit extends Cubit<ProductFormState> {
               name: v.name.trim().isEmpty ? 'Default' : v.name.trim(),
               price: Value(vPrice),
               costPrice: Value(vCost),
-              retailPrice: const Value(null),
-              barcode: Value(vBarcode),
+              retailPrice: Value(vRetail),
+              // Barcodes now live in product_barcodes (see replaceForVariant).
+              barcode: const Value(null),
+              unit: Value(data.unit),
               stock: Value(vStock),
               lowStockAlert: Value(vLowAlert),
               trackStock: Value(state.trackInventory),
@@ -713,7 +822,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             price: Value(finalPrice),
             costPrice: Value(cost),
             retailPrice: Value(retail),
-            barcode: Value(variantBarcode.isNotEmpty ? variantBarcode : null),
+            // Barcodes now live in product_barcodes (see replaceForVariant).
+            barcode: const Value(null),
+            unit: Value(data.unit),
             stock: Value(stockValue),
             lowStockAlert: Value(lowAlert),
             trackStock: Value(state.trackInventory),
@@ -744,6 +855,24 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             trackExpiry: const Value(false),
             expiryDate: const Value(null),
           ),
+        );
+      }
+
+      // Persist barcodes into the normalized store (before the branch-assignment
+      // early-return below, so a deferred-stock save still writes them).
+      if (hasVariants) {
+        for (int i = 0; i < seeds.length && i < data.variants.length; i++) {
+          await _productBarcodesDao.replaceForVariant(
+            seeds[i].variantId,
+            businessId,
+            data.variants[i].barcodes,
+          );
+        }
+      } else if (seeds.isNotEmpty) {
+        await _productBarcodesDao.replaceForVariant(
+          seeds.first.variantId,
+          businessId,
+          data.barcodes,
         );
       }
 

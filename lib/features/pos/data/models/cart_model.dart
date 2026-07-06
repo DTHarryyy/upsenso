@@ -1,3 +1,5 @@
+import 'package:pos/core/const/qty_format.dart';
+
 enum DiscountType { percentage, fixed }
 
 class CartItem {
@@ -6,6 +8,9 @@ class CartItem {
   final String variant;
   final double unitPrice;
   final double? taxRate; // e.g. 12.0 = 12% VAT; null = no tax
+
+  /// Unit of measure for weighed products (kg, g, L, ml). Null = per-piece.
+  final String? unit;
   double qty = 1;
 
   CartItem({
@@ -14,10 +19,18 @@ class CartItem {
     required this.variant,
     required this.unitPrice,
     this.taxRate,
+    this.unit,
   });
 
   double get total => unitPrice * qty;
   double get taxAmount => unitPrice * qty * (taxRate ?? 0) / 100;
+
+  /// Quantity for display: trims trailing zeros and appends the unit when the
+  /// item is weighed — e.g. "1.5 kg", "3".
+  String get qtyDisplay {
+    final base = qtyLabel(qty);
+    return (unit != null && unit!.isNotEmpty) ? '$base $unit' : base;
+  }
 }
 
 /// Subtotal/discount/tax/total for a set of cart items plus a discount.

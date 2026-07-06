@@ -9,6 +9,7 @@ import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/const/qty_format.dart';
 import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/core/services/cart_service.dart';
 import 'package:pos/core/widgets/widgets.dart';
@@ -63,22 +64,24 @@ class _ProductsPageState extends State<ProductsPage> {
   }
 
   void _addToCart(Product product, ProductVariant variant, double qty) {
+    final unit = product.sellBy == 'fraction' ? variant.unit : null;
     _cartService.addOrIncrement(
       variantId: variant.id,
       name: product.name,
       variant: variant.name == 'Default' ? '' : variant.name,
       unitPrice: variant.price,
       taxRate: product.tax,
+      unit: unit,
       qty: qty,
     );
-    final qtyLabel = product.sellBy == 'fraction'
-        ? qty.toStringAsFixed(1)
-        : qty.toInt().toString();
+    final qtyText = unit != null && unit.isNotEmpty
+        ? '${qtyLabel(qty)} $unit'
+        : qtyLabel(qty);
     final label = variant.name == 'Default'
         ? product.name
         : '${product.name} · ${variant.name}';
     if (mounted) {
-      AppToast.show(context, '$label × $qtyLabel added to cart');
+      AppToast.show(context, '$label × $qtyText added to cart');
     }
   }
 

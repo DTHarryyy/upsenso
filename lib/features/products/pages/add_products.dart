@@ -20,10 +20,9 @@ import 'package:pos/features/products/data/holder/variant_form.dart';
 import 'package:pos/features/products/domain/entities/product.dart';
 import 'package:pos/features/products/presentation/cubit/product_form_cubit.dart';
 import 'package:pos/features/products/presentation/cubit/product_form_state.dart';
-import 'package:pos/features/products/widgets/barcode_togggle_section.dart';
+import 'package:pos/features/products/widgets/barcodes_editor.dart';
 import 'package:pos/features/products/widgets/branch_assignment_sheet.dart';
 import 'package:pos/features/products/widgets/image_picker_field.dart';
-import 'package:pos/features/products/widgets/product_mode_toggle.dart';
 import 'package:pos/features/products/widgets/product_sidebar_label.dart';
 import 'package:pos/features/products/widgets/recipe_builder_sheet.dart';
 import 'package:pos/features/products/widgets/recipe_summary_row.dart';
@@ -38,10 +37,8 @@ part 'add_products_sidebar.dart';
 part 'add_products_sections.dart';
 part 'add_products_more_options.dart';
 
-String _formatDate(DateTime d) =>
-    '${d.day.toString().padLeft(2, '0')}/'
-    '${d.month.toString().padLeft(2, '0')}/'
-    '${d.year}';
+// Units offered for weighed products (sellBy == 'fraction').
+const List<String> _kWeightUnits = ['kg', 'g', 'L', 'ml'];
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
@@ -97,11 +94,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
   final _nameController = TextEditingController();
   final _nameFocusNode = FocusNode();
 
-  // Simple mode
-  final _simplePriceController = TextEditingController();
-  final _simpleBarcodeController = TextEditingController();
-
-  // Advanced — no-variants pricing
+  // No-variants pricing
   final _sellingPriceController = TextEditingController();
   final _retailPriceController = TextEditingController();
   final _costPriceController = TextEditingController();
@@ -109,22 +102,23 @@ class _AddProductsViewState extends State<_AddProductsView> {
   final _stockController = TextEditingController();
   final _lowStockController = TextEditingController();
 
-  // More Options local toggles (UI-only, not in cubit)
+  // Inline reveal toggles (UI-only, not in cubit)
   bool _showRetailPrice = false;
   bool _showTax = false;
-  bool _showSimpleBarcode = false;
 
-  // More options
+  // Identifiers
   final _skuController = TextEditingController();
-  final _expiryController = TextEditingController();
   final _newCategoryController = TextEditingController();
+  // Multiple barcodes for the no-variants (Default) variant.
   final List<TextEditingController> _barcodeControllers = [
     TextEditingController(),
   ];
 
   // Shared UI state
   String _sellBy = 'unit';
-  bool _showImagePicker = false;
+
+  // Unit of measure for weighed products (kg/g/L/ml). Applied to every variant.
+  String _selectedUnit = 'kg';
 
   // Variants (advanced + hasVariants)
   final List<VariantForm> _variants = [VariantForm()];
@@ -145,7 +139,7 @@ class _AddProductsViewState extends State<_AddProductsView> {
         final cubit = context.read<ProductFormCubit>();
         cubit.switchMode(ProductFormMode.advanced);
         cubit.setHasVariants(true);
-        _variants[0].barcode.text = widget.initialBarcode!;
+        _variants[0].barcodes[0].text = widget.initialBarcode!;
       });
     }
   }
@@ -166,6 +160,14 @@ class _AddProductsViewState extends State<_AddProductsView> {
     );
     if (!mounted) return;
 
+    // Restore the weighed unit from the first variant that has one.
+    for (final v in variants) {
+      if (v.unit != null && v.unit!.isNotEmpty) {
+        _selectedUnit = v.unit!;
+        break;
+      }
+    }
+
     final isRecipe = product.trackingMethod == 'recipe';
     final hasStock = variants.any((v) => v.trackStock);
     if (hasStock) cubit.setTrackInventory(true);
@@ -182,6 +184,22 @@ class _AddProductsViewState extends State<_AddProductsView> {
       }
     }
 
+    // Load each variant's barcodes from the normalized store (falls back to the
+    // legacy comma column for any pre-backfill row).
+    final barcodeMap = await cubit.loadBarcodesForVariants(
+      variants.where((v) => v.isActive).map((v) => v.id).toList(),
+    );
+    if (!mounted) return;
+    List<String> codesFor(ProductVariantsTableData v) {
+      final loaded = barcodeMap[v.id];
+      if (loaded != null && loaded.isNotEmpty) return loaded;
+      final legacy = v.barcode;
+      if (legacy != null && legacy.trim().isNotEmpty) {
+        return legacy.split(',').map((c) => c.trim()).where((c) => c.isNotEmpty).toList();
+      }
+      return const [];
+    }
+
     double stockFor(ProductVariantsTableData v) => branchStock[v.id] ?? v.stock;
 
     if (product.hasVariants) {
@@ -193,11 +211,15 @@ class _AddProductsViewState extends State<_AddProductsView> {
         if (v.costPrice != null) {
           form.cost.text = v.costPrice!.toStringAsFixed(2);
         }
+        if (v.retailPrice != null) {
+          form.retail.text = v.retailPrice!.toStringAsFixed(2);
+          _showRetailPrice = true;
+        }
         form.stock.text = stockFor(v).toString();
         if (v.lowStockAlert != null) {
           form.lowStock.text = v.lowStockAlert.toString();
         }
-        if (v.barcode != null) form.barcode.text = v.barcode!;
+        _setBarcodeControllers(form.barcodes, codesFor(v));
         form.recipeLines = variantRecipeLines[v.id] ?? [];
         _variants.add(form);
       }
@@ -207,16 +229,11 @@ class _AddProductsViewState extends State<_AddProductsView> {
       if (v != null) {
         final taxRate = (product.tax ?? 0.0) / 100.0;
         final basePrice = taxRate > 0 ? v.price / (1 + taxRate) : v.price;
-        _simplePriceController.text = basePrice.toStringAsFixed(2);
         _sellingPriceController.text = basePrice.toStringAsFixed(2);
         if (v.costPrice != null) {
           _costPriceController.text = v.costPrice!.toStringAsFixed(2);
         }
-        if (v.barcode != null) {
-          _simpleBarcodeController.text = v.barcode!;
-          _barcodeControllers[0].text = v.barcode!;
-          _showSimpleBarcode = true;
-        }
+        _setBarcodeControllers(_barcodeControllers, codesFor(v));
         final qty = stockFor(v);
         if (qty > 0) _stockController.text = qty.toString();
         if (v.lowStockAlert != null) {
@@ -235,8 +252,9 @@ class _AddProductsViewState extends State<_AddProductsView> {
     }
     if (product.sku != null) _skuController.text = product.sku!;
 
+    // Expand "More options" when it holds data (SRP, SKU, or tax).
     final hasMoreData =
-        _showRetailPrice || _showTax || product.sku?.isNotEmpty == true;
+        _showTax || _showRetailPrice || product.sku?.isNotEmpty == true;
     if (hasMoreData && !cubit.state.moreOptionsExpanded) {
       cubit.toggleMoreOptions();
     }
@@ -248,8 +266,6 @@ class _AddProductsViewState extends State<_AddProductsView> {
   void dispose() {
     _nameController.dispose();
     _nameFocusNode.dispose();
-    _simplePriceController.dispose();
-    _simpleBarcodeController.dispose();
     _sellingPriceController.dispose();
     _retailPriceController.dispose();
     _costPriceController.dispose();
@@ -257,7 +273,6 @@ class _AddProductsViewState extends State<_AddProductsView> {
     _stockController.dispose();
     _lowStockController.dispose();
     _skuController.dispose();
-    _expiryController.dispose();
     _newCategoryController.dispose();
     for (final c in _barcodeControllers) {
       c.dispose();
@@ -275,33 +290,25 @@ class _AddProductsViewState extends State<_AddProductsView> {
 
   void _removeBarcode(int index) {
     if (_barcodeControllers.length <= 1) return;
-    _barcodeControllers.removeAt(index).dispose();
-    setState(() {});
+    setState(() => _barcodeControllers.removeAt(index).dispose());
   }
 
-  Future<void> _pickExpiryDate() async {
-    final cubit = context.read<ProductFormCubit>();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate:
-          cubit.state.expiryDate ??
-          DateTime.now().add(const Duration(days: 30)),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 10)),
-      builder: (ctx, child) => Theme(
-        data: Theme.of(ctx).copyWith(
-          colorScheme: ColorScheme.light(
-            primary: AppColors.brand,
-            onPrimary: Colors.white,
-            surface: AppColors.surface,
-          ),
-        ),
-        child: child!,
-      ),
-    );
-    if (picked != null && mounted) {
-      cubit.setExpiryDate(picked);
-      _expiryController.text = _formatDate(picked);
+  /// Rebuilds a barcode-controller list from [codes] (one controller per code,
+  /// or a single empty one when there are none). Disposes the old controllers.
+  void _setBarcodeControllers(
+    List<TextEditingController> list,
+    List<String> codes,
+  ) {
+    for (final c in list) {
+      c.dispose();
+    }
+    list.clear();
+    if (codes.isEmpty) {
+      list.add(TextEditingController());
+    } else {
+      for (final code in codes) {
+        list.add(TextEditingController(text: code));
+      }
     }
   }
 
@@ -466,48 +473,38 @@ class _AddProductsViewState extends State<_AddProductsView> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     final cubit = context.read<ProductFormCubit>();
     final state = cubit.state;
-    final isAdvanced = state.mode == ProductFormMode.advanced;
+    final hasVariants = state.hasVariants;
 
     final formData = ProductFormData(
       name: _nameController.text,
       sellBy: _sellBy,
-      simplePrice: !isAdvanced ? _simplePriceController.text : null,
-      simpleBarcode: !isAdvanced ? _simpleBarcodeController.text : null,
-      sellingPrice: (isAdvanced && !state.hasVariants)
-          ? _sellingPriceController.text
-          : null,
-      retailPrice: (isAdvanced && !state.hasVariants)
-          ? _retailPriceController.text
-          : null,
-      costPrice: (isAdvanced && !state.hasVariants)
-          ? _costPriceController.text
-          : null,
-      taxPercent: (isAdvanced && !state.hasVariants)
-          ? _taxController.text
-          : null,
-      stock: (isAdvanced && !state.hasVariants && state.trackInventory)
+      unit: _sellBy == 'fraction' ? _selectedUnit : null,
+      sellingPrice: !hasVariants ? _sellingPriceController.text : null,
+      retailPrice: !hasVariants ? _retailPriceController.text : null,
+      costPrice: !hasVariants ? _costPriceController.text : null,
+      taxPercent: !hasVariants ? _taxController.text : null,
+      stock: (!hasVariants && state.trackInventory)
           ? _stockController.text
           : null,
-      lowStockAlert: (isAdvanced && !state.hasVariants && state.trackInventory)
+      lowStockAlert: (!hasVariants && state.trackInventory)
           ? _lowStockController.text
           : null,
       imagePath: state.imagePath,
       trackingMethod: state.trackingMethod,
       recipeLines: state.recipeLines,
-      barcodes: isAdvanced
-          ? _barcodeControllers.map((c) => c.text).toList()
-          : [],
-      sku: isAdvanced ? _skuController.text : null,
-      variants: (isAdvanced && state.hasVariants)
+      barcodes: _barcodeControllers.map((c) => c.text).toList(),
+      sku: _skuController.text,
+      variants: hasVariants
           ? _variants
                 .map(
                   (v) => VariantFormData(
                     name: v.name.text,
                     price: v.price.text,
                     costPrice: v.cost.text,
+                    retailPrice: v.retail.text,
                     stock: v.stock.text,
                     lowStockAlert: v.lowStock.text,
-                    barcode: v.barcode.text,
+                    barcodes: v.barcodes.map((c) => c.text).toList(),
                     recipeLines: state.trackingMethod == TrackingMethod.recipe
                         ? v.recipeLines
                         : const [],

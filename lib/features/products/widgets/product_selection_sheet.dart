@@ -83,6 +83,13 @@ class _ProductSelectionSheetState extends State<_ProductSelectionSheet> {
 
   bool get _isFraction => widget.product.sellBy == 'fraction';
 
+  /// Unit label (kg/g/L/ml) for weighed products, else null.
+  String? get _unit {
+    if (!_isFraction) return null;
+    final u = _selected?.unit ?? (_active.isEmpty ? null : _active.first.unit);
+    return (u != null && u.isNotEmpty) ? u : null;
+  }
+
   List<ProductVariant> get _active =>
       widget.variants.where((v) => v.isActive).toList();
 
@@ -259,9 +266,12 @@ class _ProductSelectionSheetState extends State<_ProductSelectionSheet> {
                 children: [
                   if (minPrice != null)
                     Text(
-                      widget.product.hasVariants
-                          ? 'From ₱${minPrice.toStringAsFixed(2)}'
-                          : '₱${minPrice.toStringAsFixed(2)}',
+                      () {
+                        final base = widget.product.hasVariants
+                            ? 'From ₱${minPrice.toStringAsFixed(2)}'
+                            : '₱${minPrice.toStringAsFixed(2)}';
+                        return _unit != null ? '$base / $_unit' : base;
+                      }(),
                       style: getOutfitStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -433,7 +443,9 @@ class _ProductSelectionSheetState extends State<_ProductSelectionSheet> {
                 Expanded(
                   child: Center(
                     child: Text(
-                      _qty.toStringAsFixed(isFraction ? 1 : 0),
+                      isFraction && _unit != null
+                          ? '${_qty.toStringAsFixed(1)} $_unit'
+                          : _qty.toStringAsFixed(isFraction ? 1 : 0),
                       style: getOutfitStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w700,

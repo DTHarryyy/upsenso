@@ -136,22 +136,9 @@ extension _AddProductsViewLayout on _AddProductsViewState {
     ProductFormState state,
     ProductFormCubit cubit,
   ) {
-    return Column(
-      children: [
-        // Floating premium mode toggle
-        Container(
-          color: AppColors.surface,
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-          child: ProductModeToggle(mode: state.mode, onChanged: cubit.switchMode),
-        ),
-        const Divider(height: 1, color: AppColors.borderSoft),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
-            children: _buildFormSections(ctx, state, cubit),
-          ),
-        ),
-      ],
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      children: _buildFormSections(ctx, state, cubit),
     );
   }
 
@@ -194,23 +181,15 @@ extension _AddProductsViewLayout on _AddProductsViewState {
     ProductFormState state,
     ProductFormCubit cubit,
   ) {
-    if (state.mode == ProductFormMode.simple) {
-      return [
-        _buildSimpleSection(state, cubit),
-        const SizedBox(height: 16),
-        _buildMoreOptionsSection(state, cubit),
-        const SizedBox(height: 8),
-      ];
-    }
     return [
       _buildBasicInfoSection(state, cubit),
-      const SizedBox(height: 16),
+      const SizedBox(height: 14),
       if (!state.hasVariants) ...[
         _buildPricingSection(state, cubit),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
       ] else ...[
         _buildVariantsSection(state, cubit),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
       ],
       _buildMoreOptionsSection(state, cubit),
       const SizedBox(height: 8),

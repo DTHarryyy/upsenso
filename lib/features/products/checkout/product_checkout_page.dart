@@ -183,7 +183,12 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
         paymentMethod: Value(_paymentMethod),
         amountReceived: Value(_isCash ? _amountReceived : null),
         changeDue: Value(_isCash ? _change : null),
-        itemCount: widget.items.fold(0, (s, i) => s + i.qty.round()),
+        // Whole-quantity lines count by their qty; weighed lines (fractional)
+        // count as a single item so 1.5 kg isn't rounded to "2 items".
+        itemCount: widget.items.fold(
+          0,
+          (s, i) => s + (i.qty == i.qty.roundToDouble() ? i.qty.round() : 1),
+        ),
         createdAt: Value(DateTime.now()),
       );
 
@@ -615,7 +620,7 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
                       ),
                     ),
                     Text(
-                      '×${item.qty.toInt()}',
+                      '×${item.qtyDisplay}',
                       style: getOutfitStyle(
                         color: AppColors.textMuted,
                         fontSize: 12,
@@ -788,7 +793,7 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
                                 ),
                               ),
                               Text(
-                                '×${item.qty.toInt()}',
+                                '×${item.qtyDisplay}',
                                 style: getOutfitStyle(
                                   color: AppColors.textMuted,
                                   fontSize: 12,
