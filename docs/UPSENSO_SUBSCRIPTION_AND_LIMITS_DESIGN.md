@@ -1,28 +1,46 @@
 # UPSENSO — Subscription, Plans & Limiting (Design)
 
-> Status: **proposed** · Branch: `claude/platform-features-roadmap-7bqdgn`
-> Detailed spec for Milestone **M7.1** of `docs/UPSENSO_PRODUCT_ROADMAP.md`.
+> Status: **proposed (v3 — 3-tier launch + trust-safe scaling, 2026-07-06;
+> supersedes v2 local-vs-cloud model)** · Spec for
+> Milestone **M7.1** of `docs/UPSENSO_PRODUCT_ROADMAP.md`.
 > This document is both the **plan** and the **scope/goals reference** for
 > subscriptions: what we charge for, the plan limits, the PHP pricing (derived,
-> not guessed), and — the hard part — **how limits are enforced fairly in an
-> offline-first, multi-device system**.
+> not guessed), and how limits are enforced fairly in an offline-first system.
+>
+> **v2 change (the core idea):** the paywall is **the cloud**, not product
+> counts. **Free = a fully-functional local POS on one device (unlimited
+> records, ~₱0 cost to us).** The first thing you ever pay for is cloud sync +
+> backup + multi-device. This is cheaper to run, fairer, more affordable for
+> Philippine micro-SMBs, and it *dissolves* the hardest problem in v1 (the
+> multi-device offline product-overshoot scenario — see §6).
+>
+> **v3 change:** launch narrows to **3 tiers — Free / Starter ₱199 / Growth ₱499
+> (full access)** — with **no Business/Enterprise at launch** (added later when
+> M6/M7.2 ship, as a *new* tier on top). Structural growth is sold via
+> **à-la-carte add-ons** (device/branch/seat), and all pricing is
+> **grandfathered + plan-versioned** so we can iterate on price and packaging for
+> years without ever making an existing customer worse off (see §4.9).
 
 ---
 
 ## 1. Goals & scope
 
 **Goal.** Monetize UPSENSO as a tiered SaaS for Philippine SMBs **without ever**
-breaking the offline-first promise or treating paying customers unfairly.
+breaking the offline-first promise or treating paying customers unfairly — and
+with a genuinely affordable entry price for the huge micro-business segment
+(sari-sari stores, carinderias, stalls) that competitors like Loyverse serve for
+free.
 
-**In scope (M7.1):** plans, limits (branches, seats, devices, products,
-capabilities), PHP pricing + annual discount, entitlement resolution, **offline
-+ multi-device limit enforcement and reconciliation**, schema, permission wiring,
-edge cases, tests.
+**In scope (M7.1):** the local-vs-cloud plan model, PHP pricing + annual
+discount, entitlement resolution, **gating the sync layer by entitlement**, the
+**free→paid first-sync backfill**, structural limits (branches/seats/devices)
+**and à-la-carte add-ons** for paid tiers, **grandfathered + plan-versioned
+pricing (§4.9)**, schema, permission wiring, edge cases, tests.
 
-**Out of scope (later):** payment-gateway integration specifics (GCash/Maya/card
-processor), dunning email content, tax invoicing/BIR receipt format for the
-subscription itself, and the optional quota-leasing hardening (Section 6.4 —
-documented, not built in v1).
+**Out of scope (later):** the PayMongo payment integration itself (its own
+sub-project — QRPH via a Supabase Edge Function, secret key server-side only),
+dunning content, BIR receipt format for the subscription charge, and the optional
+quota-leasing hardening (§6.4 — documented, not built in v1).
 
 ---
 
@@ -31,96 +49,306 @@ documented, not built in v1).
 Hard constraints. Every decision below follows from them.
 
 1. **A POS must never stop selling.** Core sale/refund/shift operations are never
-   capped or billing-gated, even offline or when billing is unreachable.
+   capped or billing-gated, even offline, even on Free, even when billing is
+   unreachable.
 2. **Never destroy user data to enforce a limit.** Hitting a limit blocks the
-   *next* create; it never deletes, rejects, or loses what was already made.
-3. **Limit on value, not survival.** We meter structural dimensions (branches,
-   seats, devices, catalog size, advanced modules) — never the number of
-   receipts.
-4. **Soft limits with warning + grace, not surprise cut-offs.**
-5. **The server is the only authority; clients are optimistic.** Offline, a
-   device enforces its *best local estimate*. The server reconciles the true
-   total on sync and has the final say — securely, so a tampered client can't win.
-6. **Transparent PHP pricing** with a published, verifiable annual discount.
+   *next* create; it never deletes or rejects what was already made. Downgrade
+   never deletes — it freezes/reverts to read-only.
+3. **The cloud is the value metric.** We meter **cloud sync + backup +
+   multi-device + multi-branch + team**, plus advanced capability modules — never
+   the number of receipts, and (v2) never local record counts. Local, single-
+   device use is unlimited and free.
+4. **Free is a real product, not a crippled trial.** A solo owner runs their
+   whole shop on Free forever, on one device, fully offline.
+5. **Soft limits with warning + grace, not surprise cut-offs.**
+6. **The server is the only authority for cloud limits; clients are optimistic.**
+   Structural cloud limits (branches/seats/devices) are enforced server-side; a
+   tampered client can't self-grant.
+7. **Transparent PHP pricing** with a published, verifiable annual discount.
+8. **Sell at the moment of genuine need, never nag.** Upgrades are offered when
+   the user actually reaches for something cloud unlocks (a 2nd device, a branch,
+   protecting real data) — framed as *growth*, not a paywall. The free tier is a
+   real product we **never shrink** and never hold data hostage in. (See §4.2–4.7.)
 
 ---
 
 ## 3. What we meter (the value metric)
 
-Priced/limited dimensions — all fair, all visible:
+The **primary gate is the cloud.** Everything that structurally *requires* the
+cloud is what you pay for:
 
-- **Branches** — multi-branch is the core architecture.
-- **Seats** — an *active* (non-suspended) employee with login. Suspended
-  employees don't count.
-- **Registered devices** — installs bound to the account. **Capping devices is
-  also the primary defense that bounds offline-overshoot** (Section 6).
-- **Products** — catalog size (the limit in the scenario this doc must solve).
-- **Capabilities** — AI insights, full fraud engine, CRM/loyalty, accounting,
-  forecasting — gated by tier.
+- **Cloud sync + automatic backup** — the headline value. Free is local-only.
+- **Registered devices** — multi-device needs the cloud to sync between them.
+- **Branches** — multi-branch is impossible without sync (branches share data).
+- **Seats** — an *active* employee logging in **on their own device** needs sync;
+  multiple staff on the *same* device is local and allowed on Free.
+- **Advanced capability modules** — CRM depth, procurement, full reports/export,
+  accounting/tax/budgets, multi-currency — gated by tier.
 
-We deliberately do **not** meter transactions, customers, or audit volume —
-capping those would punish success and break Principle 1.
+We deliberately do **not** meter:
+
+- **Products / records / transactions / customers** — unlimited on every tier,
+  including Free. (The v1 100-product cap existed only for *storage* cost; a
+  local-only Free tier has no storage cost, so the cap is gone.)
+- **Anything that runs purely on-device** — the on-device AI assistant, local
+  audit logging, and basic on-device fraud detection cost us ~₱0, so they stay
+  **on for Free** as trust differentiators. Only the *cloud* part of trust (the
+  server-anchored tamper-proof audit chain + cross-device fraud sync) is paid.
 
 ---
 
 ## 4. Plan tiers & PHP pricing
 
-Currency: **Philippine Peso (₱)**. These are tuned for PH SMB willingness-to-pay
-(typical local POS SaaS sits ~₱500–₱2,000/mo); validate against measured
-per-tenant COGS before launch (Section 5).
+Currency: **Philippine Peso (₱)**. Tuned for PH micro-SMB reality — most of the
+market nets ₱15k–40k/mo, so we judge cost in **₱/day** the way a store owner
+does. Validate the absolute anchor against measured per-tenant COGS before launch
+(§5); the ratios and limits stay.
 
-| | **Free** | **Growth** | **Business** | **Enterprise** |
-|---|---|---|---|---|
-| **Monthly** | ₱0 | **₱499 /mo** | **₱1,299 /mo** | Custom |
-| **Annual** | ₱0 | **₱4,990 /yr** (₱415.83/mo) | **₱12,990 /yr** (₱1,082.50/mo) | Custom |
-| Branches | 1 | 3 | 10 | unlimited |
-| Seats | 2 | 10 | 50 | unlimited |
-| **Devices** | **2** | 10 | 50 | unlimited |
-| **Products** | **100** | 2,000 | 20,000 | unlimited |
-| Extra seat add-on | — | ₱99 /seat/mo | ₱79 /seat/mo | negotiated |
-| **Modules** | | | | |
-| POS, Inventory, Expenses | ✅ | ✅ | ✅ | ✅ |
-| Procurement, Suppliers, Recipes | — | ✅ | ✅ | ✅ |
-| Reports + export | basic | ✅ full | ✅ full | ✅ full |
-| Customers / CRM / Loyalty (M5) | — | basic | ✅ full | ✅ |
-| **Intelligence** | | | | |
-| AI assistant (NL queries) | — | ✅ | ✅ | ✅ |
-| AI proactive insights (M2) | — | — | ✅ | ✅ |
-| Demand forecasting (M3.3) | — | — | ✅ | ✅ |
-| **Trust** | | | | |
-| Audit log + integrity verify (M1.1) | view | ✅ | ✅ | ✅ |
-| Fraud detection (M1.2) | — | basic rules | ✅ full engine | ✅ |
-| **Money** | | | | |
-| Tax engine + accounting export (M6) | — | — | ✅ | ✅ |
-| Budgets (M6.4) | — | — | ✅ | ✅ |
-| **Platform** | | | | |
-| Multi-currency (M7.2) | — | — | ✅ | ✅ |
-| Priority support / SSO / SLA | — | — | — | ✅ |
-| Data export | ✅ | ✅ | ✅ | ✅ |
+Launch is **3 tiers — Free / Starter / Growth**. Business and Enterprise are
+**not launched** (see below); they stay defined in the schema for when M6/M7.2
+ship.
 
-**Free** is a genuine forever-tier for a single-location micro-shop (1 branch,
-2 seats, 2 devices, 100 products) — enough to run a small store, not a crippled
-trial. **Growth** = a typical small multi-branch SMB. **Business** = the full
-"smart platform" (proactive AI, full fraud, CRM, accounting). **Enterprise** =
-sales-led. **14-day Business trial** on signup (no card) → drops to Free with
-data preserved (premium becomes read-only).
+| | **Free** | **Starter** | **Growth** (full access) |
+|---|---|---|---|
+| **Monthly** | ₱0 | **₱199** | **₱499** |
+| **Annual** (2 mo free) | — | **₱1,990** | **₱4,990** |
+| **≈ per day** | ₱0 | **~₱6.50** | **~₱16** |
+| **Cloud sync + auto-backup** | ❌ **local only** | ✅ | ✅ |
+| Devices | 1 | 2 | 5 |
+| Branches | 1 | 1 | 3 |
+| Seats (own-device logins) | 2 (same device) | 3 | 10 |
+| **Add-ons** (à la carte, §4.9) | — | +device / +branch / +seats | +device / +branch / +seats |
+| Products / records | ♾️ local | ♾️ | ♾️ |
+| **Modules** | | | |
+| POS, Inventory, Expenses, Recipes | ✅ | ✅ | ✅ |
+| On-device AI assistant | ✅ | ✅ | ✅ |
+| Audit log + on-device fraud | ✅ local | ✅ + cloud tamper-proof | ✅ full |
+| Data export (manual backup) | ✅ | ✅ | ✅ |
+| CRM / customers | — | basic | ✅ full |
+| Procurement / Suppliers | — | — | ✅ full |
+| Reports + export | basic | basic | ✅ full |
+
+*Future tiers (defined, not launched): **Business** ₱1,299 adds accounting /
+tax / budgets (M6) + multi-currency (M7.2); **Enterprise** is sales-led (SSO /
+SLA / priority support). Added on top of Growth when those features ship — never
+a reprice of Growth (§4.9).*
+
+**Free** = a solo micro-shop runs everything on one device, offline, forever —
+unlimited products, full POS/inventory/recipes, on-device AI, local audit. The
+only things it lacks are the cloud (backup/sync/multi-device/branch) and the
+not-yet-built premium modules. **Starter (₱199 ≈ ₱6.50/day)** = "back up my data
+and let me use my phone + tablet" — the cheapest, most honest upgrade, and the
+key to converting the micro segment that would never pay more. **Growth (₱499 ≈
+~₱16/day)** = **full access to everything shipped today** — cloud, multi-device,
+multi-branch, a team, full CRM / procurement / reports, and the full tamper-proof
+audit chain.
+
+**Launch = Free + Starter + Growth**, all **100% backed by shipped features
+today** — cloud sync, automatic backup, multi-device, the tamper-proof audit
+chain, on-device fraud, CRM, procurement, and full reports all already exist.
+There is deliberately **no Business or Enterprise tier at launch:** the old
+₱1,299 Business tier was justified only by accounting/tax/budgets (M6) and
+multi-currency (M7.2), *neither of which is shipped* — you can't charge for
+features that don't exist yet. When M6/M7.2 land they become a **new tier added
+on top of Growth**, never a price hike on existing Growth customers (§4.9).
+
+**Structural growth is sold as add-ons, not tier jumps.** A Starter shop that
+buys one more tablet adds a **+device** add-on rather than being forced all the
+way up to Growth; likewise **+branch** and **+seats** on any paid tier (§4.9).
+This scales revenue smoothly with the customer's real growth and makes the exact
+tier anchor matter less — customers self-assemble the plan they need.
+
+### 4.1 Data-loss is the risk — and the honest upgrade lever
+
+Local-only Free means: if the device breaks, is uninstalled, or (on web) the
+browser evicts local storage, **that data is gone — there is no cloud backup.**
+This is handled, not ignored:
+
+- **Manual export/backup stays on Free** (see the table) — a free user can always
+  export their data to a file. Covers us and them.
+- **Explicit first-run consent on Free:** *"Free plan stores data on this device
+  only. It is not backed up. Upgrade to Starter for automatic cloud backup."*
+- **Web-first-run is stronger:** browser storage (IndexedDB) can be evicted
+  without warning, so on **web** we warn more firmly and steer toward Starter for
+  anyone with real data. (Consider web-Free being an explicit "try-it" mode.)
+- This is our **strongest, most honest upgrade driver** — "don't lose your
+  business records" sells Starter better than any feature gate.
+
+### 4.2 The Free experience — complete, honest, forever
+
+Free must feel like a *finished product for a solo shop*, not a locked demo. The
+goal: an owner installs it and is **selling within minutes**, with nothing
+nagging them.
+
+- **Everything on-device works, in full:** POS, inventory, products, recipes,
+  expenses, basic reports, the on-device AI assistant, and local audit + basic
+  fraud. No feature is teased-then-blocked.
+- **No expiry, no trial countdown.** Free is forever. This builds the trust that
+  makes someone comfortable enough to later pay.
+- **One honest truth, surfaced calmly (not in red alarm):** a small, always-
+  visible **"Backup: off — saved on this device only"** status, with a one-tap
+  *"Protect my data"*. Paired with a **manual Export** that is always one tap away
+  (never hidden) so even a non-paying user can keep their own copy.
+- **We never shrink Free later.** What's free today stays free. Quietly clawing
+  back the free tier is the fastest way to lose an SMB's trust — forbidden.
+
+### 4.3 The upgrade journey — offered at the moment of real need
+
+Never a launch-time popup or a random interstitial. An upgrade is surfaced only
+when the user **reaches for something the cloud actually unlocks**, in context,
+one tap, dismissible:
+
+| The moment they… | What we gently offer |
+|---|---|
+| open the app on a **second device** | "Sell on your phone *and* your tablet — turn on cloud for ₱6.50/day." |
+| try to add a **branch** | "Running a second location? Growth connects your branches." |
+| add an **employee who needs their own device** | "Give your staff their own login — upgrade to sync." |
+| have **accumulated real data** (e.g. 30+ days of sales) | "You've recorded ₱X in sales — all on this one phone. Back it up so you never lose it." |
+| tap a **paid module** (procurement / CRM depth / accounting) | shows exactly what the tier unlocks + ₱/day. |
+
+Every prompt is framed as **"you're growing"**, shows the concrete unlock and the
+₱/day price, and **never blocks the current sale.** Paying should feel like a
+milestone, not a fine.
+
+### 4.4 "Cloud's on us" — let them taste paid, safely
+
+New accounts get **cloud backup ON automatically for the first 14 days** (a light
+Starter trial). This does two jobs at once: it **protects new users during the
+riskiest early period** (before they'd think to back up), and it lets them *feel*
+the value of backup + multi-device.
+
+At day 14, if they haven't upgraded:
+- **Graceful revert to Free (local):** their data stays fully usable on the
+  device; the cloud copy is **frozen, not deleted**, for a win-back window.
+- A clear, non-punishing heads-up + **one-tap Export** + **one-tap Upgrade** —
+  never a lockout, never a scare.
+
+(Optionally offer a longer Growth trial to showcase CRM/full reports — same
+graceful-revert rules.)
+
+### 4.5 The paid experience — instant, visible, reassuring
+
+Paying must immediately *feel* worth it:
+
+- **On upgrade:** an instant **"Your data is now backed up ✓"**, and the
+  first-sync backfill (§7.2) is shown as a positive *"protecting your data…"*
+  progress moment, not a scary technical sync.
+- **Multi-device that just works:** sell on one device, see it on another.
+- **Usage meters are informative, not anxious:** "2 of 3 seats used" — never a
+  red "LIMIT!" wall.
+- **Value receipts (churn reducer):** an occasional, quiet summary — *"This month
+  your plan backed up your data 30× and synced 2 devices."* Reminding people what
+  they're paying for is the cheapest way to keep them paying.
+
+### 4.6 Downgrade & lapse — graceful, never punishing
+
+(Experience layer; the mechanics are §7.3–7.4.)
+
+- **Payment fails →** friendly grace period with gentle reminders; **the POS keeps
+  selling the whole time.**
+- **Downgrade →** *"Your data is safe on this device — cloud is paused."* Nothing
+  deleted, no lockout, one-tap reactivate, and instant restore if they come back
+  within the win-back window.
+- The tone throughout: *we're holding your spot*, not *we cut you off*.
+
+### 4.7 Anti-patterns we will not ship
+
+Explicit guardrails so no future build slips into dark patterns:
+
+- ❌ Popups that block or interrupt a sale.
+- ❌ Fake urgency / countdown timers / "only today" pricing.
+- ❌ Hiding or disabling the Export button to trap data.
+- ❌ Deleting or holding user data hostage on lapse/downgrade.
+- ❌ Silently shrinking the Free tier after people rely on it.
+- ❌ Nagging on every launch instead of at a real moment of need.
+
+### 4.8 Free vs Paid — the experience at a glance
+
+| Experience | **Free** (local) | **Paid** (cloud, from ₱199/mo) |
+|---|---|---|
+| **Selling / POS** | Full, offline, never blocked | Full, offline, never blocked |
+| **Products / records** | ♾️ unlimited | ♾️ unlimited |
+| **Where your data lives** | This device only | Backed up to the cloud automatically |
+| **If the device is lost/broken** | Data gone unless you exported | Restore from cloud |
+| **Data safety** | Manual Export ("Backup: off") | Auto backup + restore |
+| **Devices** | 1 | 2 (Starter) → 5 (Growth), more via add-ons |
+| **Branches** | 1 | 1 (Starter) → 3 (Growth), more via add-ons |
+| **Staff on their own devices** | No (shared device only) | Yes |
+| **Audit log + fraud** | On-device (local) | + cloud tamper-proof, cross-device |
+| **On-device AI assistant** | ✅ | ✅ |
+| **First 14 days** | Cloud backup ON, "on us" | (already included) |
+| **Upgrade prompts** | Only at a real need-moment, dismissible, never blocks a sale | — |
+| **Export your data** | Always, one tap | Always, one tap |
+| **If you stop paying** | (already free — nothing changes) | Reverts to Free-local: data kept, cloud frozen not deleted, POS keeps selling |
+| **Expiry** | Never — free forever | — |
+| **Price** | **₱0** | **from ₱199/mo (~₱6.50/day)** |
+
+The whole story in one line: **Free gives you a complete shop on one device;
+paying adds the cloud — backup, more devices, branches, and a team — the moment
+your business actually needs it.**
+
+### 4.9 Trust-safe scaling — grow by *adding*, never by taking away
+
+The pricing model is built so we can iterate on price and packaging for years
+**without ever making an existing customer worse off.** The rule: **scale revenue
+by *adding* — more free→paid converts, expansion as a shop grows, and new
+capability tiers — never by raising what current customers already pay or
+shrinking what they have.** Five mechanisms enforce it:
+
+1. **Grandfathered pricing, forever.** Whatever price a customer signs up at, they
+   keep for life while subscribed. A new list price applies to **new** signups
+   only. This lets us raise the *published* price anytime at zero trust cost, and
+   we frame it as a reward — *"early adopters keep this price forever."* It doubles
+   as churn armor: leaving means losing the locked rate.
+2. **Plan versioning (entitlement snapshotted onto the subscription).** Price and
+   feature-set are **not** resolved live against a mutable `plans` row. The
+   `subscription` is pinned to a `plan_version` and carries a **snapshot** of the
+   price + limits + `feature_flags` it was sold with. Repricing or repackaging is a
+   **new version for new customers**; existing subs are untouched, and "move to the
+   newest plan" is **opt-in only.** (Limits we only ever *raise* may still resolve
+   live; price and feature-set are pinned.)
+3. **Add-ons for smooth expansion.** Device / branch / seat **add-ons** on top of
+   any paid tier let spend grow gradually with the business — no jarring 2.5× tier
+   cliffs, no cannibalized middle tier, and the base anchor stops being a
+   high-stakes guess. Generalizes the existing `seat_addons` idea.
+4. **Monetize *new* value only.** New revenue comes from **new capability** sold as
+   new tiers/add-ons (M6 accounting, M7.2 multi-currency, deeper reports) — never
+   from removing or degrading something people already rely on. This is §4.2/§4.7's
+   "never shrink Free / never claw back" extended to *paid* tiers too.
+5. **Published, dated pricing + a change protocol.** The pricing page states
+   *"Prices effective as of [date]; existing customers keep their signup price,"*
+   so future changes are non-events. Every pricing change obeys one commitment:
+
+   > Existing customers never worse off (grandfathered price + kept limits &
+   > features) · announced ahead in-app + email with the reason · new price/tier
+   > applies to new signups only (or to existing users only on a *voluntary*
+   > upgrade) · Free never shrinks · any degrade freezes/reverts to read-only,
+   > never deletes.
+
+Every plan change is written to `subscription_events` (hash-chained, §6.3), so the
+audit trail *proves* no one's plan was silently altered — the trust claim is
+verifiable, not just a promise.
 
 ---
 
 ## 5. Pricing is derived, not guessed
 
-A repeatable method so figures can be re-derived for any market:
-
-1. **Value ladder ~2.6×.** ₱0 → ₱499 → ₱1,299 → custom keeps the middle tier the
-   obvious pick (standard good/better/best spread).
-2. **Per-active-seat sanity.** Business ₱1,299/mo for up to 50 seats ≈ ₱26/seat
-   at the cap; for a typical 10-seat shop ≈ ₱130/seat — always **below** the
-   ₱79–₱99 add-on rate, so an included bucket genuinely rewards committing to a
-   tier (fair, not bait).
-3. **Add-on below blended rate, cheaper at scale** (₱99 → ₱79) — rewards growth.
-4. **COGS floor (validate before launch).** Final numbers must clear measured
-   per-tenant infra cost (Supabase rows/storage/egress + sync + support). Only
-   the absolute anchor moves; the ratios, limits, and discount formula stay.
+1. **Free is COGS-free.** Local-only ⇒ no Supabase rows/storage/egress/sync ⇒
+   **~₱0 marginal cost per free user.** So Free is sustainable at any scale — we
+   never subsidize free users. This is the foundation that lets the paid entry be
+   cheap.
+2. **Starter clears cloud COGS with margin.** A small synced tenant costs a low
+   single-digit USD/mo on Supabase amortized (rows + storage + egress + realtime);
+   ₱199 (~$3.40) covers it with healthy margin. **Validate against measured
+   numbers before launch** — only this anchor moves; ratios stay.
+3. **Value ladder + add-ons.** ₱0 → ₱199 → ₱499 is a clean three-rung launch; the
+   ₱199 rung bridges the too-big ₱0→₱499 gap that loses micro businesses, and
+   **device/branch/seat add-ons fill the space between rungs** so a growing shop
+   pays a little more gradually instead of hitting a 2.5× cliff (§4.9). A **future
+   higher tier** (Business, when M6/M7.2 ship) extends the ladder upward without
+   repricing anyone.
+4. **Per-day framing is the honest sell.** ₱6.50/day (Starter) is "one text-load"
+   money — almost any real store pays that for backup + a second device.
 
 ### 5.1 Yearly discount — calculated, not invented
 
@@ -130,19 +358,22 @@ Industry-standard, legible **"2 months free on annual"**: pay for 10 months, get
 ```
 annual_price        = monthly_price × 10
 effective_monthly   = annual_price / 12
-discount_percentage = 1 − (annual_price / (monthl3   y_price × 12))
+discount_percentage = 1 − (annual_price / (monthly_price × 12))
                     = 1 − (10/12) = 16.667%
 ```
 
-| Plan | Monthly | ×12 (no discount) | Annual (×10) | Effective /mo | Customer saves |
+| Plan | Monthly | ×12 (no discount) | Annual (×10) | Effective /mo | Saves |
 |---|---|---|---|---|---|
-| Growth | ₱499 | ₱5,988 | **₱4,990** | ₱415.83 | **₱998 /yr (16.67%)** |
-| Business | ₱1,299 | ₱15,588 | **₱12,990** | ₱1,082.50 | **₱2,598 /yr (16.67%)** |
+| Starter | ₱199 | ₱2,388 | **₱1,990** | ₱165.83 | ₱398/yr (16.67%) |
+| Growth | ₱499 | ₱5,988 | **₱4,990** | ₱415.83 | ₱998/yr (16.67%) |
 
-A single `discount_months_free = 2` constant drives every annual price (and
-annual add-ons: `annual_seat = monthly_seat × 10`), so prices can never drift.
-Customers can verify the saving themselves ("two months free") — a real ~16.7%,
-not a rounded marketing number.
+*(Business ₱1,299 → ₱12,990/yr is pre-computed for a future tier via the same
+constant — not a launch price.)*
+
+A single `discount_months_free = 2` constant drives every annual price, so prices
+can't drift and customers can verify the saving themselves. (Annual is
+cash-flow-friendly at the low end: ₱1,990/yr is far more digestible for a micro
+shop than ₱4,990.)
 
 **Proration (fair rules):** upgrade mid-cycle = prorated difference; downgrade =
 at period end, premium data read-only, never deleted; annual unused months
@@ -150,152 +381,120 @@ refundable within the period (configurable).
 
 ---
 
-## 6. Offline-first limit enforcement (the hard part)
+## 6. Enforcement — hugely simplified by the local-vs-cloud model
 
-This section answers: *Free plan, product limit = 100, 10 devices offline, each
-creates 100 → 1,000 products on reconnect. What happens?*
+The v1 nightmare was: *"Free, 100-product cap, 10 offline devices each create
+100 → 1,000 products on reconnect — what happens?"* **In v2 that scenario is
+impossible**, because:
 
-### 6.1 Why a hard limit is impossible offline (state it plainly)
+- **Free = 1 device, no sync** → there is no multi-device reconciliation on Free
+  at all, and
+- **Products are uncapped on every tier** → there is no high-volume count to
+  overshoot.
 
-Enforcing "≤ 100 products total" is a **global invariant**. A global invariant
-needs a single authority that sees every write *at write time*. Offline-first, by
-definition, accepts writes with **no coordination**. You cannot have both. So the
-honest options are only:
+So enforcement splits cleanly:
 
-- **(A) Prevent offline creation near the limit** — block creates whenever the
-  device can't confirm the global count with the server. Strict, but **terrible
-  UX** (your POS won't let you add a product because the wifi is down) and it
-  breaks the offline promise. **Rejected.**
-- **(B) Allow optimistic offline creation, reconcile on the server, never lose
-  data.** Slightly over-allows in rare multi-device bursts, but UX stays great
-  and the server still ends up authoritative. **Chosen.**
+### 6.1 Free tier — nothing to enforce server-side
 
-We choose **(B)** and make the overage harmless and self-correcting.
+Free never syncs business data. There is no cloud count, no reconciliation, no
+soft-lock. The only "limit" is **1 device**, enforced trivially: a second device
+simply can't turn on cloud sync (there is none) and can't register (registration
+is a paid, online operation — §6.3). Local records are unlimited.
 
-### 6.2 The model — three layers
+### 6.2 Paid tiers — only low-volume *structural* limits, checked at the cloud
 
-**Layer 1 — Edge (device): optimistic soft check.**
-Each device knows `effectiveCount = serverConfirmedCount + localPendingCreates −
-localPendingDeletes` from its last sync + its own queue. On create:
-- `effectiveCount < limit` → allow silently.
-- `limit ≤ effectiveCount < limit + buffer` → allow **with a warning** ("You're
-  near your 100-product limit"). The **buffer** (default = `max(10, 10%)`)
-  absorbs the honest single-device boundary case so nobody is blocked by one
-  product offline.
-- `effectiveCount ≥ limit + buffer` → block locally with an upgrade prompt.
+Paid tiers meter only **branches, seats, devices** — all low-volume and all
+created through cloud-aware operations:
 
-This handles the **common case** (one device, or devices that have synced
-recently) immediately and correctly. It cannot, by itself, stop *independent*
-offline devices from each believing they're under the limit — that's Layer 2's job.
+- **Device registration is online-only** and checked server-side against
+  `max_devices` at register time. This is also what bounds everything else.
+- **Branch / seat creation** uses an edge soft-check (cached limit + local count)
+  for instant UX, and is enforced for real by **RLS `count < limit` on INSERT**.
+  Because these are low-volume and paid devices are online-reachable, the rare
+  offline-overshoot case is handled by the same **accept-all + soft-lock new
+  creates + never delete** rule as v1 — but it now applies to a handful of
+  branches/seats, not thousands of products.
 
-**Layer 2 — Server: authoritative reconciliation on sync.**
-When a device syncs, the server recomputes the true `count(products WHERE
-business_id = ? AND deleted_at IS NULL)`. It **accepts every synced row** (never
-rejects — Principle 2). Then:
-- `total ≤ limit` → nothing to do.
-- `total > limit` → set account flag `products.over_limit = true`, record
-  `overage = total − limit`, and put a **soft lock** on *new* product creation:
-  the next entitlement snapshot every device pulls carries
-  `creation_locked.products = true`.
-
-Result of the scenario: all 1,000 products **persist and are fully usable** (you
-can sell every one of them). The account simply enters an **over-limit state**:
-no *new* products can be created on any device until the owner either:
-1. **upgrades** (e.g. Growth lifts the cap to 2,000 → instantly unlocked), or
-2. **archives/deletes** products back to ≤ 100.
-
-Existing operations — selling, editing, refunding, inventory — are untouched.
-This is the fair resolution: the business keeps all its work and is nudged, not
-punished.
-
-**Layer 3 — Bounding the blast radius (security/abuse, see 6.3 & 6.4).**
-Device caps make the 10-device scenario impossible on Free in the first place,
-and optional quota leasing can eliminate overshoot entirely for tiers that need
-a hard cap.
+No product reconciliation machinery is needed anywhere. The heavy `over_limit` /
+`creation_locked` product logic from v1 is **dropped** (kept only, optionally, for
+branches/seats if we ever want a hard structural cap).
 
 ### 6.3 Why this is secure (a tampered client can't win)
 
-- **The count is recomputed server-side**, from the actual rows, under RLS. A
-  client can lie about its local estimate, but it cannot make the server's
-  `COUNT(*)` smaller. Overage is always detected on sync.
+- **Cloud limits are enforced server-side under RLS**, against `plan_limits ⨝
+  subscriptions`. A client can lie about local state but can't shrink the server's
+  authoritative view.
 - **Entitlement is server-signed and client-read-only.** A device can't grant
-  itself a higher limit; `plan_limits` ⨝ `subscriptions` is the source of truth.
-- **The 10-device attack is bounded by the device cap.** Free allows **2
-  registered devices**. A 3rd device can register only while **online**, at which
-  point the server already sees the current total and refuses to lift the cap.
-  So worst-case offline overshoot on Free ≈ `2 devices × (limit + buffer)` ≈ 220,
-  not 1,000 — and even that collapses back to a soft lock on reconcile, gaining
-  the abuser **nothing durable**: they can't keep creating, and they're prompted
-  to upgrade. The exploit yields a one-time, non-renewable over-allowance with no
-  ongoing benefit, so there's no incentive to pursue it.
-- **Reconciliation is logged** to `subscription_events` (hash-chained, reusing
-  M1) so overage handling is auditable.
+  itself the cloud or a higher tier.
+- **Device registration is online-only**, so the cap can't be bypassed offline —
+  and without a registered device, there is no sync to abuse.
+- **Subscription/limit changes are logged** to `subscription_events` (hash-chained,
+  reusing the shipped M1 chain) — auditable.
 
 ### 6.4 Optional hardening — quota leasing (documented, not in v1)
 
-For tiers/resources that ever need a *true* hard cap, the server can **lease**
-quota to devices while online: device requests N slots, server reserves them
-against the global limit, device may create up to N offline; unused slots expire
-back to the pool on next sync. This makes overshoot mathematically impossible at
-the cost of needing periodic online check-ins (a device with an exhausted lease
-can't create while offline). **Default off** — soft-cap + reconcile is better UX
-for SMBs. We keep the schema lease-compatible so this can be switched on per
-plan later without migration churn.
-
-### 6.5 What the user sees (UX summary)
-
-| Situation | Experience |
-|---|---|
-| Under limit | Nothing — silent. |
-| Within buffer, offline | Gentle "approaching your limit" hint; creation still works. |
-| Over buffer, offline | Block new creates + "Upgrade to add more products"; everything else works. |
-| Reconnect → server finds overage | Banner: "You have 1,000 / 100 products. Upgrade or archive to add more." No data lost; selling unaffected. |
-| Upgrade | Cap lifts, lock clears on next sync — instantly. |
-| Downgrade below current count | Existing kept & usable; can't add new until under the new cap. |
+If a paid tier ever needs a *true* hard cap on a structural resource, the server
+can lease N slots to a device while online. **Default off** — soft-cap + RLS is
+better UX. Schema stays lease-compatible so it can be switched on later without
+migration churn.
 
 ---
 
 ## 7. Entitlement = the gate (extends the existing two layers)
 
-A business's effective access is resolved as a **third, outermost layer** over
-the current module + permission gates:
+A business's effective access is a **third, outermost layer** over the current
+module + permission gates:
 
 ```
 effective_access(feature) =
-      plan_entitlement(feature)        // plan includes it AND not creation_locked
+      plan_entitlement(feature)        // tier includes it (feature flag)
+  AND cloud_or_local_ok(feature)       // cloud features require a cloud tier
   AND business_module_enabled(feature) // owner toggled it on
   AND permission_service.can(...)      // employee has permission
 ```
 
 `PermissionService.canAccessFeature()` consults a new plan-aware
 `EntitlementService` first (cheapest check). **No existing permission logic
-changes** — we wrap it. Count-limits (products/branches/seats/devices) are
-checked by `EntitlementService.canCreate(resource)` against the cached limit +
-local count, and enforced for real in RLS server-side.
+changes** — we wrap it.
 
-### Where each limit is enforced
+### 7.1 The sync layer is gated on entitlement (v2 core mechanism)
 
-| Limit | Enforced at |
-|---|---|
-| Module/feature availability | `EntitlementService` + GoRouter guard |
-| Product count | edge soft-check (Layer 1) + **server reconcile** (Layer 2) |
-| Branch / seat count | RLS on INSERT (`count < limit`) + UI pre-check |
-| Device count | server device-registration (online-only) + RLS |
-| Premium write actions | server-side RLS (`has_entitlement(...)`) |
+- **`SyncService` runs only when the tenant is on a cloud tier.** On Free it is
+  **disabled** — Drift is the sole store, no push/pull, no Supabase business-data
+  writes. (Free users still have a Supabase *auth* account for identity + the
+  upgrade path; they just don't sync business data.)
+- Cloud features (multi-device, branches, tamper-proof audit, fraud sync, CRM
+  cloud, reports export) are entitlement-gated in Bloc/UseCase **and** router
+  guards, not just hidden in the UI.
 
-**Security note (per `CLAUDE.md`):** UI hiding is UX only. Revenue/integrity
-limits are enforced **server-side in RLS** against the authoritative subscription
-row; the local cache is for offline UX, never the source of truth for a write the
-server can re-check.
+### 7.2 Free → paid: the first-sync backfill (new flow to build)
 
-### Offline entitlement grace (for *feature* access, distinct from counts)
+On upgrade, all existing **local** data must be pushed to Supabase in one initial
+sync:
+
+- Enqueue every local business row as `pending` upload; run a bounded, resumable
+  initial push (respect existing `sync_status` lifecycle + LWW).
+- One-time COGS spike; show progress UI; never block selling during backfill.
+- After backfill, normal background sync takes over.
+
+### 7.3 Paid → Free (or lapse): never destroy, revert to local
+
+- Existing data **stays fully usable on the primary device** (it's already in
+  Drift). Cloud sync stops; other devices lose sync access.
+- Cloud copy is **frozen/retained** through the grace window (not deleted); on
+  re-upgrade within grace, sync resumes.
+- Premium *modules* degrade to read-only per the grace rules below. Core POS/
+  inventory/expenses keep working.
+
+### 7.4 Offline entitlement grace (for cloud *feature* access)
 
 Entitlement snapshots are cached locally (read-only) with `valid_until` /
 `grace_until`. If billing is unreachable, premium **features** stay active until
 `grace_until` (default **14 days**, longer for annual). After grace **and** a
-server-confirmed lapse, premium features degrade to **read-only** and limits drop
-to Free — but **core POS/inventory/expenses keep working**. Grace is measured
-against **last server-sync time**, not device clock (clock-tamper resistant).
+server-confirmed lapse, premium features degrade to read-only and the account
+reverts toward Free — but **core POS/inventory/expenses keep working**. Grace is
+measured against **last server-sync time**, not device clock (clock-tamper
+resistant).
 
 ---
 
@@ -303,41 +502,49 @@ against **last server-sync time**, not device clock (clock-tamper resistant).
 
 ### Supabase (source of truth)
 
-- `plans` — `code` (`free|growth|business|enterprise`), name, `price_monthly`
-  (₱), `is_active`.
-- `plan_limits` — `plan_code`, `max_branches`, `max_seats`, `max_devices`,
-  `max_products`, JSONB `feature_flags` (`{"ai_insights":true,...}`). Drives
-  entitlement without code changes per tweak.
-- `subscriptions` — `business_id` (PK/tenant), `plan_code`, `billing_period`
-  (`monthly|annual`), `seat_addons`, `status`
-  (`trialing|active|past_due|canceled`), `current_period_start/end`,
-  `trial_end`, `grace_until`. One per business.
-- `account_limit_state` — `business_id`, per-resource `over_limit` bool +
-  `overage` int + `creation_locked` bool (set by reconciliation, read into the
-  client entitlement snapshot).
+- `plans` — `code` (`free|starter|growth|business|enterprise`), `version`
+  (int — bump to reprice/repackage; old versions stay readable so grandfathered
+  subs keep resolving, §4.9), name, `price_monthly` (₱), `is_active`. **Launch
+  activates `free|starter|growth` only**; `business|enterprise` stay defined with
+  `is_active = false` until M6/M7.2 ship.
+- `plan_limits` — keyed by (`plan_code`, `plan_version`); `cloud_enabled`
+  (bool — the v2 primary gate), `max_branches`, `max_seats`, `max_devices`, JSONB
+  `feature_flags` (`{"crm":"basic","procurement":false,"accounting":false,...}`).
+  No `max_products` (unlimited everywhere).
+- `plan_addons` — catalog of à-la-carte add-ons (`code` = `device|branch|seat`,
+  `price_monthly` ₱, `unit_qty`) a paid tier can buy on top of its base limits
+  (§4.9).
+- `subscriptions` — `business_id` (PK/tenant), `plan_code`, **`plan_version`**
+  (pins the version this sub was sold), `billing_period` (`monthly|annual`),
+  **`entitlement_snapshot`** (JSONB — price + limits + `feature_flags` locked at
+  purchase, so repricing new customers never touches this one, §4.9),
+  **`device_addons` / `branch_addons` / `seat_addons`** (purchased extras added to
+  the base limits), `status` (`trialing|active|past_due|canceled`),
+  `current_period_start/end`, `trial_end`, `grace_until`. One per business.
+  **Written service-role only** (a PayMongo webhook *or* a manual admin grant —
+  both are service-role writes; the entitlement engine doesn't care which).
 - `devices` — `id`, `business_id`, `label`, `registered_at`, `last_seen_at`,
-  `revoked_at`. Registration is **online-only**; enforces `max_devices`.
+  `revoked_at`. Registration is **online-only**; enforces `max_devices`. Build
+  alongside M-BIR's `pos_devices` model.
 - `subscription_events` — append-only, **hash-chained (reuses M1)**: plan
-  changes, overage detections, lock/unlock. Billing history must be
-  tamper-evident too.
-- (lease-ready, off by default) `quota_leases` — `device_id`, `resource`,
-  `granted`, `used`, `expires_at`.
+  changes, upgrades/downgrades, lapses.
+- (lease-ready, off by default) `quota_leases`.
 
 RLS: a business reads only its own rows; **subscription/limit writes are
-service-role / billing-webhook only** (clients never self-grant). Limit-enforcing
-RLS on `branches`/`employees`/`products` reads `plan_limits` ⨝ `subscriptions`
-for the tenant. The product-count RLS is the **reconciliation authority** — it
-also runs the over-limit flagging via a trigger/function on sync.
+service-role only**. Structural-limit RLS on `branches`/`employees` reads the
+tenant's **effective limit = pinned `plan_limits` (by `plan_version`) + the
+subscription's add-ons** — never a live-mutable plan row, so grandfathered subs
+enforce the limits they were actually sold (§4.9).
 
 ### Drift (local, read-only cache — written only by the sync path)
 
-- `entitlement_cache` — `business_id`, `plan_code`, `feature_flags` JSON,
-  `max_branches`, `max_seats`, `max_devices`, `max_products`, `seat_addons`,
-  `valid_until`, `grace_until`, `last_server_sync_at`,
-  `creation_locked_json` (per-resource).
+- `entitlement_cache` — `business_id`, `plan_code`, `plan_version`,
+  `cloud_enabled`, `feature_flags` JSON (from the sub's snapshot), effective
+  `max_branches`, `max_seats`, `max_devices` (base + add-ons already folded in),
+  `device_addons`/`branch_addons`/`seat_addons`, `valid_until`, `grace_until`,
+  `last_server_sync_at`.
 - `resource_usage_cache` — `business_id`, `branch_count`, `active_seat_count`,
-  `device_count`, `product_count`, `synced_at` (drives "82 / 100 products" UI +
-  Layer-1 soft checks).
+  `device_count`, `synced_at` (drives "2 / 3 seats" UI). No product count.
 
 Schema-version bump + additive migration both sides (per `CLAUDE.md`; rollback =
 drop the cache tables locally, drop billing tables + policies on the server).
@@ -349,30 +556,47 @@ drop the cache tables locally, drop billing tables + policies on the server).
 - `PermissionKeys`: `billing.view`, `billing.manage`, `nav.billing`.
 - `AppPermission`: `viewBilling`, `manageBilling`.
 - `AppFeature`: `billingSubscription` → **not** module-gated (an owner must reach
-  billing even on a lapsed account), `navKey = 'nav.billing'`.
+  billing even on a lapsed/Free account), `navKey = 'nav.billing'`.
 - Role + default matrices: `manageBilling` = **Owner / Business Owner only**;
   `viewBilling` may extend to Branch Manager (read-only). Run
   `dart run tool/diff_matrices.dart`.
 - New `EntitlementService` (`lib/core/permissions/entitlement_service.dart`);
-  `PermissionService` consults it first; registered in `di.dart`.
-- New `billing` feature folder: plan picker, **usage meters** ("82/100 products",
-  "8/10 seats"), upgrade/downgrade, invoice history, and a reusable
-  account-status / over-limit banner widget.
+  `PermissionService` consults it first; registered in `di.dart`. Resolves from
+  the subscription's **pinned `plan_version` snapshot + add-ons** (§4.9), not a
+  live-mutable plan row.
+- **`SyncService` gains an entitlement check** — no-ops on Free (§7.1).
+- New `billing` feature folder: plan picker with the ₱/day framing, **add-on
+  purchase (device/branch/seat)**, upgrade/downgrade, invoice history,
+  seat/branch/device usage meters, a reusable account-status banner, the
+  **cloud-backup / data-loss consent** widgets, and a **grandfathered-price**
+  indicator (shows the locked signup price when the list price has since moved).
+- **Experience widgets (§4.2–4.7):** a calm always-visible **backup-status
+  indicator** (Free = "on this device only" + one-tap Protect), **contextual
+  upgrade prompts** fired at real need-moments (2nd device / branch / own-device
+  seat / data-accumulated / paid module) — reusable, dismissible, never
+  sale-blocking; the **first-14-day "cloud's on us" trial** + graceful revert; and
+  periodic **value-receipt** summaries. Prompts live in `lib/core/widgets/` so
+  they stay consistent and are easy to audit against the §4.7 anti-patterns.
 
 ---
 
 ## 10. Edge cases (explicitly handled)
 
-- **Multi-device offline overshoot** — Section 6: accept all, soft-lock new
-  creates, never lose data, bounded by device cap.
-- **Downgrade below current usage** (5 branches → Growth's 3, or 1,000 → 100
-  products): existing kept & operational; no *new* of that resource until under
-  the cap; nothing deleted.
+- **Free device loss / web eviction** — data-loss is real on Free; mitigated by
+  manual export + explicit consent + steering web users to Starter (§4.1).
+- **"Cloud's on us" 14-day trial expiry** — reverts to Free-local with data fully
+  preserved on-device; cloud copy frozen (not deleted) for the win-back window;
+  heads-up + one-tap export/upgrade, never a lockout (§4.4).
+- **Free → paid first-sync backfill** — push all local data on upgrade; resumable;
+  never blocks selling (§7.2).
+- **Paid → Free / lapse** — local data stays usable on the primary device; cloud
+  frozen not deleted; premium modules read-only; core POS unaffected (§7.3).
+- **Downgrade below current usage** (5 branches → Growth's 3): existing kept &
+  operational; no *new* branch until under the cap; nothing deleted.
 - **Suspend vs delete employee:** suspending frees a seat immediately;
   reactivating re-checks the seat limit.
-- **Device registration while offline:** not allowed — registration needs the
-  server (this is what bounds overshoot). An unregistered install can operate in
-  read-only/guest until it can register.
+- **Device registration while offline:** not allowed — needs the server. This is
+  what bounds a paid account to its device cap.
 - **Trial expiry / payment failure:** `past_due` keeps full access through
   `grace_until` with escalating banners; only then degrade.
 - **Clock tampering:** grace + lease expiry keyed off last server-sync time.
@@ -381,19 +605,32 @@ drop the cache tables locally, drop billing tables + policies on the server).
 
 ## 11. Tests (critical paths)
 
-- Entitlement resolution: plan ∩ module ∩ permission for each feature/tier.
-- **Offline limit (the scenario):** N devices each create up to limit offline →
-  on reconcile, all rows persist, account flips `over_limit`, `creation_locked`
-  set, no data lost; upgrade clears the lock; archive back under cap clears it.
-- Edge soft-check: warns within buffer, blocks past `limit + buffer`, uses
-  `serverConfirmedCount + localPending`.
-- Device cap bounds overshoot; 3rd device can't register offline.
-- Limit RLS: branch/seat/product INSERT blocked at cap server-side even if a
-  client bypasses the UI; reconciliation trigger flags overage correctly.
+- Entitlement resolution: tier ∩ cloud-flag ∩ module ∩ permission for each
+  feature/tier.
+- **Free is local-only:** `SyncService` no-ops on Free; no Supabase business-data
+  writes; unlimited local records work; export works.
+- **Free → paid backfill:** all local rows push on upgrade, resumable, no loss,
+  selling never blocked.
+- **Paid → Free / lapse:** local data stays usable; cloud frozen not deleted;
+  premium modules read-only; core POS never blocked; re-upgrade within grace
+  restores sync.
+- **Structural limits (paid):** branch/seat INSERT blocked at cap server-side
+  (RLS) even if the client bypasses the UI; device registration blocked at cap
+  and offline. **Effective cap = base limit + add-ons** — an add-on raises the cap
+  and the usage meter reflects it.
+- **Grandfathering / plan versioning (§4.9):** repricing or repackaging a plan
+  version leaves an existing subscription's entitlement (price + limits +
+  features) unchanged; new signups get the new version; migration to a newer
+  version happens only on explicit opt-in.
 - Pricing math: `annual = monthly × 10`, `discount = 16.667%`, proration on
   upgrade, no clawback on downgrade.
 - Offline grace: full access within grace; degrade after grace + confirmed lapse;
   core POS never blocked; clock-tamper doesn't extend grace.
-- Read-only-not-deleted on lapse/downgrade; restore on renewal.
-- `subscription_events` hash chain verifies (reuses M1 verifier).
+- `subscription_events` hash chain verifies (reuses the M1 verifier).
+- Manual admin grant and a (future) PayMongo webhook both write `subscriptions`
+  identically (service-role) and produce the same entitlement.
+- **Experience guarantees (§4):** the "cloud's on us" 14-day trial reverts to
+  Free-local with data preserved + cloud frozen-not-deleted; contextual upgrade
+  prompts **never block an in-progress sale**; the Export action is reachable on
+  every tier including Free; a lapse/downgrade never deletes data or stops the POS.
 ```

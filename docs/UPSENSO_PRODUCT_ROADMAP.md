@@ -1,104 +1,75 @@
 # UPSENSO — Product Roadmap to "All-in-One Smart Business Platform"
 
-> Status: **proposed master plan** · Branch: `claude/platform-features-roadmap-7bqdgn`
+> Status: **active plan — trimmed to remaining work (updated 2026-07-06).**
 > The single sequenced plan from today's codebase to the full product vision:
 > one platform where an SMB runs their whole business — POS, inventory,
 > procurement, expenses, people, customers, money — with **offline-first**
-> operation and **AI insights + fraud detection** woven through it.
+> operation and a **tamper-evident audit chain + fraud detection** woven through
+> it. Completed milestones have been removed from the active plan and summarized
+> under "Already shipped" below.
 
 ## How to read this
 
-- Work is grouped into **Milestones (M1–M8)**. Each milestone is independently
-  shippable and ordered by dependency + value.
+- Remaining work is grouped into **Milestones**. Each is independently shippable
+  and ordered by dependency + value. **Milestone numbers are stable** (other docs
+  — `CLAUDE.md`, the execution sequence, the subscription design — cite them), so
+  shipped milestones are removed but survivors keep their original M-numbers.
 - Every feature carries its **mandatory wiring** per `CLAUDE.md`:
   PermissionKeys → AppPermission → AppFeature → both matrices → module gate →
   PermissionService/guards → offline/sync → tests.
-- Detailed specs that already exist are referenced, not repeated:
-  - `docs/UPSENSO_FRAUD_AND_AUDIT_CHAIN_DESIGN.md` (fraud + audit chain)
 - ✅ done · ⚠️ partial · ❌ missing — current state as of this plan.
+- The **live, active task order** (including the M-BIR and M-LEGAL launch gates)
+  lives in `docs/UPSENSO_EXECUTION_SEQUENCE.md`. This doc is the *dependency*
+  reference; that one is *what to do next*.
+
+---
+
+## ✅ Already shipped (no longer active roadmap items)
+
+- **M1 — Trust & Integrity** (tamper-evident audit chain + fraud detection
+  engine) — **shipped in `v1.5.0`.** Per-(business, device) SHA-256 hash chain on
+  `audit_logs` with a `AuditChainVerifier` + "Verify integrity" action, and a real
+  `fraud_flags` engine (10 deterministic rules) feeding the `alert` UI. Spec
+  retained in `docs/UPSENSO_FRAUD_AND_AUDIT_CHAIN_DESIGN.md`; false-positive
+  hardening tracked in `docs/UPSENSO_FRAUD_FALSE_POSITIVE_FIX_PLAN.md`.
+- **M5.1 + M5.2 — Customers & CRM** (customer directory + purchase history,
+  offline-first, soft-delete, RLS-enforced, reuses the `crm` module) — **shipped.**
+  Only **loyalty (M5.3)** remains, kept below as the sole open M5 item.
+- **M2 — AI proactive insights — built, then deliberately removed.** The insights
+  digest/dashboard card was implemented and then removed from the app (no
+  `insights/` feature folder remains). It is **not** a pending item — do not
+  re-add it without a fresh product decision. The reactive on-device **AI
+  assistant** (NL query + transaction creation) is a separate feature and remains
+  fully in place.
 
 ---
 
 ## Where we are today (baseline)
 
-**Built & real:** POS/checkout, sales/refunds (with approval), products/variants/
-categories, inventory + stock ledger, recipes/ingredients, procurement
-(PO → receipt), expenses (with approval), employees + per-employee permission
-overrides, role-specific dashboards, audit log (append-only, RLS-enforced),
-on-device AI assistant (NL query + transaction creation), settings/onboarding/
-notifications/drafts. RBAC + module gate is mature (68 permissions, server-side
-RLS enforcement).
+**Built & real:** POS/checkout, sales/refunds (with two-step approval),
+products/variants/categories (+ multi-barcode & unit support), inventory + stock
+ledger, recipes/ingredients, procurement (PO → receipt), expenses (with
+approval), employees + per-employee permission overrides, role-specific
+dashboards, **tamper-evident audit chain + fraud detection engine (M1)**,
+**customers/CRM directory + purchase history (M5.1/M5.2)**, on-device AI
+assistant (NL query + transaction creation), settings/onboarding/notifications/
+drafts. RBAC + module gate is mature (server-side RLS enforcement).
 
 **Promised but not real:**
-- ❌ Fraud detection — mocked (`alert` feature uses `mockFraudAlerts`).
-- ⚠️ Tamper-evident audit chain — documented, no hash columns in code.
-- ⚠️ AI is reactive only — no proactive insights/forecasting.
-- ⚠️ Reports — a single page.
+- ⚠️ Reports — still a single page (M6.1 overhaul pending).
 - ❌ Stock transfers between branches — permissions + audit action exist; **no
-  table, no feature**.
-- ❌ Customers / CRM / loyalty — only a `customerName` text field on a sale.
-- ❌ Subscription/billing — `CLAUDE.md` names it as must-test; the only
-  "subscription" in code is Dart `StreamSubscription`. Nothing exists.
-- ❌ Accounting/tax export, budgets/forecasting.
+  table, no feature** (M3.1).
+- ❌ Reorder automation & demand forecasting (M3.2 / M3.3).
+- ❌ Procurement intelligence — auto-PO, supplier performance, landed cost/COGS
+  (M4).
+- ❌ Loyalty (points / tiers) — directory + history shipped; **loyalty ledger not
+  built** (M5.3).
+- ❌ Accounting/tax export, budgets (M6.2–M6.4).
+- ❌ Subscription/billing — the only "subscription" in code is Dart
+  `StreamSubscription`. Nothing exists (M7.1).
+- ❌ Multi-currency, hardware/integrations, push delivery (M7.2–M7.4).
 
-The roadmap below closes every one of these, in order.
-
----
-
-# Milestone M1 — Trust & Integrity (the core promise)
-
-**Goal:** make "fraud detection" and "tamper-evident audit" real. This is the
-highest-leverage work — it's advertised, differentiating, and unblocks AI risk
-insights.
-
-Full spec: **`docs/UPSENSO_FRAUD_AND_AUDIT_CHAIN_DESIGN.md`**. Summary:
-
-- **M1.1 Tamper-evident audit chain** — per-(business, device) SHA-256 hash chain
-  on `audit_logs` (+3 nullable cols, Drift v51→v52 + Supabase), shared canonical
-  serializer, `AuditChainVerifier`, "Verify integrity" action.
-- **M1.2 Fraud detection engine** — real `fraud_flags` table + DAO, deterministic
-  rule engine (excessive refunds, high discount, sale-after-shift, inventory
-  shrinkage, repeated voids, negative margin, after-hours login, `AUDIT_TAMPER`),
-  event-driven + periodic offline sweeps, real data into the existing `alert` UI.
-- **Permissions:** `fraud.view`, `fraud.resolve`, `audit_logs.verify`, `nav.fraud`
-  under the existing `audit` module.
-
-**Decision recorded:** no public blockchain (offline-first + cost + wrong threat
-model). Optional daily head-hash anchoring is the only place any anchoring tech
-appears, and it's deferred to M1 Phase 3.
-
-**Exit criteria:** a tampered audit row is detected; refund/void/discount abuse
-raises real flags; managers can triage them; all covered by tests.
-
----
-
-# Milestone M2 — AI from reactive to proactive (the differentiator)
-
-**Goal:** flip the on-device AI from "answer when asked" to "tell me what
-matters." Reuses the existing 7-layer pipeline and `AiToolService` query pattern.
-
-- **M2.1 AI Insights digest** — a scheduled, offline-first generator that
-  produces a daily/weekly digest card on the dashboard: sales trend vs prior
-  period, top/bottom products, margin movers, expense spikes, **open fraud flags
-  summary** (reads M1), low-stock/stockout risk (reads M3). Deterministic
-  analytics compute the numbers; the LLM only phrases them. Falls back to
-  template phrasing when no model is downloaded (web has no LLM).
-  - New `AiToolService` methods: `getSalesTrend`, `getTopProducts`,
-    `getMarginMovers`, `getExpenseAnomalies`, `getFraudSummary` (all
-    branch-filtered + permission-aware like existing queries).
-  - New `insights` feature folder (cubit + dashboard card), permission
-    `insights.view`, module-gated under `reports`.
-- **M2.2 AI NL coverage expansion** — extend tool service to answer the new
-  domains (customers, transfers, budgets) as those milestones land.
-- **M2.3 Anomaly explanations** — when a fraud flag opens, an "Explain" action
-  asks the LLM to narrate the evidence in plain language (read-only; never
-  resolves).
-
-**Offline:** all metrics computed from local Drift; LLM optional. **AI never
-writes business data** — it reads and phrases.
-
-**Exit criteria:** owner opens the app and sees a plain-language "here's what
-changed and what needs attention" card, generated on-device, permission-scoped.
+The milestones below close every one of these, in order.
 
 ---
 
@@ -111,12 +82,13 @@ changed and what needs attention" card, generated on-device, permission-scoped.
   action already exist; no table/feature). New `stock_transfers` +
   `stock_transfer_items` tables (Drift + Supabase), each leg writing the
   `stock_ledger` (`sourceType='transfer'`) on send and receive. Receiving leg
-  reconciliation feeds the `transferMismatch` fraud rule (M1).
+  reconciliation feeds a `transferMismatch` fraud rule (extends the shipped M1
+  engine).
 - **M3.2 Reorder points & low-stock automation** — per-variant/branch reorder
-  level + safety stock; surfaces low-stock on dashboard and feeds M2 insights.
+  level + safety stock; surfaces low-stock on the dashboard and in reporting.
 - **M3.3 Demand forecasting (lightweight)** — moving-average / seasonal-naive
   projection from `stock_ledger` sales history → "days of cover" + suggested
-  reorder qty. Deterministic, on-device. Feeds M2 + M4 auto-PO suggestions.
+  reorder qty. Deterministic, on-device. Feeds M4 auto-PO suggestions.
 - **Permissions:** reuse inventory keys; add `inventory.transfer` enforcement
   server-side (RLS) to match the client permission.
 
@@ -132,9 +104,10 @@ mismatch detection; the app warns before stockouts.
 - **M4.1 Auto-PO suggestions** — generate draft POs from M3.3 forecasts +
   reorder points, grouped by supplier. Owner reviews → existing PO approval flow.
 - **M4.2 Supplier performance** — lead-time, fill-rate, price-trend per supplier
-  from `purchase_orders` + `goods_receipts`. Feeds supplier selection + insights.
+  from `purchase_orders` + `goods_receipts`. Feeds supplier selection.
 - **M4.3 Landed cost / cost history** — track unit cost over time from receipts;
-  powers the `NEGATIVE_MARGIN_SALE` fraud rule (M1) and margin analytics (M2/M6).
+  powers a `NEGATIVE_MARGIN_SALE` fraud rule (extends M1) and margin analytics
+  (M6).
 - **Permissions:** reuse `procurement.*`.
 
 **Exit criteria:** the app suggests what to reorder, from whom, at what expected
@@ -142,24 +115,18 @@ cost — owner just approves.
 
 ---
 
-# Milestone M5 — Customers & CRM (new revenue surface)
+# Milestone M5 — Loyalty (remaining CRM item)
 
-**Goal:** turn the anonymous `customerName` field into a real customer entity —
-required for "manage your whole business."
+> M5.1 (customer directory) and M5.2 (purchase history) are **shipped** — see
+> "Already shipped" above. Only loyalty remains.
 
-- **M5.1 Customer directory** — new `customers` table (Drift + Supabase,
-  offline-first, soft-delete), link transactions/refunds to `customer_id`
-  (keep `customerName` as fallback for walk-ins). New `customers` feature folder.
-- **M5.2 Purchase history & balances** — per-customer transaction history,
-  store credit / outstanding balance (ties to refunds as store credit).
 - **M5.3 Loyalty (points / tiers)** — configurable points-per-spend, redemption
   at POS. Offline-first accrual; LWW-safe ledger (`loyalty_ledger`).
-- **New module:** `customers` in `business_modules` + settings toggle.
-- **Permissions:** `customers.view/create/edit/delete`, `loyalty.manage`,
-  `nav.customers`; AppFeature `customerDirectory`; both matrices; RLS.
+- **New module:** separate `loyalty` module in `business_modules` + settings
+  toggle (kept distinct from the shipped `crm` module).
+- **Permissions:** `loyalty.manage`, `nav.loyalty`; AppFeature; both matrices; RLS.
 
-**Exit criteria:** owner knows who their customers are, what they bought, and can
-reward repeat business — all offline-capable.
+**Exit criteria:** owner can reward repeat business — all offline-capable.
 
 ---
 
@@ -177,7 +144,7 @@ reward repeat business — all offline-capable.
 - **M6.3 Accounting export** — QuickBooks/Xero/CSV journal export (sales,
   refunds, expenses, COGS from M4.3). Read-only export; no external write in v1.
 - **M6.4 Budgets** — per-category/branch expense budgets with actual-vs-budget
-  tracking; over-budget feeds M2 insights + optionally a fraud rule.
+  tracking; over-budget surfaces on the dashboard + optionally a fraud rule.
 - **Permissions:** extend `reports.*`, add `accounting.export`, `budgets.manage`.
 
 **Exit criteria:** owner can answer "am I profitable, what do I owe in tax, am I
@@ -192,29 +159,29 @@ on budget" and hand clean numbers to an accountant.
 - **M7.1 Subscription / billing & plan enforcement** — the gap `CLAUDE.md`
   already names (no real subscription exists today). **Full spec:
   `docs/UPSENSO_SUBSCRIPTION_AND_LIMITS_DESIGN.md`.** Summary:
-  - **Fair-to-customer, offline-first by design:** the POS never stops selling,
-    you always own/export your data, limits are on *value* dimensions
-    (branches, seats, advanced modules) — never on number of receipts — and a
-    generous offline grace window means a lapsed/offline device degrades premium
-    features to read-only rather than locking the owner out.
-  - **Plans (PHP, PH market):** Free (1 branch / 2 seats / 2 devices / 100
-    products) → Growth (₱499/mo) → Business (₱1,299/mo) → Enterprise (custom),
-    each unlocking modules/AI/fraud/CRM/accounting by tier.
-  - **Pricing is derived, not guessed:** tiers ladder ~2.6×, seat add-ons priced
-    below blended rate (₱99→₱79), with a COGS floor to validate before launch.
+  - **The cloud is the paywall (v2 model):** **Free = a fully-functional local
+    POS on one device — unlimited records, ~₱0 cost to us.** The first thing you
+    ever pay for is cloud sync + automatic backup + multi-device. We meter
+    cloud/structural dimensions (branches, seats, devices) + advanced modules —
+    never receipts, and never local record counts. The POS never stops selling;
+    downgrade freezes/reverts, never deletes.
+  - **Plans (PHP, PH micro-SMB):** **Free ₱0** (local-only, 1 device, unlimited
+    records) → **Starter ₱199/mo** (cloud sync + backup + 2 devices — the cheap
+    ~₱6.50/day entry that converts the micro segment) → **Growth ₱499/mo** →
+    **Business ₱1,299/mo** → Enterprise (custom). **Launch = Free + Starter**,
+    both fully backed by shipped features today.
+  - **Pricing is derived, not guessed:** Free is COGS-free (local-only), Starter
+    clears cloud COGS with margin; ladder ~2.5–2.6×; the ₱199 rung bridges the
+    too-big ₱0→₱499 gap. Validate the anchor against measured COGS before launch.
   - **Yearly discount = "2 months free" (16.667%), calculated not invented:**
-    `annual = monthly × 10`, driven by a single `discount_months_free = 2`
-    constant so prices can't drift (Growth ₱4,990/yr saves ₱998; Business
-    ₱12,990/yr saves ₱2,598). Customers can verify the saving themselves.
-  - **Offline-first limit enforcement (the multi-device problem):** a hard global
-    cap is impossible without write-time coordination, so we use **optimistic
-    edge soft-checks + authoritative server reconciliation that never deletes
-    data**. If offline devices collectively overshoot a limit (e.g. 100-product
-    Free cap), all rows persist and stay sellable; the account enters an
-    `over_limit` state that soft-locks only *new* creates until upgrade or
-    archive. Abuse is bounded by an online-only **device cap** and a server-side
-    `COUNT(*)` a tampered client can't shrink — so the exploit yields nothing
-    durable. Optional quota-leasing documented for true hard caps.
+    `annual = monthly × 10`, one `discount_months_free = 2` constant (Starter
+    ₱1,990/yr, Growth ₱4,990/yr, Business ₱12,990/yr). Verifiable by the customer.
+  - **Enforcement is simple now:** because Free never syncs (1 device) and
+    products are uncapped on every tier, the v1 multi-device product-overshoot
+    problem **dissolves**. Free has nothing to enforce server-side; paid tiers
+    meter only low-volume **branches/seats/devices** — device registration is
+    online-only, branch/seat counts are enforced by RLS `count < limit`. The
+    heavy product `over_limit`/reconcile machinery is dropped.
   - **Enforcement = a third gate layer:** `plan_entitlement ∩ business_module ∩
     permission`, wrapping the existing two-layer system. Limits enforced
     server-side in RLS (branch/seat counts, premium writes) against the
@@ -222,14 +189,14 @@ on budget" and hand clean numbers to an accountant.
     read-only) drives offline UX with a sync-timestamp-based grace window
     (clock-tamper resistant).
   - New Supabase `plans` / `plan_limits` / `subscriptions` /
-    `subscription_events` (hash-chained, reusing M1) — client-read-only, writes
-    are billing-webhook/service-role only. Permission `billing.manage`;
-    owner-only.
+    `subscription_events` (hash-chained, reusing the shipped M1 chain) —
+    client-read-only, writes are billing-webhook/service-role only. Permission
+    `billing.manage`; owner-only.
 - **M7.2 Multi-currency** — currency per business/branch; display + reporting.
 - **M7.3 Hardware & integrations** — deepen receipt/label printing
   (`print_bluetooth_thermal` exists), barcode scanning, payment-terminal hooks.
 - **M7.4 Notifications/push** — turn the notifications feature into real
-  push/digest delivery for fraud flags + insights.
+  push/digest delivery for fraud flags.
 
 **Exit criteria:** UPSENSO can be sold on tiered plans, enforced securely, with
 the hardware/integrations a real shop needs.
@@ -256,21 +223,17 @@ Runs alongside every milestone, formalized at the end:
 ## Dependency graph (build order)
 
 ```
-M1 Trust ──┬─> M2 AI Insights ──> (consumes all later data)
-           │
-M3 Inventory depth ──> M4 Procurement intelligence
-           │                     │
-           └────────────┐        └─> M6.3 COGS/accounting
-                        ▼
-M5 Customers/CRM ──> M6 Money (reports/tax/budgets) ──> M7 Platform/billing
-                                                            │
-M8 Hardening ── continuous across all ──────────────────────┘
+M3 Inventory depth ──> M4 Procurement intelligence ──> M6.3 COGS/accounting
+                                                              │
+M5.3 Loyalty ──────────────> M6 Money (reports/tax/budgets) ─┴─> M7 Platform/billing
+                                                                       │
+M8 Hardening ── continuous across all ─────────────────────────────────┘
 ```
 
-**Recommended sequence:** M1 → M2 → M3 → M4 → M5 → M6 → M7, with M8 continuous.
-M1 first (it's the promise + unblocks AI risk insights). M2 early so every later
-milestone immediately gains an insight surface. M5 (customers) can move earlier
-if go-to-market needs loyalty sooner — it has no hard dependency on M3/M4.
+**Recommended sequence:** M3 → M4 → M6 → M7, with M5.3 (loyalty) insertable when
+go-to-market needs it and M8 continuous. The two launch gates — **M-BIR**
+(invoice compliance) and **M-LEGAL** (Privacy, Terms, Data Privacy Act) — gate
+any commercial release and are tracked in `docs/UPSENSO_EXECUTION_SEQUENCE.md`.
 
 ---
 
@@ -303,12 +266,14 @@ their entire operation across branches — sell, restock, transfer, purchase, pa
 expenses, manage staff and customers — while the app:
 
 - **protects** every record with a tamper-evident audit chain and catches abuse
-  with real-time fraud detection,
-- **advises** them daily in plain language (on-device AI) on sales, stock,
-  margin, cash and risk,
+  with real-time fraud detection *(shipped — M1)*,
+- lets them **ask** the on-device AI assistant about their business in plain
+  language,
 - **forecasts** demand and drafts the purchase orders to prevent stockouts,
 - **closes the books** with P&L, tax and accounting exports,
 - and is **sold as a tiered SaaS** with secure, offline-tolerant plan
   enforcement.
 
 That is the all-in-one smart business platform. This roadmap is the path to it.
+</content>
+</invoke>

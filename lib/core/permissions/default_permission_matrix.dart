@@ -99,6 +99,11 @@ abstract final class DefaultPermissionMatrix {
     PermissionKeys.navRecipes: true,
     PermissionKeys.navCustomers: true,
     PermissionKeys.navFraud: true,
+    // Billing is owner-only by default; grantable via override if a business
+    // wants a manager to see (not manage) the plan.
+    PermissionKeys.navBilling: false,
+    PermissionKeys.billingView: false,
+    PermissionKeys.billingManage: false,
     PermissionKeys.dataCrossBranchAccess: false,
   };
 
@@ -179,6 +184,9 @@ abstract final class DefaultPermissionMatrix {
     PermissionKeys.navRecipes: false,
     PermissionKeys.navCustomers: false,
     PermissionKeys.navFraud: false,
+    PermissionKeys.navBilling: false,
+    PermissionKeys.billingView: false,
+    PermissionKeys.billingManage: false,
     PermissionKeys.dataCrossBranchAccess: false,
   };
 
@@ -257,6 +265,9 @@ abstract final class DefaultPermissionMatrix {
     PermissionKeys.navRecipes: true,
     PermissionKeys.navCustomers: false,
     PermissionKeys.navFraud: false,
+    PermissionKeys.navBilling: false,
+    PermissionKeys.billingView: false,
+    PermissionKeys.billingManage: false,
     PermissionKeys.dataCrossBranchAccess: false,
   };
 }

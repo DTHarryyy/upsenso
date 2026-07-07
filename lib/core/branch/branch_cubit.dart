@@ -10,6 +10,7 @@ import 'package:pos/core/config/di.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/core/permissions/data_scope.dart';
+import 'package:pos/core/permissions/entitlement_service.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/permissions/role_permission_matrix.dart';
 import 'package:pos/core/sync/sync_status.dart';
@@ -423,6 +424,12 @@ class BranchCubit extends Cubit<BranchState> {
     String? location,
   }) async {
     if (!state.canSwitchBranches) return null;
+    // Plan branch-cap courtesy check (server RLS enforces it for real). A
+    // denied create is surfaced by the caller as the upgrade moment (§4.3).
+    if (!sl<EntitlementService>().canAddAnother(EntitlementResource.branches)) {
+      debugPrint('[BranchCubit] Branch cap reached for current plan');
+      return null;
+    }
 
     final id = const Uuid().v4();
     final branch = Branch(

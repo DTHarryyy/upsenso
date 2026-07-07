@@ -29137,6 +29137,1465 @@ class ProductBarcodesTableCompanion extends UpdateCompanion<ProductBarcodeRow> {
   }
 }
 
+class $EntitlementCacheTableTable extends EntitlementCacheTable
+    with TableInfo<$EntitlementCacheTableTable, EntitlementCacheRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $EntitlementCacheTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _planCodeMeta = const VerificationMeta(
+    'planCode',
+  );
+  @override
+  late final GeneratedColumn<String> planCode = GeneratedColumn<String>(
+    'plan_code',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('free'),
+  );
+  static const VerificationMeta _planVersionMeta = const VerificationMeta(
+    'planVersion',
+  );
+  @override
+  late final GeneratedColumn<int> planVersion = GeneratedColumn<int>(
+    'plan_version',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('free'),
+  );
+  static const VerificationMeta _cloudEnabledMeta = const VerificationMeta(
+    'cloudEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> cloudEnabled = GeneratedColumn<bool>(
+    'cloud_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("cloud_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _featureFlagsJsonMeta = const VerificationMeta(
+    'featureFlagsJson',
+  );
+  @override
+  late final GeneratedColumn<String> featureFlagsJson = GeneratedColumn<String>(
+    'feature_flags_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('{}'),
+  );
+  static const VerificationMeta _maxBranchesMeta = const VerificationMeta(
+    'maxBranches',
+  );
+  @override
+  late final GeneratedColumn<int> maxBranches = GeneratedColumn<int>(
+    'max_branches',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _maxSeatsMeta = const VerificationMeta(
+    'maxSeats',
+  );
+  @override
+  late final GeneratedColumn<int> maxSeats = GeneratedColumn<int>(
+    'max_seats',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _maxDevicesMeta = const VerificationMeta(
+    'maxDevices',
+  );
+  @override
+  late final GeneratedColumn<int> maxDevices = GeneratedColumn<int>(
+    'max_devices',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _deviceAddonsMeta = const VerificationMeta(
+    'deviceAddons',
+  );
+  @override
+  late final GeneratedColumn<int> deviceAddons = GeneratedColumn<int>(
+    'device_addons',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _branchAddonsMeta = const VerificationMeta(
+    'branchAddons',
+  );
+  @override
+  late final GeneratedColumn<int> branchAddons = GeneratedColumn<int>(
+    'branch_addons',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _seatAddonsMeta = const VerificationMeta(
+    'seatAddons',
+  );
+  @override
+  late final GeneratedColumn<int> seatAddons = GeneratedColumn<int>(
+    'seat_addons',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _trialEndMeta = const VerificationMeta(
+    'trialEnd',
+  );
+  @override
+  late final GeneratedColumn<DateTime> trialEnd = GeneratedColumn<DateTime>(
+    'trial_end',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _currentPeriodEndMeta = const VerificationMeta(
+    'currentPeriodEnd',
+  );
+  @override
+  late final GeneratedColumn<DateTime> currentPeriodEnd =
+      GeneratedColumn<DateTime>(
+        'current_period_end',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _graceUntilMeta = const VerificationMeta(
+    'graceUntil',
+  );
+  @override
+  late final GeneratedColumn<DateTime> graceUntil = GeneratedColumn<DateTime>(
+    'grace_until',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _grandfatheredPriceMeta =
+      const VerificationMeta('grandfatheredPrice');
+  @override
+  late final GeneratedColumn<double> grandfatheredPrice =
+      GeneratedColumn<double>(
+        'grandfathered_price',
+        aliasedName,
+        true,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _lastServerSyncAtMeta = const VerificationMeta(
+    'lastServerSyncAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastServerSyncAt =
+      GeneratedColumn<DateTime>(
+        'last_server_sync_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    businessId,
+    planCode,
+    planVersion,
+    status,
+    cloudEnabled,
+    featureFlagsJson,
+    maxBranches,
+    maxSeats,
+    maxDevices,
+    deviceAddons,
+    branchAddons,
+    seatAddons,
+    trialEnd,
+    currentPeriodEnd,
+    graceUntil,
+    grandfatheredPrice,
+    lastServerSyncAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'entitlement_cache';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<EntitlementCacheRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('plan_code')) {
+      context.handle(
+        _planCodeMeta,
+        planCode.isAcceptableOrUnknown(data['plan_code']!, _planCodeMeta),
+      );
+    }
+    if (data.containsKey('plan_version')) {
+      context.handle(
+        _planVersionMeta,
+        planVersion.isAcceptableOrUnknown(
+          data['plan_version']!,
+          _planVersionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('cloud_enabled')) {
+      context.handle(
+        _cloudEnabledMeta,
+        cloudEnabled.isAcceptableOrUnknown(
+          data['cloud_enabled']!,
+          _cloudEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('feature_flags_json')) {
+      context.handle(
+        _featureFlagsJsonMeta,
+        featureFlagsJson.isAcceptableOrUnknown(
+          data['feature_flags_json']!,
+          _featureFlagsJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('max_branches')) {
+      context.handle(
+        _maxBranchesMeta,
+        maxBranches.isAcceptableOrUnknown(
+          data['max_branches']!,
+          _maxBranchesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('max_seats')) {
+      context.handle(
+        _maxSeatsMeta,
+        maxSeats.isAcceptableOrUnknown(data['max_seats']!, _maxSeatsMeta),
+      );
+    }
+    if (data.containsKey('max_devices')) {
+      context.handle(
+        _maxDevicesMeta,
+        maxDevices.isAcceptableOrUnknown(data['max_devices']!, _maxDevicesMeta),
+      );
+    }
+    if (data.containsKey('device_addons')) {
+      context.handle(
+        _deviceAddonsMeta,
+        deviceAddons.isAcceptableOrUnknown(
+          data['device_addons']!,
+          _deviceAddonsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('branch_addons')) {
+      context.handle(
+        _branchAddonsMeta,
+        branchAddons.isAcceptableOrUnknown(
+          data['branch_addons']!,
+          _branchAddonsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('seat_addons')) {
+      context.handle(
+        _seatAddonsMeta,
+        seatAddons.isAcceptableOrUnknown(data['seat_addons']!, _seatAddonsMeta),
+      );
+    }
+    if (data.containsKey('trial_end')) {
+      context.handle(
+        _trialEndMeta,
+        trialEnd.isAcceptableOrUnknown(data['trial_end']!, _trialEndMeta),
+      );
+    }
+    if (data.containsKey('current_period_end')) {
+      context.handle(
+        _currentPeriodEndMeta,
+        currentPeriodEnd.isAcceptableOrUnknown(
+          data['current_period_end']!,
+          _currentPeriodEndMeta,
+        ),
+      );
+    }
+    if (data.containsKey('grace_until')) {
+      context.handle(
+        _graceUntilMeta,
+        graceUntil.isAcceptableOrUnknown(data['grace_until']!, _graceUntilMeta),
+      );
+    }
+    if (data.containsKey('grandfathered_price')) {
+      context.handle(
+        _grandfatheredPriceMeta,
+        grandfatheredPrice.isAcceptableOrUnknown(
+          data['grandfathered_price']!,
+          _grandfatheredPriceMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_server_sync_at')) {
+      context.handle(
+        _lastServerSyncAtMeta,
+        lastServerSyncAt.isAcceptableOrUnknown(
+          data['last_server_sync_at']!,
+          _lastServerSyncAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {businessId};
+  @override
+  EntitlementCacheRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return EntitlementCacheRow(
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      planCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}plan_code'],
+      )!,
+      planVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}plan_version'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      cloudEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}cloud_enabled'],
+      )!,
+      featureFlagsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}feature_flags_json'],
+      )!,
+      maxBranches: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}max_branches'],
+      ),
+      maxSeats: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}max_seats'],
+      ),
+      maxDevices: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}max_devices'],
+      ),
+      deviceAddons: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}device_addons'],
+      )!,
+      branchAddons: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}branch_addons'],
+      )!,
+      seatAddons: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}seat_addons'],
+      )!,
+      trialEnd: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}trial_end'],
+      ),
+      currentPeriodEnd: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}current_period_end'],
+      ),
+      graceUntil: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}grace_until'],
+      ),
+      grandfatheredPrice: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}grandfathered_price'],
+      ),
+      lastServerSyncAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_server_sync_at'],
+      ),
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $EntitlementCacheTableTable createAlias(String alias) {
+    return $EntitlementCacheTableTable(attachedDatabase, alias);
+  }
+}
+
+class EntitlementCacheRow extends DataClass
+    implements Insertable<EntitlementCacheRow> {
+  final String businessId;
+  final String planCode;
+  final int planVersion;
+
+  /// Server-computed effective status at last sync:
+  /// trialing | active | past_due | free | lapsed.
+  /// The service re-derives transitions locally from the timestamps below.
+  final String status;
+  final bool cloudEnabled;
+
+  /// JSON-encoded feature flags, e.g. `{"crm":"basic","procurement":false}`.
+  final String featureFlagsJson;
+
+  /// Effective caps (snapshot + add-ons already folded in server-side).
+  /// Null = unlimited.
+  final int? maxBranches;
+  final int? maxSeats;
+  final int? maxDevices;
+  final int deviceAddons;
+  final int branchAddons;
+  final int seatAddons;
+  final DateTime? trialEnd;
+  final DateTime? currentPeriodEnd;
+  final DateTime? graceUntil;
+  final double? grandfatheredPrice;
+
+  /// Server clock at the last successful entitlement fetch — the anchor for
+  /// the clock-tamper clamp (grace is measured against this, never the
+  /// device clock alone).
+  final DateTime? lastServerSyncAt;
+  final DateTime updatedAt;
+  const EntitlementCacheRow({
+    required this.businessId,
+    required this.planCode,
+    required this.planVersion,
+    required this.status,
+    required this.cloudEnabled,
+    required this.featureFlagsJson,
+    this.maxBranches,
+    this.maxSeats,
+    this.maxDevices,
+    required this.deviceAddons,
+    required this.branchAddons,
+    required this.seatAddons,
+    this.trialEnd,
+    this.currentPeriodEnd,
+    this.graceUntil,
+    this.grandfatheredPrice,
+    this.lastServerSyncAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['business_id'] = Variable<String>(businessId);
+    map['plan_code'] = Variable<String>(planCode);
+    map['plan_version'] = Variable<int>(planVersion);
+    map['status'] = Variable<String>(status);
+    map['cloud_enabled'] = Variable<bool>(cloudEnabled);
+    map['feature_flags_json'] = Variable<String>(featureFlagsJson);
+    if (!nullToAbsent || maxBranches != null) {
+      map['max_branches'] = Variable<int>(maxBranches);
+    }
+    if (!nullToAbsent || maxSeats != null) {
+      map['max_seats'] = Variable<int>(maxSeats);
+    }
+    if (!nullToAbsent || maxDevices != null) {
+      map['max_devices'] = Variable<int>(maxDevices);
+    }
+    map['device_addons'] = Variable<int>(deviceAddons);
+    map['branch_addons'] = Variable<int>(branchAddons);
+    map['seat_addons'] = Variable<int>(seatAddons);
+    if (!nullToAbsent || trialEnd != null) {
+      map['trial_end'] = Variable<DateTime>(trialEnd);
+    }
+    if (!nullToAbsent || currentPeriodEnd != null) {
+      map['current_period_end'] = Variable<DateTime>(currentPeriodEnd);
+    }
+    if (!nullToAbsent || graceUntil != null) {
+      map['grace_until'] = Variable<DateTime>(graceUntil);
+    }
+    if (!nullToAbsent || grandfatheredPrice != null) {
+      map['grandfathered_price'] = Variable<double>(grandfatheredPrice);
+    }
+    if (!nullToAbsent || lastServerSyncAt != null) {
+      map['last_server_sync_at'] = Variable<DateTime>(lastServerSyncAt);
+    }
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  EntitlementCacheTableCompanion toCompanion(bool nullToAbsent) {
+    return EntitlementCacheTableCompanion(
+      businessId: Value(businessId),
+      planCode: Value(planCode),
+      planVersion: Value(planVersion),
+      status: Value(status),
+      cloudEnabled: Value(cloudEnabled),
+      featureFlagsJson: Value(featureFlagsJson),
+      maxBranches: maxBranches == null && nullToAbsent
+          ? const Value.absent()
+          : Value(maxBranches),
+      maxSeats: maxSeats == null && nullToAbsent
+          ? const Value.absent()
+          : Value(maxSeats),
+      maxDevices: maxDevices == null && nullToAbsent
+          ? const Value.absent()
+          : Value(maxDevices),
+      deviceAddons: Value(deviceAddons),
+      branchAddons: Value(branchAddons),
+      seatAddons: Value(seatAddons),
+      trialEnd: trialEnd == null && nullToAbsent
+          ? const Value.absent()
+          : Value(trialEnd),
+      currentPeriodEnd: currentPeriodEnd == null && nullToAbsent
+          ? const Value.absent()
+          : Value(currentPeriodEnd),
+      graceUntil: graceUntil == null && nullToAbsent
+          ? const Value.absent()
+          : Value(graceUntil),
+      grandfatheredPrice: grandfatheredPrice == null && nullToAbsent
+          ? const Value.absent()
+          : Value(grandfatheredPrice),
+      lastServerSyncAt: lastServerSyncAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastServerSyncAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory EntitlementCacheRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return EntitlementCacheRow(
+      businessId: serializer.fromJson<String>(json['businessId']),
+      planCode: serializer.fromJson<String>(json['planCode']),
+      planVersion: serializer.fromJson<int>(json['planVersion']),
+      status: serializer.fromJson<String>(json['status']),
+      cloudEnabled: serializer.fromJson<bool>(json['cloudEnabled']),
+      featureFlagsJson: serializer.fromJson<String>(json['featureFlagsJson']),
+      maxBranches: serializer.fromJson<int?>(json['maxBranches']),
+      maxSeats: serializer.fromJson<int?>(json['maxSeats']),
+      maxDevices: serializer.fromJson<int?>(json['maxDevices']),
+      deviceAddons: serializer.fromJson<int>(json['deviceAddons']),
+      branchAddons: serializer.fromJson<int>(json['branchAddons']),
+      seatAddons: serializer.fromJson<int>(json['seatAddons']),
+      trialEnd: serializer.fromJson<DateTime?>(json['trialEnd']),
+      currentPeriodEnd: serializer.fromJson<DateTime?>(
+        json['currentPeriodEnd'],
+      ),
+      graceUntil: serializer.fromJson<DateTime?>(json['graceUntil']),
+      grandfatheredPrice: serializer.fromJson<double?>(
+        json['grandfatheredPrice'],
+      ),
+      lastServerSyncAt: serializer.fromJson<DateTime?>(
+        json['lastServerSyncAt'],
+      ),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'businessId': serializer.toJson<String>(businessId),
+      'planCode': serializer.toJson<String>(planCode),
+      'planVersion': serializer.toJson<int>(planVersion),
+      'status': serializer.toJson<String>(status),
+      'cloudEnabled': serializer.toJson<bool>(cloudEnabled),
+      'featureFlagsJson': serializer.toJson<String>(featureFlagsJson),
+      'maxBranches': serializer.toJson<int?>(maxBranches),
+      'maxSeats': serializer.toJson<int?>(maxSeats),
+      'maxDevices': serializer.toJson<int?>(maxDevices),
+      'deviceAddons': serializer.toJson<int>(deviceAddons),
+      'branchAddons': serializer.toJson<int>(branchAddons),
+      'seatAddons': serializer.toJson<int>(seatAddons),
+      'trialEnd': serializer.toJson<DateTime?>(trialEnd),
+      'currentPeriodEnd': serializer.toJson<DateTime?>(currentPeriodEnd),
+      'graceUntil': serializer.toJson<DateTime?>(graceUntil),
+      'grandfatheredPrice': serializer.toJson<double?>(grandfatheredPrice),
+      'lastServerSyncAt': serializer.toJson<DateTime?>(lastServerSyncAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  EntitlementCacheRow copyWith({
+    String? businessId,
+    String? planCode,
+    int? planVersion,
+    String? status,
+    bool? cloudEnabled,
+    String? featureFlagsJson,
+    Value<int?> maxBranches = const Value.absent(),
+    Value<int?> maxSeats = const Value.absent(),
+    Value<int?> maxDevices = const Value.absent(),
+    int? deviceAddons,
+    int? branchAddons,
+    int? seatAddons,
+    Value<DateTime?> trialEnd = const Value.absent(),
+    Value<DateTime?> currentPeriodEnd = const Value.absent(),
+    Value<DateTime?> graceUntil = const Value.absent(),
+    Value<double?> grandfatheredPrice = const Value.absent(),
+    Value<DateTime?> lastServerSyncAt = const Value.absent(),
+    DateTime? updatedAt,
+  }) => EntitlementCacheRow(
+    businessId: businessId ?? this.businessId,
+    planCode: planCode ?? this.planCode,
+    planVersion: planVersion ?? this.planVersion,
+    status: status ?? this.status,
+    cloudEnabled: cloudEnabled ?? this.cloudEnabled,
+    featureFlagsJson: featureFlagsJson ?? this.featureFlagsJson,
+    maxBranches: maxBranches.present ? maxBranches.value : this.maxBranches,
+    maxSeats: maxSeats.present ? maxSeats.value : this.maxSeats,
+    maxDevices: maxDevices.present ? maxDevices.value : this.maxDevices,
+    deviceAddons: deviceAddons ?? this.deviceAddons,
+    branchAddons: branchAddons ?? this.branchAddons,
+    seatAddons: seatAddons ?? this.seatAddons,
+    trialEnd: trialEnd.present ? trialEnd.value : this.trialEnd,
+    currentPeriodEnd: currentPeriodEnd.present
+        ? currentPeriodEnd.value
+        : this.currentPeriodEnd,
+    graceUntil: graceUntil.present ? graceUntil.value : this.graceUntil,
+    grandfatheredPrice: grandfatheredPrice.present
+        ? grandfatheredPrice.value
+        : this.grandfatheredPrice,
+    lastServerSyncAt: lastServerSyncAt.present
+        ? lastServerSyncAt.value
+        : this.lastServerSyncAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  EntitlementCacheRow copyWithCompanion(EntitlementCacheTableCompanion data) {
+    return EntitlementCacheRow(
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      planCode: data.planCode.present ? data.planCode.value : this.planCode,
+      planVersion: data.planVersion.present
+          ? data.planVersion.value
+          : this.planVersion,
+      status: data.status.present ? data.status.value : this.status,
+      cloudEnabled: data.cloudEnabled.present
+          ? data.cloudEnabled.value
+          : this.cloudEnabled,
+      featureFlagsJson: data.featureFlagsJson.present
+          ? data.featureFlagsJson.value
+          : this.featureFlagsJson,
+      maxBranches: data.maxBranches.present
+          ? data.maxBranches.value
+          : this.maxBranches,
+      maxSeats: data.maxSeats.present ? data.maxSeats.value : this.maxSeats,
+      maxDevices: data.maxDevices.present
+          ? data.maxDevices.value
+          : this.maxDevices,
+      deviceAddons: data.deviceAddons.present
+          ? data.deviceAddons.value
+          : this.deviceAddons,
+      branchAddons: data.branchAddons.present
+          ? data.branchAddons.value
+          : this.branchAddons,
+      seatAddons: data.seatAddons.present
+          ? data.seatAddons.value
+          : this.seatAddons,
+      trialEnd: data.trialEnd.present ? data.trialEnd.value : this.trialEnd,
+      currentPeriodEnd: data.currentPeriodEnd.present
+          ? data.currentPeriodEnd.value
+          : this.currentPeriodEnd,
+      graceUntil: data.graceUntil.present
+          ? data.graceUntil.value
+          : this.graceUntil,
+      grandfatheredPrice: data.grandfatheredPrice.present
+          ? data.grandfatheredPrice.value
+          : this.grandfatheredPrice,
+      lastServerSyncAt: data.lastServerSyncAt.present
+          ? data.lastServerSyncAt.value
+          : this.lastServerSyncAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('EntitlementCacheRow(')
+          ..write('businessId: $businessId, ')
+          ..write('planCode: $planCode, ')
+          ..write('planVersion: $planVersion, ')
+          ..write('status: $status, ')
+          ..write('cloudEnabled: $cloudEnabled, ')
+          ..write('featureFlagsJson: $featureFlagsJson, ')
+          ..write('maxBranches: $maxBranches, ')
+          ..write('maxSeats: $maxSeats, ')
+          ..write('maxDevices: $maxDevices, ')
+          ..write('deviceAddons: $deviceAddons, ')
+          ..write('branchAddons: $branchAddons, ')
+          ..write('seatAddons: $seatAddons, ')
+          ..write('trialEnd: $trialEnd, ')
+          ..write('currentPeriodEnd: $currentPeriodEnd, ')
+          ..write('graceUntil: $graceUntil, ')
+          ..write('grandfatheredPrice: $grandfatheredPrice, ')
+          ..write('lastServerSyncAt: $lastServerSyncAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    businessId,
+    planCode,
+    planVersion,
+    status,
+    cloudEnabled,
+    featureFlagsJson,
+    maxBranches,
+    maxSeats,
+    maxDevices,
+    deviceAddons,
+    branchAddons,
+    seatAddons,
+    trialEnd,
+    currentPeriodEnd,
+    graceUntil,
+    grandfatheredPrice,
+    lastServerSyncAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is EntitlementCacheRow &&
+          other.businessId == this.businessId &&
+          other.planCode == this.planCode &&
+          other.planVersion == this.planVersion &&
+          other.status == this.status &&
+          other.cloudEnabled == this.cloudEnabled &&
+          other.featureFlagsJson == this.featureFlagsJson &&
+          other.maxBranches == this.maxBranches &&
+          other.maxSeats == this.maxSeats &&
+          other.maxDevices == this.maxDevices &&
+          other.deviceAddons == this.deviceAddons &&
+          other.branchAddons == this.branchAddons &&
+          other.seatAddons == this.seatAddons &&
+          other.trialEnd == this.trialEnd &&
+          other.currentPeriodEnd == this.currentPeriodEnd &&
+          other.graceUntil == this.graceUntil &&
+          other.grandfatheredPrice == this.grandfatheredPrice &&
+          other.lastServerSyncAt == this.lastServerSyncAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class EntitlementCacheTableCompanion
+    extends UpdateCompanion<EntitlementCacheRow> {
+  final Value<String> businessId;
+  final Value<String> planCode;
+  final Value<int> planVersion;
+  final Value<String> status;
+  final Value<bool> cloudEnabled;
+  final Value<String> featureFlagsJson;
+  final Value<int?> maxBranches;
+  final Value<int?> maxSeats;
+  final Value<int?> maxDevices;
+  final Value<int> deviceAddons;
+  final Value<int> branchAddons;
+  final Value<int> seatAddons;
+  final Value<DateTime?> trialEnd;
+  final Value<DateTime?> currentPeriodEnd;
+  final Value<DateTime?> graceUntil;
+  final Value<double?> grandfatheredPrice;
+  final Value<DateTime?> lastServerSyncAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const EntitlementCacheTableCompanion({
+    this.businessId = const Value.absent(),
+    this.planCode = const Value.absent(),
+    this.planVersion = const Value.absent(),
+    this.status = const Value.absent(),
+    this.cloudEnabled = const Value.absent(),
+    this.featureFlagsJson = const Value.absent(),
+    this.maxBranches = const Value.absent(),
+    this.maxSeats = const Value.absent(),
+    this.maxDevices = const Value.absent(),
+    this.deviceAddons = const Value.absent(),
+    this.branchAddons = const Value.absent(),
+    this.seatAddons = const Value.absent(),
+    this.trialEnd = const Value.absent(),
+    this.currentPeriodEnd = const Value.absent(),
+    this.graceUntil = const Value.absent(),
+    this.grandfatheredPrice = const Value.absent(),
+    this.lastServerSyncAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  EntitlementCacheTableCompanion.insert({
+    required String businessId,
+    this.planCode = const Value.absent(),
+    this.planVersion = const Value.absent(),
+    this.status = const Value.absent(),
+    this.cloudEnabled = const Value.absent(),
+    this.featureFlagsJson = const Value.absent(),
+    this.maxBranches = const Value.absent(),
+    this.maxSeats = const Value.absent(),
+    this.maxDevices = const Value.absent(),
+    this.deviceAddons = const Value.absent(),
+    this.branchAddons = const Value.absent(),
+    this.seatAddons = const Value.absent(),
+    this.trialEnd = const Value.absent(),
+    this.currentPeriodEnd = const Value.absent(),
+    this.graceUntil = const Value.absent(),
+    this.grandfatheredPrice = const Value.absent(),
+    this.lastServerSyncAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : businessId = Value(businessId);
+  static Insertable<EntitlementCacheRow> custom({
+    Expression<String>? businessId,
+    Expression<String>? planCode,
+    Expression<int>? planVersion,
+    Expression<String>? status,
+    Expression<bool>? cloudEnabled,
+    Expression<String>? featureFlagsJson,
+    Expression<int>? maxBranches,
+    Expression<int>? maxSeats,
+    Expression<int>? maxDevices,
+    Expression<int>? deviceAddons,
+    Expression<int>? branchAddons,
+    Expression<int>? seatAddons,
+    Expression<DateTime>? trialEnd,
+    Expression<DateTime>? currentPeriodEnd,
+    Expression<DateTime>? graceUntil,
+    Expression<double>? grandfatheredPrice,
+    Expression<DateTime>? lastServerSyncAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (businessId != null) 'business_id': businessId,
+      if (planCode != null) 'plan_code': planCode,
+      if (planVersion != null) 'plan_version': planVersion,
+      if (status != null) 'status': status,
+      if (cloudEnabled != null) 'cloud_enabled': cloudEnabled,
+      if (featureFlagsJson != null) 'feature_flags_json': featureFlagsJson,
+      if (maxBranches != null) 'max_branches': maxBranches,
+      if (maxSeats != null) 'max_seats': maxSeats,
+      if (maxDevices != null) 'max_devices': maxDevices,
+      if (deviceAddons != null) 'device_addons': deviceAddons,
+      if (branchAddons != null) 'branch_addons': branchAddons,
+      if (seatAddons != null) 'seat_addons': seatAddons,
+      if (trialEnd != null) 'trial_end': trialEnd,
+      if (currentPeriodEnd != null) 'current_period_end': currentPeriodEnd,
+      if (graceUntil != null) 'grace_until': graceUntil,
+      if (grandfatheredPrice != null) 'grandfathered_price': grandfatheredPrice,
+      if (lastServerSyncAt != null) 'last_server_sync_at': lastServerSyncAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  EntitlementCacheTableCompanion copyWith({
+    Value<String>? businessId,
+    Value<String>? planCode,
+    Value<int>? planVersion,
+    Value<String>? status,
+    Value<bool>? cloudEnabled,
+    Value<String>? featureFlagsJson,
+    Value<int?>? maxBranches,
+    Value<int?>? maxSeats,
+    Value<int?>? maxDevices,
+    Value<int>? deviceAddons,
+    Value<int>? branchAddons,
+    Value<int>? seatAddons,
+    Value<DateTime?>? trialEnd,
+    Value<DateTime?>? currentPeriodEnd,
+    Value<DateTime?>? graceUntil,
+    Value<double?>? grandfatheredPrice,
+    Value<DateTime?>? lastServerSyncAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return EntitlementCacheTableCompanion(
+      businessId: businessId ?? this.businessId,
+      planCode: planCode ?? this.planCode,
+      planVersion: planVersion ?? this.planVersion,
+      status: status ?? this.status,
+      cloudEnabled: cloudEnabled ?? this.cloudEnabled,
+      featureFlagsJson: featureFlagsJson ?? this.featureFlagsJson,
+      maxBranches: maxBranches ?? this.maxBranches,
+      maxSeats: maxSeats ?? this.maxSeats,
+      maxDevices: maxDevices ?? this.maxDevices,
+      deviceAddons: deviceAddons ?? this.deviceAddons,
+      branchAddons: branchAddons ?? this.branchAddons,
+      seatAddons: seatAddons ?? this.seatAddons,
+      trialEnd: trialEnd ?? this.trialEnd,
+      currentPeriodEnd: currentPeriodEnd ?? this.currentPeriodEnd,
+      graceUntil: graceUntil ?? this.graceUntil,
+      grandfatheredPrice: grandfatheredPrice ?? this.grandfatheredPrice,
+      lastServerSyncAt: lastServerSyncAt ?? this.lastServerSyncAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (planCode.present) {
+      map['plan_code'] = Variable<String>(planCode.value);
+    }
+    if (planVersion.present) {
+      map['plan_version'] = Variable<int>(planVersion.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (cloudEnabled.present) {
+      map['cloud_enabled'] = Variable<bool>(cloudEnabled.value);
+    }
+    if (featureFlagsJson.present) {
+      map['feature_flags_json'] = Variable<String>(featureFlagsJson.value);
+    }
+    if (maxBranches.present) {
+      map['max_branches'] = Variable<int>(maxBranches.value);
+    }
+    if (maxSeats.present) {
+      map['max_seats'] = Variable<int>(maxSeats.value);
+    }
+    if (maxDevices.present) {
+      map['max_devices'] = Variable<int>(maxDevices.value);
+    }
+    if (deviceAddons.present) {
+      map['device_addons'] = Variable<int>(deviceAddons.value);
+    }
+    if (branchAddons.present) {
+      map['branch_addons'] = Variable<int>(branchAddons.value);
+    }
+    if (seatAddons.present) {
+      map['seat_addons'] = Variable<int>(seatAddons.value);
+    }
+    if (trialEnd.present) {
+      map['trial_end'] = Variable<DateTime>(trialEnd.value);
+    }
+    if (currentPeriodEnd.present) {
+      map['current_period_end'] = Variable<DateTime>(currentPeriodEnd.value);
+    }
+    if (graceUntil.present) {
+      map['grace_until'] = Variable<DateTime>(graceUntil.value);
+    }
+    if (grandfatheredPrice.present) {
+      map['grandfathered_price'] = Variable<double>(grandfatheredPrice.value);
+    }
+    if (lastServerSyncAt.present) {
+      map['last_server_sync_at'] = Variable<DateTime>(lastServerSyncAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('EntitlementCacheTableCompanion(')
+          ..write('businessId: $businessId, ')
+          ..write('planCode: $planCode, ')
+          ..write('planVersion: $planVersion, ')
+          ..write('status: $status, ')
+          ..write('cloudEnabled: $cloudEnabled, ')
+          ..write('featureFlagsJson: $featureFlagsJson, ')
+          ..write('maxBranches: $maxBranches, ')
+          ..write('maxSeats: $maxSeats, ')
+          ..write('maxDevices: $maxDevices, ')
+          ..write('deviceAddons: $deviceAddons, ')
+          ..write('branchAddons: $branchAddons, ')
+          ..write('seatAddons: $seatAddons, ')
+          ..write('trialEnd: $trialEnd, ')
+          ..write('currentPeriodEnd: $currentPeriodEnd, ')
+          ..write('graceUntil: $graceUntil, ')
+          ..write('grandfatheredPrice: $grandfatheredPrice, ')
+          ..write('lastServerSyncAt: $lastServerSyncAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ResourceUsageCacheTableTable extends ResourceUsageCacheTable
+    with TableInfo<$ResourceUsageCacheTableTable, ResourceUsageCacheRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ResourceUsageCacheTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _branchCountMeta = const VerificationMeta(
+    'branchCount',
+  );
+  @override
+  late final GeneratedColumn<int> branchCount = GeneratedColumn<int>(
+    'branch_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _activeSeatCountMeta = const VerificationMeta(
+    'activeSeatCount',
+  );
+  @override
+  late final GeneratedColumn<int> activeSeatCount = GeneratedColumn<int>(
+    'active_seat_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _deviceCountMeta = const VerificationMeta(
+    'deviceCount',
+  );
+  @override
+  late final GeneratedColumn<int> deviceCount = GeneratedColumn<int>(
+    'device_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _syncedAtMeta = const VerificationMeta(
+    'syncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+    'synced_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    businessId,
+    branchCount,
+    activeSeatCount,
+    deviceCount,
+    syncedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'resource_usage_cache';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ResourceUsageCacheRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('branch_count')) {
+      context.handle(
+        _branchCountMeta,
+        branchCount.isAcceptableOrUnknown(
+          data['branch_count']!,
+          _branchCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('active_seat_count')) {
+      context.handle(
+        _activeSeatCountMeta,
+        activeSeatCount.isAcceptableOrUnknown(
+          data['active_seat_count']!,
+          _activeSeatCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('device_count')) {
+      context.handle(
+        _deviceCountMeta,
+        deviceCount.isAcceptableOrUnknown(
+          data['device_count']!,
+          _deviceCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('synced_at')) {
+      context.handle(
+        _syncedAtMeta,
+        syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {businessId};
+  @override
+  ResourceUsageCacheRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ResourceUsageCacheRow(
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      branchCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}branch_count'],
+      )!,
+      activeSeatCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}active_seat_count'],
+      )!,
+      deviceCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}device_count'],
+      )!,
+      syncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}synced_at'],
+      ),
+    );
+  }
+
+  @override
+  $ResourceUsageCacheTableTable createAlias(String alias) {
+    return $ResourceUsageCacheTableTable(attachedDatabase, alias);
+  }
+}
+
+class ResourceUsageCacheRow extends DataClass
+    implements Insertable<ResourceUsageCacheRow> {
+  final String businessId;
+  final int branchCount;
+  final int activeSeatCount;
+  final int deviceCount;
+  final DateTime? syncedAt;
+  const ResourceUsageCacheRow({
+    required this.businessId,
+    required this.branchCount,
+    required this.activeSeatCount,
+    required this.deviceCount,
+    this.syncedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['business_id'] = Variable<String>(businessId);
+    map['branch_count'] = Variable<int>(branchCount);
+    map['active_seat_count'] = Variable<int>(activeSeatCount);
+    map['device_count'] = Variable<int>(deviceCount);
+    if (!nullToAbsent || syncedAt != null) {
+      map['synced_at'] = Variable<DateTime>(syncedAt);
+    }
+    return map;
+  }
+
+  ResourceUsageCacheTableCompanion toCompanion(bool nullToAbsent) {
+    return ResourceUsageCacheTableCompanion(
+      businessId: Value(businessId),
+      branchCount: Value(branchCount),
+      activeSeatCount: Value(activeSeatCount),
+      deviceCount: Value(deviceCount),
+      syncedAt: syncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedAt),
+    );
+  }
+
+  factory ResourceUsageCacheRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ResourceUsageCacheRow(
+      businessId: serializer.fromJson<String>(json['businessId']),
+      branchCount: serializer.fromJson<int>(json['branchCount']),
+      activeSeatCount: serializer.fromJson<int>(json['activeSeatCount']),
+      deviceCount: serializer.fromJson<int>(json['deviceCount']),
+      syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'businessId': serializer.toJson<String>(businessId),
+      'branchCount': serializer.toJson<int>(branchCount),
+      'activeSeatCount': serializer.toJson<int>(activeSeatCount),
+      'deviceCount': serializer.toJson<int>(deviceCount),
+      'syncedAt': serializer.toJson<DateTime?>(syncedAt),
+    };
+  }
+
+  ResourceUsageCacheRow copyWith({
+    String? businessId,
+    int? branchCount,
+    int? activeSeatCount,
+    int? deviceCount,
+    Value<DateTime?> syncedAt = const Value.absent(),
+  }) => ResourceUsageCacheRow(
+    businessId: businessId ?? this.businessId,
+    branchCount: branchCount ?? this.branchCount,
+    activeSeatCount: activeSeatCount ?? this.activeSeatCount,
+    deviceCount: deviceCount ?? this.deviceCount,
+    syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
+  );
+  ResourceUsageCacheRow copyWithCompanion(
+    ResourceUsageCacheTableCompanion data,
+  ) {
+    return ResourceUsageCacheRow(
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      branchCount: data.branchCount.present
+          ? data.branchCount.value
+          : this.branchCount,
+      activeSeatCount: data.activeSeatCount.present
+          ? data.activeSeatCount.value
+          : this.activeSeatCount,
+      deviceCount: data.deviceCount.present
+          ? data.deviceCount.value
+          : this.deviceCount,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ResourceUsageCacheRow(')
+          ..write('businessId: $businessId, ')
+          ..write('branchCount: $branchCount, ')
+          ..write('activeSeatCount: $activeSeatCount, ')
+          ..write('deviceCount: $deviceCount, ')
+          ..write('syncedAt: $syncedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    businessId,
+    branchCount,
+    activeSeatCount,
+    deviceCount,
+    syncedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ResourceUsageCacheRow &&
+          other.businessId == this.businessId &&
+          other.branchCount == this.branchCount &&
+          other.activeSeatCount == this.activeSeatCount &&
+          other.deviceCount == this.deviceCount &&
+          other.syncedAt == this.syncedAt);
+}
+
+class ResourceUsageCacheTableCompanion
+    extends UpdateCompanion<ResourceUsageCacheRow> {
+  final Value<String> businessId;
+  final Value<int> branchCount;
+  final Value<int> activeSeatCount;
+  final Value<int> deviceCount;
+  final Value<DateTime?> syncedAt;
+  final Value<int> rowid;
+  const ResourceUsageCacheTableCompanion({
+    this.businessId = const Value.absent(),
+    this.branchCount = const Value.absent(),
+    this.activeSeatCount = const Value.absent(),
+    this.deviceCount = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ResourceUsageCacheTableCompanion.insert({
+    required String businessId,
+    this.branchCount = const Value.absent(),
+    this.activeSeatCount = const Value.absent(),
+    this.deviceCount = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : businessId = Value(businessId);
+  static Insertable<ResourceUsageCacheRow> custom({
+    Expression<String>? businessId,
+    Expression<int>? branchCount,
+    Expression<int>? activeSeatCount,
+    Expression<int>? deviceCount,
+    Expression<DateTime>? syncedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (businessId != null) 'business_id': businessId,
+      if (branchCount != null) 'branch_count': branchCount,
+      if (activeSeatCount != null) 'active_seat_count': activeSeatCount,
+      if (deviceCount != null) 'device_count': deviceCount,
+      if (syncedAt != null) 'synced_at': syncedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ResourceUsageCacheTableCompanion copyWith({
+    Value<String>? businessId,
+    Value<int>? branchCount,
+    Value<int>? activeSeatCount,
+    Value<int>? deviceCount,
+    Value<DateTime?>? syncedAt,
+    Value<int>? rowid,
+  }) {
+    return ResourceUsageCacheTableCompanion(
+      businessId: businessId ?? this.businessId,
+      branchCount: branchCount ?? this.branchCount,
+      activeSeatCount: activeSeatCount ?? this.activeSeatCount,
+      deviceCount: deviceCount ?? this.deviceCount,
+      syncedAt: syncedAt ?? this.syncedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (branchCount.present) {
+      map['branch_count'] = Variable<int>(branchCount.value);
+    }
+    if (activeSeatCount.present) {
+      map['active_seat_count'] = Variable<int>(activeSeatCount.value);
+    }
+    if (deviceCount.present) {
+      map['device_count'] = Variable<int>(deviceCount.value);
+    }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ResourceUsageCacheTableCompanion(')
+          ..write('businessId: $businessId, ')
+          ..write('branchCount: $branchCount, ')
+          ..write('activeSeatCount: $activeSeatCount, ')
+          ..write('deviceCount: $deviceCount, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -29215,6 +30674,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $DevicesTableTable devicesTable = $DevicesTableTable(this);
   late final $ProductBarcodesTableTable productBarcodesTable =
       $ProductBarcodesTableTable(this);
+  late final $EntitlementCacheTableTable entitlementCacheTable =
+      $EntitlementCacheTableTable(this);
+  late final $ResourceUsageCacheTableTable resourceUsageCacheTable =
+      $ResourceUsageCacheTableTable(this);
   late final AuthContextDao authContextDao = AuthContextDao(
     this as AppDatabase,
   );
@@ -29289,6 +30752,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final ProductBarcodesDao productBarcodesDao = ProductBarcodesDao(
     this as AppDatabase,
   );
+  late final EntitlementDao entitlementDao = EntitlementDao(
+    this as AppDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -29332,6 +30798,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     fraudCandidatesTable,
     devicesTable,
     productBarcodesTable,
+    entitlementCacheTable,
+    resourceUsageCacheTable,
   ];
 }
 
@@ -43324,6 +44792,725 @@ typedef $$ProductBarcodesTableTableProcessedTableManager =
       ProductBarcodeRow,
       PrefetchHooks Function()
     >;
+typedef $$EntitlementCacheTableTableCreateCompanionBuilder =
+    EntitlementCacheTableCompanion Function({
+      required String businessId,
+      Value<String> planCode,
+      Value<int> planVersion,
+      Value<String> status,
+      Value<bool> cloudEnabled,
+      Value<String> featureFlagsJson,
+      Value<int?> maxBranches,
+      Value<int?> maxSeats,
+      Value<int?> maxDevices,
+      Value<int> deviceAddons,
+      Value<int> branchAddons,
+      Value<int> seatAddons,
+      Value<DateTime?> trialEnd,
+      Value<DateTime?> currentPeriodEnd,
+      Value<DateTime?> graceUntil,
+      Value<double?> grandfatheredPrice,
+      Value<DateTime?> lastServerSyncAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$EntitlementCacheTableTableUpdateCompanionBuilder =
+    EntitlementCacheTableCompanion Function({
+      Value<String> businessId,
+      Value<String> planCode,
+      Value<int> planVersion,
+      Value<String> status,
+      Value<bool> cloudEnabled,
+      Value<String> featureFlagsJson,
+      Value<int?> maxBranches,
+      Value<int?> maxSeats,
+      Value<int?> maxDevices,
+      Value<int> deviceAddons,
+      Value<int> branchAddons,
+      Value<int> seatAddons,
+      Value<DateTime?> trialEnd,
+      Value<DateTime?> currentPeriodEnd,
+      Value<DateTime?> graceUntil,
+      Value<double?> grandfatheredPrice,
+      Value<DateTime?> lastServerSyncAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$EntitlementCacheTableTableFilterComposer
+    extends Composer<_$AppDatabase, $EntitlementCacheTableTable> {
+  $$EntitlementCacheTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get planCode => $composableBuilder(
+    column: $table.planCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get planVersion => $composableBuilder(
+    column: $table.planVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get cloudEnabled => $composableBuilder(
+    column: $table.cloudEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get featureFlagsJson => $composableBuilder(
+    column: $table.featureFlagsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get maxBranches => $composableBuilder(
+    column: $table.maxBranches,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get maxSeats => $composableBuilder(
+    column: $table.maxSeats,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get maxDevices => $composableBuilder(
+    column: $table.maxDevices,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get deviceAddons => $composableBuilder(
+    column: $table.deviceAddons,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get branchAddons => $composableBuilder(
+    column: $table.branchAddons,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get seatAddons => $composableBuilder(
+    column: $table.seatAddons,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get trialEnd => $composableBuilder(
+    column: $table.trialEnd,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get currentPeriodEnd => $composableBuilder(
+    column: $table.currentPeriodEnd,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get graceUntil => $composableBuilder(
+    column: $table.graceUntil,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get grandfatheredPrice => $composableBuilder(
+    column: $table.grandfatheredPrice,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastServerSyncAt => $composableBuilder(
+    column: $table.lastServerSyncAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$EntitlementCacheTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $EntitlementCacheTableTable> {
+  $$EntitlementCacheTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get planCode => $composableBuilder(
+    column: $table.planCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get planVersion => $composableBuilder(
+    column: $table.planVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get cloudEnabled => $composableBuilder(
+    column: $table.cloudEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get featureFlagsJson => $composableBuilder(
+    column: $table.featureFlagsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get maxBranches => $composableBuilder(
+    column: $table.maxBranches,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get maxSeats => $composableBuilder(
+    column: $table.maxSeats,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get maxDevices => $composableBuilder(
+    column: $table.maxDevices,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get deviceAddons => $composableBuilder(
+    column: $table.deviceAddons,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get branchAddons => $composableBuilder(
+    column: $table.branchAddons,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get seatAddons => $composableBuilder(
+    column: $table.seatAddons,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get trialEnd => $composableBuilder(
+    column: $table.trialEnd,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get currentPeriodEnd => $composableBuilder(
+    column: $table.currentPeriodEnd,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get graceUntil => $composableBuilder(
+    column: $table.graceUntil,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get grandfatheredPrice => $composableBuilder(
+    column: $table.grandfatheredPrice,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastServerSyncAt => $composableBuilder(
+    column: $table.lastServerSyncAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$EntitlementCacheTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $EntitlementCacheTableTable> {
+  $$EntitlementCacheTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get planCode =>
+      $composableBuilder(column: $table.planCode, builder: (column) => column);
+
+  GeneratedColumn<int> get planVersion => $composableBuilder(
+    column: $table.planVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<bool> get cloudEnabled => $composableBuilder(
+    column: $table.cloudEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get featureFlagsJson => $composableBuilder(
+    column: $table.featureFlagsJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get maxBranches => $composableBuilder(
+    column: $table.maxBranches,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get maxSeats =>
+      $composableBuilder(column: $table.maxSeats, builder: (column) => column);
+
+  GeneratedColumn<int> get maxDevices => $composableBuilder(
+    column: $table.maxDevices,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get deviceAddons => $composableBuilder(
+    column: $table.deviceAddons,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get branchAddons => $composableBuilder(
+    column: $table.branchAddons,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get seatAddons => $composableBuilder(
+    column: $table.seatAddons,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get trialEnd =>
+      $composableBuilder(column: $table.trialEnd, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get currentPeriodEnd => $composableBuilder(
+    column: $table.currentPeriodEnd,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get graceUntil => $composableBuilder(
+    column: $table.graceUntil,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get grandfatheredPrice => $composableBuilder(
+    column: $table.grandfatheredPrice,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastServerSyncAt => $composableBuilder(
+    column: $table.lastServerSyncAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$EntitlementCacheTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $EntitlementCacheTableTable,
+          EntitlementCacheRow,
+          $$EntitlementCacheTableTableFilterComposer,
+          $$EntitlementCacheTableTableOrderingComposer,
+          $$EntitlementCacheTableTableAnnotationComposer,
+          $$EntitlementCacheTableTableCreateCompanionBuilder,
+          $$EntitlementCacheTableTableUpdateCompanionBuilder,
+          (
+            EntitlementCacheRow,
+            BaseReferences<
+              _$AppDatabase,
+              $EntitlementCacheTableTable,
+              EntitlementCacheRow
+            >,
+          ),
+          EntitlementCacheRow,
+          PrefetchHooks Function()
+        > {
+  $$EntitlementCacheTableTableTableManager(
+    _$AppDatabase db,
+    $EntitlementCacheTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$EntitlementCacheTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$EntitlementCacheTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$EntitlementCacheTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> businessId = const Value.absent(),
+                Value<String> planCode = const Value.absent(),
+                Value<int> planVersion = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<bool> cloudEnabled = const Value.absent(),
+                Value<String> featureFlagsJson = const Value.absent(),
+                Value<int?> maxBranches = const Value.absent(),
+                Value<int?> maxSeats = const Value.absent(),
+                Value<int?> maxDevices = const Value.absent(),
+                Value<int> deviceAddons = const Value.absent(),
+                Value<int> branchAddons = const Value.absent(),
+                Value<int> seatAddons = const Value.absent(),
+                Value<DateTime?> trialEnd = const Value.absent(),
+                Value<DateTime?> currentPeriodEnd = const Value.absent(),
+                Value<DateTime?> graceUntil = const Value.absent(),
+                Value<double?> grandfatheredPrice = const Value.absent(),
+                Value<DateTime?> lastServerSyncAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => EntitlementCacheTableCompanion(
+                businessId: businessId,
+                planCode: planCode,
+                planVersion: planVersion,
+                status: status,
+                cloudEnabled: cloudEnabled,
+                featureFlagsJson: featureFlagsJson,
+                maxBranches: maxBranches,
+                maxSeats: maxSeats,
+                maxDevices: maxDevices,
+                deviceAddons: deviceAddons,
+                branchAddons: branchAddons,
+                seatAddons: seatAddons,
+                trialEnd: trialEnd,
+                currentPeriodEnd: currentPeriodEnd,
+                graceUntil: graceUntil,
+                grandfatheredPrice: grandfatheredPrice,
+                lastServerSyncAt: lastServerSyncAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String businessId,
+                Value<String> planCode = const Value.absent(),
+                Value<int> planVersion = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<bool> cloudEnabled = const Value.absent(),
+                Value<String> featureFlagsJson = const Value.absent(),
+                Value<int?> maxBranches = const Value.absent(),
+                Value<int?> maxSeats = const Value.absent(),
+                Value<int?> maxDevices = const Value.absent(),
+                Value<int> deviceAddons = const Value.absent(),
+                Value<int> branchAddons = const Value.absent(),
+                Value<int> seatAddons = const Value.absent(),
+                Value<DateTime?> trialEnd = const Value.absent(),
+                Value<DateTime?> currentPeriodEnd = const Value.absent(),
+                Value<DateTime?> graceUntil = const Value.absent(),
+                Value<double?> grandfatheredPrice = const Value.absent(),
+                Value<DateTime?> lastServerSyncAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => EntitlementCacheTableCompanion.insert(
+                businessId: businessId,
+                planCode: planCode,
+                planVersion: planVersion,
+                status: status,
+                cloudEnabled: cloudEnabled,
+                featureFlagsJson: featureFlagsJson,
+                maxBranches: maxBranches,
+                maxSeats: maxSeats,
+                maxDevices: maxDevices,
+                deviceAddons: deviceAddons,
+                branchAddons: branchAddons,
+                seatAddons: seatAddons,
+                trialEnd: trialEnd,
+                currentPeriodEnd: currentPeriodEnd,
+                graceUntil: graceUntil,
+                grandfatheredPrice: grandfatheredPrice,
+                lastServerSyncAt: lastServerSyncAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$EntitlementCacheTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $EntitlementCacheTableTable,
+      EntitlementCacheRow,
+      $$EntitlementCacheTableTableFilterComposer,
+      $$EntitlementCacheTableTableOrderingComposer,
+      $$EntitlementCacheTableTableAnnotationComposer,
+      $$EntitlementCacheTableTableCreateCompanionBuilder,
+      $$EntitlementCacheTableTableUpdateCompanionBuilder,
+      (
+        EntitlementCacheRow,
+        BaseReferences<
+          _$AppDatabase,
+          $EntitlementCacheTableTable,
+          EntitlementCacheRow
+        >,
+      ),
+      EntitlementCacheRow,
+      PrefetchHooks Function()
+    >;
+typedef $$ResourceUsageCacheTableTableCreateCompanionBuilder =
+    ResourceUsageCacheTableCompanion Function({
+      required String businessId,
+      Value<int> branchCount,
+      Value<int> activeSeatCount,
+      Value<int> deviceCount,
+      Value<DateTime?> syncedAt,
+      Value<int> rowid,
+    });
+typedef $$ResourceUsageCacheTableTableUpdateCompanionBuilder =
+    ResourceUsageCacheTableCompanion Function({
+      Value<String> businessId,
+      Value<int> branchCount,
+      Value<int> activeSeatCount,
+      Value<int> deviceCount,
+      Value<DateTime?> syncedAt,
+      Value<int> rowid,
+    });
+
+class $$ResourceUsageCacheTableTableFilterComposer
+    extends Composer<_$AppDatabase, $ResourceUsageCacheTableTable> {
+  $$ResourceUsageCacheTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get branchCount => $composableBuilder(
+    column: $table.branchCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get activeSeatCount => $composableBuilder(
+    column: $table.activeSeatCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get deviceCount => $composableBuilder(
+    column: $table.deviceCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ResourceUsageCacheTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $ResourceUsageCacheTableTable> {
+  $$ResourceUsageCacheTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get branchCount => $composableBuilder(
+    column: $table.branchCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get activeSeatCount => $composableBuilder(
+    column: $table.activeSeatCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get deviceCount => $composableBuilder(
+    column: $table.deviceCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ResourceUsageCacheTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ResourceUsageCacheTableTable> {
+  $$ResourceUsageCacheTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get branchCount => $composableBuilder(
+    column: $table.branchCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get activeSeatCount => $composableBuilder(
+    column: $table.activeSeatCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get deviceCount => $composableBuilder(
+    column: $table.deviceCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get syncedAt =>
+      $composableBuilder(column: $table.syncedAt, builder: (column) => column);
+}
+
+class $$ResourceUsageCacheTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ResourceUsageCacheTableTable,
+          ResourceUsageCacheRow,
+          $$ResourceUsageCacheTableTableFilterComposer,
+          $$ResourceUsageCacheTableTableOrderingComposer,
+          $$ResourceUsageCacheTableTableAnnotationComposer,
+          $$ResourceUsageCacheTableTableCreateCompanionBuilder,
+          $$ResourceUsageCacheTableTableUpdateCompanionBuilder,
+          (
+            ResourceUsageCacheRow,
+            BaseReferences<
+              _$AppDatabase,
+              $ResourceUsageCacheTableTable,
+              ResourceUsageCacheRow
+            >,
+          ),
+          ResourceUsageCacheRow,
+          PrefetchHooks Function()
+        > {
+  $$ResourceUsageCacheTableTableTableManager(
+    _$AppDatabase db,
+    $ResourceUsageCacheTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ResourceUsageCacheTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$ResourceUsageCacheTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$ResourceUsageCacheTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> businessId = const Value.absent(),
+                Value<int> branchCount = const Value.absent(),
+                Value<int> activeSeatCount = const Value.absent(),
+                Value<int> deviceCount = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ResourceUsageCacheTableCompanion(
+                businessId: businessId,
+                branchCount: branchCount,
+                activeSeatCount: activeSeatCount,
+                deviceCount: deviceCount,
+                syncedAt: syncedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String businessId,
+                Value<int> branchCount = const Value.absent(),
+                Value<int> activeSeatCount = const Value.absent(),
+                Value<int> deviceCount = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ResourceUsageCacheTableCompanion.insert(
+                businessId: businessId,
+                branchCount: branchCount,
+                activeSeatCount: activeSeatCount,
+                deviceCount: deviceCount,
+                syncedAt: syncedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ResourceUsageCacheTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ResourceUsageCacheTableTable,
+      ResourceUsageCacheRow,
+      $$ResourceUsageCacheTableTableFilterComposer,
+      $$ResourceUsageCacheTableTableOrderingComposer,
+      $$ResourceUsageCacheTableTableAnnotationComposer,
+      $$ResourceUsageCacheTableTableCreateCompanionBuilder,
+      $$ResourceUsageCacheTableTableUpdateCompanionBuilder,
+      (
+        ResourceUsageCacheRow,
+        BaseReferences<
+          _$AppDatabase,
+          $ResourceUsageCacheTableTable,
+          ResourceUsageCacheRow
+        >,
+      ),
+      ResourceUsageCacheRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -43422,4 +45609,11 @@ class $AppDatabaseManager {
       $$DevicesTableTableTableManager(_db, _db.devicesTable);
   $$ProductBarcodesTableTableTableManager get productBarcodesTable =>
       $$ProductBarcodesTableTableTableManager(_db, _db.productBarcodesTable);
+  $$EntitlementCacheTableTableTableManager get entitlementCacheTable =>
+      $$EntitlementCacheTableTableTableManager(_db, _db.entitlementCacheTable);
+  $$ResourceUsageCacheTableTableTableManager get resourceUsageCacheTable =>
+      $$ResourceUsageCacheTableTableTableManager(
+        _db,
+        _db.resourceUsageCacheTable,
+      );
 }

@@ -9,6 +9,7 @@ import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/env/app_env.dart';
 import 'package:pos/app_bootstrap.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
+import 'package:pos/core/permissions/entitlement_service.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
@@ -86,12 +87,16 @@ Future<Widget> bootstrap() async {
     if (bid != null && bid.isNotEmpty) {
       await sl<PermissionService>().loadEnabledModules(bid);
     }
+    // Plan entitlement must be cached before SyncService arms (it decides
+    // whether the tenant may sync at all — M7.1 §7.1). Offline-safe.
+    await sl<EntitlementService>().loadFromCache();
     // Sync from Supabase in the background — does not block startup.
 
     sl<PermissionService>().syncPermissions(u.id).ignore();
     if (bid != null && bid.isNotEmpty) {
       sl<PermissionService>().syncModules(bid).ignore();
     }
+    sl<EntitlementService>().syncEntitlement().ignore();
   } else {
     // Fallback: try to load role from local Drift cache (offline start where
     // Supabase did not respond in time).
@@ -119,12 +124,17 @@ Future<Widget> bootstrap() async {
           sl<PermissionService>().syncModules(bid).ignore();
         });
       }
+      sl<EntitlementService>().loadFromCache().then((_) {
+        sl<EntitlementService>().syncEntitlement().ignore();
+      });
     } else if (state is AuthUnauthenticated) {
       sl<PermissionService>().setContext(
         roleName: null,
         branchId: null,
         userId: null,
       );
+      // Entitlement is tenant state — never carry it across accounts.
+      sl<EntitlementService>().clear().ignore();
     }
   });
 

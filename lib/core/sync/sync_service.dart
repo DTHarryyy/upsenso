@@ -53,6 +53,7 @@ import 'package:pos/core/database/daos/fraud_flags_dao.dart';
 import 'package:pos/features/alert/data/datasources/fraud_flags_remote_ds.dart';
 import 'package:pos/core/database/daos/devices_dao.dart';
 import 'package:pos/core/device/devices_remote_ds.dart';
+import 'package:pos/core/permissions/entitlement_service.dart';
 
 /// Service to handle synchronization between local Drift DB and Supabase
 class SyncService {
@@ -97,6 +98,7 @@ class SyncService {
   final FraudFlagsRemoteDs _fraudFlagsRemoteDs;
   final DevicesDao _devicesDao;
   final DevicesRemoteDs _devicesRemoteDs;
+  final EntitlementService _entitlementService;
 
   // Built lazily from existing deps (no DI change) so duplicate-invoice
   // recovery can re-claim a fresh server number on a 23505 conflict.
@@ -187,6 +189,7 @@ class SyncService {
     required FraudFlagsRemoteDs fraudFlagsRemoteDs,
     required DevicesDao devicesDao,
     required DevicesRemoteDs devicesRemoteDs,
+    required EntitlementService entitlementService,
   }) : _authContextDao = authContextDao,
        _activeBusinessContext = activeBusinessContext,
        _branchesDao = branchesDao,
@@ -227,7 +230,8 @@ class SyncService {
        _fraudFlagsDao = fraudFlagsDao,
        _fraudFlagsRemoteDs = fraudFlagsRemoteDs,
        _devicesDao = devicesDao,
-       _devicesRemoteDs = devicesRemoteDs;
+       _devicesRemoteDs = devicesRemoteDs,
+       _entitlementService = entitlementService;
 
   /// Resolves the businessId a sync should operate on.
   ///
@@ -256,12 +260,42 @@ class SyncService {
   /// (Added 2026-07-04 for local-DB testing.)
   static const bool syncEnabled = true;
 
+  /// M7.1 §7.1: cloud sync is a paid entitlement. Free = local-only — Drift
+  /// is the sole store and no business data ever leaves the device. This is
+  /// the UX gate; the server enforces the same rule with has_cloud_access()
+  /// RESTRICTIVE RLS, so a tampered client gains nothing.
+  bool get _cloudAllowed => _entitlementService.cloudEnabled;
+
+  /// Re-arm/pause when the plan changes (upgrade lands, trial expires, lapse
+  /// confirmed). Hooked once; survives pause() so a later upgrade can re-arm.
+  bool _entitlementHooked = false;
+
+  void _onEntitlementChanged() {
+    if (_cloudAllowed && !_initCalled) {
+      debugPrint('[SYNC] Cloud entitlement gained — arming sync.');
+      init();
+    } else if (!_cloudAllowed && _initCalled) {
+      debugPrint('[SYNC] Cloud entitlement lost — pausing sync.');
+      pause();
+    }
+  }
+
   /// Initialize sync service and listen for connectivity changes.
   /// Guards against being called multiple times (e.g. if MainNavigationPage
   /// is rebuilt) so we never accumulate duplicate listeners.
   void init() {
     if (!syncEnabled) {
       debugPrint('[SYNC] Disabled (syncEnabled=false) — local-only test mode.');
+      return;
+    }
+    if (!_entitlementHooked) {
+      _entitlementHooked = true;
+      _entitlementService.entitlementRevision.addListener(
+        _onEntitlementChanged,
+      );
+    }
+    if (!_cloudAllowed) {
+      debugPrint('[SYNC] Cloud sync off — local plan (M7.1 §7.1).');
       return;
     }
     if (_initCalled) return;
@@ -546,6 +580,14 @@ class SyncService {
       return SyncResult(
         success: true,
         message: 'Sync disabled — local-only test mode',
+      );
+    }
+    if (!_cloudAllowed) {
+      // Not an error: on a local plan, pending rows simply stay local. They
+      // are pushed by the first-sync backfill when the tenant upgrades.
+      return SyncResult(
+        success: true,
+        message: 'Cloud sync off — local plan',
       );
     }
     if (_isSyncing) {

@@ -143,6 +143,9 @@ import 'package:pos/features/notifications/domain/repositories/i_notifications_r
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/permissions/data_scoping_layer.dart';
 import 'package:pos/core/permissions/data/permission_remote_ds.dart';
+import 'package:pos/core/permissions/entitlement_service.dart';
+import 'package:pos/core/permissions/data/entitlement_remote_ds.dart';
+import 'package:pos/core/database/daos/entitlement_dao.dart';
 import 'package:pos/core/database/daos/employee_permissions_dao.dart';
 import 'package:pos/core/database/daos/business_modules_dao.dart';
 
@@ -402,6 +405,7 @@ Future<void> initDI() async {
       fraudFlagsRemoteDs: sl<FraudFlagsRemoteDs>(),
       devicesDao: sl<DevicesDao>(),
       devicesRemoteDs: sl<DevicesRemoteDs>(),
+      entitlementService: sl<EntitlementService>(),
     )
       ..onSyncCompleted = () {
         // One-time cleanup of the 2026-07-03 false-positive flags runs before
@@ -602,6 +606,24 @@ Future<void> initDI() async {
       businessModulesDao: sl<BusinessModulesDao>(),
     ),
   );
+
+  // M7.1 plan entitlement — the outermost access layer (design §7). Attached
+  // to PermissionService post-construction to avoid a registration cycle.
+  sl.registerLazySingleton<EntitlementDao>(
+    () => EntitlementDao(sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<EntitlementRemoteDs>(
+    () => EntitlementRemoteDs(sl<SupabaseClient>()),
+  );
+  sl.registerLazySingleton<EntitlementService>(() {
+    final service = EntitlementService(
+      entitlementDao: sl<EntitlementDao>(),
+      entitlementRemoteDs: sl<EntitlementRemoteDs>(),
+      activeBusinessContext: sl<ActiveBusinessContext>(),
+    );
+    sl<PermissionService>().attachEntitlementService(service);
+    return service;
+  });
 
   sl.registerLazySingleton<DataScopingLayer>(
     () => DataScopingLayer(permissionService: sl<PermissionService>()),

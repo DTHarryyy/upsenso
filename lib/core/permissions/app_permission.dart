@@ -253,6 +253,12 @@ enum AppPermission {
   /// Run the tamper-evidence verification over the audit hash chain.
   verifyAuditChain,
 
+  /// View the billing / subscription page (plan, usage meters, invoices).
+  viewBilling,
+
+  /// Manage the subscription: upgrade, buy add-ons, revoke devices.
+  manageBilling,
+
   /// Access data across multiple branches (Business Owner only).
   crossBranchAccess,
 }
@@ -411,6 +417,10 @@ extension AppPermissionX on AppPermission {
         return 'Delete Audit Logs';
       case AppPermission.verifyAuditChain:
         return 'Verify Audit Chain';
+      case AppPermission.viewBilling:
+        return 'View Billing';
+      case AppPermission.manageBilling:
+        return 'Manage Billing';
       case AppPermission.crossBranchAccess:
         return 'Cross-Branch Access';
     }
@@ -557,6 +567,10 @@ extension AppPermissionX on AppPermission {
         return 'audit_logs.delete';
       case AppPermission.verifyAuditChain:
         return 'audit_logs.verify';
+      case AppPermission.viewBilling:
+        return 'billing.view';
+      case AppPermission.manageBilling:
+        return 'billing.manage';
       case AppPermission.crossBranchAccess:
         return 'data.cross_branch_access';
     }

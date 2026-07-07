@@ -77,6 +77,9 @@ import 'package:pos/core/database/tables/devices_table.dart';
 import 'package:pos/core/database/daos/devices_dao.dart';
 import 'package:pos/core/database/tables/product_barcodes_table.dart';
 import 'package:pos/core/database/daos/product_barcodes_dao.dart';
+import 'package:pos/core/database/tables/entitlement_cache_table.dart';
+import 'package:pos/core/database/tables/resource_usage_cache_table.dart';
+import 'package:pos/core/database/daos/entitlement_dao.dart';
 
 part 'app_database.g.dart';
 
@@ -120,6 +123,8 @@ part 'app_database.g.dart';
     FraudCandidatesTable,
     DevicesTable,
     ProductBarcodesTable,
+    EntitlementCacheTable,
+    ResourceUsageCacheTable,
   ],
   daos: [
     AuthContextDao,
@@ -157,6 +162,7 @@ part 'app_database.g.dart';
     FraudCandidatesDao,
     DevicesDao,
     ProductBarcodesDao,
+    EntitlementDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -177,7 +183,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 57;
+  int get schemaVersion => 58;
 
   @override
   MigrationStrategy get migration {
@@ -1044,6 +1050,24 @@ class AppDatabase extends _$AppDatabase {
             "UPDATE product_variants SET sync_status = 1 "
             "WHERE unit IS NOT NULL AND TRIM(unit) != '' AND sync_status = 3",
           );
+        }
+        if (from < 58) {
+          // M7.1 billing: local read-only caches for the plan entitlement and
+          // the usage meters (see UPSENSO_SUBSCRIPTION_AND_LIMITS_DESIGN §8).
+          // Written only by the entitlement sync path. Additive.
+          // Rollback: DROP TABLE entitlement_cache, resource_usage_cache.
+          try {
+            await m.createTable(entitlementCacheTable);
+          } catch (e, st) {
+            debugPrint(
+                '[AppDatabase] v58 entitlement_cache create skipped: $e\n$st');
+          }
+          try {
+            await m.createTable(resourceUsageCacheTable);
+          } catch (e, st) {
+            debugPrint(
+                '[AppDatabase] v58 resource_usage_cache create skipped: $e\n$st');
+          }
         }
       },
     );

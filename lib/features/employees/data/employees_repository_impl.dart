@@ -8,6 +8,7 @@ import 'package:pos/core/database/daos/employee_permissions_dao.dart';
 import 'package:pos/core/database/daos/employees_dao.dart';
 import 'package:pos/core/permissions/data/permission_remote_ds.dart';
 import 'package:pos/core/permissions/default_permission_matrix.dart';
+import 'package:pos/core/permissions/entitlement_service.dart';
 import 'package:pos/core/permissions/role_permission_matrix.dart';
 import 'package:pos/core/sync/sync_status.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
@@ -84,6 +85,12 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
   }) async {
     final id = _uuid.v4();
     final now = DateTime.now();
+
+    // Courtesy seat-cap check before the auth account is minted — the server
+    // RPC enforces the same cap for real (M7.1 §6.2), this just fails friendly.
+    if (!sl<EntitlementService>().canAddAnother(EntitlementResource.seats)) {
+      throw const EmployeeSeatLimitException();
+    }
 
     // The form only carries a display role name; resolve the real UUID so RBAC
     // is keyed on a stable role id rather than free-text.

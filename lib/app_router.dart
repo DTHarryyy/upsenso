@@ -8,6 +8,8 @@ import 'package:pos/core/const/app_key.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
+import 'package:pos/core/permissions/app_feature.dart';
+import 'package:pos/core/permissions/entitlement_service.dart';
 import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/permissions/role_permission_matrix.dart';
@@ -94,9 +96,12 @@ class AppRouter {
     // Re-run guards on auth changes AND module-gate changes, so disabling a
     // module (offline toggle or background sync) redirects users off a now-
     // disabled page and refreshes the shell nav without a manual navigation.
+    // Entitlement changes (plan upgrade/lapse arriving via background sync)
+    // re-run guards the same way.
     refreshListenable: Listenable.merge([
       _AuthRefreshNotifier(sl<AuthBloc>().stream),
       sl<PermissionService>().moduleGateRevision,
+      sl<EntitlementService>().entitlementRevision,
     ]),
 
     onException: (_, state, router) => router.go(AppRoutes.signIn),
@@ -237,6 +242,24 @@ class AppRouter {
         final requiredModule = routeModuleGuards[location];
         if (requiredModule != null &&
             !sl<PermissionService>().isModuleEnabled(requiredModule)) {
+          return AppRoutes.dashboard;
+        }
+
+        // Plan-entitlement guards (M7.1 §7): a tier that doesn't include the
+        // feature redirects to the dashboard, where the locked-module tile
+        // offers the upgrade — never a dead end mid-sale.
+        const routeEntitlementGuards = <String, AppFeature>{
+          AppRoutes.customers: AppFeature.customerDirectory,
+          AppRoutes.customerDetail: AppFeature.customerDirectory,
+          AppRoutes.suppliers: AppFeature.supplierDirectory,
+          AppRoutes.supplierDetail: AppFeature.supplierDirectory,
+          AppRoutes.purchaseOrders: AppFeature.procurement,
+          AppRoutes.poForm: AppFeature.procurement,
+          AppRoutes.poDetail: AppFeature.procurement,
+        };
+        final requiredFeature = routeEntitlementGuards[location];
+        if (requiredFeature != null &&
+            !sl<EntitlementService>().featureAllowed(requiredFeature)) {
           return AppRoutes.dashboard;
         }
       }
