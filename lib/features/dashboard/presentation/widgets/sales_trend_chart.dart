@@ -1,6 +1,8 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:iconly/iconly.dart';
+import 'package:pos/core/const/app_typography.dart';
+import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/features/dashboard/data/dashboard_data.dart';
 import 'package:pos/features/dashboard/presentation/widgets/dashboard_empty_state.dart';
 
@@ -40,12 +42,12 @@ class _SalesTrendChartState extends State<SalesTrendChart> {
 
     final maxY = _maxY;
     final interval = maxY / 4;
-
+    final pad = Breakpoints.isPhone(context) ? 12.0 : 16.0;
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(pad),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.grey.shade200),
       ),
       child: Column(
@@ -54,9 +56,11 @@ class _SalesTrendChartState extends State<SalesTrendChart> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Sales Trend',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                style: AppTextStyles.body(
+                  context,
+                ).copyWith(fontWeight: FontWeight.w600),
               ),
               Row(
                 children: [

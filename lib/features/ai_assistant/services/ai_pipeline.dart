@@ -29,8 +29,8 @@ class AiPipeline {
   AiPipeline({
     required LlmService llmService,
     required AiToolService toolService,
-  })  : _llmService = llmService,
-        _toolService = toolService;
+  }) : _llmService = llmService,
+       _toolService = toolService;
 
   /// Initialize the pipeline (load LLM model if available).
   Future<void> initialize() async {
@@ -298,20 +298,25 @@ class AiPipeline {
   }) async {
     // Layer 5: Get product catalog (with caching)
     final catalog = await _getCatalog(businessId);
-    debugPrint('AI Pipeline [Catalog]: businessId=$businessId, '
-        'products=${catalog.length}, '
-        'names=${catalog.map((c) => c.product.name).toSet().join(", ")}');
+    debugPrint(
+      'AI Pipeline [Catalog]: businessId=$businessId, '
+      'products=${catalog.length}, '
+      'names=${catalog.map((c) => c.product.name).toSet().join(", ")}',
+    );
 
     if (catalog.isEmpty) {
       return AiPipelineResult(
-        responseText: 'No products found in your inventory. '
+        responseText:
+            'No products found in your inventory. '
             'Please add products first before creating transactions.',
         type: AiResponseType.text,
       );
     }
 
     // Layer 6: Fuzzy match items against catalog
-    debugPrint('AI Pipeline [Items]: ${items.map((i) => '${i.name}×${i.quantity}').join(', ')}');
+    debugPrint(
+      'AI Pipeline [Items]: ${items.map((i) => '${i.name}×${i.quantity}').join(', ')}',
+    );
     final matchResult = ProductMatcher.matchItems(
       parsedItems: items,
       catalog: catalog,
@@ -320,14 +325,13 @@ class AiPipeline {
     // Build preview
     final matched = matchResult.matched;
     final unmatched = matchResult.unmatched;
-    debugPrint('AI Pipeline [Match]: matched=${matched.length}, '
-        'unmatched=${unmatched.join(', ')}');
+    debugPrint(
+      'AI Pipeline [Match]: matched=${matched.length}, '
+      'unmatched=${unmatched.join(', ')}',
+    );
 
     if (matched.isEmpty) {
-      final catalogNames = catalog
-          .map((c) => c.product.name)
-          .toSet()
-          .toList()
+      final catalogNames = catalog.map((c) => c.product.name).toSet().toList()
         ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
       return AiPipelineResult(
         responseText: AiResponseFormatter.formatUnmatchedProducts(
@@ -356,7 +360,8 @@ class AiPipeline {
     );
   }
 
-  /// Layer 9 — Execution: Create the transaction ONLY after user confirms.
+  /// layer 9 execution create aa trransaction only
+  ///  when user confirmf if ayaw edi dont
   Future<AiPipelineResult> confirmTransaction({
     required AiTransactionPreview preview,
     required String cashierId,

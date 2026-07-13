@@ -136,7 +136,7 @@ mismatch detection; the app warns before stockouts.
 - **M4.3 Landed cost / cost history** — track unit cost over time from receipts;
   powers the `NEGATIVE_MARGIN_SALE` fraud rule (M1) and margin analytics (M2/M6).
 - **Permissions:** reuse `procurement.*`.
-
+                      
 **Exit criteria:** the app suggests what to reorder, from whom, at what expected
 cost — owner just approves.
 

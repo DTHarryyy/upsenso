@@ -4,6 +4,7 @@ import 'package:iconly/iconly.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
+import 'package:pos/core/const/breakpoint.dart';
 // import 'package:pos/features/ai_assistant/widgets/floating_ai_assistant_bar.dart';
 import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
@@ -99,7 +100,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 ? state.data
                 : DashboardData.empty();
             final isLoading = state is DashboardLoading;
-
+            final isPhone = Breakpoints.isPhone(context);
+            final pad = isPhone ? 12.0 : 16.0;
             return Scaffold(
               // floatingActionButton: const FloatingAIAssistantBar(),
               body: (state is DashboardInitial || state is DashboardLoading)
@@ -108,17 +110,15 @@ class _DashboardPageState extends State<DashboardPage> {
                       onRefresh: () async => _triggerLoad(),
                       child: SingleChildScrollView(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.all(16),
+                        padding: EdgeInsets.all(pad),
                         child: Column(
                           children: [
-                            // ── Stat Cards ──
+                            // Stat Cards KPIs NGANI
                             _StatCardsRow(data: data, isLoading: isLoading),
 
-                            const SizedBox(height: 16),
+                            SizedBox(height: pad),
 
-                            // ── Row 1: Sales Trend + Top Selling Items ──
-                            // On wide screens they sit side by side (flex 3 : 2)
-                            // matching the skeleton layout.
+                            // Sales Trend and Top Selling Items
                             LayoutBuilder(
                               builder: (context, constraints) {
                                 if (constraints.maxWidth > 800) {
@@ -370,7 +370,7 @@ class _StatCardsRow extends StatelessWidget {
   }
 }
 
-// ─── Dashboard skeleton loader ────────────────────────────────────────────────
+// Dashboard skeleton loader
 
 class _DashboardSkeleton extends StatefulWidget {
   const _DashboardSkeleton();
@@ -436,7 +436,7 @@ class _DashboardSkeletonState extends State<_DashboardSkeleton>
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(6),
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
           child: child,
@@ -483,9 +483,9 @@ class _DashboardSkeletonState extends State<_DashboardSkeleton>
             ],
           ),
         );
-
+        final pad = Breakpoints.isPhone(context) ? 12.0 : 16.0;
         return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(pad),
           child: Column(
             children: [
               // ── Stat cards ── matches StatCardsRow's responsive grid.
@@ -502,11 +502,12 @@ class _DashboardSkeletonState extends State<_DashboardSkeleton>
                     );
                     rows.add(
                       Row(
-                        children: slice
-                            .map((w) => Expanded(child: w))
-                            .expand((w) => [w, const SizedBox(width: 12)])
-                            .toList()
-                          ..removeLast(),
+                        children:
+                            slice
+                                .map((w) => Expanded(child: w))
+                                .expand((w) => [w, const SizedBox(width: 12)])
+                                .toList()
+                              ..removeLast(),
                       ),
                     );
                   }
@@ -514,37 +515,9 @@ class _DashboardSkeletonState extends State<_DashboardSkeleton>
                 },
               ),
 
-              const SizedBox(height: 16),
+              SizedBox(height: pad),
 
-              // ── Quick actions bar ──
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 10,
-                  horizontal: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: List.generate(
-                    4,
-                    (_) => Column(
-                      children: [
-                        box(width: 40, height: 40, radius: 12),
-                        const SizedBox(height: 6),
-                        box(width: 54, height: 10, radius: 5),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // ── Row 1: Sales trend + Low stock ──
+              // Row 1: Sales trend + Low stock
               LayoutBuilder(
                 builder: (_, c) {
                   if (c.maxWidth > 800) {
@@ -569,7 +542,7 @@ class _DashboardSkeletonState extends State<_DashboardSkeleton>
                 },
               ),
 
-              const SizedBox(height: 16),
+              SizedBox(height: pad),
 
               // ── Row 2: Top selling + Payment methods + Expenses ──
               LayoutBuilder(
@@ -600,7 +573,7 @@ class _DashboardSkeletonState extends State<_DashboardSkeleton>
                 },
               ),
 
-              const SizedBox(height: 16),
+              SizedBox(height: pad),
 
               // ── Row 3: Category performance + Branch comparison ──
               LayoutBuilder(
@@ -620,14 +593,14 @@ class _DashboardSkeletonState extends State<_DashboardSkeleton>
                   return Column(
                     children: [
                       chartCard(200),
-                      const SizedBox(height: 16),
+                      SizedBox(height: pad),
                       chartCard(180),
                     ],
                   );
                 },
               ),
 
-              const SizedBox(height: 24),
+              SizedBox(height: pad),
             ],
           ),
         );

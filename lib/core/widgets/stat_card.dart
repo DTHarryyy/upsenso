@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
+import 'package:pos/core/const/breakpoint.dart';
 
 /// Generic white card shell used across reports, dashboard, expenses, inventory.
 class AppCard extends StatelessWidget {
@@ -80,7 +81,7 @@ class AppStatCard extends StatelessWidget {
         color: isSelected
             ? iconColor.withValues(alpha: 0.06)
             : AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: isSelected ? iconColor : AppColors.borderSoft,
           width: isSelected ? 1.5 : 1,
@@ -93,53 +94,59 @@ class AppStatCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        // mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.caption(context).copyWith(
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                  ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.caption(context).copyWith(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.money(
+                        context,
+                      ).copyWith(color: AppColors.textPrimary),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.money(
-                    context,
-                  ).copyWith(color: AppColors.textPrimary),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: badgeColor,
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                if (changeLabel != null) ...[
-                  const SizedBox(height: 6),
-                  _TrendRow(
-                    label: changeLabel!,
-                    period: changePeriod,
-                    positive: positive,
-                  ),
-                ],
-              ],
-            ),
+                child: Icon(icon, size: 18, color: iconColor),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: badgeColor,
-              borderRadius: BorderRadius.circular(10),
+          if (changeLabel != null) ...[
+            const SizedBox(height: 6),
+            _TrendRow(
+              label: changeLabel!,
+              period: changePeriod,
+              positive: positive,
             ),
-            child: Icon(icon, size: 18, color: iconColor),
-          ),
+          ],
         ],
       ),
     );
@@ -168,7 +175,7 @@ class _TrendRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = positive ? AppColors.success : AppColors.error;
-    final size = (11 * ResponsiveTypography.scale(context)).roundToDouble();
+    // final size = (11 * ResponsiveTypography.scale(context)).roundToDouble();
     final text = period == null ? label : '$label $period';
 
     return Row(
@@ -185,8 +192,8 @@ class _TrendRow extends StatelessWidget {
             text,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
+
             style: AppTextStyles.caption(context).copyWith(
-              fontSize: size,
               color: color,
               // fontWeight: FontWeight.w600,
             ),
@@ -220,19 +227,14 @@ int kpiColumnCount(
 class StatCardsRow extends StatelessWidget {
   final List<Widget> cards;
   final double minTileWidth;
-  final double gap;
+  // final double gap;
 
-  const StatCardsRow({
-    super.key,
-    required this.cards,
-    this.minTileWidth = 165,
-    this.gap = 12,
-  });
+  const StatCardsRow({super.key, required this.cards, this.minTileWidth = 165});
 
   @override
   Widget build(BuildContext context) {
     if (cards.isEmpty) return const SizedBox.shrink();
-
+    final gap = Breakpoints.isPhone(context) ? 8.0 : 12.0;
     return LayoutBuilder(
       builder: (_, constraints) {
         final columns = kpiColumnCount(

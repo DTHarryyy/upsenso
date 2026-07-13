@@ -456,7 +456,7 @@ class _SecurityActivityCard extends StatelessWidget {
     );
   }
 }
-// TODO: fraud flags are not yet implemented on the backend, so this badge is not currently used. It will be added to the Employee Overview card once the feature is available.
+//
 // class _FraudFlagBadge extends StatelessWidget {
 //   final int flagCount;
 
