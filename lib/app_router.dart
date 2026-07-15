@@ -52,6 +52,7 @@ import 'package:pos/features/employees/domain/entities/employee.dart';
 import 'package:pos/features/employees/presentation/pages/employees_page.dart';
 import 'package:pos/features/employees/presentation/pages/employee_permissions_page.dart';
 import 'package:pos/features/settings/presentation/module_settings_page.dart';
+import 'package:pos/features/billing/presentation/billing_page.dart';
 import 'package:pos/features/settings/presentation/refund_approval_settings_page.dart';
 import 'package:pos/features/settings/presentation/manager_pin_page.dart';
 import 'package:pos/features/procurement/domain/repositories/i_procurement_repository.dart';
@@ -198,6 +199,7 @@ class AppRouter {
           AppRoutes.receiptSettings: PermissionKeys.navSettings,
           AppRoutes.moduleSettings: PermissionKeys.settingsEditBusiness,
           AppRoutes.refundApprovalSettings: PermissionKeys.settingsEditBusiness,
+          AppRoutes.billing: PermissionKeys.navBilling,
           AppRoutes.managerPin: PermissionKeys.navSettings,
           AppRoutes.employeePermissions: PermissionKeys.navEmployees,
           AppRoutes.suppliers: PermissionKeys.navProcurement,
@@ -329,6 +331,10 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.refundApprovalSettings,
         builder: (context, _) => const RefundApprovalSettingsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.billing,
+        builder: (context, _) => const BillingPage(),
       ),
       GoRoute(
         path: AppRoutes.managerPin,

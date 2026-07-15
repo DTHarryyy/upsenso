@@ -848,6 +848,10 @@ class _AppSidebarState extends State<_AppSidebar>
                         AppRoutes.moduleSettings,
                         extra: widget.businessId ?? '',
                       ),
+                      onBillingTap:
+                          sl<PermissionService>().can(PermissionKeys.navBilling)
+                              ? () => context.push(AppRoutes.billing)
+                              : null,
                     ),
 
                     const SizedBox(height: 6),
@@ -1009,6 +1013,7 @@ class _SettingsAccordion extends StatelessWidget {
   final VoidCallback onHeaderTap;
   final ValueChanged<SettingsSubPage> onSubItemTap;
   final VoidCallback? onModulesTap;
+  final VoidCallback? onBillingTap;
 
   const _SettingsAccordion({
     required this.expanded,
@@ -1019,6 +1024,7 @@ class _SettingsAccordion extends StatelessWidget {
     required this.onHeaderTap,
     required this.onSubItemTap,
     this.onModulesTap,
+    this.onBillingTap,
   });
 
   @override
@@ -1197,6 +1203,13 @@ class _SettingsAccordion extends StatelessWidget {
                   isSubActive:
                       isActive && activeSubPage == SettingsSubPage.modules,
                   onTap: onModulesTap!,
+                ),
+              if (onBillingTap != null)
+                subItemTile(
+                  icon: IconlyLight.wallet,
+                  label: 'Billing & Subscription',
+                  isSubActive: false,
+                  onTap: onBillingTap!,
                 ),
             ],
           ),

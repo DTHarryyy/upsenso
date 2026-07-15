@@ -322,6 +322,14 @@ class _MorePageState extends State<MorePage>
                                     );
                                   }
                                 : null,
+                            onBillingTap: permService.can(
+                              PermissionKeys.navBilling,
+                            )
+                                ? () {
+                                    Navigator.of(context).pop();
+                                    context.push(AppRoutes.billing);
+                                  }
+                                : null,
                           ),
                         ),
                       ],
@@ -535,10 +543,12 @@ class _SettingsTile extends StatelessWidget {
 class _SettingsSubItems extends StatelessWidget {
   final void Function(String route) onNavigate;
   final VoidCallback? onModulesTap;
+  final VoidCallback? onBillingTap;
 
   const _SettingsSubItems({
     required this.onNavigate,
     this.onModulesTap,
+    this.onBillingTap,
   });
 
   @override
@@ -564,6 +574,12 @@ class _SettingsSubItems extends StatelessWidget {
           icon: IconlyLight.setting,
           label: 'Module Management',
           onTap: onModulesTap!,
+        ),
+      if (onBillingTap != null)
+        (
+          icon: IconlyLight.wallet,
+          label: 'Billing & Subscription',
+          onTap: onBillingTap!,
         ),
     ];
 

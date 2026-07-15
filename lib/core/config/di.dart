@@ -9,6 +9,7 @@ import 'package:pos/core/device/device_info_service.dart';
 import 'package:pos/core/device/device_identity_service.dart';
 import 'package:pos/core/device/device_registration_remote_ds.dart';
 import 'package:pos/core/device/device_registration_service.dart';
+import 'package:pos/features/billing/data/billing_remote_ds.dart';
 
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/auth_context_dao.dart';
@@ -472,6 +473,10 @@ Future<void> initDI() async {
   sl.registerLazySingleton<DeviceInfoService>(() => DeviceInfoService());
   sl.registerLazySingleton<DeviceIdentityService>(
     () => DeviceIdentityService(prefs: sl<SharedPreferences>()),
+  );
+  // M7.1 billing catalog + checkout reads.
+  sl.registerLazySingleton<BillingRemoteDs>(
+    () => BillingRemoteDs(sl<SupabaseClient>()),
   );
   // M7.1 device registration — cap-enforced, online-only (§6.3).
   sl.registerLazySingleton<DeviceRegistrationRemoteDs>(
