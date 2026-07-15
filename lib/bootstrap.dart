@@ -9,6 +9,7 @@ import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/env/app_env.dart';
 import 'package:pos/app_bootstrap.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
+import 'package:pos/core/device/device_registration_service.dart';
 import 'package:pos/core/permissions/entitlement_service.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
@@ -96,7 +97,12 @@ Future<Widget> bootstrap() async {
     if (bid != null && bid.isNotEmpty) {
       sl<PermissionService>().syncModules(bid).ignore();
     }
-    sl<EntitlementService>().syncEntitlement().ignore();
+    // Refresh entitlement, then register this device against the plan cap
+    // (§6.3) — a successful registration bumps registrationRevision and arms
+    // SyncService. Chained so registration sees the freshest cloudEnabled.
+    sl<EntitlementService>().syncEntitlement().then((_) {
+      sl<DeviceRegistrationService>().ensureRegistered();
+    }).ignore();
   } else {
     // Fallback: try to load role from local Drift cache (offline start where
     // Supabase did not respond in time).
@@ -125,7 +131,9 @@ Future<Widget> bootstrap() async {
         });
       }
       sl<EntitlementService>().loadFromCache().then((_) {
-        sl<EntitlementService>().syncEntitlement().ignore();
+        sl<EntitlementService>().syncEntitlement().then((_) {
+          sl<DeviceRegistrationService>().ensureRegistered();
+        });
       });
     } else if (state is AuthUnauthenticated) {
       sl<PermissionService>().setContext(

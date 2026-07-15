@@ -53,6 +53,7 @@ import 'package:pos/core/database/daos/fraud_flags_dao.dart';
 import 'package:pos/features/alert/data/datasources/fraud_flags_remote_ds.dart';
 import 'package:pos/core/database/daos/devices_dao.dart';
 import 'package:pos/core/device/devices_remote_ds.dart';
+import 'package:pos/core/device/device_registration_service.dart';
 import 'package:pos/core/permissions/entitlement_service.dart';
 
 /// Service to handle synchronization between local Drift DB and Supabase
@@ -99,6 +100,7 @@ class SyncService {
   final DevicesDao _devicesDao;
   final DevicesRemoteDs _devicesRemoteDs;
   final EntitlementService _entitlementService;
+  final DeviceRegistrationService _deviceRegistrationService;
 
   // Built lazily from existing deps (no DI change) so duplicate-invoice
   // recovery can re-claim a fresh server number on a 23505 conflict.
@@ -190,6 +192,7 @@ class SyncService {
     required DevicesDao devicesDao,
     required DevicesRemoteDs devicesRemoteDs,
     required EntitlementService entitlementService,
+    required DeviceRegistrationService deviceRegistrationService,
   }) : _authContextDao = authContextDao,
        _activeBusinessContext = activeBusinessContext,
        _branchesDao = branchesDao,
@@ -231,7 +234,8 @@ class SyncService {
        _fraudFlagsRemoteDs = fraudFlagsRemoteDs,
        _devicesDao = devicesDao,
        _devicesRemoteDs = devicesRemoteDs,
-       _entitlementService = entitlementService;
+       _entitlementService = entitlementService,
+       _deviceRegistrationService = deviceRegistrationService;
 
   /// Resolves the businessId a sync should operate on.
   ///
@@ -264,10 +268,17 @@ class SyncService {
   /// is the sole store and no business data ever leaves the device. This is
   /// the UX gate; the server enforces the same rule with has_cloud_access()
   /// RESTRICTIVE RLS, so a tampered client gains nothing.
-  bool get _cloudAllowed => _entitlementService.cloudEnabled;
+  /// Cloud sync requires BOTH a cloud entitlement AND this device being
+  /// registered under the plan's device cap (M7.1 §6.3). A registered device
+  /// that gets revoked, or a device over the cap, stops syncing — the server
+  /// enforces the same via register_device / has_cloud_access.
+  bool get _cloudAllowed =>
+      _entitlementService.cloudEnabled &&
+      _deviceRegistrationService.isRegistered;
 
   /// Re-arm/pause when the plan changes (upgrade lands, trial expires, lapse
-  /// confirmed). Hooked once; survives pause() so a later upgrade can re-arm.
+  /// confirmed) or device registration status changes. Hooked once; survives
+  /// pause() so a later upgrade/registration can re-arm.
   bool _entitlementHooked = false;
 
   void _onEntitlementChanged() {
@@ -291,6 +302,9 @@ class SyncService {
     if (!_entitlementHooked) {
       _entitlementHooked = true;
       _entitlementService.entitlementRevision.addListener(
+        _onEntitlementChanged,
+      );
+      _deviceRegistrationService.registrationRevision.addListener(
         _onEntitlementChanged,
       );
     }

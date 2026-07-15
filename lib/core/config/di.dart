@@ -7,6 +7,8 @@ import 'package:pos/core/env/app_env.dart';
 import 'package:pos/core/security/secure_storage_service.dart';
 import 'package:pos/core/device/device_info_service.dart';
 import 'package:pos/core/device/device_identity_service.dart';
+import 'package:pos/core/device/device_registration_remote_ds.dart';
+import 'package:pos/core/device/device_registration_service.dart';
 
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/auth_context_dao.dart';
@@ -406,6 +408,7 @@ Future<void> initDI() async {
       devicesDao: sl<DevicesDao>(),
       devicesRemoteDs: sl<DevicesRemoteDs>(),
       entitlementService: sl<EntitlementService>(),
+      deviceRegistrationService: sl<DeviceRegistrationService>(),
     )
       ..onSyncCompleted = () {
         // One-time cleanup of the 2026-07-03 false-positive flags runs before
@@ -469,6 +472,21 @@ Future<void> initDI() async {
   sl.registerLazySingleton<DeviceInfoService>(() => DeviceInfoService());
   sl.registerLazySingleton<DeviceIdentityService>(
     () => DeviceIdentityService(prefs: sl<SharedPreferences>()),
+  );
+  // M7.1 device registration — cap-enforced, online-only (§6.3).
+  sl.registerLazySingleton<DeviceRegistrationRemoteDs>(
+    () => DeviceRegistrationRemoteDs(sl<SupabaseClient>()),
+  );
+  sl.registerLazySingleton<DeviceRegistrationService>(
+    () => DeviceRegistrationService(
+      remoteDs: sl<DeviceRegistrationRemoteDs>(),
+      identityService: sl<DeviceIdentityService>(),
+      infoService: sl<DeviceInfoService>(),
+      activeBusinessContext: sl<ActiveBusinessContext>(),
+      entitlementService: sl<EntitlementService>(),
+      connectivityService: sl<ConnectivityService>(),
+      prefs: sl<SharedPreferences>(),
+    ),
   );
   sl.registerLazySingleton<AuditLogService>(
     () => AuditLogService(
