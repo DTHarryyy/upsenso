@@ -569,6 +569,11 @@ class _SettingsSubItems extends StatelessWidget {
         label: 'My Profile',
         onTap: () => onNavigate(AppRoutes.profile),
       ),
+      (
+        icon: IconlyLight.download,
+        label: 'Export My Data',
+        onTap: () => onNavigate(AppRoutes.dataExport),
+      ),
       if (onModulesTap != null)
         (
           icon: IconlyLight.setting,

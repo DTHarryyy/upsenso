@@ -149,6 +149,12 @@ class SyncService {
   /// core/sync doesn't take a hard dependency on the audit service).
   Future<void> Function()? drainAuditOutbox;
 
+  /// Invoked once when cloud access is first gained (Free→paid upgrade),
+  /// before the first syncAll. Wired in DI to BackfillService.markAllForUpload
+  /// so a re-upgrade re-queues previously-synced rows (design §7.2). Callback,
+  /// so core/sync doesn't depend on the backfill service.
+  Future<void> Function()? onCloudGained;
+
   SyncService({
     required AuthContextDao authContextDao,
     required ActiveBusinessContext activeBusinessContext,
@@ -283,8 +289,16 @@ class SyncService {
 
   void _onEntitlementChanged() {
     if (_cloudAllowed && !_initCalled) {
-      debugPrint('[SYNC] Cloud entitlement gained — arming sync.');
-      init();
+      debugPrint('[SYNC] Cloud entitlement gained — backfill + arm sync.');
+      // Re-queue previously-synced rows first (§7.2), then arm; the first
+      // syncAll then pushes a complete snapshot. Fire-and-forget: the mark is
+      // idempotent and init() will also retry via the periodic timer.
+      final backfill = onCloudGained;
+      if (backfill != null) {
+        backfill().whenComplete(init);
+      } else {
+        init();
+      }
     } else if (!_cloudAllowed && _initCalled) {
       debugPrint('[SYNC] Cloud entitlement lost — pausing sync.');
       pause();

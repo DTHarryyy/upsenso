@@ -26,6 +26,8 @@ import 'package:pos/core/services/cart_service.dart';
 import 'package:pos/core/services/checkout_service.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_service.dart';
+import 'package:pos/core/sync/backfill_service.dart';
+import 'package:pos/core/export/data_export_service.dart';
 import 'package:pos/core/session/active_business_context.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/features/auth/data/datasources/auth_remote_ds.dart';
@@ -362,6 +364,15 @@ Future<void> initDI() async {
     ),
   );
 
+  // M7.1 first-sync backfill (§7.2) — re-queues local rows on Free→paid.
+  sl.registerLazySingleton<BackfillService>(
+    () => BackfillService(sl<AppDatabase>()),
+  );
+  // M7.1 manual export — no entitlement gate; every tier can keep a copy (§4.7).
+  sl.registerLazySingleton<DataExportService>(
+    () => DataExportService(sl<AppDatabase>()),
+  );
+
   // SyncService is constructed without calling init() here.
   // init() is called from MainNavigationPage after the first frame renders,
   // so that background sync never blocks the startup critical path.
@@ -422,7 +433,8 @@ Future<void> initDI() async {
       }
       ..drainAuditOutbox = (() => sl<AuditLogService>().drainOutbox())
       ..onChainConflict = ((businessId) =>
-          sl<AuditLogService>().reconcileConflictedTail(businessId)),
+          sl<AuditLogService>().reconcileConflictedTail(businessId))
+      ..onCloudGained = (() => sl<BackfillService>().markAllForUpload()),
   );
 
   // ── AI Assistant services ──────────────────────────────────────────────

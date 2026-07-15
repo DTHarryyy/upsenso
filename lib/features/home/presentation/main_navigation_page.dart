@@ -1211,6 +1211,12 @@ class _SettingsAccordion extends StatelessWidget {
                   isSubActive: false,
                   onTap: onBillingTap!,
                 ),
+              subItemTile(
+                icon: IconlyLight.download,
+                label: 'Export My Data',
+                isSubActive: false,
+                onTap: () => context.push(AppRoutes.dataExport),
+              ),
             ],
           ),
         ),
