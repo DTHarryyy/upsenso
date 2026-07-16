@@ -19,7 +19,7 @@ class OrphanedRecordRule implements FraudRule {
   bool get requiresFullAuditMirror => true;
 
   @override
-  Future<List<FraudFlagDraft>> evaluate(FraudScanContext ctx) async {
+  Future<List<FraudFlagDraft>?> evaluate(FraudScanContext ctx) async {
     // Records that predate the chain (pre-M1) were legitimately written
     // without per-service audit guarantees — scope to the chain era.
     final m1Start = await ctx.db
@@ -30,7 +30,7 @@ class OrphanedRecordRule implements FraudRule {
         )
         .getSingleOrNull();
     final m1StartUnix = m1Start?.readNullable<int>('m1_start');
-    if (m1StartUnix == null) return const []; // chain era not started
+    if (m1StartUnix == null) return null; // chain era not started — no verdict
 
     final scanStart =
         m1StartUnix > ctx.windowStartUnix ? m1StartUnix : ctx.windowStartUnix;
@@ -44,14 +44,17 @@ class OrphanedRecordRule implements FraudRule {
     // Without (2) a refund created on a cashier device and synced here before
     // its audit row was pulled is falsely orphaned (the 2026-07-03 FP). No
     // watermark yet ⇒ the mirror was never pulled ⇒ we can't judge anything.
+    // These gated exits return NULL, not [] — "couldn't judge" must not be
+    // mistaken for "scanned clean", or the engine would wipe every pending
+    // candidate and restart confirmation on real incidents.
     final mirrorFreshUnix = ctx.auditMirrorFreshUnix;
-    if (mirrorFreshUnix == null) return const [];
+    if (mirrorFreshUnix == null) return null;
     final eventGraceCutoff = ctx.nowUnix - FraudDefaults.orphanGraceSeconds;
     final mirrorGraceCutoff =
         mirrorFreshUnix - FraudDefaults.orphanGraceSeconds;
     final graceCutoff =
         eventGraceCutoff < mirrorGraceCutoff ? eventGraceCutoff : mirrorGraceCutoff;
-    if (graceCutoff < scanStart) return const [];
+    if (graceCutoff < scanStart) return null;
 
     final drafts = <FraudFlagDraft>[];
 

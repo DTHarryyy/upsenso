@@ -1,5 +1,37 @@
 # Fraud/Anomaly False-Positive Incident (2026-07-03) — Investigation + Fix Plan
 
+> **2026-07-16 hardening round (accuracy pass on the shipped P0/P1 code):**
+> 1. **Audit mirror late-arrival repair** (`AuditMirrorRepair`, runs after
+>    every audit pull): the created_at-keyset pull permanently skips rows
+>    another device pushed late (offline backlog / chain-conflict holdback) —
+>    the resulting local seq holes read as `seqGap` (critical tamper FP) and
+>    missing REFUND_CREATED tails re-create the orphan FP. Repair refetches
+>    missing seq ranges + other devices' stale tails by seq; own chain's tail
+>    is never touched (writer/verifier semantics preserved).
+> 2. **Inconclusive scans** — `FraudRule.evaluate` may now return null ("no
+>    verdict": mirror never pulled, empty judgeable window); the engine leaves
+>    candidate state untouched instead of treating it as "all clean" and
+>    wiping candidates. `deleteStale` additionally runs on FULL sweeps only.
+> 3. **Stable tamper confirmation** — AUDIT_TAMPER drafts carry an explicit
+>    `confirmationSignature` built from stable break identities; truncation
+>    evidence embeds moving head seqs and previously restarted confirmation
+>    every sweep (the flag could never surface).
+> 4. **Chain-safe prune** — `pruneOlderThan` deletes chained rows only as a
+>    contiguous per-chain seq prefix (bounded by the first row newer than the
+>    cutoff or not yet synced); a plain created_at delete carved mid-chain
+>    holes out of re-chained blocks and around stuck unsynced rows → seqGap
+>    FPs.
+> 5. **TIME_REVERSAL `_rechained` check** parses metadata JSON in Dart instead
+>    of SQL LIKE (jsonb round trips reordering keys/whitespace can no longer
+>    resurrect the re-chain FP; markers inside string values don't suppress).
+> 6. **Cross-branch aggregation** — EXCESSIVE_REFUNDS / REFUND_STRUCTURING
+>    group per employee(+day) across branches (split-across-branches evasion
+>    + colliding dedupe keys fixed); branch attributed only when unique.
+> 7. Minor: PERMISSION_PROBING orders denials by created_at (correct
+>    detectedAt/branch); HIGH_DISCOUNT 30-day rate excludes voided sales.
+> Regression tests restored + extended (61 green): `test/core/services/…`,
+> `test/core/audit/audit_mirror_repair_test.dart`.
+
 > **Status: P0 + P1 + §4c + §5 IMPLEMENTED (2026-07-04), not yet deployed.**
 > Code landed on the working tree; Drift schema is at **v56**; full suite green
 > (200 tests, +12 regression). Three Supabase migrations are **written but NOT

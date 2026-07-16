@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 
 import 'package:pos/core/services/fraud_rules/fraud_flag_draft.dart';
@@ -24,21 +26,17 @@ class TimeReversalRule implements FraudRule {
   bool get requiresFullAuditMirror => false;
 
   @override
-  Future<List<FraudFlagDraft>> evaluate(FraudScanContext ctx) async {
-    final rows = await ctx.db
+  Future<List<FraudFlagDraft>?> evaluate(FraudScanContext ctx) async {
+    final candidates = await ctx.db
         .customSelect(
           'SELECT a.id, a.device_uid, a.seq, a.user_id, a.branch_id, '
-          'a.created_at AS at, p.created_at AS prev_at '
+          'a.metadata, a.created_at AS at, p.created_at AS prev_at '
           'FROM audit_logs a JOIN audit_logs p '
           'ON p.business_id = a.business_id AND p.device_uid = a.device_uid '
           'AND p.seq = a.seq - 1 '
           'WHERE a.business_id = ? AND a.seq IS NOT NULL '
           'AND a.created_at >= ? '
-          'AND a.created_at < p.created_at - ? '
-          // A transplanted tail (reconcileConflictedTail) preserves original
-          // timestamps under new seqs — not a clock roll. Its rows carry the
-          // marker; skip pairs whose later row is re-chained.
-          "AND a.metadata NOT LIKE '%\"_rechained\":true%'",
+          'AND a.created_at < p.created_at - ?',
           variables: [
             Variable.withString(ctx.businessId),
             Variable<int>(ctx.windowStartUnix),
@@ -46,6 +44,13 @@ class TimeReversalRule implements FraudRule {
           ],
         )
         .get();
+
+    // A transplanted tail (reconcileConflictedTail) preserves original
+    // timestamps under new seqs — not a clock roll. Its rows carry a
+    // `_rechained` marker; the check parses the JSON rather than substring-
+    // matching it, so a jsonb round trip that reorders keys or changes
+    // whitespace can never resurrect the 2026-07-03 false positive.
+    final rows = candidates.where((r) => !_isRechained(r)).toList();
 
     return [
       for (final r in rows)
@@ -82,5 +87,16 @@ class TimeReversalRule implements FraudRule {
           relatedIds: [r.read<String>('id')],
         ),
     ];
+  }
+
+  static bool _isRechained(QueryRow r) {
+    final raw = r.readNullable<String>('metadata');
+    if (raw == null || raw.isEmpty) return false;
+    try {
+      final decoded = jsonDecode(raw);
+      return decoded is Map && decoded['_rechained'] == true;
+    } on FormatException {
+      return false;
+    }
   }
 }

@@ -145,6 +145,12 @@ class SyncService {
   /// core/sync doesn't take a hard dependency on the audit service).
   Future<void> Function()? drainAuditOutbox;
 
+  /// Refetches audit rows the created_at-keyset pull structurally misses
+  /// (late-pushed rows land behind the watermark). Wired in DI to
+  /// AuditMirrorRepair.repair; runs after each audit pull so seq gaps and
+  /// stale tails never survive long enough to read as tampering.
+  Future<int> Function(String businessId)? repairAuditMirror;
+
   SyncService({
     required AuthContextDao authContextDao,
     required ActiveBusinessContext activeBusinessContext,
@@ -2081,6 +2087,14 @@ class SyncService {
         debugPrint(
           '[SYNC] Pruned $prunedCount audit log row(s) past the local window',
         );
+      }
+      // Seq-driven repair AFTER the keyset pull: rows another device pushed
+      // late sit behind this device's watermark and would otherwise never
+      // arrive — the mirror holes they leave are what the fraud rules were
+      // false-positiving on (seqGap tamper flags, "refund with no audit
+      // trail"). Runs after the prune so refilled rows aren't re-deleted.
+      if (repairAuditMirror != null) {
+        pulled += await repairAuditMirror!(businessId);
       }
     } catch (e, st) {
       failed++;

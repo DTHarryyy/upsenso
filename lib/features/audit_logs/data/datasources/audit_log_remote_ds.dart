@@ -85,6 +85,30 @@ class AuditLogRemoteDs {
     return List<Map<String, dynamic>>.from(res as List);
   }
 
+  /// Rows of one device chain by seq range — the repair path for holes the
+  /// created_at-keyset pull can't see (rows pushed late land BEHIND the
+  /// watermark and are otherwise never fetched, leaving local seq gaps that
+  /// read as tampering). Ordered by seq so partial fills stay contiguous.
+  /// RLS keeps this owner/admin-scoped like every other audit SELECT.
+  Future<List<Map<String, dynamic>>> getChainRows(
+    String businessId,
+    String deviceUid, {
+    required int fromSeq,
+    required int toSeq,
+    int limit = 500,
+  }) async {
+    final res = await _client
+        .from('audit_logs')
+        .select()
+        .eq('business_id', businessId)
+        .eq('device_uid', deviceUid)
+        .gte('seq', fromSeq)
+        .lte('seq', toSeq)
+        .order('seq', ascending: true)
+        .limit(limit);
+    return List<Map<String, dynamic>>.from(res as List);
+  }
+
   /// On-demand fetch for history older than the local retention window — the
   /// server keeps every row forever, so this is how a user reaches entries
   /// that [AuditLogsDao.pruneOlderThan] has already cleared off the device.

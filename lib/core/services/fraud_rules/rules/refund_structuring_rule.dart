@@ -35,15 +35,20 @@ class RefundStructuringRule implements FraudRule {
             1000;
     final bandLow = threshold * FraudDefaults.structuringBandLow;
 
+    // Grouped per employee ACROSS branches — structuring is a per-person
+    // pattern, and splitting it over branches must not divide the count
+    // under the threshold (nor mint colliding dedupe keys per branch).
     final rows = await ctx.db
         .customSelect(
-          'SELECT refunded_by, branch_id, COUNT(*) AS cnt, '
+          'SELECT refunded_by, COUNT(*) AS cnt, '
           'SUM(total_amount) AS val, MAX(created_at) AS last_at, '
-          "DATE(MAX(created_at),'unixepoch','localtime') AS last_day "
+          "DATE(MAX(created_at),'unixepoch','localtime') AS last_day, "
+          'COUNT(DISTINCT branch_id) AS branch_cnt, '
+          'MIN(branch_id) AS branch_one '
           'FROM refunds '
           'WHERE business_id = ? AND created_at >= ? AND deleted_at IS NULL '
           'AND total_amount >= ? AND total_amount < ? '
-          'GROUP BY refunded_by, branch_id '
+          'GROUP BY refunded_by '
           'HAVING cnt >= ?',
           variables: [
             Variable.withString(ctx.businessId),
@@ -75,7 +80,9 @@ class RefundStructuringRule implements FraudRule {
         detectedAt: DateTime.fromMillisecondsSinceEpoch(
           r.read<int>('last_at') * 1000,
         ),
-        branchId: r.readNullable<String>('branch_id'),
+        branchId: r.read<int>('branch_cnt') == 1
+            ? r.readNullable<String>('branch_one')
+            : null,
         subjectUserId: user,
         evidence: [
           {'fact': 'Refunds in the 70–100% band', 'value': cnt, 'window': '7 days'},

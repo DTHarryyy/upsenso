@@ -66,7 +66,14 @@ abstract class FraudRule {
   /// cashier device that never pulls other devices' audit rows.
   bool get requiresFullAuditMirror => false;
 
-  Future<List<FraudFlagDraft>> evaluate(FraudScanContext ctx);
+  /// Returns the drafts this scan produced, or NULL when the rule could not
+  /// judge at all (mirror never pulled, empty judgeable window, transient
+  /// read error). The distinction matters for confirmation-gated rules: an
+  /// empty list means "scanned, everything clean" and lets the engine
+  /// auto-resolve pending candidates, while null means "no verdict" and
+  /// must leave candidate state untouched — treating a gated scan as clean
+  /// would silently restart confirmation and delay real detections forever.
+  Future<List<FraudFlagDraft>?> evaluate(FraudScanContext ctx);
 }
 
 /// Everything a rule needs to run one scan.

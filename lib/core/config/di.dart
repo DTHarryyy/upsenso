@@ -102,6 +102,7 @@ import 'package:pos/core/database/daos/product_barcodes_dao.dart';
 import 'package:pos/core/device/devices_remote_ds.dart';
 import 'package:pos/core/audit/audit_log_service.dart';
 import 'package:pos/core/audit/audit_chain_verifier.dart';
+import 'package:pos/core/audit/audit_mirror_repair.dart';
 import 'package:pos/core/database/daos/fraud_flags_dao.dart';
 import 'package:pos/core/database/daos/fraud_candidates_dao.dart';
 import 'package:pos/features/alert/data/datasources/fraud_flags_remote_ds.dart';
@@ -413,6 +414,8 @@ Future<void> initDI() async {
             );
       }
       ..drainAuditOutbox = (() => sl<AuditLogService>().drainOutbox())
+      ..repairAuditMirror =
+          ((businessId) => sl<AuditMirrorRepair>().repair(businessId))
       ..onChainConflict = ((businessId) =>
           sl<AuditLogService>().reconcileConflictedTail(businessId)),
   );
@@ -485,6 +488,22 @@ Future<void> initDI() async {
       devicesDao: sl<DevicesDao>(),
       deviceIdentityService: sl<DeviceIdentityService>(),
       fetchChainHeads: () => sl<AuditLogRemoteDs>().fetchChainHeads(),
+    ),
+  );
+  sl.registerLazySingleton<AuditMirrorRepair>(
+    () => AuditMirrorRepair(
+      dao: sl<AuditLogsDao>(),
+      deviceIdentityService: sl<DeviceIdentityService>(),
+      fetchChainHeads: () => sl<AuditLogRemoteDs>().fetchChainHeads(),
+      fetchChainRows: (businessId, deviceUid,
+              {required fromSeq, required toSeq, limit = 500}) =>
+          sl<AuditLogRemoteDs>().getChainRows(
+        businessId,
+        deviceUid,
+        fromSeq: fromSeq,
+        toSeq: toSeq,
+        limit: limit,
+      ),
     ),
   );
 

@@ -25,7 +25,9 @@ class PermissionProbingRule implements FraudRule {
           "DATE(created_at,'unixepoch','localtime') AS day "
           'FROM audit_logs '
           "WHERE business_id = ? AND action_type = 'PERMISSION_DENIED' "
-          'AND created_at >= ?',
+          // Ordered so each group's LAST row really is the newest denial —
+          // detectedAt and branch attribution come from it.
+          'AND created_at >= ? ORDER BY created_at ASC',
           variables: [
             Variable.withString(ctx.businessId),
             Variable<int>(ctx.windowStartUnix),

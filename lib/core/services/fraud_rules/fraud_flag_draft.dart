@@ -38,6 +38,14 @@ class FraudFlagDraft {
   /// duplicating (unique per business on both Drift and Supabase).
   final String dedupeKey;
 
+  /// Stable identity of the OBSERVATION for the confirm-before-flag pipeline.
+  /// The engine falls back to the raw evidence when null — fine for rules
+  /// whose evidence is already stable, but evidence that embeds moving values
+  /// (chain head positions, growing counts) would restart confirmation on
+  /// every sweep and the flag would never surface. Such rules must set this
+  /// to the parts of the observation that identify it, nothing more.
+  final String? confirmationSignature;
+
   const FraudFlagDraft({
     required this.ruleCode,
     required this.severity,
@@ -49,6 +57,7 @@ class FraudFlagDraft {
     this.subjectUserId,
     this.evidence = const [],
     this.relatedIds = const [],
+    this.confirmationSignature,
   });
 
   FraudFlagDraft copyWith({
@@ -66,6 +75,7 @@ class FraudFlagDraft {
       subjectUserId: subjectUserId,
       evidence: evidence ?? this.evidence,
       relatedIds: relatedIds,
+      confirmationSignature: confirmationSignature,
     );
   }
 }
