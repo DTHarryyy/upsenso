@@ -9,7 +9,6 @@ import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/widgets/app_section_card.dart';
-import 'package:pos/core/widgets/app_status_badge.dart';
 import 'package:pos/features/billing/data/billing_remote_ds.dart';
 import 'package:pos/features/billing/domain/billing_models.dart';
 import 'package:pos/features/billing/presentation/cubit/billing_cubit.dart';
@@ -44,11 +43,34 @@ class _BillingView extends StatefulWidget {
   State<_BillingView> createState() => _BillingViewState();
 }
 
-class _BillingViewState extends State<_BillingView> {
+class _BillingViewState extends State<_BillingView>
+    with WidgetsBindingObserver {
   bool _annual = false;
   bool _busy = false;
 
-  bool get _canManage => sl<PermissionService>().can(PermissionKeys.billingManage);
+  bool get _canManage =>
+      sl<PermissionService>().can(PermissionKeys.billingManage);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Returning from the external PayMongo checkout: pull the fresh plan so a
+    // just-completed upgrade reflects immediately.
+    if (state == AppLifecycleState.resumed && mounted) {
+      context.read<BillingCubit>().refresh();
+    }
+  }
 
   Future<void> _launch(Future<String> Function() start) async {
     if (_busy) return;
@@ -58,15 +80,15 @@ class _BillingViewState extends State<_BillingView> {
       final ok = await launchUrl(Uri.parse(url),
           mode: LaunchMode.externalApplication);
       if (!ok && mounted) _snack('Could not open the checkout page.');
-    } catch (e) {
+    } catch (_) {
       if (mounted) _snack('Checkout failed. Please try again.');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  void _snack(String msg) => ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(msg)));
+  void _snack(String msg) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
   @override
   Widget build(BuildContext context) {
@@ -75,6 +97,7 @@ class _BillingViewState extends State<_BillingView> {
       appBar: AppBar(
         title: const Text('Billing & Subscription'),
         backgroundColor: AppColors.surface,
+        surfaceTintColor: AppColors.surface,
       ),
       body: BlocBuilder<BillingCubit, BillingState>(
         builder: (context, state) {
@@ -86,13 +109,13 @@ class _BillingViewState extends State<_BillingView> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                _currentPlanCard(state),
+                _PlanHero(state: state),
                 const SizedBox(height: 16),
                 if (_showMeters(state)) ...[
                   _usageCard(state),
                   const SizedBox(height: 16),
                 ],
-                _planPickerCard(context, state),
+                _planSection(context, state),
                 if (state.addons.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   _addonsCard(context, state),
@@ -118,47 +141,6 @@ class _BillingViewState extends State<_BillingView> {
       s.cloudEnabled &&
       (s.maxBranches != null || s.maxSeats != null || s.maxDevices != null);
 
-  // ── Current plan ───────────────────────────────────────────────────────────
-  Widget _currentPlanCard(BillingState s) {
-    final badge = _statusBadge(s.effectiveStatus);
-    return AppSectionCard(
-      title: 'Your plan',
-      icon: Icons.workspace_premium_outlined,
-      trailing: AppStatusBadge(label: badge.$1, color: badge.$2),
-      children: [
-        Row(
-          children: [
-            Text(
-              _planLabel(s.planCode),
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const Spacer(),
-            if (s.grandfatheredPrice != null && s.grandfatheredPrice! > 0)
-              Text('₱${s.grandfatheredPrice!.toStringAsFixed(0)}/mo locked',
-                  style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.success,
-                      fontWeight: FontWeight.w700)),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Text(
-          _statusLine(s),
-          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-        ),
-        if (s.offline) ...[
-          const SizedBox(height: 8),
-          const Text('Offline — showing your saved plan. Connect to manage it.',
-              style: TextStyle(fontSize: 12, color: AppColors.warning)),
-        ],
-      ],
-    );
-  }
-
   // ── Usage meters ────────────────────────────────────────────────────────────
   Widget _usageCard(BillingState s) {
     return AppSectionCard(
@@ -166,41 +148,82 @@ class _BillingViewState extends State<_BillingView> {
       icon: Icons.speed_outlined,
       children: [
         UsageMeter(label: 'Branches', used: s.branchUsage, max: s.maxBranches),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         UsageMeter(label: 'Seats', used: s.seatUsage, max: s.maxSeats),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         UsageMeter(label: 'Devices', used: s.deviceUsage, max: s.maxDevices),
       ],
     );
   }
 
-  // ── Plan picker ─────────────────────────────────────────────────────────────
-  Widget _planPickerCard(BuildContext context, BillingState s) {
+  // ── Plans section (with offline / retry states) ─────────────────────────────
+  Widget _planSection(BuildContext context, BillingState s) {
     return AppSectionCard(
       title: 'Plans',
       icon: Icons.grid_view_rounded,
-      trailing: _periodToggle(),
+      trailing: s.plans.isNotEmpty ? _periodToggle() : null,
       children: [
-        if (s.plans.isEmpty)
-          const Text('Connect to see available plans.',
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary))
+        if (s.offline)
+          _notice(
+            icon: Icons.wifi_off_rounded,
+            text: 'You\'re offline. Connect to change your plan — selling and '
+                'everything on this device keeps working.',
+          )
+        else if (s.catalogFailed)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _notice(
+                icon: Icons.cloud_off_rounded,
+                text: 'Couldn\'t load plans right now.',
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () => context.read<BillingCubit>().refresh(),
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('Try again'),
+              ),
+            ],
+          )
+        else if (s.plans.isEmpty)
+          _notice(icon: Icons.hourglass_empty_rounded, text: 'Loading plans…')
         else
-          ...s.plans.map((p) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: PlanCard(
-                  plan: p,
-                  annual: _annual,
-                  isCurrent: p.code == s.planCode &&
-                      s.effectiveStatus != 'lapsed' &&
-                      s.effectiveStatus != 'free',
-                  busy: _busy,
-                  canManage: _canManage,
-                  onSelect: () => _launch(() => context
-                      .read<BillingCubit>()
-                      .startPlanCheckout(
-                          p.code, p.version, _annual ? 'annual' : 'monthly')),
-                ),
-              )),
+          ...[
+            for (int i = 0; i < s.plans.length; i++) ...[
+              PlanCard(
+                plan: s.plans[i],
+                annual: _annual,
+                isCurrent: s.plans[i].code == s.planCode &&
+                    s.effectiveStatus != 'lapsed' &&
+                    s.effectiveStatus != 'free',
+                isRecommended: s.plans[i].code == 'growth',
+                busy: _busy,
+                canManage: _canManage,
+                onSelect: () => _launch(() => context
+                    .read<BillingCubit>()
+                    .startPlanCheckout(s.plans[i].code, s.plans[i].version,
+                        _annual ? 'annual' : 'monthly')),
+              ),
+              if (i != s.plans.length - 1) const SizedBox(height: 12),
+            ],
+          ],
+      ],
+    );
+  }
+
+  Widget _notice({required IconData icon, required String text}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: AppColors.textSecondary),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+                fontSize: 13, height: 1.4, color: AppColors.textSecondary),
+          ),
+        ),
       ],
     );
   }
@@ -223,6 +246,13 @@ class _BillingViewState extends State<_BillingView> {
       title: 'Add-ons',
       icon: Icons.add_circle_outline_rounded,
       children: [
+        const Padding(
+          padding: EdgeInsets.only(bottom: 12),
+          child: Text(
+            'Grow without changing plans — add just what you need.',
+            style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+          ),
+        ),
         for (final a in s.addons)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -243,7 +273,7 @@ class _BillingViewState extends State<_BillingView> {
                     ],
                   ),
                 ),
-                TextButton(
+                FilledButton.tonal(
                   onPressed: (!_canManage || _busy || !s.cloudEnabled)
                       ? null
                       : () => _launch(() => context
@@ -302,30 +332,33 @@ class _BillingViewState extends State<_BillingView> {
       children: [
         for (final p in s.payments)
           Padding(
-            padding: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.only(bottom: 10),
             child: Row(
               children: [
                 Expanded(
-                  child: Text(
-                    '${_invoiceLabel(p)}  ·  ${_date(p.createdAt)}'
-                    '${p.isTest ? '  (test)' : ''}',
-                    style: const TextStyle(
-                        fontSize: 13, color: AppColors.textPrimary),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(_invoiceLabel(p),
+                          style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary)),
+                      Text(
+                        '${_date(p.createdAt)}${p.isTest ? '  ·  test' : ''}',
+                        style: const TextStyle(
+                            fontSize: 11.5, color: AppColors.textSecondary),
+                      ),
+                    ],
                   ),
                 ),
                 Text('₱${p.amount.toStringAsFixed(0)}',
                     style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary)),
-                const SizedBox(width: 8),
-                AppStatusBadge(
-                    label: p.status,
-                    color: p.status == 'paid'
-                        ? AppColors.success
-                        : p.status == 'failed'
-                            ? AppColors.error
-                            : AppColors.warning),
+                const SizedBox(width: 10),
+                _payStatusDot(p.status),
               ],
             ),
           ),
@@ -333,30 +366,28 @@ class _BillingViewState extends State<_BillingView> {
     );
   }
 
-  // ── Helpers ─────────────────────────────────────────────────────────────────
-  (String, Color) _statusBadge(String status) => switch (status) {
-        'trialing' => ('Trial', AppColors.info),
-        'active' => ('Active', AppColors.success),
-        'past_due' => ('Past due', AppColors.warning),
-        'lapsed' => ('Lapsed', AppColors.warning),
-        _ => ('Free', AppColors.textSecondary),
-      };
-
-  String _statusLine(BillingState s) {
-    final d = s.daysRemaining;
-    return switch (s.effectiveStatus) {
-      'trialing' => d != null
-          ? 'Cloud backup on us — $d day(s) left in your trial.'
-          : 'You\'re on a free trial with cloud backup.',
-      'active' => 'Your data is backed up to the cloud automatically.',
-      'past_due' => d != null
-          ? 'Payment pending — cloud stays on for $d more day(s).'
-          : 'Payment pending — your POS keeps working.',
-      'lapsed' =>
-        'Cloud is paused. Your data is safe on this device; reactivate anytime.',
-      _ => 'Everything runs on this device. Upgrade for cloud backup + more.',
-    };
+  Widget _payStatusDot(String status) {
+    final color = status == 'paid'
+        ? AppColors.success
+        : status == 'failed'
+            ? AppColors.error
+            : AppColors.warning;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(status,
+          style: TextStyle(
+              fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+    );
   }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+  String _invoiceLabel(BillingPayment p) => p.kind == 'addon'
+      ? 'Add-on: ${p.addonCode ?? ''}'
+      : 'Plan: ${_planLabel(p.planCode ?? 'free')}';
 
   String _planLabel(String code) => switch (code) {
         'starter' => 'Starter',
@@ -365,10 +396,6 @@ class _BillingViewState extends State<_BillingView> {
         'enterprise' => 'Enterprise',
         _ => 'Free',
       };
-
-  String _invoiceLabel(BillingPayment p) => p.kind == 'addon'
-      ? 'Add-on: ${p.addonCode ?? ''}'
-      : 'Plan: ${_planLabel(p.planCode ?? 'free')}';
 
   IconData _platformIcon(String platform) => switch (platform) {
         'android' => Icons.android,
@@ -380,4 +407,182 @@ class _BillingViewState extends State<_BillingView> {
 
   String _date(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+}
+
+/// The current-plan hero — the emotional anchor of the page. Tints to the plan
+/// state (trial/active = brand, past_due/lapsed = warning, free = neutral) so
+/// the situation reads at a glance without alarm.
+class _PlanHero extends StatelessWidget {
+  final BillingState state;
+  const _PlanHero({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = _theme(state.effectiveStatus);
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [theme.$1, theme.$2],
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(theme.$3, size: 18, color: theme.$4),
+              const SizedBox(width: 8),
+              Text(
+                'YOUR PLAN',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1,
+                  color: theme.$4,
+                ),
+              ),
+              const Spacer(),
+              _statusPill(theme.$4),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                _planLabel(state.planCode),
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  color: theme.$5,
+                ),
+              ),
+              const Spacer(),
+              if (state.grandfatheredPrice != null &&
+                  state.grandfatheredPrice! > 0)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '₱${state.grandfatheredPrice!.toStringAsFixed(0)}/mo locked',
+                    style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.success),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _statusLine(state),
+            style: TextStyle(fontSize: 13, height: 1.4, color: theme.$6),
+          ),
+          if (state.offline) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Offline — showing your saved plan.',
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: theme.$6),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _statusPill(Color fg) {
+    final (label, _) = _badge(state.effectiveStatus);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(label,
+          style: TextStyle(
+              fontSize: 11.5, fontWeight: FontWeight.w800, color: fg)),
+    );
+  }
+
+  (String, Color) _badge(String status) => switch (status) {
+        'trialing' => ('TRIAL', AppColors.info),
+        'active' => ('ACTIVE', AppColors.success),
+        'past_due' => ('PAST DUE', AppColors.warning),
+        'lapsed' => ('PAUSED', AppColors.warning),
+        _ => ('FREE', AppColors.textSecondary),
+      };
+
+  // Returns (bgTop, bgBottom, icon, accent, title, body) for a status.
+  (Color, Color, IconData, Color, Color, Color) _theme(String status) {
+    switch (status) {
+      case 'trialing':
+      case 'active':
+        return (
+          AppColors.brandSoft,
+          const Color(0xFFF3F7FF),
+          Icons.workspace_premium_rounded,
+          AppColors.brand,
+          AppColors.textPrimary,
+          AppColors.textSecondary,
+        );
+      case 'past_due':
+      case 'lapsed':
+        return (
+          AppColors.warningSoft,
+          const Color(0xFFFFF9EE),
+          Icons.pause_circle_outline_rounded,
+          AppColors.warning,
+          AppColors.textPrimary,
+          AppColors.textSecondary,
+        );
+      default:
+        return (
+          AppColors.surface,
+          AppColors.background,
+          Icons.smartphone_rounded,
+          AppColors.textSecondary,
+          AppColors.textPrimary,
+          AppColors.textSecondary,
+        );
+    }
+  }
+
+  String _planLabel(String code) => switch (code) {
+        'starter' => 'Starter',
+        'growth' => 'Growth',
+        'business' => 'Business',
+        'enterprise' => 'Enterprise',
+        _ => 'Free',
+      };
+
+  String _statusLine(BillingState s) {
+    final d = s.daysRemaining;
+    return switch (s.effectiveStatus) {
+      'trialing' => d != null
+          ? 'Cloud backup is on us — $d ${_dayWord(d)} left in your trial.'
+          : 'You\'re on a free trial with cloud backup.',
+      'active' => 'Your data is backed up to the cloud automatically.',
+      'past_due' => d != null
+          ? 'Payment pending — cloud stays on for $d more ${_dayWord(d)}. '
+              'Your POS keeps working.'
+          : 'Payment pending — your POS keeps working.',
+      'lapsed' =>
+        'Cloud is paused. Your data is safe on this device; reactivate anytime.',
+      _ => 'Everything runs on this device. Upgrade for cloud backup, more '
+          'devices, branches and a team.',
+    };
+  }
+
+  String _dayWord(int n) => n == 1 ? 'day' : 'days';
 }

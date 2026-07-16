@@ -27,8 +27,13 @@ class BillingCubit extends Cubit<BillingState> {
         super(const BillingState());
 
   Future<void> load() async {
-    // Always render the current plan from the local entitlement cache first.
-    emit(_withEntitlement(state).copyWith(status: BillingStatus.ready));
+    // Always render the current plan from the local entitlement cache first,
+    // clearing any prior offline/failure flags for this fresh attempt.
+    emit(_withEntitlement(state).copyWith(
+      status: BillingStatus.ready,
+      offline: false,
+      catalogFailed: false,
+    ));
 
     final online = await _connectivity.isConnected;
     if (!online) {
@@ -46,6 +51,7 @@ class BillingCubit extends Cubit<BillingState> {
       emit(_withEntitlement(state).copyWith(
         status: BillingStatus.ready,
         offline: false,
+        catalogFailed: false,
         plans: plans,
         addons: addons,
         payments: payments,
@@ -53,10 +59,12 @@ class BillingCubit extends Cubit<BillingState> {
       ));
     } catch (e, st) {
       debugPrint('[BillingCubit] Error in load: $e\n$st');
-      // Keep the offline-cached current plan; just flag the catalog failure.
-      emit(state.copyWith(
+      // Online but the catalog didn't load (schema not deployed / transient).
+      // Keep the cached current plan; offer a Retry, not a false "offline".
+      emit(_withEntitlement(state).copyWith(
         status: BillingStatus.ready,
-        offline: true,
+        offline: false,
+        catalogFailed: true,
       ));
     }
   }

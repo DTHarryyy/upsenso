@@ -32,7 +32,14 @@ class BillingState extends Equatable {
   final List<BillingPayment> payments;
   final List<RegisteredDevice> devices;
 
+  /// Device has no connection — current plan renders from cache, changes are
+  /// disabled with a calm "you're offline" note.
   final bool offline;
+
+  /// Online, but the catalog/entitlement fetch failed (e.g. billing schema not
+  /// deployed, transient server error). Distinct from [offline] so the UI can
+  /// offer a Retry instead of misleadingly saying "offline".
+  final bool catalogFailed;
 
   const BillingState({
     this.status = BillingStatus.loading,
@@ -53,6 +60,7 @@ class BillingState extends Equatable {
     this.payments = const [],
     this.devices = const [],
     this.offline = false,
+    this.catalogFailed = false,
   });
 
   BillingState copyWith({
@@ -74,6 +82,7 @@ class BillingState extends Equatable {
     List<BillingPayment>? payments,
     List<RegisteredDevice>? devices,
     bool? offline,
+    bool? catalogFailed,
   }) {
     return BillingState(
       status: status ?? this.status,
@@ -94,6 +103,7 @@ class BillingState extends Equatable {
       payments: payments ?? this.payments,
       devices: devices ?? this.devices,
       offline: offline ?? this.offline,
+      catalogFailed: catalogFailed ?? this.catalogFailed,
     );
   }
 
@@ -117,5 +127,6 @@ class BillingState extends Equatable {
         payments,
         devices,
         offline,
+        catalogFailed,
       ];
 }
