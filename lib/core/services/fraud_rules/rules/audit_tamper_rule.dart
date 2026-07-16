@@ -29,7 +29,7 @@ class AuditTamperRule implements FraudRule {
   bool get requiresFullAuditMirror => false;
 
   @override
-  Future<List<FraudFlagDraft>> evaluate(FraudScanContext ctx) async {
+  Future<List<FraudFlagDraft>?> evaluate(FraudScanContext ctx) async {
     final drafts = <FraudFlagDraft>[];
 
     final result = await _verifier.verify(businessId: ctx.businessId);
@@ -62,6 +62,11 @@ class AuditTamperRule implements FraudRule {
         // breaks (55 on 2026-07-03) must not mint N flags. The break detail
         // lives in evidence; the digest keeps the feed readable.
         dedupeKey: '$code|${device.deviceUid}|${localDayString(ctx.now)}',
+        // The evidence embeds MOVING values (head seqs grow with every chain
+        // write), so confirmation must key on the stable identity of the
+        // break set — otherwise every sweep looks like a "different"
+        // observation and the flag never confirms.
+        confirmationSignature: _stableSignature(device),
         detectedAt: ctx.now,
         branchId: branchId,
         subjectUserId: null,
@@ -82,6 +87,27 @@ class AuditTamperRule implements FraudRule {
     }
 
     return drafts;
+  }
+
+  /// What identifies THIS set of breaks across sweeps. Content breaks are
+  /// pinned to (reason, seq, expected, actual) — those never move for the
+  /// same incident. Truncation/storage-loss breaks are identified by reason
+  /// alone: both the local and server head keep climbing while the condition
+  /// persists, and folding those numbers in would restart confirmation on
+  /// every sweep.
+  static String _stableSignature(AuditChainDeviceReport device) {
+    const contentReasons = {
+      AuditChainBreakReason.hashMismatch,
+      AuditChainBreakReason.linkMismatch,
+      AuditChainBreakReason.seqGap,
+    };
+    final parts = <String>[
+      for (final b in device.breaks)
+        contentReasons.contains(b.reason)
+            ? '${b.reason.name}|${b.seq}|${b.expected ?? ''}|${b.actual ?? ''}'
+            : b.reason.name,
+    ]..sort();
+    return '${device.deviceUid}\n${parts.join('\n')}';
   }
 
   /// Content alteration of this device's own recorded rows is the real

@@ -20,15 +20,21 @@ class ExcessiveRefundsRule implements FraudRule {
         ctx.now.subtract(const Duration(days: 30)).toUtc().millisecondsSinceEpoch ~/
             1000;
 
+    // One group per (employee, day) ACROSS branches: grouping by branch too
+    // would let refunds split over two branches stay under every floor, and
+    // two breaching branch-groups would collide on the same dedupe key (the
+    // second draft silently dropped with arbitrary branch attribution).
     final rows = await ctx.db
         .customSelect(
-          'SELECT refunded_by, branch_id, '
+          'SELECT refunded_by, '
           "DATE(created_at,'unixepoch','localtime') AS day, "
           'COUNT(*) AS cnt, SUM(total_amount) AS val, '
-          'MAX(created_at) AS last_at '
+          'MAX(created_at) AS last_at, '
+          'COUNT(DISTINCT branch_id) AS branch_cnt, '
+          'MIN(branch_id) AS branch_one '
           'FROM refunds '
           'WHERE business_id = ? AND created_at >= ? AND deleted_at IS NULL '
-          'GROUP BY refunded_by, day, branch_id',
+          'GROUP BY refunded_by, day',
           variables: [
             Variable.withString(ctx.businessId),
             Variable<int>(baselineStart),
@@ -76,7 +82,11 @@ class ExcessiveRefundsRule implements FraudRule {
         detectedAt: DateTime.fromMillisecondsSinceEpoch(
           r.read<int>('last_at') * 1000,
         ),
-        branchId: r.readNullable<String>('branch_id'),
+        // Scope to a branch only when the day's refunds all sit in one;
+        // a cross-branch day is business-wide by nature.
+        branchId: r.read<int>('branch_cnt') == 1
+            ? r.readNullable<String>('branch_one')
+            : null,
         subjectUserId: user,
         evidence: [
           {'fact': 'Refund count', 'value': cnt, 'window': day},

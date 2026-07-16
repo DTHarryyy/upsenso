@@ -304,13 +304,94 @@ class AuditLogsDao extends DatabaseAccessor<AppDatabase>
   /// confirmed [SyncStatus.synced] — a pending or failed row is never
   /// deleted regardless of age, since the server may not have it yet and
   /// this would be the only copy.
-  Future<int> pruneOlderThan(DateTime cutoff) {
-    return (delete(auditLogsTable)..where(
-          (t) =>
-              t.createdAt.isSmallerThanValue(cutoff) &
-              t.syncStatus.equals(SyncStatus.synced.toInt()),
-        ))
-        .go();
+  ///
+  /// Chained rows are only ever removed as a contiguous seq-PREFIX per
+  /// device chain. A plain created_at delete can carve holes MID-chain —
+  /// re-chained blocks keep their original (older) timestamps at high seqs,
+  /// and a stuck unsynced row survives while its synced neighbors don't —
+  /// and every such hole reads to the verifier as a seqGap, i.e. a critical
+  /// false tamper flag. The prefix boundary per chain is the first row that
+  /// must be kept for ANY reason (newer than cutoff, or not yet synced);
+  /// everything below it is by definition old + synced and safe to drop.
+  Future<int> pruneOlderThan(DateTime cutoff) async {
+    final cutoffUnix = cutoff.millisecondsSinceEpoch ~/ 1000;
+    final synced = SyncStatus.synced.toInt();
+    final unchained = await customUpdate(
+      'DELETE FROM audit_logs WHERE seq IS NULL '
+      'AND created_at < ? AND sync_status = ?',
+      variables: [Variable<int>(cutoffUnix), Variable<int>(synced)],
+      updates: {auditLogsTable},
+      updateKind: UpdateKind.delete,
+    );
+    final chained = await customUpdate(
+      'DELETE FROM audit_logs WHERE seq IS NOT NULL '
+      'AND device_uid IS NOT NULL AND sync_status = ? AND seq < COALESCE('
+      '(SELECT MIN(k.seq) FROM audit_logs k '
+      'WHERE k.business_id = audit_logs.business_id '
+      'AND k.device_uid = audit_logs.device_uid AND k.seq IS NOT NULL '
+      'AND (k.created_at >= ? OR k.sync_status != ?)), '
+      '9223372036854775807)',
+      variables: [
+        Variable<int>(synced),
+        Variable<int>(cutoffUnix),
+        Variable<int>(synced),
+      ],
+      updates: {auditLogsTable},
+      updateKind: UpdateKind.delete,
+    );
+    return unchained + chained;
+  }
+
+  /// Highest locally retained seq per device chain of [businessId].
+  Future<Map<String, int>> getLocalChainHeads(String businessId) async {
+    final rows = await customSelect(
+      'SELECT device_uid AS uid, MAX(seq) AS head FROM audit_logs '
+      'WHERE business_id = ? AND seq IS NOT NULL AND device_uid IS NOT NULL '
+      'GROUP BY device_uid',
+      variables: [Variable.withString(businessId)],
+      readsFrom: {auditLogsTable},
+    ).get();
+    return {
+      for (final r in rows) r.read<String>('uid'): r.read<int>('head'),
+    };
+  }
+
+  /// Missing seq ranges strictly INSIDE each locally retained device chain —
+  /// the holes a created_at-keyset pull leaves behind when rows are pushed
+  /// late (an offline device draining its backlog inserts server rows BEHIND
+  /// every other device's watermark). Each hole would otherwise read as a
+  /// seqGap → false tamper flag; AuditMirrorRepair refetches them by seq.
+  Future<List<({String deviceUid, int fromSeq, int toSeq})>> getChainGaps(
+    String businessId,
+  ) async {
+    final rows = await customSelect(
+      'SELECT a.device_uid AS uid, a.seq + 1 AS gap_start, '
+      '(SELECT MIN(b.seq) FROM audit_logs b WHERE b.business_id = ? '
+      'AND b.device_uid = a.device_uid AND b.seq > a.seq) - 1 AS gap_end '
+      'FROM audit_logs a '
+      'WHERE a.business_id = ? AND a.seq IS NOT NULL '
+      'AND a.device_uid IS NOT NULL '
+      'AND NOT EXISTS (SELECT 1 FROM audit_logs c WHERE c.business_id = ? '
+      'AND c.device_uid = a.device_uid AND c.seq = a.seq + 1) '
+      'AND EXISTS (SELECT 1 FROM audit_logs d WHERE d.business_id = ? '
+      'AND d.device_uid = a.device_uid AND d.seq > a.seq) '
+      'ORDER BY a.device_uid, gap_start',
+      variables: [
+        Variable.withString(businessId),
+        Variable.withString(businessId),
+        Variable.withString(businessId),
+        Variable.withString(businessId),
+      ],
+      readsFrom: {auditLogsTable},
+    ).get();
+    return [
+      for (final r in rows)
+        (
+          deviceUid: r.read<String>('uid'),
+          fromSeq: r.read<int>('gap_start'),
+          toSeq: r.read<int>('gap_end'),
+        ),
+    ];
   }
 
   Stream<int> watchPendingSyncCount() {

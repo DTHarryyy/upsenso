@@ -39,7 +39,8 @@ class HighDiscountRule implements FraudRule {
         .customSelect(
           'SELECT cashier_id, SUM(discount_amount) * 1.0 / SUM(subtotal) AS rate '
           'FROM transactions '
-          'WHERE business_id = ? AND created_at >= ? AND subtotal > 0 '
+          "WHERE business_id = ? AND created_at >= ? AND status != 'voided' "
+          'AND subtotal > 0 '
           'GROUP BY cashier_id',
           variables: [
             Variable.withString(ctx.businessId),

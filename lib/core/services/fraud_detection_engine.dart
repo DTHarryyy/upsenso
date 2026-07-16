@@ -139,12 +139,19 @@ class FraudDetectionEngine {
       // FRAUD_FLAG_RAISED on 2026-07-03).
       final raised = <FraudFlagDraft>[];
 
+      // Only a FULL sweep sees every current incident, so only a full sweep
+      // may conclude that an unseen candidate resolved itself.
+      final fullSweep = onlyRules == null;
+
       for (final rule in _rules) {
         if (onlyRules != null && !onlyRules.contains(rule.code)) continue;
         if (rule.requiresFullAuditMirror && !hasFullMirror) continue;
         try {
           final drafts = await rule.evaluate(ctx);
-          await _persist(ctx, rule.code, drafts, raised);
+          // Null = the rule had no basis to judge (gated / mirror never
+          // pulled) — leave its candidates exactly as they were.
+          if (drafts == null) continue;
+          await _persist(ctx, rule.code, drafts, raised, fullSweep: fullSweep);
         } catch (e, st) {
           debugPrint('[FraudEngine] Error in rule ${rule.code}: $e\n$st');
         }
@@ -162,13 +169,14 @@ class FraudDetectionEngine {
     FraudScanContext ctx,
     String ruleCode,
     List<FraudFlagDraft> drafts,
-    List<FraudFlagDraft> raised,
-  ) async {
+    List<FraudFlagDraft> raised, {
+    required bool fullSweep,
+  }) async {
     // Confirmation-gated rules stage drafts as candidates and only promote
     // the ones that survive re-observation; everything else flags immediately.
     final List<FraudFlagDraft> toFlag;
     if (confirmationRules.contains(ruleCode)) {
-      toFlag = await _confirm(ctx, ruleCode, drafts);
+      toFlag = await _confirm(ctx, ruleCode, drafts, pruneStale: fullSweep);
     } else {
       toFlag = drafts;
     }
@@ -231,8 +239,9 @@ class FraudDetectionEngine {
   Future<List<FraudFlagDraft>> _confirm(
     FraudScanContext ctx,
     String ruleCode,
-    List<FraudFlagDraft> drafts,
-  ) async {
+    List<FraudFlagDraft> drafts, {
+    required bool pruneStale,
+  }) async {
     final promoted = <FraudFlagDraft>[];
     final seenKeys = <String>{};
     final requiresMirrorAdvance = mirrorDependentRules.contains(ruleCode);
@@ -277,12 +286,15 @@ class FraudDetectionEngine {
 
     // Candidates of this rule not re-observed this sweep resolved themselves
     // (the audit row arrived, the hash now verifies) — drop them silently.
-    // Only meaningful on a FULL sweep, where the rule saw all current data.
-    await _candidatesDao.deleteStale(
-      businessId: ctx.businessId,
-      ruleCode: ruleCode,
-      keepKeys: seenKeys,
-    );
+    // Only a FULL sweep saw all current data, so only it may conclude that;
+    // an incremental window not covering an old incident is not resolution.
+    if (pruneStale) {
+      await _candidatesDao.deleteStale(
+        businessId: ctx.businessId,
+        ruleCode: ruleCode,
+        keepKeys: seenKeys,
+      );
+    }
 
     return promoted;
   }
@@ -295,10 +307,13 @@ class FraudDetectionEngine {
     return now.isAfter(firstWatermark);
   }
 
-  /// Stable fingerprint of an observation — the evidence encodes the specific
-  /// break/record, so a changed signature means a genuinely different sighting
-  /// and restarts confirmation.
-  String _signatureFor(FraudFlagDraft draft) => jsonEncode(draft.evidence);
+  /// Stable fingerprint of an observation — a changed signature means a
+  /// genuinely different sighting and restarts confirmation. Rules whose
+  /// evidence embeds values that move between sweeps (chain head positions,
+  /// counts) provide an explicit [FraudFlagDraft.confirmationSignature];
+  /// falling back to the raw evidence for the rest.
+  String _signatureFor(FraudFlagDraft draft) =>
+      draft.confirmationSignature ?? jsonEncode(draft.evidence);
 
   /// The audit_logs delta-sync watermark = how recent the pulled mirror is.
   Future<DateTime?> _auditMirrorFreshAt(String businessId) async {
