@@ -1805,6 +1805,24 @@ class SyncService {
         );
         synced++;
       } catch (e, st) {
+        // Duplicate id: this exact row already reached the server (most
+        // likely a crash-window retry — see stock_ledger_no_update RLS in
+        // 20260627000015). Ledger ids are client-generated UUIDs, so a
+        // collision can only mean self-conflict, never a different row —
+        // safe to self-heal as synced instead of retrying forever into the
+        // immutable-ledger UPDATE block (42501).
+        if (e is PostgrestException && e.code == '23505') {
+          debugPrint(
+            '[SYNC] StockLedger ${record.id}: already exists on server '
+            '(duplicate id) — marking synced',
+          );
+          await _stockLedgerDao.updateSyncStatus(
+            id: record.id,
+            status: SyncStatus.synced,
+          );
+          synced++;
+          continue;
+        }
         // FK violation: variant or product is locally synced but missing from
         // Supabase. Reset the parent(s) to pendingUpload for self-healing.
         if (e is PostgrestException && e.code == '23503') {
@@ -2362,8 +2380,16 @@ class SyncService {
       // everyone else just gets an empty page — not an error.
       final flags = await _fraudFlagsRemoteDs.getFlagsByBusiness(businessId);
       for (final row in flags) {
-        await _fraudFlagsDao.upsertFromServer(row);
-        pulled++;
+        if (await _fraudFlagsDao.upsertFromServer(row)) {
+          pulled++;
+        } else {
+          // Local triage hasn't pushed yet — kept local instead of letting
+          // the pull silently revert it. Converges on the next push.
+          debugPrint(
+            '[SYNC] Fraud flag ${row['id']} pull skipped: '
+            'local triage still pending push',
+          );
+        }
       }
     } catch (e, st) {
       failed++;
@@ -2677,7 +2703,17 @@ class SyncService {
           // trigger by design.
           await _fraudFlagsRemoteDs.updateTriage(r);
         } else {
-          await _fraudFlagsRemoteDs.insertFlag(fraudFlagToRemoteRow(r));
+          try {
+            await _fraudFlagsRemoteDs.insertFlag(fraudFlagToRemoteRow(r));
+          } on FraudFlagIdExists {
+            // This exact row already reached the server on an earlier
+            // attempt. If the local copy carries triage the server doesn't
+            // have, deliver it — swallowing here used to silently lose
+            // resolutions applied before the first upload succeeded.
+            if (r.status != 'new') {
+              await _fraudFlagsRemoteDs.updateTriage(r);
+            }
+          }
         }
         await _fraudFlagsDao.updateSyncStatus(
           id: r.id,

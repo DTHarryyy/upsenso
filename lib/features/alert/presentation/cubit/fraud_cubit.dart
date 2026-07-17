@@ -42,14 +42,36 @@ class FraudCubit extends Cubit<FraudState> {
   bool get canResolve =>
       _permissionService.can(PermissionKeys.fraudResolve);
 
-  /// Client mirror of the server's self-resolution block: you never triage a
-  /// flag that implicates YOU. RLS enforces this regardless of the UI.
-  bool canResolveAlert(FraudAlert alert) {
-    if (!canResolve) return false;
+  bool canResolveAlert(FraudAlert alert) => triageDenialReason(alert) == null;
+
+  /// Client mirror of the server's triage rules — RLS enforces all of them
+  /// regardless of the UI, but a rule the mirror misses surfaces server-side
+  /// as a silent 0-row update, so the mirror must stay complete:
+  /// fraud.resolve, the self-resolution block (you never triage a flag that
+  /// implicates YOU; owner exempt), and branch scope (business-wide flags
+  /// need cross-branch access). Returns a user-facing reason, null = allowed.
+  String? triageDenialReason(FraudAlert alert) {
+    if (!canResolve) {
+      return 'You don\'t have permission to triage fraud alerts.';
+    }
     final me = _activeBusinessContext.userId;
-    if (alert.subjectUserId == null || me == null) return true;
-    if (alert.subjectUserId == me && me != _ownerUserId) return false;
-    return true;
+    if (alert.subjectUserId != null &&
+        me != null &&
+        alert.subjectUserId == me &&
+        me != _ownerUserId) {
+      return 'You can\'t triage an alert that implicates you.';
+    }
+    if (!_permissionService.can(PermissionKeys.dataCrossBranchAccess)) {
+      if (alert.branchId == null) {
+        return 'Business-wide alerts can only be triaged with '
+            'all-branch access.';
+      }
+      final myBranch = _activeBusinessContext.branchId;
+      if (myBranch == null || myBranch.isEmpty || alert.branchId != myBranch) {
+        return 'This alert belongs to another branch.';
+      }
+    }
+    return null;
   }
 
   Future<void> load() async {
@@ -94,13 +116,17 @@ class FraudCubit extends Cubit<FraudState> {
     }
   }
 
-  Future<void> setStatus(
+  /// Applies a triage transition. Returns null on success, otherwise a
+  /// user-facing message — a denied or failed triage must never be silent:
+  /// the caller shows it, keeping the detail open.
+  Future<String?> setStatus(
     FraudAlert alert,
     AlertStatus status,
     String? note,
   ) async {
     // Permission checks live in business logic, not just hidden UI.
-    if (!canResolveAlert(alert)) return;
+    final denial = triageDenialReason(alert);
+    if (denial != null) return denial;
     try {
       await _flagsDao.resolve(
         id: alert.id,
@@ -120,8 +146,10 @@ class FraudCubit extends Cubit<FraudState> {
           'note': ?note,
         },
       );
+      return null;
     } catch (e, st) {
       debugPrint('[FraudCubit] Error in setStatus: $e\n$st');
+      return 'Could not update the alert. Please try again.';
     }
   }
 

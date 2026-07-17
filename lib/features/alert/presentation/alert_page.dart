@@ -75,10 +75,12 @@ class _AlertViewState extends State<_AlertView> {
   void _openDetail(BuildContext context, FraudAlert alert) {
     final cubit = context.read<FraudCubit>();
     final canResolve = cubit.canResolveAlert(alert);
-    void onSetStatus(AlertStatus status, String? note) {
-      cubit.setStatus(alert, status, note);
-      Navigator.of(context).pop();
-    }
+    // The detail closes itself from its own context on success. Popping from
+    // this page-level context used to target the shell-branch navigator while
+    // the desktop dialog lives on the root navigator — the dialog never
+    // closed and triage looked like a dead button.
+    Future<String?> onSetStatus(AlertStatus status, String? note) =>
+        cubit.setStatus(alert, status, note);
 
     if (Breakpoints.isDesktop(context)) {
       showDialog(

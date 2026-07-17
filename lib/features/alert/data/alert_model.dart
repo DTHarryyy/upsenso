@@ -86,6 +86,10 @@ class FraudAlert {
   /// Raw subject user id; drives the client mirror of the server's
   /// self-resolution block.
   final String? subjectUserId;
+
+  /// Raw branch id (null = business-wide); drives the client mirror of the
+  /// server's branch-scoped triage rules.
+  final String? branchId;
   final String store;
   final DateTime date;
   final Map<String, String> evidence;
@@ -101,6 +105,7 @@ class FraudAlert {
     required this.status,
     required this.author,
     required this.subjectUserId,
+    required this.branchId,
     required this.store,
     required this.date,
     required this.evidence,
@@ -123,6 +128,7 @@ class FraudAlert {
       author:
           row.subjectUserId == null ? '—' : nameFor(row.subjectUserId!),
       subjectUserId: row.subjectUserId,
+      branchId: row.branchId,
       store: branchNameFor(row.branchId),
       date: row.detectedAt,
       evidence: _evidenceMap(row.evidence),

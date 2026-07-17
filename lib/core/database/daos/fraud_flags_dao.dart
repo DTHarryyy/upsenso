@@ -52,23 +52,40 @@ class FraudFlagsDao extends DatabaseAccessor<AppDatabase>
 
   /// Triage: status transition + resolution note. Only these fields ever
   /// change post-insert (the server freeze trigger rejects anything else).
+  ///
+  /// A row the server never accepted (pendingUpload/failed) must KEEP its
+  /// INSERT path: flipping it to pendingUpdate would turn the first upload
+  /// into an UPDATE that matches nothing server-side, and the flag — with
+  /// its triage — would silently never arrive (the bulkDismiss footgun).
+  /// Only rows the server already holds move to pendingUpdate.
   Future<void> resolve({
     required String id,
     required String status,
     required String resolvedBy,
     String? resolutionNote,
   }) {
-    final now = DateTime.now();
-    return (update(fraudFlagsTable)..where((t) => t.id.equals(id))).write(
-      FraudFlagsTableCompanion(
-        status: Value(status),
-        resolvedBy: Value(resolvedBy),
-        resolutionNote: Value(resolutionNote),
-        updatedAt: Value(now),
-        clientUpdatedAt: Value(now),
-        syncStatus: Value(SyncStatus.pendingUpdate.toInt()),
-      ),
-    );
+    return transaction(() async {
+      final row = await (select(fraudFlagsTable)
+            ..where((t) => t.id.equals(id)))
+          .getSingleOrNull();
+      if (row == null) return;
+      final uploaded = row.syncStatus == SyncStatus.synced.toInt() ||
+          row.syncStatus == SyncStatus.pendingUpdate.toInt();
+      final now = DateTime.now();
+      await (update(fraudFlagsTable)..where((t) => t.id.equals(id))).write(
+        FraudFlagsTableCompanion(
+          status: Value(status),
+          resolvedBy: Value(resolvedBy),
+          resolutionNote: Value(resolutionNote),
+          updatedAt: Value(now),
+          clientUpdatedAt: Value(now),
+          syncStatus: Value(
+            (uploaded ? SyncStatus.pendingUpdate : SyncStatus.pendingUpload)
+                .toInt(),
+          ),
+        ),
+      );
+    });
   }
 
   /// One-time cleanup of the 2026-07-03 false-positive flags (see
@@ -149,7 +166,27 @@ class FraudFlagsDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
-  Future<void> upsertFromServer(Map<String, dynamic> row) {
+  /// Applies a pulled server row — unless the local copy still carries
+  /// unpushed changes. Push runs before pull inside a sync cycle, so a row
+  /// still pending/failed here means its push did NOT land; overwriting it
+  /// would silently revert the operator's triage to server state AND stamp
+  /// it synced, erasing the retry. Returns whether the row was applied so
+  /// the caller can log the kept-local conflict.
+  Future<bool> upsertFromServer(Map<String, dynamic> row) {
+    return transaction(() async {
+      final local = await (select(fraudFlagsTable)
+            ..where((t) => t.id.equals(row['id'] as String)))
+          .getSingleOrNull();
+      if (local != null &&
+          SyncStatusExtension.fromInt(local.syncStatus).needsSync) {
+        return false;
+      }
+      await _writeServerRow(row);
+      return true;
+    });
+  }
+
+  Future<void> _writeServerRow(Map<String, dynamic> row) {
     return into(fraudFlagsTable).insertOnConflictUpdate(
       FraudFlagsTableCompanion.insert(
         id: row['id'] as String,

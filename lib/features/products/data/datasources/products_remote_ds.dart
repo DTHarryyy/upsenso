@@ -382,7 +382,11 @@ class ProductsRemoteDs {
     String? sourceType,
     String? sourceId,
   }) async {
-    await client.from('stock_ledger').upsert({
+    // Plain insert, not upsert: stock_ledger is immutable (see
+    // stock_ledger_no_update RLS policy) — a duplicate id can only mean this
+    // exact row already reached the server, which _syncStockLedger treats as
+    // a benign already-synced case (23505), not a real failure.
+    await client.from('stock_ledger').insert({
       'id': id,
       'variant_id': variantId,
       'product_id': productId,

@@ -315,8 +315,8 @@ void main() {
     expect(rule.calls, 1);
   });
 
-  test('resolve() only touches triage fields and marks pendingUpdate',
-      () async {
+  test('resolve() only touches triage fields and keeps the INSERT path for '
+      'a never-uploaded flag', () async {
     await seedBusiness();
     await seedRefunds();
     final engine = buildEngine([ExcessiveRefundsRule()]);
@@ -333,7 +333,10 @@ void main() {
     final updated = (await allFlags()).single;
     expect(updated.status, 'resolved');
     expect(updated.resolvedBy, 'owner1');
-    expect(updated.syncStatus, 1); // pendingUpdate
+    // Freshly swept = never uploaded: must stay pendingUpload so the first
+    // sync still INSERTs the flag (with its triage) instead of issuing an
+    // UPDATE that matches nothing server-side.
+    expect(updated.syncStatus, 0); // pendingUpload
     expect(updated.evidence, flag.evidence); // forensic fields untouched
     expect(updated.dedupeKey, flag.dedupeKey);
   });

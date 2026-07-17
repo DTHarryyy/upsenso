@@ -11,7 +11,11 @@ class AlertDetailContent extends StatelessWidget {
   /// or they are the implicated subject (the server enforces both; this is
   /// the UX mirror).
   final bool canResolve;
-  final void Function(AlertStatus status, String? note)? onSetStatus;
+
+  /// Applies the triage and returns a user-facing error message, or null on
+  /// success. The buttons close this detail themselves on success.
+  final Future<String?> Function(AlertStatus status, String? note)?
+      onSetStatus;
 
   const AlertDetailContent({
     super.key,
@@ -351,11 +355,22 @@ class _EvidenceTable extends StatelessWidget {
   }
 }
 
-class _ActionButtons extends StatelessWidget {
+class _ActionButtons extends StatefulWidget {
   final FraudAlert alert;
-  final void Function(AlertStatus status, String? note) onSetStatus;
+  final Future<String?> Function(AlertStatus status, String? note) onSetStatus;
 
   const _ActionButtons({required this.alert, required this.onSetStatus});
+
+  @override
+  State<_ActionButtons> createState() => _ActionButtonsState();
+}
+
+class _ActionButtonsState extends State<_ActionButtons> {
+  // Guards against double-taps during the write and against a second pop
+  // after a success already started closing this detail.
+  bool _busy = false;
+
+  FraudAlert get alert => widget.alert;
 
   @override
   Widget build(BuildContext context) {
@@ -364,7 +379,9 @@ class _ActionButtons extends StatelessWidget {
     final buttons = <Widget>[
       if (alert.status == AlertStatus.newAlert)
         ElevatedButton.icon(
-          onPressed: () => onSetStatus(AlertStatus.investigating, null),
+          onPressed: _busy
+              ? null
+              : () => _apply(AlertStatus.investigating, null),
           icon: const Icon(IconlyLight.search, size: 16),
           label: const Text('Start Investigation'),
           style: ElevatedButton.styleFrom(
@@ -379,7 +396,7 @@ class _ActionButtons extends StatelessWidget {
         ),
       if (isOpen)
         OutlinedButton.icon(
-          onPressed: () => _withNote(context, AlertStatus.resolved),
+          onPressed: _busy ? null : () => _withNote(AlertStatus.resolved),
           icon: const Icon(IconlyBold.tick_square, size: 16),
           label: const Text('Mark as Resolved'),
           style: OutlinedButton.styleFrom(
@@ -394,7 +411,7 @@ class _ActionButtons extends StatelessWidget {
         ),
       if (isOpen)
         OutlinedButton.icon(
-          onPressed: () => _withNote(context, AlertStatus.dismissed),
+          onPressed: _busy ? null : () => _withNote(AlertStatus.dismissed),
           icon: const Icon(IconlyLight.close_square, size: 16),
           label: const Text('Dismiss'),
           style: OutlinedButton.styleFrom(
@@ -409,7 +426,9 @@ class _ActionButtons extends StatelessWidget {
         ),
       if (isOpen)
         OutlinedButton.icon(
-          onPressed: () => _withNote(context, AlertStatus.falsePositive),
+          onPressed: _busy
+              ? null
+              : () => _withNote(AlertStatus.falsePositive),
           icon: const Icon(IconlyLight.shield_done, size: 16),
           label: const Text('Not fraud (false positive)'),
           style: OutlinedButton.styleFrom(
@@ -444,9 +463,32 @@ class _ActionButtons extends StatelessWidget {
     );
   }
 
+  /// Runs the triage and closes this detail on success. Popping with THIS
+  /// context resolves to whichever navigator actually hosts the detail (root
+  /// for the desktop dialog, branch for the pushed page) — popping from the
+  /// alert page's context targeted the shell-branch navigator and left the
+  /// dialog stranded open, which read as a dead button.
+  Future<void> _apply(AlertStatus status, String? note) async {
+    if (_busy || !mounted) return;
+    setState(() => _busy = true);
+    // Root messenger — survives this detail closing.
+    final messenger = ScaffoldMessenger.of(context);
+    final error = await widget.onSetStatus(status, note);
+    if (!mounted) return;
+    if (error != null) {
+      setState(() => _busy = false);
+      messenger.showSnackBar(SnackBar(content: Text(error)));
+      return;
+    }
+    Navigator.of(context).pop();
+    messenger.showSnackBar(
+      SnackBar(content: Text('Marked as ${status.label.toLowerCase()}')),
+    );
+  }
+
   /// Resolving/dismissing is an accountability event — ask for the why.
   /// The note lands on the flag AND in the chained audit entry.
-  Future<void> _withNote(BuildContext context, AlertStatus status) async {
+  Future<void> _withNote(AlertStatus status) async {
     final controller = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
@@ -493,7 +535,7 @@ class _ActionButtons extends StatelessWidget {
     );
     if (confirmed == true) {
       final note = controller.text.trim();
-      onSetStatus(status, note.isEmpty ? null : note);
+      await _apply(status, note.isEmpty ? null : note);
     }
     controller.dispose();
   }
