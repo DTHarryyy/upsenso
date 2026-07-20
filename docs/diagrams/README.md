@@ -1,13 +1,14 @@
 # UPSENSO — Data Flow Diagrams
 
 Two data flow diagrams (DFDs) of the UPSENSO offline-first POS & business-management
-system, in classic Gane–Sarson / Yourdon notation. Sources are Mermaid (`.mmd`);
-rendered vector figures are the matching `.svg` files.
+system, in classic Gane–Sarson / Yourdon notation. The **Mermaid sources (`.mmd`) are the
+source of truth**; the rendered `.svg` figures are generated artifacts (regenerate with
+the command below — they are intentionally not committed as binaries).
 
-| File | Figure |
+| Source | Figure |
 |---|---|
-| `upsenso_context_diagram.mmd` / `.svg` | **Fig. 1** — Context Diagram (DFD Level 0) |
-| `upsenso_level1_dfd.mmd` / `.svg` | **Fig. 2** — Level-1 Data Flow Diagram |
+| `upsenso_context_diagram.mmd` | **Fig. 1** — Context Diagram (DFD Level 0) |
+| `upsenso_level1_dfd.mmd` | **Fig. 2** — Level-1 Data Flow Diagram |
 
 ## Notation legend
 - **Rectangle** — external entity (source/sink of data): users, customer, supplier, and
@@ -38,14 +39,16 @@ rendered vector figures are the matching `.svg` files.
 > and reporting processes via grant/deny decisions resolved from roles, per-employee
 > overrides, and module state (D5), realising UPSENSO's two-layer RBAC + module-gate model.
 
-## Regenerating the figures
-The `.svg` files were produced from the `.mmd` sources via the Mermaid Chart renderer.
-To regenerate locally with the Mermaid CLI:
+## Rendering the figures
+The `.mmd` sources were authored and validated through the Mermaid Chart renderer.
+To render locally with the Mermaid CLI:
 
 ```bash
 npx @mermaid-js/mermaid-cli -i upsenso_context_diagram.mmd -o upsenso_context_diagram.svg
 npx @mermaid-js/mermaid-cli -i upsenso_level1_dfd.mmd     -o upsenso_level1_dfd.svg
 ```
+
+Or paste a source into <https://mermaid.live> to export SVG/PNG for the paper.
 
 ## Note on stale docs
 `docs/UPSENSO_ARCHITECTURE.md` refers to Riverpod + Hive; the shipped codebase uses
