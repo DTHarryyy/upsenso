@@ -1,0 +1,4 @@
+# Rendered diagram artifacts are generated from the .mmd sources (see README).
+# Regenerate with the Mermaid CLI; do not commit the binaries.
+*.svg
+*.png
