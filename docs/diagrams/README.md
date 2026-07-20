@@ -16,8 +16,22 @@ the command below — they are intentionally not committed as binaries).
 - **Circle** — process (numbered): a transformation the system performs on data.
 - **Open cylinder `Dn`** — data store: a persistent collection. Each `Dn` lists the real
   backing tables (Drift/SQLite locally, mirrored to Supabase/Postgres).
-- **Labeled arrow** — a data flow; the label names the data in motion. Dashed arrows mark
-  control/permission decisions and background sync reconciliation.
+- **Labeled arrow** — a data flow; the label names the data in motion. Following DFD
+  convention the figures show **data flows only** — control/authorization decisions are
+  not drawn as arrows (see the note under Fig. 2).
+
+## Data store contents (Level-1 `Dn` → backing tables)
+The Level-1 figure keeps each store labelled by name only; the backing tables are:
+
+| Store | Backing tables |
+|---|---|
+| **D1** Sales & Payments | `transactions`, `transaction_items`, `draft_sales`, `draft_sale_items`, `refunds`, `refund_items`, `customers`, `invoice_sequences` |
+| **D2** Products & Inventory | `products`, `product_variants`, `product_barcodes`, `categories`, `inventory_levels`, `stock_ledger`, `recipe_lines` |
+| **D3** Procurement | `suppliers`, `purchase_orders`, `purchase_order_lines`, `goods_receipts`, `goods_receipt_items` |
+| **D4** Expenses | `expenses` |
+| **D5** Org, Roles & Modules | `businesses`, `branches`, `employees`, `employee_permissions`, `business_modules` |
+| **D6** Audit & Fraud | `audit_logs`, `audit_outbox`, `fraud_candidates`, `fraud_flags` |
+| **D7** Sync & Devices | `sync_state`, `devices`, `auth_context` |
 
 ## Fig. 1 — Context Diagram (caption)
 > **Figure 1. Context diagram of the UPSENSO system.** UPSENSO is modelled as a single
@@ -38,6 +52,8 @@ the command below — they are intentionally not committed as binaries).
 > communicates with the Supabase cloud backend. Access Control (5) gates the transactional
 > and reporting processes via grant/deny decisions resolved from roles, per-employee
 > overrides, and module state (D5), realising UPSENSO's two-layer RBAC + module-gate model.
+> These authorization decisions and the sync engine's reconciliation of pulled deltas are
+> control flows, so — per DFD convention — they are described here rather than drawn as arrows.
 
 ## Rendering the figures
 The `.mmd` sources were authored and validated through the Mermaid Chart renderer.
