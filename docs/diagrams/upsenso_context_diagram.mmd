@@ -1,0 +1,44 @@
+%% UPSENSO — Context Diagram (Data Flow Diagram, Level 0)
+%% Classic DFD notation (Gane-Sarson / Yourdon) emulated in Mermaid:
+%%   rectangle = external entity, circle = process, no data stores at Level 0.
+flowchart TB
+    %% ---- Central process ----
+    S((("0<br/>UPSENSO<br/>POS &amp; Business<br/>Management System")))
+
+    %% ---- External entities ----
+    CASHIER["Cashier /<br/>POS Staff"]
+    MANAGER["Branch<br/>Manager"]
+    OWNER["Business Owner /<br/>Super Admin"]
+    CUSTOMER["Customer"]
+    SUPPLIER["Supplier"]
+    CLOUD["Supabase<br/>Cloud Backend"]
+
+    %% ---- Flows: Cashier ----
+    CASHIER -- "login, cart items,<br/>payment, shift open/close" --> S
+    S -- "receipt, prices,<br/>permission decisions" --> CASHIER
+
+    %% ---- Flows: Customer ----
+    CUSTOMER -- "order, payment" --> S
+    S -- "printed / digital receipt" --> CUSTOMER
+
+    %% ---- Flows: Manager ----
+    MANAGER -- "discount &amp; refund approvals,<br/>inventory adjustments,<br/>expense approvals" --> S
+    S -- "reports, low-stock alerts,<br/>fraud alerts" --> MANAGER
+
+    %% ---- Flows: Owner ----
+    OWNER -- "module toggles, role /<br/>employee config, subscription" --> S
+    S -- "dashboards, audit trail" --> OWNER
+
+    %% ---- Flows: Supplier ----
+    S -- "purchase orders" --> SUPPLIER
+    SUPPLIER -- "goods received (GRN)" --> S
+
+    %% ---- Flows: Cloud sync boundary ----
+    S -- "sync-queue push,<br/>auth tokens" --> CLOUD
+    CLOUD -- "RLS-validated commits,<br/>pulled deltas" --> S
+
+    %% ---- Styling (classic DFD symbol vocabulary) ----
+    classDef entity fill:#e8eef7,stroke:#33475b,stroke-width:1.5px,color:#1b2a3a;
+    classDef process fill:#d6ebd6,stroke:#2f6b2f,stroke-width:2px,color:#173417;
+    class CASHIER,MANAGER,OWNER,CUSTOMER,SUPPLIER,CLOUD entity;
+    class S process;

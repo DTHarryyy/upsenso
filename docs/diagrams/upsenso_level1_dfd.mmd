@@ -1,0 +1,103 @@
+%% UPSENSO — Level-1 Data Flow Diagram
+%% Classic DFD notation (Gane-Sarson / Yourdon) emulated in Mermaid:
+%%   rectangle = external entity, circle = process (numbered), cylinder = data store (Dn).
+flowchart TB
+    %% ================= External entities =================
+    CASHIER["Cashier /<br/>POS Staff"]
+    CUSTOMER["Customer"]
+    MANAGER["Branch<br/>Manager"]
+    OWNER["Owner /<br/>Super Admin"]
+    SUPPLIER["Supplier"]
+    CLOUD["Supabase<br/>Cloud Backend"]
+
+    %% ================= Processes =================
+    P1(("1<br/>Point of Sale"))
+    P2(("2<br/>Inventory &amp;<br/>Stock Control"))
+    P3(("3<br/>Procurement"))
+    P4(("4<br/>Expense<br/>Management"))
+    P5(("5<br/>Access Control<br/>RBAC + Module Gate"))
+    P6(("6<br/>Audit &amp;<br/>Fraud Detection"))
+    P7(("7<br/>Offline<br/>Sync Engine"))
+    P8(("8<br/>Reporting &amp;<br/>AI Assistant"))
+
+    %% ================= Data stores =================
+    D1[("D1 | Sales &amp; Payments<br/>transactions, transaction_items,<br/>draft_sales, refunds, customers")]
+    D2[("D2 | Products &amp; Inventory<br/>products, variants, categories,<br/>inventory_levels, stock_ledger")]
+    D3[("D3 | Procurement<br/>suppliers, purchase_orders,<br/>goods_receipts")]
+    D4[("D4 | Expenses<br/>expenses")]
+    D5[("D5 | Org, Roles &amp; Modules<br/>businesses, branches, employees,<br/>employee_permissions, business_modules")]
+    D6[("D6 | Audit &amp; Fraud<br/>audit_logs, audit_outbox,<br/>fraud_candidates, fraud_flags")]
+    D7[("D7 | Sync &amp; Devices<br/>sync_state, devices, auth_context")]
+
+    %% ---------- POS (P1) ----------
+    CASHIER -- "cart, payment,<br/>shift open/close" --> P1
+    P1 -- "prices, receipt" --> CASHIER
+    CUSTOMER -- "order, payment" --> P1
+    P1 -- "receipt" --> CUSTOMER
+    P1 <-- "read prices" --> D2
+    P1 -- "sale, refund records" --> D1
+    P1 -- "items sold" --> P2
+
+    %% ---------- Inventory (P2) ----------
+    MANAGER -- "stock adjustments" --> P2
+    P2 <-- "levels, movements" --> D2
+
+    %% ---------- Procurement (P3) ----------
+    MANAGER -- "create PO" --> P3
+    P3 -- "purchase order" --> SUPPLIER
+    SUPPLIER -- "goods received (GRN)" --> P3
+    P3 -- "PO / GRN records" --> D3
+    P3 -- "received stock" --> P2
+
+    %% ---------- Expenses (P4) ----------
+    CASHIER -- "submit expense" --> P4
+    MANAGER -- "approve / reject" --> P4
+    P4 <-- "expense records" --> D4
+
+    %% ---------- Access Control (P5) gates write + read processes ----------
+    OWNER -- "role / permission /<br/>module config" --> P5
+    P5 <-- "roles, overrides,<br/>module state" --> D5
+    P5 -. "grant / deny" .-> P1
+    P5 -. "grant / deny" .-> P2
+    P5 -. "grant / deny" .-> P3
+    P5 -. "grant / deny" .-> P4
+    P5 -. "grant / deny" .-> P8
+
+    %% ---------- Audit & Fraud (P6) ----------
+    P1 -- "audit event" --> P6
+    P2 -- "audit event" --> P6
+    P3 -- "audit event" --> P6
+    P4 -- "audit event" --> P6
+    P6 -- "hash-chained log,<br/>fraud flags" --> D6
+    P6 -- "fraud alerts" --> MANAGER
+    P6 -- "fraud alerts" --> OWNER
+
+    %% ---------- Offline Sync Engine (P7) ----------
+    P1 -- "sync entry" --> P7
+    P2 -- "sync entry" --> P7
+    P3 -- "sync entry" --> P7
+    P4 -- "sync entry" --> P7
+    P6 -- "audit outbox" --> P7
+    P7 <-- "queue &amp; device state" --> D7
+    P7 -- "push local changes" --> CLOUD
+    CLOUD -- "RLS-validated deltas" --> P7
+    P7 -. "reconcile deltas" .-> D1
+    P7 -. "reconcile deltas" .-> D2
+
+    %% ---------- Reporting & AI (P8) ----------
+    MANAGER -- "report / NL query" --> P8
+    OWNER -- "report / NL query" --> P8
+    P8 -- "reports, insights" --> MANAGER
+    P8 -- "dashboards, audit trail" --> OWNER
+    D1 -- "read" --> P8
+    D2 -- "read" --> P8
+    D4 -- "read" --> P8
+    D6 -- "read" --> P8
+
+    %% ================= Styling =================
+    classDef entity fill:#e8eef7,stroke:#33475b,stroke-width:1.5px,color:#1b2a3a;
+    classDef process fill:#d6ebd6,stroke:#2f6b2f,stroke-width:2px,color:#173417;
+    classDef store fill:#fdf3d8,stroke:#9a7b1e,stroke-width:1.5px,color:#4a3a08;
+    class CASHIER,CUSTOMER,MANAGER,OWNER,SUPPLIER,CLOUD entity;
+    class P1,P2,P3,P4,P5,P6,P7,P8 process;
+    class D1,D2,D3,D4,D5,D6,D7 store;
