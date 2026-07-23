@@ -1,8 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'package:pos/core/device/device_identity_service.dart';
 
 class BusinessRemoteDs {
   final SupabaseClient client;
-  BusinessRemoteDs(this.client);
+  final DeviceIdentityService _identity;
+  BusinessRemoteDs(this.client, this._identity);
 
   /// Fetch all business templates
   Future<List<Map<String, dynamic>>> getBusinessTemplates() async {
@@ -20,6 +24,15 @@ class BusinessRemoteDs {
     required String ownerId,
     required String templateId,
   }) async {
+    // Stamp the device uid so grant_initial_trial can dedup trials per device
+    // (anti-farming §6.2). Identity failure must never block signup.
+    String? deviceUid;
+    try {
+      deviceUid = await _identity.getDeviceUid();
+    } catch (e, st) {
+      debugPrint('[BusinessRemoteDs] Error in createBusiness device uid: $e\n$st');
+    }
+
     final response = await client
         .from('businesses')
         .upsert({
@@ -28,6 +41,7 @@ class BusinessRemoteDs {
           'owner_id': ownerId,
           'template_id': templateId,
           'is_active': true,
+          'signup_device_uid': ?deviceUid,
         })
         .select()
         .single();

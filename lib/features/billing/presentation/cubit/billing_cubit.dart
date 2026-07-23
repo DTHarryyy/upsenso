@@ -27,6 +27,9 @@ class BillingCubit extends Cubit<BillingState> {
         super(const BillingState());
 
   Future<void> load() async {
+    // Recount seats/branches from local Drift so the usage meters are accurate
+    // from the first paint — even offline, before any server sync.
+    await _entitlement.recomputeLocalUsage();
     // Always render the current plan from the local entitlement cache first,
     // clearing any prior offline/failure flags for this fresh attempt.
     emit(_withEntitlement(state).copyWith(
@@ -45,7 +48,6 @@ class BillingCubit extends Cubit<BillingState> {
     try {
       await _entitlement.syncEntitlement();
       final plans = await _remoteDs.fetchPlans();
-      final addons = await _remoteDs.fetchAddons();
       final payments = await _remoteDs.fetchPayments();
       final devices = await _remoteDs.fetchDevices();
       emit(_withEntitlement(state).copyWith(
@@ -53,7 +55,6 @@ class BillingCubit extends Cubit<BillingState> {
         offline: false,
         catalogFailed: false,
         plans: plans,
-        addons: addons,
         payments: payments,
         devices: devices,
       ));
@@ -71,8 +72,8 @@ class BillingCubit extends Cubit<BillingState> {
 
   Future<void> refresh() => load();
 
-  /// Starts a plan or add-on checkout; returns the hosted checkout URL for the
-  /// page to launch. Amount is computed server-side.
+  /// Starts a plan checkout; returns the hosted checkout URL for the page to
+  /// launch. Amount is computed server-side.
   Future<String> startPlanCheckout(
     String planCode,
     int planVersion,
@@ -83,14 +84,6 @@ class BillingCubit extends Cubit<BillingState> {
       planCode: planCode,
       planVersion: planVersion,
       billingPeriod: billingPeriod,
-    );
-  }
-
-  Future<String> startAddonCheckout(String addonCode, int qty) {
-    return _remoteDs.createCheckout(
-      kind: 'addon',
-      addonCode: addonCode,
-      addonQty: qty,
     );
   }
 

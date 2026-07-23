@@ -86,9 +86,11 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
     final id = _uuid.v4();
     final now = DateTime.now();
 
-    // Courtesy seat-cap check before the auth account is minted — the server
-    // RPC enforces the same cap for real (M7.1 §6.2), this just fails friendly.
-    if (!sl<EntitlementService>().canAddAnother(EntitlementResource.seats)) {
+    // Seat-cap pre-check before the auth account is minted — counted live from
+    // local Drift. The server RPC enforces the same cap for cloud tiers (M7.1
+    // §6.2); on local-only Free this client check is the gate.
+    if (!await sl<EntitlementService>()
+        .canAddAnother(EntitlementResource.seats)) {
       throw const EmployeeSeatLimitException();
     }
 
@@ -188,6 +190,9 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
         syncStatus: Value(SyncStatus.synced.toInt()),
       ),
     );
+
+    // Keep the seat meter + cap pre-check in step with the new local row.
+    await sl<EntitlementService>().recomputeLocalUsage();
 
     // Step 6: Cache permissions locally so the employee's very first login
     // resolves permissions without a Supabase round-trip.

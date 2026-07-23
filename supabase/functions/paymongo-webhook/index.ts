@@ -53,6 +53,24 @@ async function hmacHex(secret: string, message: string): Promise<string> {
     .join("");
 }
 
+// Pulls the paid amount (centavos) out of either event shape: payment.paid
+// carries it directly; checkout_session.payment.paid nests it under payments[].
+function extractPaidCentavos(
+  resourceAttrs: Record<string, unknown>,
+): number | null {
+  const direct = resourceAttrs?.amount;
+  if (typeof direct === "number" && Number.isFinite(direct)) return direct;
+
+  const payments = resourceAttrs?.payments;
+  if (Array.isArray(payments) && payments.length > 0) {
+    const pay = payments[0] as Record<string, unknown>;
+    const payAttrs = (pay?.attributes as Record<string, unknown>) ?? {};
+    const amt = payAttrs?.amount;
+    if (typeof amt === "number" && Number.isFinite(amt)) return amt;
+  }
+  return null;
+}
+
 serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
@@ -138,13 +156,35 @@ serve(async (req) => {
   const { data: payment, error: payErr } = await admin
     .from("billing_payments")
     .select(
-      "id, business_id, kind, plan_code, plan_version, billing_period, addon_code, addon_qty, status",
+      "id, business_id, kind, amount, plan_code, plan_version, billing_period, addon_code, addon_qty, status",
     )
     .eq("id", paymentId)
     .maybeSingle();
   if (payErr || !payment) {
     console.error("webhook payment row not found", paymentId);
     return json({ ok: true, note: "payment row missing" }, 200);
+  }
+
+  // Cross-check what PayMongo says was paid against what we quoted. A partial
+  // or tampered capture must never grant a full period. Absence of an amount
+  // in the payload (shape drift) logs loudly but doesn't block the grant.
+  const paidCentavos = extractPaidCentavos(resourceAttrs);
+  const expectedCentavos = Math.round(Number(payment.amount) * 100);
+  if (paidCentavos !== null && paidCentavos !== expectedCentavos) {
+    console.error(
+      `webhook amount mismatch: paid ${paidCentavos} != expected ${expectedCentavos} (payment ${payment.id})`,
+    );
+    await admin.from("billing_payments").update({ status: "failed" }).eq(
+      "id",
+      payment.id,
+    );
+    // 200: the mismatch is deterministic — a retry would just fail again.
+    return json({ ok: true, note: "amount mismatch — not granted" }, 200);
+  }
+  if (paidCentavos === null) {
+    console.error(
+      `webhook: no amount found in payload for payment ${payment.id} — granting on metadata only`,
+    );
   }
 
   // Mark paid (idempotent).

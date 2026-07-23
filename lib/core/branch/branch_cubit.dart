@@ -424,9 +424,11 @@ class BranchCubit extends Cubit<BranchState> {
     String? location,
   }) async {
     if (!state.canSwitchBranches) return null;
-    // Plan branch-cap courtesy check (server RLS enforces it for real). A
-    // denied create is surfaced by the caller as the upgrade moment (§4.3).
-    if (!sl<EntitlementService>().canAddAnother(EntitlementResource.branches)) {
+    // Branch-cap pre-check, counted live from local Drift. Server RLS enforces
+    // it for real on cloud tiers; a denied create is surfaced by the caller as
+    // the upgrade moment (§4.3).
+    if (!await sl<EntitlementService>()
+        .canAddAnother(EntitlementResource.branches)) {
       debugPrint('[BranchCubit] Branch cap reached for current plan');
       return null;
     }

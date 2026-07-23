@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:pos/core/database/app_database.dart';
+import 'package:pos/core/database/daos/branches_dao.dart';
+import 'package:pos/core/database/daos/employees_dao.dart';
 import 'package:pos/core/permissions/app_feature.dart';
 import 'package:pos/core/permissions/data/entitlement_remote_ds.dart';
 import 'package:pos/core/permissions/entitlement_service.dart';
@@ -17,6 +19,8 @@ void main() {
   late AppDatabase db;
   late MockEntitlementRemoteDs remoteDs;
   late ActiveBusinessContext ctx;
+  late EmployeesDao empDao;
+  late BranchesDao branchDao;
   late EntitlementService service;
 
   const biz = 'biz-1';
@@ -25,12 +29,33 @@ void main() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     remoteDs = MockEntitlementRemoteDs();
     ctx = ActiveBusinessContext()..set(userId: 'u1', businessId: biz);
+    empDao = EmployeesDao(db);
+    branchDao = BranchesDao(db);
     service = EntitlementService(
       entitlementDao: db.entitlementDao,
       entitlementRemoteDs: remoteDs,
       activeBusinessContext: ctx,
+      employeesDao: empDao,
+      branchesDao: branchDao,
     );
   });
+
+  Future<void> addActiveEmployees(int n) async {
+    for (var i = 0; i < n; i++) {
+      await empDao.insertEmployee(
+        EmployeesTableCompanion.insert(id: 'emp-$i', businessId: biz),
+      );
+    }
+  }
+
+  Future<void> addBranches(int n) async {
+    for (var i = 0; i < n; i++) {
+      await db.into(db.branchesTable).insert(
+            BranchesTableCompanion.insert(
+                id: 'br-$i', businessId: biz, name: 'B$i'),
+          );
+    }
+  }
 
   tearDown(() => db.close());
 
@@ -161,15 +186,37 @@ void main() {
   });
 
   group('limits & usage', () {
-    test('canAddAnother false only when we know the cap is reached', () async {
-      await seed(status: 'active', currentPeriodEnd: now.add(const Duration(days: 10)), maxBranches: 3);
-      // usage is 0 from cache (no usage row) → can add
-      expect(service.canAddAnother(EntitlementResource.branches), isTrue);
-      expect(service.effectiveMax(EntitlementResource.branches), 3);
+    test('canAddAnother true while below the cap', () async {
+      await seed(status: 'active', currentPeriodEnd: now.add(const Duration(days: 10)), maxSeats: 3);
+      await addActiveEmployees(2); // 2 < 3
+      expect(await service.liveUsageOf(EntitlementResource.seats), 2);
+      expect(await service.canAddAnother(EntitlementResource.seats), isTrue);
+      expect(service.effectiveMax(EntitlementResource.seats), 3);
+    });
+
+    test('seat cap blocks once local active employees reach the cap', () async {
+      await seed(status: 'active', currentPeriodEnd: now.add(const Duration(days: 10)), maxSeats: 3);
+      await addActiveEmployees(3); // at the cap — counted live from Drift
+      expect(await service.liveUsageOf(EntitlementResource.seats), 3);
+      expect(await service.canAddAnother(EntitlementResource.seats), isFalse);
+    });
+
+    test('branch cap blocks once local branches reach the cap', () async {
+      await seed(status: 'active', currentPeriodEnd: now.add(const Duration(days: 10)), maxBranches: 2);
+      await addBranches(2); // at the cap
+      expect(await service.liveUsageOf(EntitlementResource.branches), 2);
+      expect(await service.canAddAnother(EntitlementResource.branches), isFalse);
+    });
+
+    test('usage meter reflects local rows after recompute', () async {
+      await seed(status: 'active', currentPeriodEnd: now.add(const Duration(days: 10)), maxSeats: 3);
+      await addActiveEmployees(2);
+      await service.recomputeLocalUsage();
+      expect(service.usageOf(EntitlementResource.seats), 2);
     });
 
     test('unknown cap (no cache) never blocks a create', () async {
-      expect(service.canAddAnother(EntitlementResource.seats), isTrue);
+      expect(await service.canAddAnother(EntitlementResource.seats), isTrue);
       expect(service.effectiveMax(EntitlementResource.seats), isNull);
     });
   });

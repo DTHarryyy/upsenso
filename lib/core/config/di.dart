@@ -329,7 +329,8 @@ Future<void> initDI() async {
     ),
   );
 
-  sl.registerLazySingleton(() => BusinessRemoteDs(sl<SupabaseClient>()));
+  sl.registerLazySingleton(
+      () => BusinessRemoteDs(sl<SupabaseClient>(), sl<DeviceIdentityService>()));
   sl.registerLazySingleton(() => ExpensesRemoteDs(sl<SupabaseClient>()));
   sl.registerLazySingleton(() => ProductsRemoteDs(sl<SupabaseClient>()));
   sl.registerLazySingleton(() => TransactionsRemoteDs(sl<SupabaseClient>()));
@@ -655,6 +656,8 @@ Future<void> initDI() async {
       entitlementDao: sl<EntitlementDao>(),
       entitlementRemoteDs: sl<EntitlementRemoteDs>(),
       activeBusinessContext: sl<ActiveBusinessContext>(),
+      employeesDao: sl<EmployeesDao>(),
+      branchesDao: sl<BranchesDao>(),
     );
     sl<PermissionService>().attachEntitlementService(service);
     return service;

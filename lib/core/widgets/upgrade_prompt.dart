@@ -51,8 +51,9 @@ _Copy _copyFor(UpgradeMoment m, {String? detail}) {
     case UpgradeMoment.seatCap:
       return const _Copy(
         'Give your staff their own login',
-        'Add a seat so an employee can sign in on their own device.',
-        'Add a seat',
+        'Upgrade to add another team member so they can sign in on their own '
+            'device.',
+        'See plans',
       );
     case UpgradeMoment.dataAccumulated:
       return _Copy(

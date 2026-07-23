@@ -4,6 +4,8 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart';
 
 import 'package:pos/core/database/app_database.dart';
+import 'package:pos/core/database/daos/branches_dao.dart';
+import 'package:pos/core/database/daos/employees_dao.dart';
 import 'package:pos/core/database/daos/entitlement_dao.dart';
 import 'package:pos/core/permissions/app_feature.dart';
 import 'package:pos/core/permissions/data/entitlement_remote_ds.dart';
@@ -31,6 +33,11 @@ class EntitlementService {
   final EntitlementDao _dao;
   final EntitlementRemoteDs _remoteDs;
   final ActiveBusinessContext _activeBusinessContext;
+  // Local source-of-truth for structural usage. Seats/branches are counted from
+  // Drift (not the lagging server RPC) so the meter and the cap pre-check can
+  // never diverge from what the device actually holds.
+  final EmployeesDao _employeesDao;
+  final BranchesDao _branchesDao;
 
   EntitlementCacheRow? _cached;
   ResourceUsageCacheRow? _usage;
@@ -47,9 +54,13 @@ class EntitlementService {
     required EntitlementDao entitlementDao,
     required EntitlementRemoteDs entitlementRemoteDs,
     required ActiveBusinessContext activeBusinessContext,
+    required EmployeesDao employeesDao,
+    required BranchesDao branchesDao,
   })  : _dao = entitlementDao,
         _remoteDs = entitlementRemoteDs,
-        _activeBusinessContext = activeBusinessContext;
+        _activeBusinessContext = activeBusinessContext,
+        _employeesDao = employeesDao,
+        _branchesDao = branchesDao;
 
   bool get hasEntitlementData => _cached != null;
 
@@ -62,9 +73,10 @@ class EntitlementService {
     if (businessId == null || businessId.isEmpty) return;
     try {
       _cached = await _dao.getEntitlement(businessId);
-      _usage = await _dao.getUsage(businessId);
       _featureFlags = _decodeFlags(_cached?.featureFlagsJson);
-      _entitlementRevision.value++;
+      // Recount seats/branches locally so the meter is accurate from first
+      // paint, even offline (before any server sync lands).
+      await recomputeLocalUsage();
     } catch (e, st) {
       debugPrint('[EntitlementService] Error in loadFromCache: $e\n$st');
     }
@@ -79,9 +91,10 @@ class EntitlementService {
       final data = await _remoteDs.fetchMyEntitlement();
       await _persist(businessId, data);
       _cached = await _dao.getEntitlement(businessId);
-      _usage = await _dao.getUsage(businessId);
       _featureFlags = _decodeFlags(_cached?.featureFlagsJson);
-      _entitlementRevision.value++;
+      // The server usage counts can lag or under-count local-only data — take
+      // seats & branches from the live local tally (device stays server-sourced).
+      await recomputeLocalUsage();
       debugPrint(
           '[EntitlementService] synced — plan=${_cached?.planCode} status=$effectiveStatus');
     } catch (e, st) {
@@ -244,6 +257,8 @@ class EntitlementService {
     };
   }
 
+  /// Cached usage for the meter's instant paint. Kept fresh by
+  /// [recomputeLocalUsage]; for a hard create-decision use [liveUsageOf].
   int usageOf(EntitlementResource resource) {
     final u = _usage;
     if (u == null) return 0;
@@ -254,12 +269,53 @@ class EntitlementService {
     };
   }
 
-  /// UX pre-check before a create: false only when we positively know the
-  /// cap is reached. Unknown data never blocks — the server is the referee.
-  bool canAddAnother(EntitlementResource resource) {
+  /// Live usage, counted from the local source of truth at call time. Seats and
+  /// branches come straight from Drift so a create pre-check can never run on a
+  /// stale number; devices stay server-sourced (the only cross-device count).
+  Future<int> liveUsageOf(EntitlementResource resource) async {
+    final businessId = _activeBusinessContext.businessId;
+    if (businessId == null || businessId.isEmpty) return 0;
+    switch (resource) {
+      case EntitlementResource.seats:
+        return _employeesDao.countActiveForBusiness(businessId);
+      case EntitlementResource.branches:
+        return _branchesDao.countForBusiness(businessId);
+      case EntitlementResource.devices:
+        return _usage?.deviceCount ?? 0;
+    }
+  }
+
+  /// UX pre-check before a create, counted live: false only when we positively
+  /// know the cap is reached. Unknown cap never blocks — the server is the
+  /// referee for cloud tiers; for local-only Free this is the only gate.
+  Future<bool> canAddAnother(EntitlementResource resource) async {
     final max = effectiveMax(resource);
     if (max == null) return true;
-    return usageOf(resource) < max;
+    return await liveUsageOf(resource) < max;
+  }
+
+  /// Refresh the cached seat/branch usage from local Drift (device count kept
+  /// from the last server sync). Call after any create/remove/activate and on
+  /// load so the meter reflects reality on every tier, online or off.
+  Future<void> recomputeLocalUsage() async {
+    final businessId = _activeBusinessContext.businessId;
+    if (businessId == null || businessId.isEmpty) return;
+    try {
+      final seats = await _employeesDao.countActiveForBusiness(businessId);
+      final branches = await _branchesDao.countForBusiness(businessId);
+      final existing = await _dao.getUsage(businessId);
+      await _dao.saveUsage(ResourceUsageCacheTableCompanion(
+        businessId: Value(businessId),
+        branchCount: Value(branches),
+        activeSeatCount: Value(seats),
+        deviceCount: Value(existing?.deviceCount ?? 0),
+        syncedAt: Value(DateTime.now()),
+      ));
+      _usage = await _dao.getUsage(businessId);
+      _entitlementRevision.value++;
+    } catch (e, st) {
+      debugPrint('[EntitlementService] Error in recomputeLocalUsage: $e\n$st');
+    }
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────

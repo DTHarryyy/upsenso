@@ -71,7 +71,45 @@ serve(async (req) => {
     );
     if (bizErr || !bizId) return json({ error: "No active business" }, 403);
 
+    // Only billing managers (owner bypass built into has_permission) may open
+    // checkouts — a cashier must not be able to spawn payment sessions.
+    const { data: mayManage, error: permErr } = await userClient.rpc(
+      "has_permission",
+      { permission_code: "billing.manage" },
+    );
+    if (permErr || mayManage !== true) {
+      return json({ error: "Not allowed to manage billing" }, 403);
+    }
+
     const admin = createClient(url, serviceKey);
+
+    // Housekeeping: pending rows older than a day will never be paid — the
+    // PayMongo session has long expired. Expire them so they stop counting
+    // against the rate limit and stop looking payable in history.
+    const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    await admin
+      .from("billing_payments")
+      .update({ status: "expired" })
+      .eq("business_id", bizId)
+      .eq("status", "pending")
+      .lt("created_at", dayAgo);
+
+    // Rate limit: at most 5 open checkouts per business per hour. DB-backed —
+    // no extra infra, survives cold starts.
+    const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count: openCount, error: rlErr } = await admin
+      .from("billing_payments")
+      .select("id", { count: "exact", head: true })
+      .eq("business_id", bizId)
+      .eq("status", "pending")
+      .gte("created_at", hourAgo);
+    if (rlErr) return json({ error: "Rate limit check failed" }, 500);
+    if ((openCount ?? 0) >= 5) {
+      return json(
+        { error: "Too many checkout attempts — try again later" },
+        429,
+      );
+    }
 
     // ── Compute the amount server-side ──────────────────────────────────────
     let amountPhp = 0;

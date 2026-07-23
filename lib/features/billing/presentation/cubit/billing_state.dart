@@ -28,7 +28,6 @@ class BillingState extends Equatable {
 
   // Remote catalog + history (empty offline).
   final List<PlanOption> plans;
-  final List<PlanAddon> addons;
   final List<BillingPayment> payments;
   final List<RegisteredDevice> devices;
 
@@ -56,7 +55,6 @@ class BillingState extends Equatable {
     this.maxSeats,
     this.maxDevices,
     this.plans = const [],
-    this.addons = const [],
     this.payments = const [],
     this.devices = const [],
     this.offline = false,
@@ -78,7 +76,6 @@ class BillingState extends Equatable {
     int? maxSeats,
     int? maxDevices,
     List<PlanOption>? plans,
-    List<PlanAddon>? addons,
     List<BillingPayment>? payments,
     List<RegisteredDevice>? devices,
     bool? offline,
@@ -99,7 +96,6 @@ class BillingState extends Equatable {
       maxSeats: maxSeats ?? this.maxSeats,
       maxDevices: maxDevices ?? this.maxDevices,
       plans: plans ?? this.plans,
-      addons: addons ?? this.addons,
       payments: payments ?? this.payments,
       devices: devices ?? this.devices,
       offline: offline ?? this.offline,
@@ -123,7 +119,6 @@ class BillingState extends Equatable {
         maxSeats,
         maxDevices,
         plans,
-        addons,
         payments,
         devices,
         offline,

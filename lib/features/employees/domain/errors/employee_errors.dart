@@ -36,8 +36,8 @@ class EmployeeSeatLimitException implements Exception {
 
   const EmployeeSeatLimitException([
     this.message =
-        'Your plan\'s seat limit is reached. Add a seat add-on or upgrade '
-        'to invite more staff.',
+        'You\'ve reached your plan\'s team-member limit. Upgrade your plan '
+        'to add more team members.',
   ]);
 
   @override

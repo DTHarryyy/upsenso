@@ -48,21 +48,6 @@ class BillingRemoteDs {
       ..sort((a, b) => a.priceMonthly.compareTo(b.priceMonthly));
   }
 
-  Future<List<PlanAddon>> fetchAddons() async {
-    final rows = await _client
-        .from('plan_addons')
-        .select('code, name, price_monthly, unit_qty')
-        .eq('is_active', true);
-    return (rows as List)
-        .map((r) => PlanAddon(
-              code: r['code'] as String,
-              name: r['name'] as String,
-              priceMonthly: (r['price_monthly'] as num).toDouble(),
-              unitQty: (r['unit_qty'] as num).toInt(),
-            ))
-        .toList();
-  }
-
   Future<List<BillingPayment>> fetchPayments() async {
     final rows = await _client
         .from('billing_payments')
@@ -103,23 +88,19 @@ class BillingRemoteDs {
   }
 
   /// Invokes the create-checkout edge function; returns the hosted checkout URL.
-  /// Amount is derived server-side from the plan/addon — the client only names
-  /// what it wants to buy.
+  /// Amount is derived server-side from the plan — the client only names what
+  /// it wants to buy.
   Future<String> createCheckout({
-    required String kind, // plan | addon
+    required String kind, // 'plan' (addons retired from the app)
     String? planCode,
     int? planVersion,
     String? billingPeriod, // monthly | annual
-    String? addonCode,
-    int? addonQty,
   }) async {
     final res = await _client.functions.invoke('create-checkout', body: {
       'kind': kind,
       'plan_code': ?planCode,
       'plan_version': ?planVersion,
       'billing_period': ?billingPeriod,
-      'addon_code': ?addonCode,
-      'addon_qty': ?addonQty,
     });
     final data = res.data;
     if (data is Map && data['checkout_url'] is String) {

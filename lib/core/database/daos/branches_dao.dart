@@ -35,6 +35,17 @@ class BranchesDao extends DatabaseAccessor<AppDatabase>
     )..where((t) => t.businessId.equals(businessId))).get();
   }
 
+  /// Branch count for a business — the local source of truth behind the branch
+  /// cap. Matches the server's `count(branches WHERE business_id = …)`.
+  Future<int> countForBusiness(String businessId) async {
+    final countExp = branchesTable.id.count();
+    final query = selectOnly(branchesTable)
+      ..addColumns([countExp])
+      ..where(branchesTable.businessId.equals(businessId));
+    final row = await query.getSingle();
+    return row.read(countExp) ?? 0;
+  }
+
   /// Watch branches by business ID
   Stream<List<BranchesTableData>> watchByBusinessId(String businessId) {
     return (select(

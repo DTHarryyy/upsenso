@@ -113,3 +113,44 @@ ORDER BY business_id, seq;
 --     --> EXPECT: RLS denial (no INSERT policy exists for authenticated)
 --   UPDATE subscriptions SET plan_code = 'growth' WHERE business_id = get_my_business_id();
 --     --> EXPECT: 0 rows affected / denied
+
+
+-- ── 9. create-checkout requires billing.manage (edge fn, curl) ──────────────
+-- The edge function 403s any authenticated caller without billing.manage
+-- (owner bypass is inside has_permission). Verify with a cashier JWT:
+--   curl -s -X POST "$SUPABASE_URL/functions/v1/create-checkout" \
+--     -H "Authorization: Bearer <cashier JWT>" -H "Content-Type: application/json" \
+--     -d '{"kind":"plan","plan_code":"starter","plan_version":1}'
+--     --> EXPECT: 403 {"error":"Not allowed to manage billing"}
+-- Same call with an owner JWT --> EXPECT: 200 {"checkout_url": ...}
+
+
+-- ── 10. create-checkout rate limit (edge fn, curl) ──────────────────────────
+-- At most 5 open (pending, <1h old) checkouts per business. Fire the §9 owner
+-- call 6× without paying:
+--   --> EXPECT: calls 1-5 return 200; call 6 returns 429.
+-- Pending rows older than 24h are auto-expired on the next call:
+--   [service_role] SELECT count(*) FROM billing_payments
+--     WHERE status = 'pending' AND created_at < now() - interval '24 hours';
+--     --> EXPECT: 0 right after any successful create-checkout invocation.
+
+
+-- ── 11. Webhook amount-mismatch rejection (manual) ──────────────────────────
+-- The webhook compares the paid amount (centavos) in the event payload against
+-- billing_payments.amount and refuses the grant on mismatch. Simulate by
+-- sending a signed test webhook whose amount != the pending row:
+--   --> EXPECT: 200 {"ok":true,"note":"amount mismatch — not granted"},
+--               billing_payments.status = 'failed', subscription UNCHANGED.
+-- (Signing: HMAC-SHA256 over "<t>.<rawBody>" with PAYMONGO_WEBHOOK_SECRET,
+--  header Paymongo-Signature: t=<unix>,te=<sig> in test mode.)
+
+
+-- ── 12. Trial anti-farming: signup_device_uid dedup (§6.2) ───────────────────
+-- [service_role] New-client signups stamp businesses.signup_device_uid; the
+-- second business created from the same device gets a zero-length trial:
+--   SELECT b.id, b.signup_device_uid, s.trial_end > now() AS has_trial
+--   FROM businesses b JOIN subscriptions s ON s.business_id = b.id
+--   WHERE b.signup_device_uid = '<uid>' ORDER BY b.created_at;
+--     --> EXPECT: first row has_trial = true, later rows has_trial = false
+--   SELECT event_type FROM subscription_events WHERE business_id = '<biz2>';
+--     --> EXPECT: includes 'trial_denied_device_reuse'

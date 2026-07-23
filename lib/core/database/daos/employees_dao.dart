@@ -37,6 +37,23 @@ class EmployeesDao extends DatabaseAccessor<AppDatabase>
         .getSingleOrNull();
   }
 
+  /// Active-seat headcount for a business — the local source of truth behind the
+  /// seat cap. Mirrors the server's `count(employees WHERE is_active)`; excludes
+  /// rows queued for deletion so a pending-delete frees the seat immediately.
+  Future<int> countActiveForBusiness(String businessId) async {
+    final countExp = employeesTable.id.count();
+    final query = selectOnly(employeesTable)
+      ..addColumns([countExp])
+      ..where(
+        employeesTable.businessId.equals(businessId) &
+            employeesTable.isActive.equals(true) &
+            employeesTable.syncStatus
+                .isNotIn([SyncStatus.pendingDelete.toInt()]),
+      );
+    final row = await query.getSingle();
+    return row.read(countExp) ?? 0;
+  }
+
   /// Returns a map of authUserId → fullName for the given Supabase auth UIDs.
   /// Also matches on the legacy [userId] column for employees whose [authUserId]
   /// was never populated (e.g., records created before auth_user_id tracking).

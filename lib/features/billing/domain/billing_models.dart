@@ -33,21 +33,6 @@ class PlanOption {
   double get perDay => priceMonthly / 30.0;
 }
 
-/// An à-la-carte add-on (device / branch / seat).
-class PlanAddon {
-  final String code;
-  final String name;
-  final double priceMonthly;
-  final int unitQty;
-
-  const PlanAddon({
-    required this.code,
-    required this.name,
-    required this.priceMonthly,
-    required this.unitQty,
-  });
-}
-
 /// A row from billing_payments (invoice history).
 class BillingPayment {
   final String id;

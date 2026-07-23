@@ -8,7 +8,9 @@ import 'package:pos/core/permissions/entitlement_service.dart';
 import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
+import 'package:pos/core/widgets/app_inline_banner.dart';
 import 'package:pos/core/widgets/app_section_card.dart';
+import 'package:pos/core/widgets/app_skeleton.dart';
 import 'package:pos/features/billing/data/billing_remote_ds.dart';
 import 'package:pos/features/billing/domain/billing_models.dart';
 import 'package:pos/features/billing/presentation/cubit/billing_cubit.dart';
@@ -16,9 +18,10 @@ import 'package:pos/features/billing/presentation/cubit/billing_state.dart';
 import 'package:pos/features/billing/presentation/widgets/plan_card.dart';
 import 'package:pos/features/billing/presentation/widgets/usage_meter.dart';
 
-/// Billing & subscription — plan picker (₱/day framing), usage meters, add-ons,
-/// registered devices, and invoice history. Current-plan section is offline-
-/// first; purchases require a connection.
+/// Billing & subscription. The page opens straight into the plan picker — the
+/// current tier is marked inside its card, and a slim banner appears only when
+/// the account needs attention (trial, past due, paused, offline). Purchases
+/// require a connection; everything else renders offline-first.
 class BillingPage extends StatelessWidget {
   const BillingPage({super.key});
 
@@ -102,34 +105,36 @@ class _BillingViewState extends State<_BillingView>
       body: BlocBuilder<BillingCubit, BillingState>(
         builder: (context, state) {
           if (state.status == BillingStatus.loading) {
-            return const Center(child: CircularProgressIndicator());
+            return const AppSkeletonList(itemCount: 4);
           }
           return RefreshIndicator(
             onRefresh: () => context.read<BillingCubit>().refresh(),
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                _PlanHero(state: state),
-                const SizedBox(height: 16),
-                if (_showMeters(state)) ...[
-                  _usageCard(state),
-                  const SizedBox(height: 16),
-                ],
-                _planSection(context, state),
-                if (state.addons.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  _addonsCard(context, state),
-                ],
-                if (state.devices.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  _devicesCard(context, state),
-                ],
-                if (state.payments.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  _invoicesCard(state),
-                ],
-                const SizedBox(height: 24),
-              ],
+            child: Center(
+              child: ConstrainedBox(
+                // Keeps the picker readable on web/desktop instead of
+                // stretching cards across an ultra-wide window.
+                constraints: const BoxConstraints(maxWidth: 1080),
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    ..._statusBanners(state),
+                    _planSection(context, state),
+                    if (_showMeters(state)) ...[
+                      const SizedBox(height: 16),
+                      _usageCard(state),
+                    ],
+                    if (state.devices.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      _devicesCard(context, state),
+                    ],
+                    if (state.payments.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      _invoicesCard(state),
+                    ],
+                    const SizedBox(height: 24),
+                  ],
+                ),
+              ),
             ),
           );
         },
@@ -137,9 +142,245 @@ class _BillingViewState extends State<_BillingView>
     );
   }
 
+  // ── Attention banners (replace the old always-on hero) ──────────────────────
+  List<Widget> _statusBanners(BillingState s) {
+    final banners = <Widget>[];
+    final d = s.daysRemaining;
+    final (msg, variant) = switch (s.effectiveStatus) {
+      'trialing' => (
+          d != null
+              ? 'Free trial — $d ${_dayWord(d)} left. Cloud backup is on us; '
+                  'pick a plan below to keep it.'
+              : 'Free trial — cloud backup is on us. Pick a plan below to keep it.',
+          AppInlineBannerVariant.info,
+        ),
+      'past_due' => (
+          d != null
+              ? 'Payment pending — cloud stays on for $d more ${_dayWord(d)}. '
+                  'Your POS keeps working.'
+              : 'Payment pending — your POS keeps working.',
+          AppInlineBannerVariant.warning,
+        ),
+      'lapsed' => (
+          'Cloud is paused. Your data is safe on this device — reactivate below '
+              'anytime.',
+          AppInlineBannerVariant.warning,
+        ),
+      _ => (null, AppInlineBannerVariant.info),
+    };
+    if (msg != null) {
+      banners.add(AppInlineBanner(message: msg, variant: variant));
+    }
+    if (s.offline) {
+      banners.add(const AppInlineBanner(
+        message: 'You\'re offline — showing your saved plan. Selling keeps '
+            'working; reconnect to change plans.',
+        variant: AppInlineBannerVariant.info,
+      ));
+    }
+    return banners;
+  }
+
+  String _dayWord(int n) => n == 1 ? 'day' : 'days';
+
   bool _showMeters(BillingState s) =>
       s.cloudEnabled &&
       (s.maxBranches != null || s.maxSeats != null || s.maxDevices != null);
+
+  // ── Plans section (with offline / retry states) ─────────────────────────────
+  Widget _planSection(BuildContext context, BillingState s) {
+    if (s.offline) {
+      return _noticeCard(
+        icon: Icons.wifi_off_rounded,
+        text: 'You\'re offline. Connect to change your plan — selling and '
+            'everything on this device keeps working.',
+      );
+    }
+    if (s.catalogFailed) {
+      return _noticeCard(
+        icon: Icons.cloud_off_rounded,
+        text: 'Couldn\'t load plans right now.',
+        action: OutlinedButton.icon(
+          onPressed: () => context.read<BillingCubit>().refresh(),
+          icon: const Icon(Icons.refresh_rounded, size: 18),
+          label: const Text('Try again'),
+        ),
+      );
+    }
+    if (s.plans.isEmpty) {
+      return _noticeCard(
+          icon: Icons.hourglass_empty_rounded, text: 'Loading plans…');
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Center(child: _periodToggle()),
+        const SizedBox(height: 24),
+        _planCards(context, s),
+      ],
+    );
+  }
+
+  Widget _planCards(BuildContext context, BillingState s) {
+    // A lapsed or never-subscribed account lives on Free — mark that card so
+    // the page always shows where you are.
+    final currentCode =
+        (s.effectiveStatus == 'free' || s.effectiveStatus == 'lapsed')
+            ? 'free'
+            : s.planCode;
+    PlanOption? currentPlan;
+    for (final p in s.plans) {
+      if (p.code == currentCode) currentPlan = p;
+    }
+    // The middle tier gets the "Most Popular" spotlight (like the reference
+    // layout) — it's also our launch conversion tier.
+    final recommendedIndex = s.plans.length ~/ 2;
+    final lastIndex = s.plans.length - 1;
+
+    PlanCard card(int i) {
+      final plan = s.plans[i];
+      return PlanCard(
+        plan: plan,
+        previousTier: i > 0 ? s.plans[i - 1] : null,
+        currentPlan: currentPlan,
+        annual: _annual,
+        isCurrent: plan.code == currentCode,
+        isRecommended: i == recommendedIndex,
+        leadWithEverything: i == lastIndex && i > 0,
+        busy: _busy,
+        canManage: _canManage,
+        grandfatheredPrice: s.grandfatheredPrice,
+        onSelect: () => _launch(() => context
+            .read<BillingCubit>()
+            .startPlanCheckout(
+                plan.code, plan.version, _annual ? 'annual' : 'monthly')),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 720 && s.plans.length > 1;
+        if (!wide) {
+          return Column(
+            children: [
+              for (int i = 0; i < s.plans.length; i++) ...[
+                card(i),
+                if (i != lastIndex) const SizedBox(height: 16),
+              ],
+            ],
+          );
+        }
+        // Side by side, top-aligned — the popular card sits taller by design.
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (int i = 0; i < s.plans.length; i++) ...[
+              Expanded(child: card(i)),
+              if (i != lastIndex) const SizedBox(width: 16),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _noticeCard(
+      {required IconData icon, required String text, Widget? action}) {
+    return AppSectionCard(
+      title: 'Plans',
+      icon: Icons.workspace_premium_rounded,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 18, color: AppColors.textSecondary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                text,
+                style: const TextStyle(
+                    fontSize: 13, height: 1.4, color: AppColors.textSecondary),
+              ),
+            ),
+          ],
+        ),
+        if (action != null) ...[const SizedBox(height: 12), action],
+      ],
+    );
+  }
+
+  /// Pill billing-period toggle — dark brand track with a light active pill and
+  /// a "SAVE 17%" chip on the annual side (annual = 10 months, 2 free).
+  Widget _periodToggle() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.brandDark,
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _periodSegment(label: 'Bill annually', selected: _annual, badge: 'SAVE 17%', onTap: () => setState(() => _annual = true)),
+          _periodSegment(label: 'Bill monthly', selected: !_annual, onTap: () => setState(() => _annual = false)),
+        ],
+      ),
+    );
+  }
+
+  Widget _periodSegment({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+    String? badge,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.surface : Colors.transparent,
+          borderRadius: BorderRadius.circular(30),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: selected ? AppColors.brandDark : Colors.white70,
+              ),
+            ),
+            if (badge != null) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? AppColors.brandSoft
+                      : Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  badge,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: selected ? AppColors.brandDark : Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 
   // ── Usage meters ────────────────────────────────────────────────────────────
   Widget _usageCard(BillingState s) {
@@ -149,141 +390,10 @@ class _BillingViewState extends State<_BillingView>
       children: [
         UsageMeter(label: 'Branches', used: s.branchUsage, max: s.maxBranches),
         const SizedBox(height: 14),
-        UsageMeter(label: 'Seats', used: s.seatUsage, max: s.maxSeats),
+        UsageMeter(
+            label: 'Team members', used: s.seatUsage, max: s.maxSeats),
         const SizedBox(height: 14),
         UsageMeter(label: 'Devices', used: s.deviceUsage, max: s.maxDevices),
-      ],
-    );
-  }
-
-  // ── Plans section (with offline / retry states) ─────────────────────────────
-  Widget _planSection(BuildContext context, BillingState s) {
-    return AppSectionCard(
-      title: 'Plans',
-      icon: Icons.grid_view_rounded,
-      trailing: s.plans.isNotEmpty ? _periodToggle() : null,
-      children: [
-        if (s.offline)
-          _notice(
-            icon: Icons.wifi_off_rounded,
-            text: 'You\'re offline. Connect to change your plan — selling and '
-                'everything on this device keeps working.',
-          )
-        else if (s.catalogFailed)
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _notice(
-                icon: Icons.cloud_off_rounded,
-                text: 'Couldn\'t load plans right now.',
-              ),
-              const SizedBox(height: 10),
-              OutlinedButton.icon(
-                onPressed: () => context.read<BillingCubit>().refresh(),
-                icon: const Icon(Icons.refresh_rounded, size: 18),
-                label: const Text('Try again'),
-              ),
-            ],
-          )
-        else if (s.plans.isEmpty)
-          _notice(icon: Icons.hourglass_empty_rounded, text: 'Loading plans…')
-        else
-          ...[
-            for (int i = 0; i < s.plans.length; i++) ...[
-              PlanCard(
-                plan: s.plans[i],
-                annual: _annual,
-                isCurrent: s.plans[i].code == s.planCode &&
-                    s.effectiveStatus != 'lapsed' &&
-                    s.effectiveStatus != 'free',
-                isRecommended: s.plans[i].code == 'growth',
-                busy: _busy,
-                canManage: _canManage,
-                onSelect: () => _launch(() => context
-                    .read<BillingCubit>()
-                    .startPlanCheckout(s.plans[i].code, s.plans[i].version,
-                        _annual ? 'annual' : 'monthly')),
-              ),
-              if (i != s.plans.length - 1) const SizedBox(height: 12),
-            ],
-          ],
-      ],
-    );
-  }
-
-  Widget _notice({required IconData icon, required String text}) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 18, color: AppColors.textSecondary),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(
-                fontSize: 13, height: 1.4, color: AppColors.textSecondary),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _periodToggle() {
-    return SegmentedButton<bool>(
-      style: const ButtonStyle(visualDensity: VisualDensity.compact),
-      segments: const [
-        ButtonSegment(value: false, label: Text('Monthly')),
-        ButtonSegment(value: true, label: Text('Annual')),
-      ],
-      selected: {_annual},
-      onSelectionChanged: (v) => setState(() => _annual = v.first),
-    );
-  }
-
-  // ── Add-ons ─────────────────────────────────────────────────────────────────
-  Widget _addonsCard(BuildContext context, BillingState s) {
-    return AppSectionCard(
-      title: 'Add-ons',
-      icon: Icons.add_circle_outline_rounded,
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(bottom: 12),
-          child: Text(
-            'Grow without changing plans — add just what you need.',
-            style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
-          ),
-        ),
-        for (final a in s.addons)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(a.name,
-                          style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary)),
-                      Text('₱${a.priceMonthly.toStringAsFixed(0)}/mo',
-                          style: const TextStyle(
-                              fontSize: 12, color: AppColors.textSecondary)),
-                    ],
-                  ),
-                ),
-                FilledButton.tonal(
-                  onPressed: (!_canManage || _busy || !s.cloudEnabled)
-                      ? null
-                      : () => _launch(() => context
-                          .read<BillingCubit>()
-                          .startAddonCheckout(a.code, 1)),
-                  child: const Text('Add'),
-                ),
-              ],
-            ),
-          ),
       ],
     );
   }
@@ -297,16 +407,36 @@ class _BillingViewState extends State<_BillingView>
       children: [
         for (final d in active)
           Padding(
-            padding: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.only(bottom: 10),
             child: Row(
               children: [
-                Icon(_platformIcon(d.platform),
-                    size: 18, color: AppColors.textSecondary),
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceAlt,
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Icon(_platformIcon(d.platform),
+                      size: 17, color: AppColors.textSecondary),
+                ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(d.label,
-                      style: const TextStyle(
-                          fontSize: 14, color: AppColors.textPrimary)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(d.label,
+                          style: const TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary)),
+                      if (d.lastSeenAt != null)
+                        Text('Last seen ${_date(d.lastSeenAt!)}',
+                            style: const TextStyle(
+                                fontSize: 11.5,
+                                color: AppColors.textSecondary)),
+                    ],
+                  ),
                 ),
                 if (_canManage)
                   TextButton(
@@ -386,6 +516,7 @@ class _BillingViewState extends State<_BillingView>
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
   String _invoiceLabel(BillingPayment p) => p.kind == 'addon'
+      // Historical add-on purchases still render even though add-ons are gone.
       ? 'Add-on: ${p.addonCode ?? ''}'
       : 'Plan: ${_planLabel(p.planCode ?? 'free')}';
 
@@ -407,182 +538,4 @@ class _BillingViewState extends State<_BillingView>
 
   String _date(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-}
-
-/// The current-plan hero — the emotional anchor of the page. Tints to the plan
-/// state (trial/active = brand, past_due/lapsed = warning, free = neutral) so
-/// the situation reads at a glance without alarm.
-class _PlanHero extends StatelessWidget {
-  final BillingState state;
-  const _PlanHero({required this.state});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = _theme(state.effectiveStatus);
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [theme.$1, theme.$2],
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(theme.$3, size: 18, color: theme.$4),
-              const SizedBox(width: 8),
-              Text(
-                'YOUR PLAN',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1,
-                  color: theme.$4,
-                ),
-              ),
-              const Spacer(),
-              _statusPill(theme.$4),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                _planLabel(state.planCode),
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                  color: theme.$5,
-                ),
-              ),
-              const Spacer(),
-              if (state.grandfatheredPrice != null &&
-                  state.grandfatheredPrice! > 0)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '₱${state.grandfatheredPrice!.toStringAsFixed(0)}/mo locked',
-                    style: const TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.success),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            _statusLine(state),
-            style: TextStyle(fontSize: 13, height: 1.4, color: theme.$6),
-          ),
-          if (state.offline) ...[
-            const SizedBox(height: 8),
-            Text(
-              'Offline — showing your saved plan.',
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: theme.$6),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _statusPill(Color fg) {
-    final (label, _) = _badge(state.effectiveStatus);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(label,
-          style: TextStyle(
-              fontSize: 11.5, fontWeight: FontWeight.w800, color: fg)),
-    );
-  }
-
-  (String, Color) _badge(String status) => switch (status) {
-        'trialing' => ('TRIAL', AppColors.info),
-        'active' => ('ACTIVE', AppColors.success),
-        'past_due' => ('PAST DUE', AppColors.warning),
-        'lapsed' => ('PAUSED', AppColors.warning),
-        _ => ('FREE', AppColors.textSecondary),
-      };
-
-  // Returns (bgTop, bgBottom, icon, accent, title, body) for a status.
-  (Color, Color, IconData, Color, Color, Color) _theme(String status) {
-    switch (status) {
-      case 'trialing':
-      case 'active':
-        return (
-          AppColors.brandSoft,
-          const Color(0xFFF3F7FF),
-          Icons.workspace_premium_rounded,
-          AppColors.brand,
-          AppColors.textPrimary,
-          AppColors.textSecondary,
-        );
-      case 'past_due':
-      case 'lapsed':
-        return (
-          AppColors.warningSoft,
-          const Color(0xFFFFF9EE),
-          Icons.pause_circle_outline_rounded,
-          AppColors.warning,
-          AppColors.textPrimary,
-          AppColors.textSecondary,
-        );
-      default:
-        return (
-          AppColors.surface,
-          AppColors.background,
-          Icons.smartphone_rounded,
-          AppColors.textSecondary,
-          AppColors.textPrimary,
-          AppColors.textSecondary,
-        );
-    }
-  }
-
-  String _planLabel(String code) => switch (code) {
-        'starter' => 'Starter',
-        'growth' => 'Growth',
-        'business' => 'Business',
-        'enterprise' => 'Enterprise',
-        _ => 'Free',
-      };
-
-  String _statusLine(BillingState s) {
-    final d = s.daysRemaining;
-    return switch (s.effectiveStatus) {
-      'trialing' => d != null
-          ? 'Cloud backup is on us — $d ${_dayWord(d)} left in your trial.'
-          : 'You\'re on a free trial with cloud backup.',
-      'active' => 'Your data is backed up to the cloud automatically.',
-      'past_due' => d != null
-          ? 'Payment pending — cloud stays on for $d more ${_dayWord(d)}. '
-              'Your POS keeps working.'
-          : 'Payment pending — your POS keeps working.',
-      'lapsed' =>
-        'Cloud is paused. Your data is safe on this device; reactivate anytime.',
-      _ => 'Everything runs on this device. Upgrade for cloud backup, more '
-          'devices, branches and a team.',
-    };
-  }
-
-  String _dayWord(int n) => n == 1 ? 'day' : 'days';
 }
