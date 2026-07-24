@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:pos/core/services/image_compressor.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Handles all Supabase I/O for receipt_settings.
@@ -33,18 +34,32 @@ class ReceiptSettingsRemoteDs {
     if (!mimeType.startsWith('image/')) {
       throw Exception('Only image files are allowed for the logo.');
     }
-    // Max 2 MB
-    if (bytes.lengthInBytes > 2 * 1024 * 1024) {
+
+    // Shrink on-device; logos may be transparent, so keep alpha (PNG) when present.
+    final compressed = await ImageCompressor.compress(
+      bytes,
+      maxDimension: 512,
+      quality: 85,
+    );
+
+    // Guard the compressed bytes — this is what actually gets stored.
+    if (compressed.bytes.lengthInBytes > 2 * 1024 * 1024) {
       throw Exception('Logo must be smaller than 2 MB.');
     }
 
-    final path = 'receipt-logos/$businessId/$fileName';
+    // Keep the base name but match the extension/type to the encoded output.
+    final dot = fileName.lastIndexOf('.');
+    final baseName = dot > 0 ? fileName.substring(0, dot) : fileName;
+    final path = 'receipt-logos/$businessId/$baseName${compressed.extension}';
     await _client.storage
         .from('business-logos')
         .uploadBinary(
           path,
-          bytes,
-          fileOptions: FileOptions(contentType: mimeType, upsert: true),
+          compressed.bytes,
+          fileOptions: FileOptions(
+            contentType: compressed.contentType,
+            upsert: true,
+          ),
         );
     return _client.storage.from('business-logos').getPublicUrl(path);
   }

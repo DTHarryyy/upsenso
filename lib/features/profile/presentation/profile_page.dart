@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/errors/app_error_mapper.dart';
+import 'package:pos/core/services/image_compressor.dart';
 import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/widgets/app_field_label.dart';
@@ -112,7 +113,15 @@ class _ProfileViewState extends State<_ProfileView> {
       imageQuality: 85,
     );
     if (picked == null || !mounted) return;
-    final bytes = await picked.readAsBytes();
+    final raw = await picked.readAsBytes();
+    // Avatars are photos and render circular — force small JPEG, drop alpha.
+    final compressed = await ImageCompressor.compress(
+      raw,
+      maxDimension: 512,
+      preserveAlpha: false,
+    );
+    if (!mounted) return;
+    final bytes = compressed.bytes;
     if (bytes.length > _maxAvatarBytes) {
       if (!mounted) return;
       AppToast.show(

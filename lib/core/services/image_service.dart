@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:pos/core/services/image_compressor.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -33,14 +34,15 @@ class ImageService {
     if (picked == null) return null;
 
     final bytes = await picked.readAsBytes();
-    final ext = p.extension(picked.path).toLowerCase();
-    final safeExt = ext.isNotEmpty ? ext : '.jpg';
+    // Shrink on-device so both the local cache and the later sync upload are small.
+    final compressed = await ImageCompressor.compress(bytes, maxDimension: 1024);
 
     final appDir = await getApplicationDocumentsDirectory();
     final imagesDir = Directory('${appDir.path}/product_images');
     await imagesDir.create(recursive: true);
-    final localPath = '${imagesDir.path}/${const Uuid().v4()}$safeExt';
-    await File(localPath).writeAsBytes(bytes);
+    final localPath =
+        '${imagesDir.path}/${const Uuid().v4()}${compressed.extension}';
+    await File(localPath).writeAsBytes(compressed.bytes);
 
     return localPath;
   }
