@@ -18,11 +18,11 @@ class SalesReportTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The KPI overview is rendered by the reports page above the filter row,
+    // so this tab starts straight at the charts.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SalesOverview(data: data),
-        const SizedBox(height: 20),
         LayoutBuilder(
           builder: (_, c) {
             if (c.maxWidth > 800) {
@@ -130,9 +130,11 @@ List<RankedRevenueItem> _categoryRankedItems(List<CategoryStat> stats) {
 
 // ─── Overview KPIs ────────────────────────────────────────────────────────────
 
-class _SalesOverview extends StatelessWidget {
+/// The four headline stat cards for the Sales tab. Rendered by the reports page
+/// at the top of the scroll body (above the filters), not inside the tab.
+class SalesOverviewCards extends StatelessWidget {
   final ReportsData data;
-  const _SalesOverview({required this.data});
+  const SalesOverviewCards({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {

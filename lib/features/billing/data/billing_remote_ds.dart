@@ -2,11 +2,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:pos/features/billing/domain/billing_models.dart';
 
-/// Supabase reads for the billing catalog + history, and the checkout invoke.
+/// Supabase reads for the billing catalog + history, the Play SKU map, and the
+/// purchase-verify invoke.
 ///
-/// Catalog tables (plans/plan_limits/plan_addons) are world-readable to signed-
-/// in users; subscription/payment rows are tenant-scoped by RLS; the checkout
-/// amount is computed server-side in the edge function (never trusted here).
+/// Catalog tables (plans/plan_limits/play_product_map) are world-readable to
+/// signed-in users; subscription/payment rows are tenant-scoped by RLS. A Play
+/// purchase is verified server-side (verify-play-purchase) against Google — the
+/// client's purchase is never trusted as proof of entitlement.
 class BillingRemoteDs {
   final SupabaseClient _client;
 
@@ -87,26 +89,43 @@ class BillingRemoteDs {
         .toList();
   }
 
-  /// Invokes the create-checkout edge function; returns the hosted checkout URL.
-  /// Amount is derived server-side from the plan — the client only names what
-  /// it wants to buy.
-  Future<String> createCheckout({
-    required String kind, // 'plan' (addons retired from the app)
-    String? planCode,
-    int? planVersion,
-    String? billingPeriod, // monthly | annual
+  /// The Play SKU → plan map (active rows only). The client queries Play for
+  /// live prices using these product ids — they're never hardcoded in the app.
+  Future<List<PlayProductMapping>> fetchPlayProducts() async {
+    final rows = await _client
+        .from('play_product_map')
+        .select('product_id, base_plan_id, plan_code, plan_version, billing_period')
+        .eq('is_active', true);
+    return (rows as List)
+        .map((r) => PlayProductMapping(
+              productId: r['product_id'] as String,
+              basePlanId: (r['base_plan_id'] as String?) ?? '',
+              planCode: r['plan_code'] as String,
+              planVersion: (r['plan_version'] as num).toInt(),
+              billingPeriod: r['billing_period'] as String,
+            ))
+        .toList();
+  }
+
+  /// Hands a Play purchase to the verify-play-purchase edge function — the sole
+  /// grantor of Premium. Throws with a message on any non-grant so the cubit can
+  /// surface it; success means Supabase has recorded the entitlement.
+  Future<void> verifyPlayPurchase({
+    required String productId,
+    required String purchaseToken,
   }) async {
-    final res = await _client.functions.invoke('create-checkout', body: {
-      'kind': kind,
-      'plan_code': ?planCode,
-      'plan_version': ?planVersion,
-      'billing_period': ?billingPeriod,
+    final res = await _client.functions.invoke('verify-play-purchase', body: {
+      'product_id': productId,
+      'purchase_token': purchaseToken,
     });
     final data = res.data;
-    if (data is Map && data['checkout_url'] is String) {
-      return data['checkout_url'] as String;
+    final ok = res.status == 200 && data is Map && data['ok'] == true;
+    if (!ok) {
+      final msg = (data is Map && data['error'] != null)
+          ? data['error'].toString()
+          : 'Verification failed (${res.status})';
+      throw StateError(msg);
     }
-    throw StateError('create-checkout returned no checkout_url');
   }
 
   static DateTime? _ts(dynamic v) =>

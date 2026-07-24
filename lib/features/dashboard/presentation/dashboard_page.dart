@@ -114,7 +114,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             // ── Stat Cards ──
                             _StatCardsRow(data: data, isLoading: isLoading),
 
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 8),
 
                             // ── Row 1: Sales Trend + Top Selling Items ──
                             // On wide screens they sit side by side (flex 3 : 2)
@@ -502,11 +502,12 @@ class _DashboardSkeletonState extends State<_DashboardSkeleton>
                     );
                     rows.add(
                       Row(
-                        children: slice
-                            .map((w) => Expanded(child: w))
-                            .expand((w) => [w, const SizedBox(width: 12)])
-                            .toList()
-                          ..removeLast(),
+                        children:
+                            slice
+                                .map((w) => Expanded(child: w))
+                                .expand((w) => [w, const SizedBox(width: 12)])
+                                .toList()
+                              ..removeLast(),
                       ),
                     );
                   }

@@ -80,7 +80,7 @@ class AppStatCard extends StatelessWidget {
         color: isSelected
             ? iconColor.withValues(alpha: 0.06)
             : AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isSelected ? iconColor : AppColors.borderSoft,
           width: isSelected ? 1.5 : 1,
@@ -226,7 +226,7 @@ class StatCardsRow extends StatelessWidget {
     super.key,
     required this.cards,
     this.minTileWidth = 165,
-    this.gap = 12,
+    this.gap = 8,
   });
 
   @override

@@ -269,6 +269,9 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
               return _SyncStatusProvider(
                 builder: (isOnline, pendingSyncCount) => Scaffold(
                   key: _scaffoldKey,
+                  // The floating nav has no opaque background — let content
+                  // scroll behind it so it reads as an overlay, not a strip.
+                  extendBody: true,
                   drawer: const Drawer(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.zero,
@@ -1185,7 +1188,7 @@ class _SettingsAccordion extends StatelessWidget {
         header,
         SizeTransition(
           sizeFactor: expandAnim,
-          axisAlignment: -1,
+          alignment: Alignment.topLeft,
           child: Column(
             children: [
               ...subItems.map(

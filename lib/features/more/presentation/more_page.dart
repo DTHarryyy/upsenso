@@ -308,7 +308,7 @@ class _MorePageState extends State<MorePage>
                         ),
                         SizeTransition(
                           sizeFactor: _expandAnim,
-                          axisAlignment: -1,
+                          alignment: Alignment.topLeft,
                           child: _SettingsSubItems(
                             onNavigate: _navigate,
                             onModulesTap: permService.can(

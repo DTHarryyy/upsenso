@@ -58,6 +58,44 @@ class BillingPayment {
   });
 }
 
+/// A row from `play_product_map` — which Play SKU maps to which plan + period.
+/// The Play product ids live only server-side; the client reads them here and
+/// never hardcodes them.
+class PlayProductMapping {
+  final String productId;
+  final String basePlanId;
+  final String planCode;
+  final int planVersion;
+  final String billingPeriod; // monthly | annual
+
+  const PlayProductMapping({
+    required this.productId,
+    required this.basePlanId,
+    required this.planCode,
+    required this.planVersion,
+    required this.billingPeriod,
+  });
+}
+
+/// A purchasable Play offer resolved for the UI: a plan + period bound to a Play
+/// product id with its store-localized price. Display-only — the plugin's
+/// `ProductDetails` handle stays inside the cubit, off the equatable state.
+class PlayPlanOffer {
+  final String planCode;
+  final String billingPeriod; // monthly | annual
+  final String productId;
+  final String basePlanId;
+  final String priceLabel; // localized, straight from Play
+
+  const PlayPlanOffer({
+    required this.planCode,
+    required this.billingPeriod,
+    required this.productId,
+    required this.basePlanId,
+    required this.priceLabel,
+  });
+}
+
 /// A registered device under the plan's device cap.
 class RegisteredDevice {
   final String deviceUid;

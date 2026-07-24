@@ -98,12 +98,16 @@ ORDER BY business_id, seq;
 --     --> EXPECT: duplicate key value violates unique constraint (business_id, seq)
 
 
--- ── 7. Manual grant ≡ webhook grant (§11) ───────────────────────────────────
--- Both write through admin_grant_subscription. Grant two businesses the same
--- plan (one "as admin", one simulating the webhook actor) and diff the rows:
---   SELECT plan_code, plan_version, status, entitlement_snapshot
---   FROM subscriptions WHERE business_id IN ('<biz_admin>', '<biz_webhook>');
---     --> EXPECT: identical plan_code/version/status/snapshot shape.
+-- ── 7. Manual grant ≡ Play grant (§11) ──────────────────────────────────────
+-- admin_grant_subscription (admin) and apply_play_subscription (Play verify /
+-- RTDN) must produce equivalent cloud entitlement. Grant two businesses the same
+-- plan by each path and diff the rows:
+--   SELECT plan_code, plan_version, status, cloud_enabled_from_snapshot :=
+--          (entitlement_snapshot->>'cloud_enabled'), entitlement_snapshot
+--   FROM subscriptions WHERE business_id IN ('<biz_admin>', '<biz_play>');
+--     --> EXPECT: identical plan_code/version, both cloud-enabled, same snapshot
+--     --> shape. (apply_play_subscription pins current_period_end to Google's
+--     --> expiry; admin_grant computes now()+30/365 — dates differ by design.)
 
 
 -- ── 8. Service-role-only writes (§8) ────────────────────────────────────────
@@ -115,34 +119,36 @@ ORDER BY business_id, seq;
 --     --> EXPECT: 0 rows affected / denied
 
 
--- ── 9. create-checkout requires billing.manage (edge fn, curl) ──────────────
+-- ── 9. verify-play-purchase requires billing.manage (edge fn, curl) ─────────
 -- The edge function 403s any authenticated caller without billing.manage
 -- (owner bypass is inside has_permission). Verify with a cashier JWT:
---   curl -s -X POST "$SUPABASE_URL/functions/v1/create-checkout" \
+--   curl -s -X POST "$SUPABASE_URL/functions/v1/verify-play-purchase" \
 --     -H "Authorization: Bearer <cashier JWT>" -H "Content-Type: application/json" \
---     -d '{"kind":"plan","plan_code":"starter","plan_version":1}'
+--     -d '{"product_id":"upsenso_starter_monthly","purchase_token":"x"}'
 --     --> EXPECT: 403 {"error":"Not allowed to manage billing"}
--- Same call with an owner JWT --> EXPECT: 200 {"checkout_url": ...}
+-- Owner JWT with a FABRICATED token --> EXPECT: 5xx/409 (Google rejects it) and
+--   NO subscription change — a client can never grant itself by inventing a token.
 
 
--- ── 10. create-checkout rate limit (edge fn, curl) ──────────────────────────
--- At most 5 open (pending, <1h old) checkouts per business. Fire the §9 owner
--- call 6× without paying:
---   --> EXPECT: calls 1-5 return 200; call 6 returns 429.
--- Pending rows older than 24h are auto-expired on the next call:
---   [service_role] SELECT count(*) FROM billing_payments
---     WHERE status = 'pending' AND created_at < now() - interval '24 hours';
---     --> EXPECT: 0 right after any successful create-checkout invocation.
+-- ── 10. Purchase token anti-hijack (verify-play-purchase) ───────────────────
+-- A purchase token is bound to the first business that verifies it; a second
+-- business presenting the same token is refused (play_purchase_tokens index).
+--   [service_role] SELECT business_id FROM play_purchase_tokens
+--     WHERE purchase_token = '<token>';       --> EXPECT: the original business
+--   Verify the same token as a DIFFERENT owner JWT
+--     --> EXPECT: 409 {"error":"Purchase already registered to another account"}
 
 
--- ── 11. Webhook amount-mismatch rejection (manual) ──────────────────────────
--- The webhook compares the paid amount (centavos) in the event payload against
--- billing_payments.amount and refuses the grant on mismatch. Simulate by
--- sending a signed test webhook whose amount != the pending row:
---   --> EXPECT: 200 {"ok":true,"note":"amount mismatch — not granted"},
---               billing_payments.status = 'failed', subscription UNCHANGED.
--- (Signing: HMAC-SHA256 over "<t>.<rawBody>" with PAYMONGO_WEBHOOK_SECRET,
---  header Paymongo-Signature: t=<unix>,te=<sig> in test mode.)
+-- ── 11. RTDN auth + idempotency (google-play-rtdn) ──────────────────────────
+-- The RTDN endpoint rejects a push without the shared secret, and a redelivered
+-- Pub/Sub message is a no-op (billing_webhook_events PK 'play:<messageId>').
+--   curl -s -X POST "$SUPABASE_URL/functions/v1/google-play-rtdn" \
+--     -H "Content-Type: application/json" -d '{"message":{"data":"e30="}}'
+--     --> EXPECT: 401 {"error":"Unauthorized"}   (no ?secret=)
+--   Re-POST the SAME message (with ?secret=) twice:
+--     --> EXPECT: first processes; second returns {"ok":true,"duplicate":true}.
+--   [service_role] SELECT count(*) FROM billing_webhook_events
+--     WHERE provider_event_id = 'play:<messageId>';   --> EXPECT: exactly 1
 
 
 -- ── 12. Trial anti-farming: signup_device_uid dedup (§6.2) ───────────────────

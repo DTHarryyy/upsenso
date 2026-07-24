@@ -2,11 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/widgets/stat_card.dart';
 
+/// Which slice of the report skeleton to draw. The reports page pins the Sales
+/// KPI row above the filters, so it needs the KPI and body shimmers separately;
+/// other tabs still use the [full] layout.
+enum ReportsSkeletonVariant { full, kpis, body }
+
 /// Loading placeholder for chart/table tabs. Mirrors the real layout —
 /// overview KPI row, a chart section, then a table section — so content
 /// doesn't jump when data lands.
 class ReportsTabSkeleton extends StatefulWidget {
-  const ReportsTabSkeleton({super.key});
+  final ReportsSkeletonVariant variant;
+
+  const ReportsTabSkeleton({
+    super.key,
+    this.variant = ReportsSkeletonVariant.full,
+  });
 
   @override
   State<ReportsTabSkeleton> createState() => _ReportsTabSkeletonState();
@@ -122,37 +132,52 @@ class _ReportsTabSkeletonState extends State<ReportsTabSkeleton>
               ),
             );
 
+            final chartCard = card(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  box(width: 140, height: 15),
+                  const SizedBox(height: 18),
+                  box(height: 200, radius: 10),
+                ],
+              ),
+              padding: const EdgeInsets.all(18),
+            );
+
+            final tableCard = card(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  box(width: 120, height: 15),
+                  const SizedBox(height: 14),
+                  ...List.generate(5, (_) => dataRow()),
+                ],
+              ),
+              padding: const EdgeInsets.all(18),
+            );
+
+            final children = <Widget>[];
+            if (widget.variant != ReportsSkeletonVariant.body) {
+              // The leading title placeholder only belongs to the full layout;
+              // the KPI-only slice is rendered flush above the filter row.
+              if (widget.variant == ReportsSkeletonVariant.full) {
+                children
+                  ..add(box(width: 150, height: 16))
+                  ..add(const SizedBox(height: 16));
+              }
+              children.addAll(kpiRows);
+            }
+            if (widget.variant != ReportsSkeletonVariant.kpis) {
+              if (children.isNotEmpty) children.add(const SizedBox(height: 20));
+              children
+                ..add(chartCard)
+                ..add(const SizedBox(height: 16))
+                ..add(tableCard);
+            }
+
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                box(width: 150, height: 16),
-                const SizedBox(height: 16),
-                ...kpiRows,
-                const SizedBox(height: 20),
-                card(
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      box(width: 140, height: 15),
-                      const SizedBox(height: 18),
-                      box(height: 200, radius: 10),
-                    ],
-                  ),
-                  padding: const EdgeInsets.all(18),
-                ),
-                const SizedBox(height: 16),
-                card(
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      box(width: 120, height: 15),
-                      const SizedBox(height: 14),
-                      ...List.generate(5, (_) => dataRow()),
-                    ],
-                  ),
-                  padding: const EdgeInsets.all(18),
-                ),
-              ],
+              children: children,
             );
           },
         );

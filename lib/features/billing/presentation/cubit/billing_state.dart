@@ -40,6 +40,20 @@ class BillingState extends Equatable {
   /// offer a Retry instead of misleadingly saying "offline".
   final bool catalogFailed;
 
+  /// This platform can buy via Google Play (Android with the store available).
+  /// False on web/desktop, where the page is read-only and points to Android.
+  final bool playSupported;
+
+  /// Purchasable Play offers (plan + period + store price), resolved from
+  /// `play_product_map` ⨝ live Play prices. Empty until Play is configured.
+  final List<PlayPlanOffer> playOffers;
+
+  /// A Play purchase or restore is mid-flight — CTAs show a spinner/disable.
+  final bool purchaseInProgress;
+
+  /// Last purchase/restore failure, surfaced to the user then cleared.
+  final String? purchaseError;
+
   const BillingState({
     this.status = BillingStatus.loading,
     this.errorMessage,
@@ -59,6 +73,10 @@ class BillingState extends Equatable {
     this.devices = const [],
     this.offline = false,
     this.catalogFailed = false,
+    this.playSupported = false,
+    this.playOffers = const [],
+    this.purchaseInProgress = false,
+    this.purchaseError,
   });
 
   BillingState copyWith({
@@ -80,6 +98,11 @@ class BillingState extends Equatable {
     List<RegisteredDevice>? devices,
     bool? offline,
     bool? catalogFailed,
+    bool? playSupported,
+    List<PlayPlanOffer>? playOffers,
+    bool? purchaseInProgress,
+    String? purchaseError,
+    bool clearPurchaseError = false,
   }) {
     return BillingState(
       status: status ?? this.status,
@@ -100,6 +123,11 @@ class BillingState extends Equatable {
       devices: devices ?? this.devices,
       offline: offline ?? this.offline,
       catalogFailed: catalogFailed ?? this.catalogFailed,
+      playSupported: playSupported ?? this.playSupported,
+      playOffers: playOffers ?? this.playOffers,
+      purchaseInProgress: purchaseInProgress ?? this.purchaseInProgress,
+      purchaseError:
+          clearPurchaseError ? null : (purchaseError ?? this.purchaseError),
     );
   }
 
@@ -123,5 +151,9 @@ class BillingState extends Equatable {
         devices,
         offline,
         catalogFailed,
+        playSupported,
+        playOffers,
+        purchaseInProgress,
+        purchaseError,
       ];
 }

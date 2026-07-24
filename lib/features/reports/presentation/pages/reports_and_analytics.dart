@@ -21,12 +21,10 @@ import 'package:pos/features/reports/presentation/cubit/reports_state.dart';
 import 'package:pos/features/reports/presentation/widgets/branch_comparison.dart';
 import 'package:pos/features/reports/presentation/widgets/inventory_health_tab.dart';
 import 'package:pos/features/reports/presentation/widgets/profit_summary_tab.dart';
-import 'package:pos/features/reports/presentation/widgets/report_nav_chip.dart';
+import 'package:pos/features/reports/presentation/widgets/report_tab_bar.dart';
 import 'package:pos/features/reports/presentation/widgets/reports_header.dart';
 import 'package:pos/features/reports/presentation/widgets/reports_skeleton.dart';
 import 'package:pos/features/reports/presentation/widgets/sales_report_tab.dart';
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 class ReportsAndAnalyticsPage extends StatefulWidget {
   const ReportsAndAnalyticsPage({super.key});
@@ -45,14 +43,9 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
   bool _exportingPdf = false;
   bool _exportingExcel = false;
 
-  // Short labels keep the segmented nav balanced; full titles live on the
-  // section headers inside each tab.
-  static const _tabs = [
-    ReportTab(icon: IconlyLight.chart, label: 'Sales'),
-    ReportTab(icon: IconlyLight.category, label: 'Inventory'),
-    ReportTab(icon: IconlyLight.wallet, label: 'Profit'),
-    ReportTab(icon: IconlyLight.work, label: 'Branches'),
-  ];
+  // Short labels keep the tab row balanced; full titles live on the section
+  // headers inside each tab.
+  static const _tabs = ['Sales', 'Inventory', 'Profit', 'Branches'];
 
   @override
   void initState() {
@@ -120,7 +113,7 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
     }
   }
 
-  // ── Export handlers ──────────────────────────────────────────────────────────
+  // Export handlers
 
   Future<void> _onExportPdf(
     ReportsData data,
@@ -206,8 +199,6 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
     }
   }
 
-  // ── Build ────────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     return BlocProvider.value(
@@ -250,13 +241,13 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
             const hp = 16.0;
             final isPhone = Breakpoints.isPhone(context);
 
-            final navBar = ReportNavChipBar(
+            final navBar = ReportTabBar(
               tabs: visibleTabs,
               selectedIndex: effectiveSelectedTab,
               onTabSelected: (i) => setState(() => _selectedTab = i),
             );
-            // A comfortable per-tab width so the segmented control sizes to its
-            // tabs instead of stretching the whole row on wide screens.
+            // A comfortable per-tab width so the tab row sizes to its tabs
+            // instead of stretching the whole row on wide screens.
             final navMaxWidth = visibleTabs.length * 130.0;
             final controls = ReportsControls(
               period: _period,
@@ -279,58 +270,37 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
                 child: CustomScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [
-                    // Phone: controls scroll away above the pinned tabs —
-                    // pinning both would permanently eat too much of a
-                    // small screen. Tablet+: tabs and controls share one
-                    // pinned row since there's room for both.
-                    if (isPhone)
-                      SliverPadding(
-                        padding: EdgeInsets.fromLTRB(hp, 16, hp, 12),
-                        sliver: SliverToBoxAdapter(child: controls),
-                      ),
+                    // The tabs pin directly under the app bar — like the
+                    // Receipt Settings tabs — so the two read as one header.
+                    // On phone they span the row; on tablet+ they cap their
+                    // width and sit left so they don't spread across a wide
+                    // screen. The filters now live in the scroll body below.
                     SliverPersistentHeader(
                       pinned: true,
                       delegate: _NavBarDelegate(
                         horizontalPadding: hp,
-                        // On phone the controls sit above with their own 16px
-                        // top inset, so the nav only needs a small gap. On
-                        // tablet+ the nav is the topmost element, so give it the
-                        // dashboard's 16px top to match.
-                        topPadding: isPhone ? 4 : 16,
                         child: isPhone
-                            ? Center(child: navBar)
-                            : Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  // Cap the segmented control's width so it
-                                  // doesn't stretch the full row on wide
-                                  // screens, while still shrinking to fit a
-                                  // narrow tablet. Controls stay pinned right.
-                                  Flexible(
-                                    child: Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: ConstrainedBox(
-                                        constraints: BoxConstraints(
-                                          maxWidth: navMaxWidth,
-                                        ),
-                                        child: navBar,
-                                      ),
-                                    ),
+                            ? navBar
+                            : Align(
+                                alignment: Alignment.centerLeft,
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    maxWidth: navMaxWidth,
                                   ),
-                                  const SizedBox(width: 16),
-                                  controls,
-                                ],
+                                  child: navBar,
+                                ),
                               ),
                       ),
                     ),
                     SliverPadding(
                       padding: EdgeInsets.fromLTRB(hp, 16, hp, 28),
                       sliver: SliverToBoxAdapter(
-                        child: _buildBody(
+                        child: _buildScrollBody(
                           state,
                           data,
                           isLoading: isLoading,
                           selectedTab: effectiveSelectedTab,
+                          controls: controls,
                         ),
                       ),
                     ),
@@ -344,22 +314,81 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
     );
   }
 
-  Widget _buildBody(
+  // Scroll body under the pinned tabs: each tab's KPI overview on top, then the
+  // period/export filters, then the tab's detail content.
+  //
+  // The KPI row stays pinned above the filters across the loaded↔loading swap
+  // (it shimmers in place while loading) so the filter row never jumps when the
+  // user changes the period. Only the content below the filters swaps to the
+  // skeleton / error view.
+  Widget _buildScrollBody(
     ReportsState state,
     ReportsData data, {
     required bool isLoading,
     required int selectedTab,
+    required Widget controls,
   }) {
-    // Inventory Health drives its own adaptive skeleton/empty handling.
-    if (selectedTab != 1) {
-      if (isLoading) return const ReportsTabSkeleton();
-      if (state is ReportsError) {
-        return isNetworkErrorMessage(state.message)
-            ? NetworkErrorView(message: state.message, onRetry: _startWatching)
-            : _ErrorView(message: state.message, onRetry: _startWatching);
-      }
+    final isError = state is ReportsError;
+    // Inventory Health (index 1) drives its own adaptive skeleton/empty
+    // handling, so it never gets the shared skeleton/error overlay — its KPI
+    // cards read straight from data and stay put while it loads.
+    final usesSharedOverlay = selectedTab != 1;
+
+    final Widget? kpiSlot;
+    if (!usesSharedOverlay) {
+      kpiSlot = _overviewFor(selectedTab, data);
+    } else if (isError) {
+      kpiSlot = null; // the error view takes over the whole body region
+    } else if (isLoading) {
+      kpiSlot = const ReportsTabSkeleton(variant: ReportsSkeletonVariant.kpis);
+    } else {
+      kpiSlot = _overviewFor(selectedTab, data);
     }
-    return _buildTabContent(data, selectedTab, isLoading: isLoading);
+
+    final Widget content;
+    if (usesSharedOverlay && (isLoading || isError)) {
+      if (isLoading) {
+        // The KPI shimmer sits above the filters, so the body skeleton skips
+        // the KPI row.
+        content = const ReportsTabSkeleton(
+          variant: ReportsSkeletonVariant.body,
+        );
+      } else {
+        final message = (state as ReportsError).message;
+        content = isNetworkErrorMessage(message)
+            ? NetworkErrorView(message: message, onRetry: _startWatching)
+            : _ErrorView(message: message, onRetry: _startWatching);
+      }
+    } else {
+      content = _buildTabContent(data, selectedTab, isLoading: isLoading);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (kpiSlot != null) ...[kpiSlot, const SizedBox(height: 16)],
+        controls,
+        const SizedBox(height: 16),
+        content,
+      ],
+    );
+  }
+
+  // The KPI overview cards for each tab, rendered above the filter row so every
+  // tab reads "KPIs → filters → detail".
+  Widget _overviewFor(int tab, ReportsData data) {
+    switch (tab) {
+      case 0:
+        return SalesOverviewCards(data: data);
+      case 1:
+        return InventoryOverviewCards(data: data);
+      case 2:
+        return ProfitOverviewCards(data: data);
+      case 3:
+        return BranchOverviewCards(data: data);
+      default:
+        return const SizedBox.shrink();
+    }
   }
 
   Widget _buildTabContent(
@@ -392,26 +421,22 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
   }
 }
 
-// ─── Sticky nav delegate ──────────────────────────────────────────────────────
+// Sticky nav delegate
 
 class _NavBarDelegate extends SliverPersistentHeaderDelegate {
   final Widget child;
   final double horizontalPadding;
-  final double topPadding;
 
-  _NavBarDelegate({
-    required this.child,
-    required this.horizontalPadding,
-    required this.topPadding,
-  });
+  _NavBarDelegate({required this.child, required this.horizontalPadding});
 
-  // The segmented nav bar fills whatever extent it's handed, so keep the
-  // content region fixed and let top padding drive the total height — that way
-  // the header can line up with the dashboard's 16px inset without squashing.
+  // A white surface strip with a hairline bottom divider grounds the tabs the
+  // same way the Receipt Settings header does, so they read as a real tab bar
+  // pinned under the app bar instead of floating text on the page background.
+  static const double _topPadding = 8;
   static const double _contentHeight = 48;
-  static const double _bottomPadding = 14;
+  static const double _bottomPadding = 6;
 
-  double get _height => topPadding + _contentHeight + _bottomPadding;
+  double get _height => _topPadding + _contentHeight + _bottomPadding;
 
   @override
   double get minExtent => _height;
@@ -424,26 +449,31 @@ class _NavBarDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    return Container(
-      color: AppColors.background,
-      padding: EdgeInsets.fromLTRB(
-        horizontalPadding,
-        topPadding,
-        horizontalPadding,
-        _bottomPadding,
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(
+          bottom: BorderSide(color: AppColors.borderSoft, width: 1),
+        ),
       ),
-      child: child,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          horizontalPadding,
+          _topPadding,
+          horizontalPadding,
+          _bottomPadding,
+        ),
+        child: child,
+      ),
     );
   }
 
   @override
   bool shouldRebuild(covariant _NavBarDelegate old) =>
-      old.child != child ||
-      old.horizontalPadding != horizontalPadding ||
-      old.topPadding != topPadding;
+      old.child != child || old.horizontalPadding != horizontalPadding;
 }
 
-// ─── Export dropdown ──────────────────────────────────────────────────────────
+// Export dropdown
 
 enum _ExportType { pdf, excel }
 
@@ -496,7 +526,7 @@ class _ExportDropdown extends StatelessWidget {
   }
 }
 
-// ─── Error view ───────────────────────────────────────────────────────────────
+// Error view
 
 class _ErrorView extends StatelessWidget {
   final String message;

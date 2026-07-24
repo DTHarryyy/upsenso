@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/permissions/entitlement_service.dart';
 import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
+import 'package:pos/core/session/active_business_context.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/widgets/app_inline_banner.dart';
 import 'package:pos/core/widgets/app_section_card.dart';
 import 'package:pos/core/widgets/app_skeleton.dart';
 import 'package:pos/features/billing/data/billing_remote_ds.dart';
+import 'package:pos/features/billing/data/iap_service.dart';
 import 'package:pos/features/billing/domain/billing_models.dart';
 import 'package:pos/features/billing/presentation/cubit/billing_cubit.dart';
 import 'package:pos/features/billing/presentation/cubit/billing_state.dart';
@@ -33,6 +34,8 @@ class BillingPage extends StatelessWidget {
         remoteDs: sl<BillingRemoteDs>(),
         connectivity: sl<ConnectivityService>(),
         deviceRegistration: sl(),
+        iap: sl<IapService>(),
+        activeBusiness: sl<ActiveBusinessContext>(),
       )..load(),
       child: const _BillingView(),
     );
@@ -49,7 +52,6 @@ class _BillingView extends StatefulWidget {
 class _BillingViewState extends State<_BillingView>
     with WidgetsBindingObserver {
   bool _annual = false;
-  bool _busy = false;
 
   bool get _canManage =>
       sl<PermissionService>().can(PermissionKeys.billingManage);
@@ -68,25 +70,21 @@ class _BillingViewState extends State<_BillingView>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Returning from the external PayMongo checkout: pull the fresh plan so a
-    // just-completed upgrade reflects immediately.
+    // On resume, pull the fresh plan so a just-completed purchase (or a change
+    // made elsewhere) reflects immediately.
     if (state == AppLifecycleState.resumed && mounted) {
       context.read<BillingCubit>().refresh();
     }
   }
 
-  Future<void> _launch(Future<String> Function() start) async {
-    if (_busy) return;
-    setState(() => _busy = true);
-    try {
-      final url = await start();
-      final ok = await launchUrl(Uri.parse(url),
-          mode: LaunchMode.externalApplication);
-      if (!ok && mounted) _snack('Could not open the checkout page.');
-    } catch (_) {
-      if (mounted) _snack('Checkout failed. Please try again.');
-    } finally {
-      if (mounted) setState(() => _busy = false);
+  /// Android buys through Google Play; other platforms are read-only and point
+  /// the user to the Android app.
+  void _onSelectPlan(BuildContext context, PlanOption plan) {
+    final cubit = context.read<BillingCubit>();
+    if (cubit.state.playSupported) {
+      cubit.buyPlan(plan.code, _annual ? 'annual' : 'monthly');
+    } else {
+      _snack('Subscriptions are managed in the Upsenso Android app.');
     }
   }
 
@@ -102,7 +100,11 @@ class _BillingViewState extends State<_BillingView>
         backgroundColor: AppColors.surface,
         surfaceTintColor: AppColors.surface,
       ),
-      body: BlocBuilder<BillingCubit, BillingState>(
+      body: BlocConsumer<BillingCubit, BillingState>(
+        listenWhen: (prev, curr) =>
+            curr.purchaseError != null &&
+            curr.purchaseError != prev.purchaseError,
+        listener: (context, state) => _snack(state.purchaseError!),
         builder: (context, state) {
           if (state.status == BillingStatus.loading) {
             return const AppSkeletonList(itemCount: 4);
@@ -215,9 +217,29 @@ class _BillingViewState extends State<_BillingView>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (!s.playSupported) ...[
+          const AppInlineBanner(
+            message: 'Subscriptions are managed in the Upsenso Android app. '
+                'Here you can review your plan and usage anytime.',
+            variant: AppInlineBannerVariant.info,
+          ),
+          const SizedBox(height: 16),
+        ],
         Center(child: _periodToggle()),
         const SizedBox(height: 24),
         _planCards(context, s),
+        if (s.playSupported) ...[
+          const SizedBox(height: 16),
+          Center(
+            child: TextButton.icon(
+              onPressed: s.purchaseInProgress
+                  ? null
+                  : () => context.read<BillingCubit>().restore(),
+              icon: const Icon(Icons.restore_rounded, size: 18),
+              label: const Text('Restore purchases'),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -248,13 +270,10 @@ class _BillingViewState extends State<_BillingView>
         isCurrent: plan.code == currentCode,
         isRecommended: i == recommendedIndex,
         leadWithEverything: i == lastIndex && i > 0,
-        busy: _busy,
+        busy: s.purchaseInProgress,
         canManage: _canManage,
         grandfatheredPrice: s.grandfatheredPrice,
-        onSelect: () => _launch(() => context
-            .read<BillingCubit>()
-            .startPlanCheckout(
-                plan.code, plan.version, _annual ? 'annual' : 'monthly')),
+        onSelect: () => _onSelectPlan(context, plan),
       );
     }
 
@@ -440,7 +459,7 @@ class _BillingViewState extends State<_BillingView>
                 ),
                 if (_canManage)
                   TextButton(
-                    onPressed: _busy
+                    onPressed: s.purchaseInProgress
                         ? null
                         : () => context
                             .read<BillingCubit>()
