@@ -43,48 +43,64 @@ class AppBottomNav extends StatelessWidget {
             ? _inventoryStaffItems(canViewProducts: canViewProducts)
             : _fullNavItems(canViewProducts: canViewProducts);
 
+    // The scanner is a centered docked button; nav items split around it.
+    // Without POS access there's no scanner, so all items stay in one row.
+    final splitAt = canUsePOS ? (items.length / 2).ceil() : items.length;
+    final leftItems = items.sublist(0, splitAt);
+    final rightItems = items.sublist(splitAt);
+
+    Widget pillItem(_NavSpec item) => _NavPillItem(
+          spec: item,
+          isActive: currentIndex == item.index,
+          onTap: () => onTap(item.index),
+        );
+
     return SafeArea(
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-        child: Row(
-          children: [
-            // ── Tab pill ─────────────────────────────────────────────────
-            Expanded(
-              child: Container(
-                height: 62,
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(31),
-                  border: Border.all(color: AppColors.borderSoft),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
-                      blurRadius: 24,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    for (final item in items)
-                      _NavPillItem(
-                        spec: item,
-                        isActive: currentIndex == item.index,
-                        onTap: () => onTap(item.index),
+        child: SizedBox(
+          height: 62,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // ── Tab pill with a center notch for the docked scanner ──────
+              Positioned.fill(
+                child: Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(31),
+                    border: Border.all(color: AppColors.borderSoft),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
                       ),
-                  ],
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      for (final item in leftItems) pillItem(item),
+                      // Notch gap reserving room for the raised scanner.
+                      if (canUsePOS) const SizedBox(width: 64),
+                      for (final item in rightItems) pillItem(item),
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-            // ── Standalone scanner button → POS terminal ─────────────────
-            if (canUsePOS) ...[
-              const SizedBox(width: 10),
-              _ScannerButton(onTap: () => onTap(2)),
+              // ── Centered docked scanner button → POS terminal ────────────
+              if (canUsePOS)
+                Positioned(
+                  top: -12,
+                  left: 0,
+                  right: 0,
+                  child: Center(child: _ScannerButton(onTap: () => onTap(2))),
+                ),
             ],
-          ],
+          ),
         ),
       ),
     );

@@ -42,7 +42,8 @@ import 'package:pos/features/profile/presentation/profile_page.dart';
 import 'package:pos/features/expenses/presentation/expenses_page.dart';
 import 'package:pos/features/sales/presentation/sales_history.dart';
 import 'package:pos/features/settings/presentation/receipt_settings_page.dart';
-import 'package:pos/features/settings/presentation/settings_shell_page.dart';
+import 'package:pos/features/settings/presentation/settings_page.dart';
+import 'package:pos/features/settings/presentation/system_settings_page.dart';
 import 'package:pos/features/dashboard/presentation/dashboard_page.dart';
 import 'package:pos/features/reports/presentation/pages/reports_and_analytics.dart';
 import 'package:pos/features/notifications/presentation/pages/notifications_page.dart';
@@ -197,6 +198,7 @@ class AppRouter {
           AppRoutes.employees: PermissionKeys.navEmployees,
           AppRoutes.auditLogs: PermissionKeys.navAuditLogs,
           AppRoutes.settings: PermissionKeys.navSettings,
+          AppRoutes.systemSettings: PermissionKeys.navSettings,
           AppRoutes.receiptSettings: PermissionKeys.navSettings,
           AppRoutes.moduleSettings: PermissionKeys.settingsEditBusiness,
           AppRoutes.refundApprovalSettings: PermissionKeys.settingsEditBusiness,
@@ -322,6 +324,10 @@ class AppRouter {
         builder: (context, _) => const ProfilePage(),
       ),
       GoRoute(
+        path: AppRoutes.systemSettings,
+        builder: (context, _) => const SystemSettingsPage(),
+      ),
+      GoRoute(
         path: AppRoutes.receiptSettings,
         builder: (context, _) => const ReceiptSettingsPage(),
       ),
@@ -400,18 +406,13 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.aiChat,
         builder: (context, _) {
-          final authRepo = sl<AuthRepository>();
-          final currentUser = authRepo.getCurrentUser();
-          final branchCubit = context.read<BranchCubit>();
+          // Tenant/branch/permission scope is derived inside the pipeline via
+          // AiScopeGuard (session + RBAC) — nothing to inject here.
           return BlocProvider(
             create: (_) => AiChatBloc(
               pipeline: sl<AiPipeline>(),
               downloadService: sl<ModelDownloadService>(),
               modelManager: sl<ModelManager>(),
-              businessId: currentUser?.businessId ?? '',
-              cashierId: currentUser?.id ?? '',
-              selectedBranchId: () =>
-                  branchCubit.getSelectedBranchIdForFiltering(),
             ),
             child: const AiChatPage(),
           );
@@ -490,12 +491,14 @@ class AppRouter {
             ],
           ),
 
-          // ── Branch 7: Settings (inline sub-module shell) ─────────────────
+          // ── Branch 7: Settings ───────────────────────────────────────────
+          // Reached via context.push so it stacks as a poppable sub-page with
+          // its own AppSubPageBar (see isStackedSubPage in MainNavigationPage).
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: AppRoutes.settings,
-                builder: (context, _) => const SettingsShellPage(),
+                builder: (context, _) => const SettingsPage(),
               ),
             ],
           ),
@@ -599,8 +602,7 @@ class AppRouter {
                       // when pre-filling a new PO for that supplier.
                       final extra = state.extra;
                       final po = extra is PurchaseOrder ? extra : null;
-                      final initialSupplier =
-                          extra is Supplier ? extra : null;
+                      final initialSupplier = extra is Supplier ? extra : null;
                       return BlocProvider(
                         create: (_) => PoCubit(
                           repository: sl<IProcurementRepository>(),

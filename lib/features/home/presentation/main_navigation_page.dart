@@ -13,7 +13,6 @@ import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
-import 'package:pos/core/navigation/sidebar_nav_cubit.dart';
 import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
@@ -98,223 +97,234 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider<SidebarNavCubit>(
-      create: (_) => SidebarNavCubit(),
-      child: BlocBuilder<AuthBloc, AuthState>(
-        buildWhen: (prev, curr) {
-          if (prev.runtimeType != curr.runtimeType) return true;
-          // Rebuild when the user's display/role context improves so the
-          // sidebar and app bar reflect fresh data without a full restart.
-          if (prev is AuthAuthenticated && curr is AuthAuthenticated) {
-            return prev.user.businessId != curr.user.businessId ||
-                prev.user.businessName != curr.user.businessName ||
-                prev.user.roleName != curr.user.roleName ||
-                prev.user.branchId != curr.user.branchId ||
-                prev.user.fullName != curr.user.fullName ||
-                prev.user.avatarUrl != curr.user.avatarUrl;
-          }
-          return false;
-        },
-        builder: (context, authState) {
-          if (authState is! AuthAuthenticated) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
+    return BlocBuilder<AuthBloc, AuthState>(
+      buildWhen: (prev, curr) {
+        if (prev.runtimeType != curr.runtimeType) return true;
+        // Rebuild when the user's display/role context improves so the
+        // sidebar and app bar reflect fresh data without a full restart.
+        if (prev is AuthAuthenticated && curr is AuthAuthenticated) {
+          return prev.user.businessId != curr.user.businessId ||
+              prev.user.businessName != curr.user.businessName ||
+              prev.user.roleName != curr.user.roleName ||
+              prev.user.branchId != curr.user.branchId ||
+              prev.user.fullName != curr.user.fullName ||
+              prev.user.avatarUrl != curr.user.avatarUrl;
+        }
+        return false;
+      },
+      builder: (context, authState) {
+        if (authState is! AuthAuthenticated) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        _scheduleBranchLoad(authState.user);
+
+        final userId = authState.user.id;
+        final userAvatar = authState.user.avatarUrl;
+        final userName =
+            authState.user.fullName ?? authState.user.email ?? 'User';
+        final roleName = displayRoleName(authState.user.roleName?.trim());
+        final roleId = authState.user.roleId?.trim();
+        final userRole = (roleName != null && roleName.isNotEmpty)
+            ? roleName
+            : (roleId != null && roleId.isNotEmpty)
+            ? roleId
+            : 'Syncing role...';
+        final businessName = authState.user.businessName ?? 'Business';
+        final branchName =
+            authState.user.branchName ??
+            authState.user.businessName ??
+            'Branch';
+        final userEmail = authState.user.email ?? 'N/A';
+
+        return BlocBuilder<BranchCubit, BranchState>(
+          builder: (context, branchState) {
+            final visibleBranches = branchState.availableBranches.isNotEmpty
+                ? branchState.availableBranches
+                : [branchName];
+            final selectedBranch = branchState.selectedBranch ?? branchName;
+
+            final isTablet = Breakpoints.isTablet(context);
+            final isPosTab = _currentIndex == 2;
+            // Procurement pages own their AppSubPageBar on mobile. They're
+            // reached via context.push (drawer) which stacks them on the
+            // active branch's navigator without changing currentIndex — so we
+            // detect them by location, not branch index, to drop shell chrome.
+            final location = GoRouterState.of(context).uri.path;
+            final isStackedSubPage =
+                location.startsWith(AppRoutes.suppliers) ||
+                location.startsWith(AppRoutes.purchaseOrders) ||
+                location.startsWith(AppRoutes.customers) ||
+                location.startsWith(AppRoutes.fraud) ||
+                location == AppRoutes.settings;
+
+            // GoRouter's StatefulNavigationShell manages the page stack.
+            // A GlobalKey preserves the whole page subtree's state when the
+            // phone/tablet layout swap moves it to a different tree position.
+            final shell = KeyedSubtree(
+              key: _shellKey,
+              child: widget.navigationShell,
             );
-          }
 
-          _scheduleBranchLoad(authState.user);
-
-          final userId = authState.user.id;
-          final userAvatar = authState.user.avatarUrl;
-          final userName =
-              authState.user.fullName ?? authState.user.email ?? 'User';
-          final roleName = displayRoleName(authState.user.roleName?.trim());
-          final roleId = authState.user.roleId?.trim();
-          final userRole = (roleName != null && roleName.isNotEmpty)
-              ? roleName
-              : (roleId != null && roleId.isNotEmpty)
-              ? roleId
-              : 'Syncing role...';
-          final businessName = authState.user.businessName ?? 'Business';
-          final branchName =
-              authState.user.branchName ??
-              authState.user.businessName ??
-              'Branch';
-          final userEmail = authState.user.email ?? 'N/A';
-
-          return BlocBuilder<BranchCubit, BranchState>(
-            builder: (context, branchState) {
-              final visibleBranches = branchState.availableBranches.isNotEmpty
-                  ? branchState.availableBranches
-                  : [branchName];
-              final selectedBranch = branchState.selectedBranch ?? branchName;
-
-              final isTablet = Breakpoints.isTablet(context);
-              final isPosTab = _currentIndex == 2;
-              // Procurement pages own their AppSubPageBar on mobile. They're
-              // reached via context.push (drawer) which stacks them on the
-              // active branch's navigator without changing currentIndex — so we
-              // detect them by location, not branch index, to drop shell chrome.
-              final location = GoRouterState.of(context).uri.path;
-              final isStackedSubPage =
-                  location.startsWith(AppRoutes.suppliers) ||
-                  location.startsWith(AppRoutes.purchaseOrders) ||
-                  location.startsWith(AppRoutes.customers) ||
-                  location.startsWith(AppRoutes.fraud);
-
-              // GoRouter's StatefulNavigationShell manages the page stack.
-              // A GlobalKey preserves the whole page subtree's state when the
-              // phone/tablet layout swap moves it to a different tree position.
-              final shell = KeyedSubtree(
-                key: _shellKey,
-                child: widget.navigationShell,
-              );
-
-              if (isTablet) {
-                return _SyncStatusProvider(
-                  builder: (isOnline, pendingSyncCount) => Scaffold(
-                    body: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 1980),
-                        child: Row(
-                          children: [
-                            // ── Sidebar ──────────────────────────────────────────
-                            if (!isPosTab)
-                              _AppSidebar(
-                                expanded: _sidebarExpanded,
-                                currentIndex: _currentIndex,
-                                onNavTap: _onNavTap,
-                                onToggle: () => setState(
-                                  () => _sidebarExpanded = !_sidebarExpanded,
-                                ),
-                                userName: userName,
-                                userRole: userRole,
-                                userEmail: userEmail,
-                                userAvatar: userAvatar,
-                                businessName: businessName,
-                                businessId: authState.user.businessId,
-                                isOnline: isOnline,
-                                pendingSyncCount: pendingSyncCount,
-                                branches: visibleBranches,
-                                selectedBranch: selectedBranch,
-                                canSwitchBranches:
-                                    branchState.canSwitchBranches,
+            if (isTablet) {
+              return _SyncStatusProvider(
+                builder: (isOnline, pendingSyncCount) => Scaffold(
+                  body: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1980),
+                      child: Row(
+                        children: [
+                          // ── Sidebar ──────────────────────────────────────────
+                          if (!isPosTab)
+                            _AppSidebar(
+                              expanded: _sidebarExpanded,
+                              currentIndex: _currentIndex,
+                              onNavTap: _onNavTap,
+                              onToggle: () => setState(
+                                () => _sidebarExpanded = !_sidebarExpanded,
                               ),
-
-                            // ── Right column: top bar + page content ─────────────
-                            Expanded(
-                              child: Column(
-                                children: [
-                                  // Shared top bar — same component as mobile so
-                                  // branch selector, sync status, and user section
-                                  // are always consistent across breakpoints.
-                                  if (!isPosTab)
-                                    CustomAppBar(
-                                      branches: visibleBranches,
-                                      selectedBranch: selectedBranch,
-                                      onBranchChanged:
-                                          branchState.canSwitchBranches
-                                          ? (branch) => context
-                                                .read<BranchCubit>()
-                                                .selectBranch(branch)
-                                          : null,
-                                      userName: userName,
-                                      userRole: userRole,
-                                      userEmail: userEmail,
-                                      userId: userId,
-                                      userAvatar: userAvatar,
-                                      businessName: businessName,
-                                      isOnline: isOnline,
-                                      pendingSyncCount: pendingSyncCount,
-                                      onNotificationTapped: () =>
-                                          context.push(AppRoutes.notifications),
-                                      showThemeToggle: false,
-                                    ),
-
-                                  // Page content.  We override AppBarTheme with
-                                  // toolbarHeight: 0 so any per-page AppBar that
-                                  // individual pages declare occupies no space and
-                                  // is visually hidden — the top bar above provides
-                                  // all the chrome the user needs on desktop.
-                                  Expanded(
-                                    child: Theme(
-                                      data: Theme.of(context).copyWith(
-                                        appBarTheme: Theme.of(context)
-                                            .appBarTheme
-                                            .copyWith(
-                                              toolbarHeight: 0,
-                                              elevation: 0,
-                                              scrolledUnderElevation: 0,
-                                              backgroundColor:
-                                                  Colors.transparent,
-                                              surfaceTintColor:
-                                                  Colors.transparent,
-                                              shadowColor: Colors.transparent,
-                                            ),
-                                      ),
-                                      child: shell,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                              userName: userName,
+                              userRole: userRole,
+                              userEmail: userEmail,
+                              userAvatar: userAvatar,
+                              businessName: businessName,
+                              businessId: authState.user.businessId,
+                              isOnline: isOnline,
+                              pendingSyncCount: pendingSyncCount,
+                              branches: visibleBranches,
+                              selectedBranch: selectedBranch,
+                              canSwitchBranches: branchState.canSwitchBranches,
                             ),
-                          ],
-                        ),
+
+                          // ── Right column: top bar + page content ─────────────
+                          Expanded(
+                            child: Column(
+                              children: [
+                                // Shared top bar — same component as mobile so
+                                // branch selector, sync status, and user section
+                                // are always consistent across breakpoints.
+                                if (!isPosTab)
+                                  CustomAppBar(
+                                    branches: visibleBranches,
+                                    selectedBranch: selectedBranch,
+                                    onBranchChanged:
+                                        branchState.canSwitchBranches
+                                        ? (branch) => context
+                                              .read<BranchCubit>()
+                                              .selectBranch(branch)
+                                        : null,
+                                    userName: userName,
+                                    userRole: userRole,
+                                    userEmail: userEmail,
+                                    userId: userId,
+                                    userAvatar: userAvatar,
+                                    businessName: businessName,
+                                    isOnline: isOnline,
+                                    pendingSyncCount: pendingSyncCount,
+                                    onNotificationTapped: () =>
+                                        context.push(AppRoutes.notifications),
+                                    showThemeToggle: false,
+                                  ),
+
+                                // Page content.  We override AppBarTheme with
+                                // toolbarHeight: 0 so any per-page AppBar that
+                                // individual pages declare occupies no space and
+                                // is visually hidden — the top bar above provides
+                                // all the chrome the user needs on desktop.
+                                Expanded(
+                                  child: Theme(
+                                    data: Theme.of(context).copyWith(
+                                      appBarTheme: Theme.of(context).appBarTheme
+                                          .copyWith(
+                                            toolbarHeight: 0,
+                                            elevation: 0,
+                                            scrolledUnderElevation: 0,
+                                            backgroundColor: Colors.transparent,
+                                            surfaceTintColor:
+                                                Colors.transparent,
+                                            shadowColor: Colors.transparent,
+                                          ),
+                                    ),
+                                    child: shell,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                );
-              }
-
-              return _SyncStatusProvider(
-                builder: (isOnline, pendingSyncCount) => Scaffold(
-                  key: _scaffoldKey,
-                  // The floating nav has no opaque background — let content
-                  // scroll behind it so it reads as an overlay, not a strip.
-                  extendBody: true,
-                  drawer: const Drawer(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.zero,
-                    ),
-                    child: MorePage(),
-                  ),
-                  appBar: (isPosTab || isStackedSubPage)
-                      ? null
-                      : CustomAppBar(
-                          branches: visibleBranches,
-                          selectedBranch: selectedBranch,
-                          onBranchChanged: branchState.canSwitchBranches
-                              ? (branch) => context
-                                    .read<BranchCubit>()
-                                    .selectBranch(branch)
-                              : null,
-                          userName: userName,
-                          userRole: userRole,
-                          userEmail: userEmail,
-                          userId: userId,
-                          userAvatar: userAvatar,
-                          businessName: businessName,
-                          isOnline: isOnline,
-                          pendingSyncCount: pendingSyncCount,
-                          onNotificationTapped: () =>
-                              context.push(AppRoutes.notifications),
-                          onMenuTapped: () =>
-                              _scaffoldKey.currentState?.openDrawer(),
-                          showThemeToggle: false,
-                        ),
-                  body: shell,
-                  bottomNavigationBar: (isPosTab || isStackedSubPage)
-                      ? null
-                      : AppBottomNav(
-                          currentIndex: _currentIndex,
-                          onTap: _onNavTap,
-                        ),
                 ),
               );
-            },
-          );
-        },
-      ),
+            }
+
+            return _SyncStatusProvider(
+              builder: (isOnline, pendingSyncCount) => Scaffold(
+                key: _scaffoldKey,
+                // The floating nav has no opaque background — let content
+                // scroll behind it so it reads as an overlay, not a strip.
+                extendBody: true,
+                drawer: const Drawer(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.zero,
+                  ),
+                  child: MorePage(),
+                ),
+                appBar: (isPosTab || isStackedSubPage)
+                    ? null
+                    : CustomAppBar(
+                        branches: visibleBranches,
+                        selectedBranch: selectedBranch,
+                        onBranchChanged: branchState.canSwitchBranches
+                            ? (branch) => context
+                                  .read<BranchCubit>()
+                                  .selectBranch(branch)
+                            : null,
+                        userName: userName,
+                        userRole: userRole,
+                        userEmail: userEmail,
+                        userId: userId,
+                        userAvatar: userAvatar,
+                        businessName: businessName,
+                        isOnline: isOnline,
+                        pendingSyncCount: pendingSyncCount,
+                        onNotificationTapped: () =>
+                            context.push(AppRoutes.notifications),
+                        onMenuTapped: () =>
+                            _scaffoldKey.currentState?.openDrawer(),
+                        showThemeToggle: false,
+                      ),
+                body: shell,
+                // AI assistant floats over every bottom-bar page (native runs
+                // the on-device model, web falls back to the rule-based parser).
+                // Hidden on the POS terminal and full-screen stacked sub-pages,
+                // which own their chrome and have no bottom bar.
+                floatingActionButton: (isPosTab || isStackedSubPage)
+                    ? null
+                    : FloatingActionButton(
+                        heroTag: 'aiAssistantFab',
+                        onPressed: () => context.push(AppRoutes.aiChat),
+                        backgroundColor: AppColors.surface,
+                        shape: const CircleBorder(),
+                        child: const Icon(
+                          Icons.chat_bubble_outline_rounded,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                bottomNavigationBar: (isPosTab || isStackedSubPage)
+                    ? null
+                    : AppBottomNav(
+                        currentIndex: _currentIndex,
+                        onTap: _onNavTap,
+                      ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -412,11 +422,7 @@ class _AppSidebar extends StatefulWidget {
   State<_AppSidebar> createState() => _AppSidebarState();
 }
 
-class _AppSidebarState extends State<_AppSidebar>
-    with SingleTickerProviderStateMixin {
-  bool _settingsExpanded = false;
-  late final AnimationController _settingsAnimCtrl;
-  late final Animation<double> _settingsExpandAnim;
+class _AppSidebarState extends State<_AppSidebar> {
   // Unified business logo — watched from the local receipt_settings row so it
   // shows offline (including a freshly-picked logo before it's uploaded).
   String? _businessLogoUrl;
@@ -433,28 +439,11 @@ class _AppSidebarState extends State<_AppSidebar>
     super.initState();
     _layoutExpanded = widget.expanded;
     if (widget.businessId != null) _watchBusinessLogo(widget.businessId!);
-    _settingsAnimCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 200),
-    );
-    _settingsExpandAnim = CurvedAnimation(
-      parent: _settingsAnimCtrl,
-      curve: Curves.easeInOut,
-    );
-    // Auto-expand settings accordion when on the settings branch (index 7)
-    if (widget.currentIndex == 7) {
-      _settingsExpanded = true;
-      _settingsAnimCtrl.value = 1.0;
-    }
   }
 
   @override
   void didUpdateWidget(_AppSidebar oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.currentIndex == 7 && !_settingsExpanded) {
-      setState(() => _settingsExpanded = true);
-      _settingsAnimCtrl.forward();
-    }
     if (widget.businessId != oldWidget.businessId &&
         widget.businessId != null) {
       _watchBusinessLogo(widget.businessId!);
@@ -475,7 +464,6 @@ class _AppSidebarState extends State<_AppSidebar>
   @override
   void dispose() {
     _logoSub?.cancel();
-    _settingsAnimCtrl.dispose();
     super.dispose();
   }
 
@@ -492,24 +480,6 @@ class _AppSidebarState extends State<_AppSidebar>
         _businessLogoUrl = (s?.logoUrl.isNotEmpty ?? false) ? s!.logoUrl : null;
       });
     });
-  }
-
-  void _toggleSettings() {
-    setState(() => _settingsExpanded = !_settingsExpanded);
-    if (_settingsExpanded) {
-      _settingsAnimCtrl.forward();
-    } else {
-      _settingsAnimCtrl.reverse();
-    }
-  }
-
-  void _tapSettingsSubItem(SettingsSubPage subPage) {
-    if (!_settingsExpanded) {
-      setState(() => _settingsExpanded = true);
-      _settingsAnimCtrl.forward();
-    }
-    context.read<SidebarNavCubit>().setSubPage(subPage);
-    widget.onNavTap(7);
   }
 
   // ── Feature-based visibility helpers — no hardcoded role strings ──────────
@@ -551,7 +521,6 @@ class _AppSidebarState extends State<_AppSidebar>
   Widget build(BuildContext context) {
     final w = widget.expanded ? _kSidebarExpanded : _kSidebarCollapsed;
     final layoutExpanded = _layoutExpanded;
-    final settingsSubPage = context.watch<SidebarNavCubit>().state;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
@@ -690,6 +659,16 @@ class _AppSidebarState extends State<_AppSidebar>
                       expanded: layoutExpanded,
                       onTap: widget.onNavTap,
                     ),
+                  // AI assistant — replaces the old floating button; available
+                  // to all roles (no permission gate), pushed over the shell.
+                  _PushNavTile(
+                    icon: IconlyLight.chat,
+                    activeIcon: IconlyBold.chat,
+                    label: 'AI Assistant',
+                    route: AppRoutes.aiChat,
+                    expanded: layoutExpanded,
+                    currentLocation: GoRouterState.of(context).matchedLocation,
+                  ),
 
                   const SizedBox(height: 6),
 
@@ -822,39 +801,15 @@ class _AppSidebarState extends State<_AppSidebar>
 
                     // ── SETTINGS section ──
                     if (layoutExpanded) const _SectionLabel(label: 'SETTINGS'),
-                    _SettingsAccordion(
+                    _PushNavTile(
+                      icon: IconlyLight.setting,
+                      activeIcon: IconlyBold.setting,
+                      label: 'Settings',
+                      route: AppRoutes.settings,
                       expanded: layoutExpanded,
-                      isActive: widget.currentIndex == 7,
-                      isAccordionOpen: _settingsExpanded,
-                      expandAnim: _settingsExpandAnim,
-                      activeSubPage: settingsSubPage,
-                      onHeaderTap: () {
-                        if (!layoutExpanded) {
-                          // Collapsed sidebar: just navigate to settings
-                          context.read<SidebarNavCubit>().setSubPage(
-                            SettingsSubPage.receipt,
-                          );
-                          widget.onNavTap(7);
-                        } else {
-                          _toggleSettings();
-                          if (!_settingsExpanded) {
-                            // Opening accordion also navigates to settings
-                            context.read<SidebarNavCubit>().setSubPage(
-                              SettingsSubPage.receipt,
-                            );
-                            widget.onNavTap(7);
-                          }
-                        }
-                      },
-                      onSubItemTap: _tapSettingsSubItem,
-                      onModulesTap: () => context.push(
-                        AppRoutes.moduleSettings,
-                        extra: widget.businessId ?? '',
-                      ),
-                      onBillingTap:
-                          sl<PermissionService>().can(PermissionKeys.navBilling)
-                              ? () => context.push(AppRoutes.billing)
-                              : null,
+                      currentLocation: GoRouterState.of(
+                        context,
+                      ).matchedLocation,
                     ),
 
                     const SizedBox(height: 6),
@@ -1003,229 +958,6 @@ class _Initial extends StatelessWidget {
       ),
     ),
   );
-}
-
-// ── Settings accordion ─────────────────────────────────────────────────────
-
-class _SettingsAccordion extends StatelessWidget {
-  final bool expanded;
-  final bool isActive;
-  final bool isAccordionOpen;
-  final Animation<double> expandAnim;
-  final SettingsSubPage activeSubPage;
-  final VoidCallback onHeaderTap;
-  final ValueChanged<SettingsSubPage> onSubItemTap;
-  final VoidCallback? onModulesTap;
-  final VoidCallback? onBillingTap;
-
-  const _SettingsAccordion({
-    required this.expanded,
-    required this.isActive,
-    required this.isAccordionOpen,
-    required this.expandAnim,
-    required this.activeSubPage,
-    required this.onHeaderTap,
-    required this.onSubItemTap,
-    this.onModulesTap,
-    this.onBillingTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final headerColor = isActive ? AppColors.brand : AppColors.textSecondary;
-    final headerBg = isActive ? AppColors.brandSoft : Colors.transparent;
-
-    final header = Padding(
-      padding: EdgeInsets.symmetric(horizontal: expanded ? 8 : 10, vertical: 2),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onHeaderTap,
-          borderRadius: BorderRadius.circular(10),
-          mouseCursor: SystemMouseCursors.click,
-          splashColor: AppColors.brand.withAlpha(20),
-          child: Container(
-            height: 40,
-            decoration: BoxDecoration(
-              color: headerBg,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            padding: EdgeInsets.symmetric(horizontal: expanded ? 12 : 0),
-            alignment: expanded ? Alignment.centerLeft : Alignment.center,
-            child: Row(
-              mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,
-              children: [
-                Icon(
-                  isActive ? IconlyBold.setting : IconlyLight.setting,
-                  size: 20,
-                  color: headerColor,
-                ),
-                if (expanded) ...[
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Settings',
-                      style: getOutfitStyle(
-                        fontSize: 13.5,
-                        fontWeight: isActive
-                            ? FontWeight.w600
-                            : FontWeight.w500,
-                        color: isActive
-                            ? AppColors.textPrimary
-                            : AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                  AnimatedRotation(
-                    turns: isAccordionOpen ? 0.5 : 0.0,
-                    duration: const Duration(milliseconds: 200),
-                    child: Icon(
-                      IconlyLight.arrow_down_2,
-                      size: 18,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-
-    if (!expanded) {
-      return Tooltip(message: 'Settings', preferBelow: false, child: header);
-    }
-
-    final subItems = [
-      (
-        icon: IconlyLight.paper,
-        label: 'Receipt Settings',
-        subPage: SettingsSubPage.receipt,
-      ),
-      (
-        icon: IconlyLight.work,
-        label: 'Business Profile',
-        subPage: SettingsSubPage.businessProfile,
-      ),
-      (
-        icon: IconlyLight.profile,
-        label: 'My Profile',
-        subPage: SettingsSubPage.profile,
-      ),
-    ];
-
-    final showModules =
-        onModulesTap != null &&
-        sl<PermissionService>().can(PermissionKeys.settingsEditBusiness);
-
-    Widget subItemTile({
-      required IconData icon,
-      required String label,
-      required bool isSubActive,
-      required VoidCallback onTap,
-    }) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(8),
-            mouseCursor: SystemMouseCursors.click,
-            splashColor: AppColors.brand.withAlpha(15),
-            child: Container(
-              height: 32,
-              decoration: BoxDecoration(
-                color: isSubActive ? AppColors.brandSoft : Colors.transparent,
-                borderRadius: BorderRadius.circular(7),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Row(
-                children: [
-                  Container(
-                    width: 1.5,
-                    height: 20,
-                    margin: const EdgeInsets.only(right: 10),
-                    decoration: BoxDecoration(
-                      color: isSubActive
-                          ? AppColors.brand
-                          : AppColors.borderSoft,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  Icon(
-                    icon,
-                    size: 16,
-                    color: isSubActive ? AppColors.brand : AppColors.textMuted,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      label,
-                      overflow: TextOverflow.ellipsis,
-                      style: getOutfitStyle(
-                        fontSize: 12.5,
-                        fontWeight: isSubActive
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                        color: isSubActive
-                            ? AppColors.textPrimary
-                            : AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        header,
-        SizeTransition(
-          sizeFactor: expandAnim,
-          alignment: Alignment.topLeft,
-          child: Column(
-            children: [
-              ...subItems.map(
-                (item) => subItemTile(
-                  icon: item.icon,
-                  label: item.label,
-                  isSubActive: isActive && activeSubPage == item.subPage,
-                  onTap: () => onSubItemTap(item.subPage),
-                ),
-              ),
-              if (showModules)
-                subItemTile(
-                  icon: IconlyLight.setting,
-                  label: 'Module Management',
-                  isSubActive:
-                      isActive && activeSubPage == SettingsSubPage.modules,
-                  onTap: onModulesTap!,
-                ),
-              if (onBillingTap != null)
-                subItemTile(
-                  icon: IconlyLight.wallet,
-                  label: 'Billing & Subscription',
-                  isSubActive: false,
-                  onTap: onBillingTap!,
-                ),
-              subItemTile(
-                icon: IconlyLight.download,
-                label: 'Export My Data',
-                isSubActive: false,
-                onTap: () => context.push(AppRoutes.dataExport),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 class _NavItem extends StatelessWidget {

@@ -24,21 +24,46 @@ class AiToolService {
     required ProductVariantsDao variantsDao,
     required CheckoutService checkoutService,
     required AppDatabase db,
-  })  : _productsDao = productsDao,
-        _variantsDao = variantsDao,
-        _checkoutService = checkoutService,
-        _db = db;
+  }) : _productsDao = productsDao,
+       _variantsDao = variantsDao,
+       _checkoutService = checkoutService,
+       _db = db;
 
-  /// Returns the SQL WHERE clause and variables for branch filtering.
-  /// When [branchId] is non-null, filters to that specific branch.
-  /// When [branchId] is null (All Branches), filters to all branches of the business.
+  /// Returns the SQL WHERE clause and variables for branch/ownership filtering.
+  ///
+  /// - [ownUserId] non-null (own-only scope, e.g. a cashier): hard-restricts to
+  ///   this user's own rows, within the business (and [branchId] when known).
+  ///   Defence-in-depth on top of the server's own-row RLS.
+  /// - [branchId] non-null: filters to that specific branch.
+  /// - both null (All Branches): filters to all branches of the business.
   static ({String clause, List<Variable> variables}) branchFilter({
     required String businessId,
     required String cashierId,
     required String? branchId,
+    String? ownUserId,
     String tableAlias = '',
   }) {
     final prefix = tableAlias.isNotEmpty ? '$tableAlias.' : '';
+    if (ownUserId != null) {
+      if (branchId != null) {
+        return (
+          clause: 'AND ${prefix}cashier_id = ? AND ${prefix}branch_id = ?',
+          variables: [
+            Variable.withString(ownUserId),
+            Variable.withString(branchId),
+          ],
+        );
+      }
+      return (
+        clause:
+            'AND ${prefix}cashier_id = ? '
+            'AND ${prefix}branch_id IN (SELECT id FROM branches WHERE business_id = ?)',
+        variables: [
+          Variable.withString(ownUserId),
+          Variable.withString(businessId),
+        ],
+      );
+    }
     if (branchId != null) {
       return (
         clause: 'AND ${prefix}branch_id = ?',
@@ -64,25 +89,29 @@ class AiToolService {
     String cashierId,
     AiDateFilter dateFilter, {
     String? branchId,
+    String? ownUserId,
   }) async {
     final range = dateFilter.resolve();
     final bf = branchFilter(
       businessId: businessId,
       cashierId: cashierId,
       branchId: branchId,
+      ownUserId: ownUserId,
     );
 
-    final result = await _db.customSelect(
-      'SELECT COALESCE(SUM(total_amount), 0) AS total '
-      'FROM transactions '
-      'WHERE created_at >= ? AND created_at < ? '
-      '${bf.clause}',
-      variables: [
-        Variable.withDateTime(range.start),
-        Variable.withDateTime(range.end),
-        ...bf.variables,
-      ],
-    ).getSingle();
+    final result = await _db
+        .customSelect(
+          'SELECT COALESCE(SUM(total_amount), 0) AS total '
+          'FROM transactions '
+          'WHERE created_at >= ? AND created_at < ? '
+          '${bf.clause}',
+          variables: [
+            Variable.withDateTime(range.start),
+            Variable.withDateTime(range.end),
+            ...bf.variables,
+          ],
+        )
+        .getSingle();
 
     return (result.data['total'] as num?)?.toDouble() ?? 0.0;
   }
@@ -94,33 +123,37 @@ class AiToolService {
     String cashierId,
     AiDateFilter dateFilter, {
     String? branchId,
+    String? ownUserId,
   }) async {
     final range = dateFilter.resolve();
     final bf = branchFilter(
       businessId: businessId,
       cashierId: cashierId,
       branchId: branchId,
+      ownUserId: ownUserId,
       tableAlias: 't',
     );
 
-    final rows = await _db.customSelect(
-      'SELECT COALESCE(c.name, \'Uncategorized\') AS category_name, '
-      'SUM(ti.line_total) AS total '
-      'FROM transaction_items ti '
-      'JOIN transactions t ON t.id = ti.transaction_id '
-      'JOIN product_variants pv ON pv.id = ti.variant_id '
-      'JOIN products p ON p.id = pv.product_id '
-      'LEFT JOIN categories c ON c.id = p.category_id '
-      'WHERE t.created_at >= ? AND t.created_at < ? '
-      '${bf.clause} '
-      'GROUP BY c.name '
-      'ORDER BY total DESC',
-      variables: [
-        Variable.withDateTime(range.start),
-        Variable.withDateTime(range.end),
-        ...bf.variables,
-      ],
-    ).get();
+    final rows = await _db
+        .customSelect(
+          'SELECT COALESCE(c.name, \'Uncategorized\') AS category_name, '
+          'SUM(ti.line_total) AS total '
+          'FROM transaction_items ti '
+          'JOIN transactions t ON t.id = ti.transaction_id '
+          'JOIN product_variants pv ON pv.id = ti.variant_id '
+          'JOIN products p ON p.id = pv.product_id '
+          'LEFT JOIN categories c ON c.id = p.category_id '
+          'WHERE t.created_at >= ? AND t.created_at < ? '
+          '${bf.clause} '
+          'GROUP BY c.name '
+          'ORDER BY total DESC',
+          variables: [
+            Variable.withDateTime(range.start),
+            Variable.withDateTime(range.end),
+            ...bf.variables,
+          ],
+        )
+        .get();
 
     return rows.map((r) {
       return CategorySalesResult(
@@ -137,31 +170,35 @@ class AiToolService {
     String cashierId,
     AiDateFilter dateFilter, {
     String? branchId,
+    String? ownUserId,
   }) async {
     final range = dateFilter.resolve();
     final bf = branchFilter(
       businessId: businessId,
       cashierId: cashierId,
       branchId: branchId,
+      ownUserId: ownUserId,
       tableAlias: 't',
     );
 
-    final rows = await _db.customSelect(
-      'SELECT ti.product_name, '
-      'SUM(ti.line_total) AS total, '
-      'SUM(ti.qty) AS quantity '
-      'FROM transaction_items ti '
-      'JOIN transactions t ON t.id = ti.transaction_id '
-      'WHERE t.created_at >= ? AND t.created_at < ? '
-      '${bf.clause} '
-      'GROUP BY ti.product_name '
-      'ORDER BY total DESC',
-      variables: [
-        Variable.withDateTime(range.start),
-        Variable.withDateTime(range.end),
-        ...bf.variables,
-      ],
-    ).get();
+    final rows = await _db
+        .customSelect(
+          'SELECT ti.product_name, '
+          'SUM(ti.line_total) AS total, '
+          'SUM(ti.qty) AS quantity '
+          'FROM transaction_items ti '
+          'JOIN transactions t ON t.id = ti.transaction_id '
+          'WHERE t.created_at >= ? AND t.created_at < ? '
+          '${bf.clause} '
+          'GROUP BY ti.product_name '
+          'ORDER BY total DESC',
+          variables: [
+            Variable.withDateTime(range.start),
+            Variable.withDateTime(range.end),
+            ...bf.variables,
+          ],
+        )
+        .get();
 
     return rows.map((r) {
       return ProductSalesResult(
@@ -179,32 +216,36 @@ class AiToolService {
     String categoryName,
     AiDateFilter dateFilter, {
     String? branchId,
+    String? ownUserId,
   }) async {
     final range = dateFilter.resolve();
     final bf = branchFilter(
       businessId: businessId,
       cashierId: cashierId,
       branchId: branchId,
+      ownUserId: ownUserId,
       tableAlias: 't',
     );
 
-    final result = await _db.customSelect(
-      'SELECT COALESCE(SUM(ti.line_total), 0) AS total '
-      'FROM transaction_items ti '
-      'JOIN transactions t ON t.id = ti.transaction_id '
-      'JOIN product_variants pv ON pv.id = ti.variant_id '
-      'JOIN products p ON p.id = pv.product_id '
-      'LEFT JOIN categories c ON c.id = p.category_id '
-      'WHERE t.created_at >= ? AND t.created_at < ? '
-      '${bf.clause} '
-      'AND LOWER(c.name) = LOWER(?)',
-      variables: [
-        Variable.withDateTime(range.start),
-        Variable.withDateTime(range.end),
-        ...bf.variables,
-        Variable.withString(categoryName),
-      ],
-    ).getSingle();
+    final result = await _db
+        .customSelect(
+          'SELECT COALESCE(SUM(ti.line_total), 0) AS total '
+          'FROM transaction_items ti '
+          'JOIN transactions t ON t.id = ti.transaction_id '
+          'JOIN product_variants pv ON pv.id = ti.variant_id '
+          'JOIN products p ON p.id = pv.product_id '
+          'LEFT JOIN categories c ON c.id = p.category_id '
+          'WHERE t.created_at >= ? AND t.created_at < ? '
+          '${bf.clause} '
+          'AND LOWER(c.name) = LOWER(?)',
+          variables: [
+            Variable.withDateTime(range.start),
+            Variable.withDateTime(range.end),
+            ...bf.variables,
+            Variable.withString(categoryName),
+          ],
+        )
+        .getSingle();
 
     return (result.data['total'] as num?)?.toDouble() ?? 0.0;
   }
@@ -225,17 +266,19 @@ class AiToolService {
       cashierId: cashierId,
       branchId: branchId,
     );
-    final result = await _db.customSelect(
-      'SELECT COALESCE(SUM(total_amount), 0) AS total '
-      'FROM transactions '
-      'WHERE created_at >= ? AND created_at < ? '
-      '${bf.clause}',
-      variables: [
-        Variable.withDateTime(start),
-        Variable.withDateTime(end),
-        ...bf.variables,
-      ],
-    ).getSingle();
+    final result = await _db
+        .customSelect(
+          'SELECT COALESCE(SUM(total_amount), 0) AS total '
+          'FROM transactions '
+          'WHERE created_at >= ? AND created_at < ? '
+          '${bf.clause}',
+          variables: [
+            Variable.withDateTime(start),
+            Variable.withDateTime(end),
+            ...bf.variables,
+          ],
+        )
+        .getSingle();
     return (result.data['total'] as num?)?.toDouble() ?? 0.0;
   }
 
@@ -288,20 +331,22 @@ class AiToolService {
   }) async {
     final range = dateFilter.resolve();
     final branchClause = branchId != null ? 'AND branch_id = ?' : '';
-    final result = await _db.customSelect(
-      'SELECT COALESCE(SUM(amount), 0) AS total '
-      'FROM expenses '
-      "WHERE status = 'approved' "
-      'AND expense_date >= ? AND expense_date < ? '
-      'AND business_id = ? '
-      '$branchClause',
-      variables: [
-        Variable.withDateTime(range.start),
-        Variable.withDateTime(range.end),
-        Variable.withString(businessId),
-        if (branchId != null) Variable.withString(branchId),
-      ],
-    ).getSingle();
+    final result = await _db
+        .customSelect(
+          'SELECT COALESCE(SUM(amount), 0) AS total '
+          'FROM expenses '
+          "WHERE status = 'approved' "
+          'AND expense_date >= ? AND expense_date < ? '
+          'AND business_id = ? '
+          '$branchClause',
+          variables: [
+            Variable.withDateTime(range.start),
+            Variable.withDateTime(range.end),
+            Variable.withString(businessId),
+            if (branchId != null) Variable.withString(branchId),
+          ],
+        )
+        .getSingle();
     return (result.data['total'] as num?)?.toDouble() ?? 0.0;
   }
 
@@ -360,28 +405,30 @@ class AiToolService {
       tableAlias: 't',
     );
 
-    final rows = await _db.customSelect(
-      'SELECT ti.product_name, '
-      'COALESCE(SUM(ti.line_total), 0) AS revenue, '
-      'COALESCE(SUM(ti.qty * pv.cost_price), 0) AS cost_total, '
-      'COALESCE(SUM(ti.line_total), 0) - COALESCE(SUM(ti.qty * pv.cost_price), 0) '
-      'AS margin '
-      'FROM transaction_items ti '
-      'JOIN transactions t ON t.id = ti.transaction_id '
-      'JOIN product_variants pv ON pv.id = ti.variant_id '
-      'WHERE t.created_at >= ? AND t.created_at < ? '
-      'AND pv.cost_price IS NOT NULL '
-      '${bf.clause} '
-      'GROUP BY ti.product_name '
-      'ORDER BY margin DESC '
-      'LIMIT ?',
-      variables: [
-        Variable.withDateTime(range.start),
-        Variable.withDateTime(range.end),
-        ...bf.variables,
-        Variable.withInt(limit),
-      ],
-    ).get();
+    final rows = await _db
+        .customSelect(
+          'SELECT ti.product_name, '
+          'COALESCE(SUM(ti.line_total), 0) AS revenue, '
+          'COALESCE(SUM(ti.qty * pv.cost_price), 0) AS cost_total, '
+          'COALESCE(SUM(ti.line_total), 0) - COALESCE(SUM(ti.qty * pv.cost_price), 0) '
+          'AS margin '
+          'FROM transaction_items ti '
+          'JOIN transactions t ON t.id = ti.transaction_id '
+          'JOIN product_variants pv ON pv.id = ti.variant_id '
+          'WHERE t.created_at >= ? AND t.created_at < ? '
+          'AND pv.cost_price IS NOT NULL '
+          '${bf.clause} '
+          'GROUP BY ti.product_name '
+          'ORDER BY margin DESC '
+          'LIMIT ?',
+          variables: [
+            Variable.withDateTime(range.start),
+            Variable.withDateTime(range.end),
+            ...bf.variables,
+            Variable.withInt(limit),
+          ],
+        )
+        .get();
 
     return rows.map((r) {
       return MarginMoverResult(
@@ -401,32 +448,36 @@ class AiToolService {
     String productName,
     AiDateFilter dateFilter, {
     String? branchId,
+    String? ownUserId,
   }) async {
     final range = dateFilter.resolve();
     final bf = branchFilter(
       businessId: businessId,
       cashierId: cashierId,
       branchId: branchId,
+      ownUserId: ownUserId,
       tableAlias: 't',
     );
 
-    final rows = await _db.customSelect(
-      'SELECT ti.product_name, '
-      'COALESCE(SUM(ti.line_total), 0) AS total, '
-      'COALESCE(SUM(ti.qty), 0) AS quantity '
-      'FROM transaction_items ti '
-      'JOIN transactions t ON t.id = ti.transaction_id '
-      'WHERE t.created_at >= ? AND t.created_at < ? '
-      '${bf.clause} '
-      'AND LOWER(ti.product_name) LIKE LOWER(?) '
-      'GROUP BY ti.product_name',
-      variables: [
-        Variable.withDateTime(range.start),
-        Variable.withDateTime(range.end),
-        ...bf.variables,
-        Variable.withString('%$productName%'),
-      ],
-    ).get();
+    final rows = await _db
+        .customSelect(
+          'SELECT ti.product_name, '
+          'COALESCE(SUM(ti.line_total), 0) AS total, '
+          'COALESCE(SUM(ti.qty), 0) AS quantity '
+          'FROM transaction_items ti '
+          'JOIN transactions t ON t.id = ti.transaction_id '
+          'WHERE t.created_at >= ? AND t.created_at < ? '
+          '${bf.clause} '
+          'AND LOWER(ti.product_name) LIKE LOWER(?) '
+          'GROUP BY ti.product_name',
+          variables: [
+            Variable.withDateTime(range.start),
+            Variable.withDateTime(range.end),
+            ...bf.variables,
+            Variable.withString('%$productName%'),
+          ],
+        )
+        .get();
 
     if (rows.isEmpty) return null;
 
@@ -454,9 +505,7 @@ class AiToolService {
   }
 
   /// Get list of active products with their variants.
-  Future<List<ActiveProductInfo>> getActiveProducts(
-    String businessId,
-  ) async {
+  Future<List<ActiveProductInfo>> getActiveProducts(String businessId) async {
     final catalog = await getProductCatalog(businessId);
     return catalog.map((pw) {
       return ActiveProductInfo(
@@ -477,36 +526,40 @@ class AiToolService {
     String cashierId,
     AiDateFilter dateFilter, {
     String? branchId,
+    String? ownUserId,
   }) async {
     final range = dateFilter.resolve();
     final bf = branchFilter(
       businessId: businessId,
       cashierId: cashierId,
       branchId: branchId,
+      ownUserId: ownUserId,
       tableAlias: 't',
     );
 
-    final rows = await _db.customSelect(
-      'SELECT p.name AS product_name, pv.name AS variant_name, '
-      'pv.price, pv.stock '
-      'FROM products p '
-      'JOIN product_variants pv ON pv.product_id = p.id '
-      'WHERE p.business_id = ? AND p.is_active = 1 AND pv.is_active = 1 '
-      'AND NOT EXISTS ('
-      '  SELECT 1 FROM transaction_items ti '
-      '  JOIN transactions t ON t.id = ti.transaction_id '
-      '  WHERE ti.variant_id = pv.id '
-      '  AND t.created_at >= ? AND t.created_at < ? '
-      '  ${bf.clause}'
-      ') '
-      'ORDER BY p.name',
-      variables: [
-        Variable.withString(businessId),
-        Variable.withDateTime(range.start),
-        Variable.withDateTime(range.end),
-        ...bf.variables,
-      ],
-    ).get();
+    final rows = await _db
+        .customSelect(
+          'SELECT p.name AS product_name, pv.name AS variant_name, '
+          'pv.price, pv.stock '
+          'FROM products p '
+          'JOIN product_variants pv ON pv.product_id = p.id '
+          'WHERE p.business_id = ? AND p.is_active = 1 AND pv.is_active = 1 '
+          'AND NOT EXISTS ('
+          '  SELECT 1 FROM transaction_items ti '
+          '  JOIN transactions t ON t.id = ti.transaction_id '
+          '  WHERE ti.variant_id = pv.id '
+          '  AND t.created_at >= ? AND t.created_at < ? '
+          '  ${bf.clause}'
+          ') '
+          'ORDER BY p.name',
+          variables: [
+            Variable.withString(businessId),
+            Variable.withDateTime(range.start),
+            Variable.withDateTime(range.end),
+            ...bf.variables,
+          ],
+        )
+        .get();
 
     return rows.map((r) {
       return ActiveProductInfo(
@@ -524,25 +577,29 @@ class AiToolService {
     String cashierId,
     AiDateFilter dateFilter, {
     String? branchId,
+    String? ownUserId,
   }) async {
     final range = dateFilter.resolve();
     final bf = branchFilter(
       businessId: businessId,
       cashierId: cashierId,
       branchId: branchId,
+      ownUserId: ownUserId,
     );
 
-    final result = await _db.customSelect(
-      'SELECT COUNT(*) AS cnt '
-      'FROM transactions '
-      'WHERE created_at >= ? AND created_at < ? '
-      '${bf.clause}',
-      variables: [
-        Variable.withDateTime(range.start),
-        Variable.withDateTime(range.end),
-        ...bf.variables,
-      ],
-    ).getSingle();
+    final result = await _db
+        .customSelect(
+          'SELECT COUNT(*) AS cnt '
+          'FROM transactions '
+          'WHERE created_at >= ? AND created_at < ? '
+          '${bf.clause}',
+          variables: [
+            Variable.withDateTime(range.start),
+            Variable.withDateTime(range.end),
+            ...bf.variables,
+          ],
+        )
+        .getSingle();
 
     return (result.data['cnt'] as int?) ?? 0;
   }
@@ -550,9 +607,7 @@ class AiToolService {
   // ─── PRODUCT CATALOG (for matching) ─────────────────────────────────────
 
   /// Get all active products with their default variants for a business.
-  Future<List<ProductWithVariant>> getProductCatalog(
-    String businessId,
-  ) async {
+  Future<List<ProductWithVariant>> getProductCatalog(String businessId) async {
     final products = await _productsDao.getByBusinessId(businessId);
     final results = <ProductWithVariant>[];
 
@@ -601,18 +656,20 @@ class AiToolService {
       subtotal += lineTotal;
       totalTax += lineTax;
 
-      itemCompanions.add(TransactionItemsTableCompanion.insert(
-        id: uuid.v4(),
-        transactionId: txId,
-        variantId: line.variantId,
-        productName: line.productName,
-        variantName: line.variantName,
-        unitPrice: line.unitPrice,
-        taxRate: Value(line.taxRate),
-        qty: line.quantity,
-        lineTotal: lineTotal,
-        lineTax: lineTax,
-      ));
+      itemCompanions.add(
+        TransactionItemsTableCompanion.insert(
+          id: uuid.v4(),
+          transactionId: txId,
+          variantId: line.variantId,
+          productName: line.productName,
+          variantName: line.variantName,
+          unitPrice: line.unitPrice,
+          taxRate: Value(line.taxRate),
+          qty: line.quantity,
+          lineTotal: lineTotal,
+          lineTax: lineTax,
+        ),
+      );
     }
 
     final totalAmount = subtotal + totalTax;

@@ -4,7 +4,6 @@ import 'package:iconly/iconly.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
-// import 'package:pos/features/ai_assistant/widgets/floating_ai_assistant_bar.dart';
 import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
@@ -101,7 +100,8 @@ class _DashboardPageState extends State<DashboardPage> {
             final isLoading = state is DashboardLoading;
 
             return Scaffold(
-              // floatingActionButton: const FloatingAIAssistantBar(),
+              // AI assistant now lives in the bottom nav (mobile) and sidebar
+              // (tablet/desktop) — see AppBottomNav / MainNavigationPage.
               body: (state is DashboardInitial || state is DashboardLoading)
                   ? const _DashboardSkeleton()
                   : RefreshIndicator(

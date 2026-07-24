@@ -64,6 +64,7 @@ import 'package:pos/features/ai_assistant/services/model_manager.dart';
 import 'package:pos/features/ai_assistant/services/model_download_service.dart';
 import 'package:pos/features/ai_assistant/services/ai_tool_service.dart';
 import 'package:pos/features/ai_assistant/services/ai_pipeline.dart';
+import 'package:pos/features/ai_assistant/services/ai_scope_guard.dart';
 import 'package:pos/features/dashboard/data/dashboard_repository.dart';
 import 'package:pos/features/expenses/data/expenses_repository.dart';
 import 'package:pos/features/inventory/data/inventory_repository.dart';
@@ -332,7 +333,8 @@ Future<void> initDI() async {
   );
 
   sl.registerLazySingleton(
-      () => BusinessRemoteDs(sl<SupabaseClient>(), sl<DeviceIdentityService>()));
+    () => BusinessRemoteDs(sl<SupabaseClient>(), sl<DeviceIdentityService>()),
+  );
   sl.registerLazySingleton(() => ExpensesRemoteDs(sl<SupabaseClient>()));
   sl.registerLazySingleton(() => ProductsRemoteDs(sl<SupabaseClient>()));
   sl.registerLazySingleton(() => TransactionsRemoteDs(sl<SupabaseClient>()));
@@ -380,64 +382,65 @@ Future<void> initDI() async {
   // init() is called from MainNavigationPage after the first frame renders,
   // so that background sync never blocks the startup critical path.
   sl.registerLazySingleton<SyncService>(
-    () => SyncService(
-      authContextDao: sl<AuthContextDao>(),
-      activeBusinessContext: sl<ActiveBusinessContext>(),
-      branchesDao: sl<BranchesDao>(),
-      businessesDao: sl<BusinessesDao>(),
-      categoriesDao: sl<CategoriesDao>(),
-      expensesDao: sl<ExpensesDao>(),
-      inventoryLevelsDao: sl<InventoryLevelsDao>(),
-      productsDao: sl<ProductsDao>(),
-      productVariantsDao: sl<ProductVariantsDao>(),
-      productBarcodesDao: sl<ProductBarcodesDao>(),
-      stockLedgerDao: sl<StockLedgerDao>(),
-      transactionsDao: sl<TransactionsDao>(),
-      draftSalesDao: sl<DraftSalesDao>(),
-      businessRemoteDs: sl<BusinessRemoteDs>(),
-      expensesRemoteDs: sl<ExpensesRemoteDs>(),
-      productsRemoteDs: sl<ProductsRemoteDs>(),
-      transactionsRemoteDs: sl<TransactionsRemoteDs>(),
-      connectivityService: sl<ConnectivityService>(),
-      receiptSettingsRepository: sl<ReceiptSettingsRepository>(),
-      auditLogsDao: sl<AuditLogsDao>(),
-      auditLogRemoteDs: sl<AuditLogRemoteDs>(),
-      employeesDao: sl<EmployeesDao>(),
-      employeesRemoteDs: sl<EmployeesRemoteDs>(),
-      suppliersDao: sl<SuppliersDao>(),
-      purchaseOrdersDao: sl<PurchaseOrdersDao>(),
-      purchaseOrderLinesDao: sl<PurchaseOrderLinesDao>(),
-      goodsReceiptsDao: sl<GoodsReceiptsDao>(),
-      goodsReceiptItemsDao: sl<GoodsReceiptItemsDao>(),
-      procurementRemoteDs: sl<ProcurementRemoteDs>(),
-      customersDao: sl<CustomersDao>(),
-      customerRemoteDs: sl<CustomerRemoteDs>(),
-      recipeLinesDao: sl<RecipeLinesDao>(),
-      syncStateDao: sl<SyncStateDao>(),
-      imageService: sl<ImageService>(),
-      refundsDao: sl<RefundsDao>(),
-      refundsRemoteDs: sl<RefundsRemoteDs>(),
-      refundSettingsRepository: sl<RefundSettingsRepository>(),
-      fraudFlagsDao: sl<FraudFlagsDao>(),
-      fraudFlagsRemoteDs: sl<FraudFlagsRemoteDs>(),
-      devicesDao: sl<DevicesDao>(),
-      devicesRemoteDs: sl<DevicesRemoteDs>(),
-      entitlementService: sl<EntitlementService>(),
-      deviceRegistrationService: sl<DeviceRegistrationService>(),
-    )
-      ..onSyncCompleted = () {
-        // One-time cleanup of the 2026-07-03 false-positive flags runs before
-        // the sweep (idempotent + permission-gated; no-ops once done). Then
-        // the periodic full fraud sweep rides the sync cadence — data is
-        // freshest right after a pull. Fire-and-forget by design.
-        sl<FraudMaintenanceService>().runIfNeeded().whenComplete(
+    () =>
+        SyncService(
+            authContextDao: sl<AuthContextDao>(),
+            activeBusinessContext: sl<ActiveBusinessContext>(),
+            branchesDao: sl<BranchesDao>(),
+            businessesDao: sl<BusinessesDao>(),
+            categoriesDao: sl<CategoriesDao>(),
+            expensesDao: sl<ExpensesDao>(),
+            inventoryLevelsDao: sl<InventoryLevelsDao>(),
+            productsDao: sl<ProductsDao>(),
+            productVariantsDao: sl<ProductVariantsDao>(),
+            productBarcodesDao: sl<ProductBarcodesDao>(),
+            stockLedgerDao: sl<StockLedgerDao>(),
+            transactionsDao: sl<TransactionsDao>(),
+            draftSalesDao: sl<DraftSalesDao>(),
+            businessRemoteDs: sl<BusinessRemoteDs>(),
+            expensesRemoteDs: sl<ExpensesRemoteDs>(),
+            productsRemoteDs: sl<ProductsRemoteDs>(),
+            transactionsRemoteDs: sl<TransactionsRemoteDs>(),
+            connectivityService: sl<ConnectivityService>(),
+            receiptSettingsRepository: sl<ReceiptSettingsRepository>(),
+            auditLogsDao: sl<AuditLogsDao>(),
+            auditLogRemoteDs: sl<AuditLogRemoteDs>(),
+            employeesDao: sl<EmployeesDao>(),
+            employeesRemoteDs: sl<EmployeesRemoteDs>(),
+            suppliersDao: sl<SuppliersDao>(),
+            purchaseOrdersDao: sl<PurchaseOrdersDao>(),
+            purchaseOrderLinesDao: sl<PurchaseOrderLinesDao>(),
+            goodsReceiptsDao: sl<GoodsReceiptsDao>(),
+            goodsReceiptItemsDao: sl<GoodsReceiptItemsDao>(),
+            procurementRemoteDs: sl<ProcurementRemoteDs>(),
+            customersDao: sl<CustomersDao>(),
+            customerRemoteDs: sl<CustomerRemoteDs>(),
+            recipeLinesDao: sl<RecipeLinesDao>(),
+            syncStateDao: sl<SyncStateDao>(),
+            imageService: sl<ImageService>(),
+            refundsDao: sl<RefundsDao>(),
+            refundsRemoteDs: sl<RefundsRemoteDs>(),
+            refundSettingsRepository: sl<RefundSettingsRepository>(),
+            fraudFlagsDao: sl<FraudFlagsDao>(),
+            fraudFlagsRemoteDs: sl<FraudFlagsRemoteDs>(),
+            devicesDao: sl<DevicesDao>(),
+            devicesRemoteDs: sl<DevicesRemoteDs>(),
+            entitlementService: sl<EntitlementService>(),
+            deviceRegistrationService: sl<DeviceRegistrationService>(),
+          )
+          ..onSyncCompleted = () {
+            // One-time cleanup of the 2026-07-03 false-positive flags runs before
+            // the sweep (idempotent + permission-gated; no-ops once done). Then
+            // the periodic full fraud sweep rides the sync cadence — data is
+            // freshest right after a pull. Fire-and-forget by design.
+            sl<FraudMaintenanceService>().runIfNeeded().whenComplete(
               () => sl<FraudDetectionEngine>().runSweep(),
             );
-      }
-      ..drainAuditOutbox = (() => sl<AuditLogService>().drainOutbox())
-      ..onChainConflict = ((businessId) =>
-          sl<AuditLogService>().reconcileConflictedTail(businessId))
-      ..onCloudGained = (() => sl<BackfillService>().markAllForUpload()),
+          }
+          ..drainAuditOutbox = (() => sl<AuditLogService>().drainOutbox())
+          ..onChainConflict = ((businessId) =>
+              sl<AuditLogService>().reconcileConflictedTail(businessId))
+          ..onCloudGained = (() => sl<BackfillService>().markAllForUpload()),
   );
 
   // ── AI Assistant services ──────────────────────────────────────────────
@@ -457,10 +460,19 @@ Future<void> initDI() async {
       db: sl<AppDatabase>(),
     ),
   );
+  sl.registerLazySingleton<AiScopeGuard>(
+    () => AiScopeGuard(
+      permissions: sl<PermissionService>(),
+      scoping: sl<DataScopingLayer>(),
+      business: sl<ActiveBusinessContext>(),
+      branches: sl<BranchCubit>(),
+    ),
+  );
   sl.registerLazySingleton<AiPipeline>(
     () => AiPipeline(
       llmService: sl<LlmService>(),
       toolService: sl<AiToolService>(),
+      scopeGuard: sl<AiScopeGuard>(),
     ),
   );
   sl.registerLazySingleton<ReceiptPrinterService>(
