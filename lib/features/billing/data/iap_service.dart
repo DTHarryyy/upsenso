@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_android/billing_client_wrappers.dart';
+import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 
 /// Outcome of a product-details query — keeps the found catalog separate from
 /// the SKU ids Play didn't recognise (a Play Console config gap) and any hard
@@ -79,16 +81,39 @@ class IapService {
   /// side (obfuscated account id) for anti-fraud + webhook linkage. The return
   /// only says whether the flow LAUNCHED — the real outcome always arrives on
   /// [purchaseStream].
+  ///
+  /// [oldPurchase] must be set when the tenant already owns a different active
+  /// subscription — without it Play treats this as a brand-new purchase and the
+  /// old one keeps billing alongside it instead of being replaced.
+  /// [replacementMode] controls how the switch is billed; only consulted when
+  /// [oldPurchase] is set.
   Future<bool> buySubscription(
     ProductDetails product, {
     String? accountId,
+    PurchaseDetails? oldPurchase,
+    ReplacementMode replacementMode = ReplacementMode.chargeProratedPrice,
   }) async {
     if (!isSupportedPlatform) return false;
-    final param = PurchaseParam(
-      productDetails: product,
-      // Mapped to Play's obfuscatedAccountId on Android.
-      applicationUserName: accountId,
-    );
+    // Falls back to a plain purchase if the old one isn't a Play purchase —
+    // never worth crashing the buy flow over, and Play rejects a bad change
+    // param anyway.
+    final change = oldPurchase is GooglePlayPurchaseDetails
+        ? ChangeSubscriptionParam(
+            oldPurchaseDetails: oldPurchase,
+            replacementMode: replacementMode,
+          )
+        : null;
+    final param = change == null
+        ? PurchaseParam(
+            productDetails: product,
+            // Mapped to Play's obfuscatedAccountId on Android.
+            applicationUserName: accountId,
+          )
+        : GooglePlayPurchaseParam(
+            productDetails: product,
+            applicationUserName: accountId,
+            changeSubscriptionParam: change,
+          );
     try {
       return await _iap!.buyNonConsumable(purchaseParam: param);
     } catch (e, st) {

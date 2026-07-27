@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_android/billing_client_wrappers.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:pos/core/device/device_registration_service.dart';
@@ -54,6 +57,47 @@ const _starterMapping = PlayProductMapping(
   billingPeriod: 'monthly',
 );
 
+const _growth = PlanOption(
+  code: 'growth',
+  version: 1,
+  name: 'Growth',
+  priceMonthly: 499,
+  isActive: true,
+  cloudEnabled: true,
+  maxBranches: 3,
+  maxSeats: 10,
+  maxDevices: 5,
+);
+
+final _growthPd = ProductDetails(
+  id: 'upsenso_growth_monthly',
+  title: 'Growth (Monthly)',
+  description: 'Full access',
+  price: '₱499.00',
+  rawPrice: 499.0,
+  currencyCode: 'PHP',
+);
+
+const _growthMapping = PlayProductMapping(
+  productId: 'upsenso_growth_monthly',
+  basePlanId: 'monthly',
+  planCode: 'growth',
+  planVersion: 1,
+  billingPeriod: 'monthly',
+);
+
+PurchaseDetails _ownedPurchase(String productId) => PurchaseDetails(
+      purchaseID: 'order-$productId',
+      productID: productId,
+      verificationData: PurchaseVerificationData(
+        localVerificationData: '{}',
+        serverVerificationData: 'token-$productId',
+        source: 'google_play',
+      ),
+      transactionDate: '1700000000000',
+      status: PurchaseStatus.purchased,
+    );
+
 void main() {
   late _MockEntitlement entitlement;
   late _MockRemoteDs remoteDs;
@@ -66,6 +110,8 @@ void main() {
     registerFallbackValue(EntitlementResource.branches);
     registerFallbackValue(<String>{});
     registerFallbackValue(_starterPd);
+    registerFallbackValue(_ownedPurchase('fallback'));
+    registerFallbackValue(ReplacementMode.unknownReplacementMode);
   });
 
   setUp(() {
@@ -219,6 +265,138 @@ void main() {
         expect(c.state.purchaseError, isNotNull);
         verifyNever(() =>
             iap.buySubscription(any(), accountId: any(named: 'accountId')));
+      },
+    );
+  });
+
+  // A tenant switching tiers must REPLACE its existing Play subscription —
+  // sending the buy without oldPurchase leaves both subscriptions billing.
+  group('google play plan changes', () {
+    late StreamController<List<PurchaseDetails>> purchases;
+
+    setUp(() {
+      purchases = StreamController<List<PurchaseDetails>>.broadcast();
+      when(() => iap.isSupportedPlatform).thenReturn(true);
+      when(() => iap.purchaseStream).thenAnswer((_) => purchases.stream);
+      when(() => connectivity.isConnected).thenAnswer((_) async => true);
+      when(() => remoteDs.fetchPlans())
+          .thenAnswer((_) async => [_starter, _growth]);
+      when(() => remoteDs.fetchPayments()).thenAnswer((_) async => []);
+      when(() => remoteDs.fetchDevices()).thenAnswer((_) async => []);
+      when(() => remoteDs.fetchPlayProducts())
+          .thenAnswer((_) async => [_starterMapping, _growthMapping]);
+      when(() => iap.queryProducts(any())).thenAnswer(
+          (_) async => IapProductQuery(products: [_starterPd, _growthPd]));
+      when(() => iap.restorePurchases()).thenAnswer((_) async {});
+      when(() => iap.completePurchase(any())).thenAnswer((_) async {});
+      when(() => remoteDs.verifyPlayPurchase(
+            productId: any(named: 'productId'),
+            purchaseToken: any(named: 'purchaseToken'),
+          )).thenAnswer((_) async {});
+      when(() => iap.buySubscription(
+            any(),
+            accountId: any(named: 'accountId'),
+            oldPurchase: any(named: 'oldPurchase'),
+            replacementMode: any(named: 'replacementMode'),
+          )).thenAnswer((_) async => true);
+    });
+
+    tearDown(() => purchases.close());
+
+    // Drives a purchase through the stream so the cubit caches it as the
+    // tenant's currently-owned subscription.
+    Future<void> ownStarter(BillingCubit c) async {
+      purchases.add([_ownedPurchase('upsenso_starter_monthly')]);
+      await Future<void>.delayed(Duration.zero);
+    }
+
+    blocTest<BillingCubit, BillingState>(
+      'upgrade replaces the owned subscription and charges the difference now',
+      build: build,
+      act: (c) async {
+        await c.load();
+        await ownStarter(c);
+        await c.buyPlan('growth', 'monthly');
+      },
+      verify: (_) {
+        verify(() => iap.buySubscription(
+              _growthPd,
+              accountId: any(named: 'accountId'),
+              oldPurchase: any(
+                named: 'oldPurchase',
+                that: isA<PurchaseDetails>().having(
+                  (p) => p.productID,
+                  'productID',
+                  'upsenso_starter_monthly',
+                ),
+              ),
+              replacementMode: ReplacementMode.chargeProratedPrice,
+            )).called(1);
+      },
+    );
+
+    blocTest<BillingCubit, BillingState>(
+      'downgrade defers the switch to renewal so paid time is not lost',
+      setUp: () => when(() => entitlement.planCode).thenReturn('growth'),
+      build: build,
+      act: (c) async {
+        await c.load();
+        purchases.add([_ownedPurchase('upsenso_growth_monthly')]);
+        await Future<void>.delayed(Duration.zero);
+        await c.buyPlan('starter', 'monthly');
+      },
+      verify: (_) {
+        verify(() => iap.buySubscription(
+              _starterPd,
+              accountId: any(named: 'accountId'),
+              oldPurchase: any(
+                named: 'oldPurchase',
+                that: isA<PurchaseDetails>().having(
+                  (p) => p.productID,
+                  'productID',
+                  'upsenso_growth_monthly',
+                ),
+              ),
+              replacementMode: ReplacementMode.deferred,
+            )).called(1);
+      },
+    );
+
+    blocTest<BillingCubit, BillingState>(
+      'rebuying the owned product sends no change param',
+      build: build,
+      act: (c) async {
+        await c.load();
+        await ownStarter(c);
+        await c.buyPlan('starter', 'monthly');
+      },
+      verify: (_) {
+        final captured = verify(() => iap.buySubscription(
+              _starterPd,
+              accountId: any(named: 'accountId'),
+              oldPurchase: captureAny(named: 'oldPurchase'),
+              replacementMode: any(named: 'replacementMode'),
+            )).captured;
+        expect(captured.single, isNull);
+      },
+    );
+
+    blocTest<BillingCubit, BillingState>(
+      'first purchase on a free plan sends no change param',
+      setUp: () => when(() => entitlement.planCode).thenReturn('free'),
+      build: build,
+      act: (c) async {
+        await c.load();
+        await c.buyPlan('starter', 'monthly');
+      },
+      verify: (_) {
+        final captured = verify(() => iap.buySubscription(
+              _starterPd,
+              accountId: any(named: 'accountId'),
+              oldPurchase: captureAny(named: 'oldPurchase'),
+              replacementMode: any(named: 'replacementMode'),
+            )).captured;
+        expect(captured.single, isNull);
       },
     );
   });
