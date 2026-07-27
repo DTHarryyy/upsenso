@@ -196,11 +196,10 @@ class _InventoryHealthTabState extends State<InventoryHealthTab>
       content = _buildIngredientsContent(ingredientItems);
     }
 
+    // The KPI overview is rendered by the reports page above the filters.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _InventoryOverview(data: widget.data),
-        const SizedBox(height: 20),
         ReportSectionHeading(
           title: 'Stock Health',
           icon: IconlyLight.scan,
@@ -355,9 +354,11 @@ class _InventoryHealthTabState extends State<InventoryHealthTab>
 
 // ─── Overview KPIs ────────────────────────────────────────────────────────────
 
-class _InventoryOverview extends StatelessWidget {
+/// The four headline stat cards for the Inventory tab. Rendered by the reports
+/// page at the top of the scroll body (above the filters), not inside the tab.
+class InventoryOverviewCards extends StatelessWidget {
   final ReportsData data;
-  const _InventoryOverview({required this.data});
+  const InventoryOverviewCards({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {

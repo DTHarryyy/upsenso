@@ -15,6 +15,33 @@ class FraudFlagDedupeConflict implements Exception {
   String toString() => 'FraudFlagDedupeConflict($flagId)';
 }
 
+/// The server already holds a row with this exact id (crash-window retry, or
+/// triage was applied locally before the first upload). Content may differ —
+/// the caller decides whether a triage update must follow instead of
+/// swallowing the local state.
+class FraudFlagIdExists implements Exception {
+  final String flagId;
+  FraudFlagIdExists(this.flagId);
+
+  @override
+  String toString() => 'FraudFlagIdExists($flagId)';
+}
+
+/// The triage UPDATE matched zero rows: RLS refused it (no fraud.resolve on
+/// the server, branch scope, the self-resolution block) or the row is gone.
+/// Without this check PostgREST reports an RLS-filtered UPDATE as success —
+/// the denial would be stamped synced and the next pull would silently revert
+/// the local triage back to 'new'.
+class FraudTriageRejected implements Exception {
+  final String flagId;
+  FraudTriageRejected(this.flagId);
+
+  @override
+  String toString() =>
+      'FraudTriageRejected($flagId): server refused the triage update '
+      '(permission, branch scope, or self-resolution block)';
+}
+
 /// Supabase payload for a local fraud flag row. evidence/related_ids are
 /// stored as JSON *text* locally but the server columns are jsonb — sending
 /// the raw string makes Postgres store a jsonb STRING SCALAR (double-encoded)
@@ -72,7 +99,7 @@ class FraudFlagsRemoteDs {
         if (text.contains('ux_fraud_flags_dedupe')) {
           throw FraudFlagDedupeConflict(row['id'] as String? ?? '');
         }
-        return; // duplicate id: this exact row already synced
+        throw FraudFlagIdExists(row['id'] as String? ?? '');
       }
       rethrow;
     }
@@ -80,15 +107,23 @@ class FraudFlagsRemoteDs {
 
   /// Triage-only update — the same field set the freeze trigger allows.
   /// RLS additionally enforces fraud.resolve + branch + the
-  /// self-resolution block; a denial surfaces as an error here.
+  /// self-resolution block. The .select() makes a filtered-out (0-row)
+  /// UPDATE a hard [FraudTriageRejected] instead of a fake success.
   Future<void> updateTriage(FraudFlagRow r) async {
-    await _client.from('fraud_flags').update({
-      'status': r.status,
-      'resolved_by': r.resolvedBy,
-      'resolution_note': r.resolutionNote,
-      'deleted_at': r.deletedAt?.toUtc().toIso8601String(),
-      'client_updated_at': r.clientUpdatedAt.toUtc().toIso8601String(),
-    }).eq('id', r.id);
+    final rows = await _client
+        .from('fraud_flags')
+        .update({
+          'status': r.status,
+          'resolved_by': r.resolvedBy,
+          'resolution_note': r.resolutionNote,
+          'deleted_at': r.deletedAt?.toUtc().toIso8601String(),
+          'client_updated_at': r.clientUpdatedAt.toUtc().toIso8601String(),
+        })
+        .eq('id', r.id)
+        .select('id');
+    if (rows.isEmpty) {
+      throw FraudTriageRejected(r.id);
+    }
   }
 
   /// Flag volume is small (deduped incidents, not events) — a full tenant

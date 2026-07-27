@@ -30,8 +30,19 @@ class AiResponseFormatter {
 
   static String _monthName(int month) {
     const names = [
-      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      '',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return names[month.clamp(1, 12)];
   }
@@ -231,8 +242,9 @@ class AiResponseFormatter {
 
   static String formatProductsWithoutSales(
     List<ActiveProductInfo> products,
-    AiDateFilter filter,
-  ) {
+    AiDateFilter filter, {
+    bool includeStock = true,
+  }) {
     final label = _dateLabel(filter);
     if (products.isEmpty) {
       return label.isNotEmpty
@@ -247,15 +259,21 @@ class AiResponseFormatter {
 
     for (final p in products) {
       final variant = p.variantName != 'Default' ? ' (${p.variantName})' : '';
+      final stock = includeStock ? ' | Stock: ${p.stock}' : '';
       buffer.writeln(
-        '• ${p.name}$variant — $_currency${_formatNumber(p.price)}'
-        ' | Stock: ${p.stock}',
+        '• ${p.name}$variant — $_currency${_formatNumber(p.price)}$stock',
       );
     }
     return buffer.toString().trim();
   }
 
-  static String formatActiveProducts(List<ActiveProductInfo> products) {
+  /// [includeStock] is false for users without `inventory.view_levels` — stock
+  /// on a variant is a business-wide figure, so we don't surface it to users who
+  /// aren't allowed to see inventory levels.
+  static String formatActiveProducts(
+    List<ActiveProductInfo> products, {
+    bool includeStock = true,
+  }) {
     if (products.isEmpty) {
       return 'No active products found in your inventory.';
     }
@@ -265,9 +283,9 @@ class AiResponseFormatter {
     );
     for (final p in products) {
       final variant = p.variantName != 'Default' ? ' (${p.variantName})' : '';
+      final stock = includeStock ? ' | Stock: ${p.stock}' : '';
       buffer.writeln(
-        '• ${p.name}$variant — $_currency${_formatNumber(p.price)}'
-        ' | Stock: ${p.stock}',
+        '• ${p.name}$variant — $_currency${_formatNumber(p.price)}$stock',
       );
     }
     return buffer.toString().trim();
@@ -316,9 +334,7 @@ class AiResponseFormatter {
   }) {
     if (names.isEmpty) return '';
     final joined = names.map((n) => '"$n"').join(', ');
-    final buffer = StringBuffer(
-      "I couldn't find these products: $joined.\n",
-    );
+    final buffer = StringBuffer("I couldn't find these products: $joined.\n");
 
     if (catalogNames.isNotEmpty) {
       // Suggest up to 5 product names so the user can pick the right one
@@ -374,10 +390,12 @@ class AiResponseFormatter {
         (m) => '${m[1]},',
       );
     }
-    return value.toStringAsFixed(2).replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+\.)'),
-      (m) => '${m[1]},',
-    );
+    return value
+        .toStringAsFixed(2)
+        .replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+\.)'),
+          (m) => '${m[1]},',
+        );
   }
 
   static String _formatQty(double qty) {

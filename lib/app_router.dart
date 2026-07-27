@@ -8,6 +8,8 @@ import 'package:pos/core/const/app_key.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
+import 'package:pos/core/permissions/app_feature.dart';
+import 'package:pos/core/permissions/entitlement_service.dart';
 import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/permissions/role_permission_matrix.dart';
@@ -40,7 +42,8 @@ import 'package:pos/features/profile/presentation/profile_page.dart';
 import 'package:pos/features/expenses/presentation/expenses_page.dart';
 import 'package:pos/features/sales/presentation/sales_history.dart';
 import 'package:pos/features/settings/presentation/receipt_settings_page.dart';
-import 'package:pos/features/settings/presentation/settings_shell_page.dart';
+import 'package:pos/features/settings/presentation/settings_page.dart';
+import 'package:pos/features/settings/presentation/system_settings_page.dart';
 import 'package:pos/features/dashboard/presentation/dashboard_page.dart';
 import 'package:pos/features/reports/presentation/pages/reports_and_analytics.dart';
 import 'package:pos/features/notifications/presentation/pages/notifications_page.dart';
@@ -50,6 +53,8 @@ import 'package:pos/features/employees/domain/entities/employee.dart';
 import 'package:pos/features/employees/presentation/pages/employees_page.dart';
 import 'package:pos/features/employees/presentation/pages/employee_permissions_page.dart';
 import 'package:pos/features/settings/presentation/module_settings_page.dart';
+import 'package:pos/features/billing/presentation/billing_page.dart';
+import 'package:pos/features/settings/presentation/data_export_page.dart';
 import 'package:pos/features/settings/presentation/refund_approval_settings_page.dart';
 import 'package:pos/features/settings/presentation/manager_pin_page.dart';
 import 'package:pos/features/procurement/domain/repositories/i_procurement_repository.dart';
@@ -94,9 +99,12 @@ class AppRouter {
     // Re-run guards on auth changes AND module-gate changes, so disabling a
     // module (offline toggle or background sync) redirects users off a now-
     // disabled page and refreshes the shell nav without a manual navigation.
+    // Entitlement changes (plan upgrade/lapse arriving via background sync)
+    // re-run guards the same way.
     refreshListenable: Listenable.merge([
       _AuthRefreshNotifier(sl<AuthBloc>().stream),
       sl<PermissionService>().moduleGateRevision,
+      sl<EntitlementService>().entitlementRevision,
     ]),
 
     onException: (_, state, router) => router.go(AppRoutes.signIn),
@@ -190,9 +198,14 @@ class AppRouter {
           AppRoutes.employees: PermissionKeys.navEmployees,
           AppRoutes.auditLogs: PermissionKeys.navAuditLogs,
           AppRoutes.settings: PermissionKeys.navSettings,
+          AppRoutes.systemSettings: PermissionKeys.navSettings,
           AppRoutes.receiptSettings: PermissionKeys.navSettings,
           AppRoutes.moduleSettings: PermissionKeys.settingsEditBusiness,
           AppRoutes.refundApprovalSettings: PermissionKeys.settingsEditBusiness,
+          AppRoutes.billing: PermissionKeys.navBilling,
+          // Export is tier-free (§4.7) but role-gated: it dumps all business
+          // data, so it stays behind settings access (owner/manager).
+          AppRoutes.dataExport: PermissionKeys.navSettings,
           AppRoutes.managerPin: PermissionKeys.navSettings,
           AppRoutes.employeePermissions: PermissionKeys.navEmployees,
           AppRoutes.suppliers: PermissionKeys.navProcurement,
@@ -237,6 +250,24 @@ class AppRouter {
         final requiredModule = routeModuleGuards[location];
         if (requiredModule != null &&
             !sl<PermissionService>().isModuleEnabled(requiredModule)) {
+          return AppRoutes.dashboard;
+        }
+
+        // Plan-entitlement guards (M7.1 §7): a tier that doesn't include the
+        // feature redirects to the dashboard, where the locked-module tile
+        // offers the upgrade — never a dead end mid-sale.
+        const routeEntitlementGuards = <String, AppFeature>{
+          AppRoutes.customers: AppFeature.customerDirectory,
+          AppRoutes.customerDetail: AppFeature.customerDirectory,
+          AppRoutes.suppliers: AppFeature.supplierDirectory,
+          AppRoutes.supplierDetail: AppFeature.supplierDirectory,
+          AppRoutes.purchaseOrders: AppFeature.procurement,
+          AppRoutes.poForm: AppFeature.procurement,
+          AppRoutes.poDetail: AppFeature.procurement,
+        };
+        final requiredFeature = routeEntitlementGuards[location];
+        if (requiredFeature != null &&
+            !sl<EntitlementService>().featureAllowed(requiredFeature)) {
           return AppRoutes.dashboard;
         }
       }
@@ -293,6 +324,10 @@ class AppRouter {
         builder: (context, _) => const ProfilePage(),
       ),
       GoRoute(
+        path: AppRoutes.systemSettings,
+        builder: (context, _) => const SystemSettingsPage(),
+      ),
+      GoRoute(
         path: AppRoutes.receiptSettings,
         builder: (context, _) => const ReceiptSettingsPage(),
       ),
@@ -306,6 +341,14 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.refundApprovalSettings,
         builder: (context, _) => const RefundApprovalSettingsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.billing,
+        builder: (context, _) => const BillingPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.dataExport,
+        builder: (context, _) => const DataExportPage(),
       ),
       GoRoute(
         path: AppRoutes.managerPin,
@@ -363,18 +406,13 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.aiChat,
         builder: (context, _) {
-          final authRepo = sl<AuthRepository>();
-          final currentUser = authRepo.getCurrentUser();
-          final branchCubit = context.read<BranchCubit>();
+          // Tenant/branch/permission scope is derived inside the pipeline via
+          // AiScopeGuard (session + RBAC) — nothing to inject here.
           return BlocProvider(
             create: (_) => AiChatBloc(
               pipeline: sl<AiPipeline>(),
               downloadService: sl<ModelDownloadService>(),
               modelManager: sl<ModelManager>(),
-              businessId: currentUser?.businessId ?? '',
-              cashierId: currentUser?.id ?? '',
-              selectedBranchId: () =>
-                  branchCubit.getSelectedBranchIdForFiltering(),
             ),
             child: const AiChatPage(),
           );
@@ -453,12 +491,14 @@ class AppRouter {
             ],
           ),
 
-          // ── Branch 7: Settings (inline sub-module shell) ─────────────────
+          // ── Branch 7: Settings ───────────────────────────────────────────
+          // Reached via context.push so it stacks as a poppable sub-page with
+          // its own AppSubPageBar (see isStackedSubPage in MainNavigationPage).
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: AppRoutes.settings,
-                builder: (context, _) => const SettingsShellPage(),
+                builder: (context, _) => const SettingsPage(),
               ),
             ],
           ),
@@ -562,8 +602,7 @@ class AppRouter {
                       // when pre-filling a new PO for that supplier.
                       final extra = state.extra;
                       final po = extra is PurchaseOrder ? extra : null;
-                      final initialSupplier =
-                          extra is Supplier ? extra : null;
+                      final initialSupplier = extra is Supplier ? extra : null;
                       return BlocProvider(
                         create: (_) => PoCubit(
                           repository: sl<IProcurementRepository>(),

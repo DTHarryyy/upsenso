@@ -35,10 +35,13 @@ class AppRoutes {
 
   // Settings
   static const String settings = '/settings';
+  static const String systemSettings = '/settings/system';
   static const String receiptSettings = '/settings/receipt';
   static const String moduleSettings = '/settings/modules';
   static const String refundApprovalSettings = '/settings/refund-approval';
   static const String managerPin = '/settings/manager-pin';
+  static const String billing = '/settings/billing';
+  static const String dataExport = '/settings/export';
 
   // Receipt preview (post-checkout)
   static const String receiptPreview = '/pos/receipt-preview';

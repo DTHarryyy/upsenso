@@ -16,11 +16,10 @@ class BranchComparisonTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The KPI overview is rendered by the reports page above the filters.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _BranchOverview(data: data),
-        const SizedBox(height: 20),
         _BranchTableSection(stats: data.branchStats),
       ],
     );
@@ -29,9 +28,11 @@ class BranchComparisonTab extends StatelessWidget {
 
 // ─── Overview KPIs ────────────────────────────────────────────────────────────
 
-class _BranchOverview extends StatelessWidget {
+/// The four headline stat cards for the Branches tab. Rendered by the reports
+/// page at the top of the scroll body (above the filters), not inside the tab.
+class BranchOverviewCards extends StatelessWidget {
   final ReportsData data;
-  const _BranchOverview({required this.data});
+  const BranchOverviewCards({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {

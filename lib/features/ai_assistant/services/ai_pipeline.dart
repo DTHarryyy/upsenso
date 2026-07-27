@@ -3,6 +3,7 @@ import 'package:pos/features/ai_assistant/models/ai_models.dart';
 import 'package:pos/features/ai_assistant/services/llm_service.dart';
 import 'package:pos/features/ai_assistant/services/json_parser.dart';
 import 'package:pos/features/ai_assistant/services/intent_validator.dart';
+import 'package:pos/features/ai_assistant/services/ai_scope_guard.dart';
 import 'package:pos/features/ai_assistant/services/ai_tool_service.dart';
 import 'package:pos/features/ai_assistant/services/product_matcher.dart';
 import 'package:pos/features/ai_assistant/services/response_formatter.dart';
@@ -20,6 +21,7 @@ import 'package:pos/features/ai_assistant/services/response_formatter.dart';
 class AiPipeline {
   final LlmService _llmService;
   final AiToolService _toolService;
+  final AiScopeGuard _scopeGuard;
 
   /// Cached product catalog (refreshed periodically).
   List<ProductWithVariant>? _cachedCatalog;
@@ -29,8 +31,10 @@ class AiPipeline {
   AiPipeline({
     required LlmService llmService,
     required AiToolService toolService,
+    required AiScopeGuard scopeGuard,
   }) : _llmService = llmService,
-       _toolService = toolService;
+       _toolService = toolService,
+       _scopeGuard = scopeGuard;
 
   /// Initialize the pipeline (load LLM model if available).
   Future<void> initialize() async {
@@ -39,12 +43,11 @@ class AiPipeline {
 
   /// Process a user message through the full pipeline.
   /// Returns an [AiPipelineResult] with the response text and optional preview.
-  Future<AiPipelineResult> processMessage({
-    required String userMessage,
-    required String businessId,
-    required String cashierId,
-    required String? branchId,
-  }) async {
+  ///
+  /// Tenant/branch/permission scope is NOT passed in — it is derived
+  /// authoritatively from [AiScopeGuard] (session + RBAC) so it can never be
+  /// spoofed by the caller.
+  Future<AiPipelineResult> processMessage({required String userMessage}) async {
     try {
       // ── Layer 2: LLM Intent Parsing ─────────────────────────
       final rawJson = await _llmService.generateResponse(userMessage);
@@ -66,13 +69,8 @@ class AiPipeline {
       final validated = AiIntentValidator.validate(parsed);
       debugPrint('AI Pipeline [Validated]: ${validated.action}');
 
-      // ── Layer 7: Business Logic ─────────────────────────────
-      return await _executeBusinessLogic(
-        result: validated,
-        businessId: businessId,
-        cashierId: cashierId,
-        branchId: branchId,
-      );
+      // ── Layer 7: Business Logic (scoped) ────────────────────
+      return await _executeBusinessLogic(validated);
     } catch (e, st) {
       debugPrint('AI Pipeline [Error]: $e\n$st');
       return AiPipelineResult(
@@ -82,23 +80,45 @@ class AiPipeline {
     }
   }
 
-  /// Layer 7 — Business Logic: Route validated action to correct handler.
-  Future<AiPipelineResult> _executeBusinessLogic({
-    required AiParsedResult result,
-    required String businessId,
-    required String cashierId,
-    required String? branchId,
-  }) async {
+  /// Layer 7 — Business Logic: authorize the action against the user's
+  /// permissions + module gates, resolve their data scope, then route to the
+  /// correct handler. Deny-by-default — anything the [AiScopeGuard] doesn't
+  /// allow returns a friendly refusal instead of touching data.
+  Future<AiPipelineResult> _executeBusinessLogic(AiParsedResult result) async {
+    // ── Write path — async gate (audit-logged), same pos.use the server checks.
+    if (result.action == AiAction.createTransaction) {
+      final auth = await _scopeGuard.authorizeWrite(AiAction.createTransaction);
+      if (!auth.allowed) return _denied(auth.message);
+      return _handleCreateTransaction(
+        items: result.items,
+        scope: _scopeGuard.resolveScope(),
+      );
+    }
+
+    // ── No data access — plain fallback.
+    if (result.action == AiAction.unknown) {
+      return AiPipelineResult(
+        responseText: AiResponseFormatter.formatUnknownIntent(),
+        type: AiResponseType.text,
+      );
+    }
+
+    // ── Read path — gate the domain, then resolve + inject the data scope.
+    final auth = _scopeGuard.authorizeRead(result.action);
+    if (!auth.allowed) return _denied(auth.message);
+    final scope = _scopeGuard.resolveScope();
+
     switch (result.action) {
       case AiAction.getSales:
         // Product-scoped sales (e.g. "sales of coke today")
         if (result.product != null) {
           final productResult = await _toolService.getSalesBySpecificProduct(
-            businessId,
-            cashierId,
+            scope.businessId,
+            scope.userId,
             result.product!,
             result.dateFilter,
-            branchId: branchId,
+            branchId: scope.branchId,
+            ownUserId: scope.ownUserId,
           );
           if (productResult != null) {
             return AiPipelineResult(
@@ -120,11 +140,12 @@ class AiPipeline {
         // Category-scoped sales (e.g. "sales of beverages")
         if (result.category != null) {
           final total = await _toolService.getSalesBySpecificCategory(
-            businessId,
-            cashierId,
+            scope.businessId,
+            scope.userId,
             result.category!,
             result.dateFilter,
-            branchId: branchId,
+            branchId: scope.branchId,
+            ownUserId: scope.ownUserId,
           );
           return AiPipelineResult(
             responseText: AiResponseFormatter.formatCategorySales(
@@ -137,10 +158,11 @@ class AiPipeline {
         }
         // Generic sales total
         final total = await _toolService.getSalesTotal(
-          businessId,
-          cashierId,
+          scope.businessId,
+          scope.userId,
           result.dateFilter,
-          branchId: branchId,
+          branchId: scope.branchId,
+          ownUserId: scope.ownUserId,
         );
         return AiPipelineResult(
           responseText: AiResponseFormatter.formatSalesTotal(
@@ -158,10 +180,11 @@ class AiPipeline {
 
       case AiAction.getSalesByCategory:
         final catResults = await _toolService.getSalesByCategory(
-          businessId,
-          cashierId,
+          scope.businessId,
+          scope.userId,
           result.dateFilter,
-          branchId: branchId,
+          branchId: scope.branchId,
+          ownUserId: scope.ownUserId,
         );
         // Route based on aggregation type
         switch (result.aggregation) {
@@ -193,10 +216,11 @@ class AiPipeline {
 
       case AiAction.getSalesByProduct:
         final prodResults = await _toolService.getSalesByProduct(
-          businessId,
-          cashierId,
+          scope.businessId,
+          scope.userId,
           result.dateFilter,
-          branchId: branchId,
+          branchId: scope.branchId,
+          ownUserId: scope.ownUserId,
         );
         // Route based on aggregation type
         switch (result.aggregation) {
@@ -227,40 +251,46 @@ class AiPipeline {
         }
 
       case AiAction.getProductCount:
-        final count = await _toolService.getProductCount(businessId);
+        final count = await _toolService.getProductCount(scope.businessId);
         return AiPipelineResult(
           responseText: AiResponseFormatter.formatProductCount(count),
           type: AiResponseType.text,
         );
 
       case AiAction.getActiveProducts:
-        final products = await _toolService.getActiveProducts(businessId);
+        final products = await _toolService.getActiveProducts(scope.businessId);
         return AiPipelineResult(
-          responseText: AiResponseFormatter.formatActiveProducts(products),
+          responseText: AiResponseFormatter.formatActiveProducts(
+            products,
+            includeStock: scope.includeStock,
+          ),
           type: AiResponseType.text,
         );
 
       case AiAction.getProductsWithoutSales:
         final unsold = await _toolService.getProductsWithoutSales(
-          businessId,
-          cashierId,
+          scope.businessId,
+          scope.userId,
           result.dateFilter,
-          branchId: branchId,
+          branchId: scope.branchId,
+          ownUserId: scope.ownUserId,
         );
         return AiPipelineResult(
           responseText: AiResponseFormatter.formatProductsWithoutSales(
             unsold,
             result.dateFilter,
+            includeStock: scope.includeStock,
           ),
           type: AiResponseType.text,
         );
 
       case AiAction.getTransactionCount:
         final count = await _toolService.getTransactionCount(
-          businessId,
-          cashierId,
+          scope.businessId,
+          scope.userId,
           result.dateFilter,
-          branchId: branchId,
+          branchId: scope.branchId,
+          ownUserId: scope.ownUserId,
         );
         return AiPipelineResult(
           responseText: AiResponseFormatter.formatTransactionCount(
@@ -270,14 +300,8 @@ class AiPipeline {
           type: AiResponseType.text,
         );
 
+      // Handled above — unreachable, kept for switch exhaustiveness.
       case AiAction.createTransaction:
-        return _handleCreateTransaction(
-          items: result.items,
-          businessId: businessId,
-          cashierId: cashierId,
-          branchId: branchId,
-        );
-
       case AiAction.unknown:
         return AiPipelineResult(
           responseText: AiResponseFormatter.formatUnknownIntent(),
@@ -286,16 +310,19 @@ class AiPipeline {
     }
   }
 
+  /// A friendly, non-error refusal message (permission/module/tenant denial).
+  AiPipelineResult _denied(String message) =>
+      AiPipelineResult(responseText: message, type: AiResponseType.text);
+
   /// Handle create_transaction intent:
   /// 1. Get/refresh product catalog (Layer 5)
   /// 2. Fuzzy match items (Layer 6)
   /// 3. Build preview (Layer 8 data)
   Future<AiPipelineResult> _handleCreateTransaction({
     required List<AiParsedItem> items,
-    required String businessId,
-    required String cashierId,
-    required String? branchId,
+    required AiScope scope,
   }) async {
+    final businessId = scope.businessId;
     // Layer 5: Get product catalog (with caching)
     final catalog = await _getCatalog(businessId);
     debugPrint(
@@ -360,14 +387,15 @@ class AiPipeline {
     );
   }
 
-  /// layer 9 execution create aa trransaction only
-  ///  when user confirmf if ayaw edi dont
+  /// Layer 9 — Execution: Create the transaction ONLY after user confirms.
+  /// Re-authorizes the write (defence-in-depth) and re-derives the scope from
+  /// the session — the caller never supplies tenant/branch/author.
   Future<AiPipelineResult> confirmTransaction({
     required AiTransactionPreview preview,
-    required String cashierId,
-    required String? businessId,
-    required String? branchId,
   }) async {
+    final auth = await _scopeGuard.authorizeWrite(AiAction.createTransaction);
+    if (!auth.allowed) return _denied(auth.message);
+    final scope = _scopeGuard.resolveScope();
     try {
       final lineItems = preview.matchedProducts.map((p) {
         return TransactionLineItem(
@@ -381,9 +409,9 @@ class AiPipeline {
       }).toList();
 
       final txId = await _toolService.createTransaction(
-        cashierId: cashierId,
-        businessId: businessId,
-        branchId: branchId,
+        cashierId: scope.userId,
+        businessId: scope.businessId,
+        branchId: scope.branchId,
         lineItems: lineItems,
       );
 

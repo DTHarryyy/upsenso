@@ -1236,7 +1236,7 @@ class _PermissionGroupState extends State<_PermissionGroup>
           // ── Expanded content ────────────────────────────────────────────
           SizeTransition(
             sizeFactor: _expandCurve,
-            axisAlignment: -1,
+            alignment: Alignment.topLeft,
             child: FadeTransition(
               opacity: _fadeCurve,
               child: Column(

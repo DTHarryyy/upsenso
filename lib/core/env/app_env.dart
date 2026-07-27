@@ -12,7 +12,10 @@ final class AppEnv {
     defaultValue: 'http://localhost:54325',
   );
   static const flavor = String.fromEnvironment('FLAVOR', defaultValue: 'dev');
-  static const logLevel = String.fromEnvironment('LOG_LEVEL', defaultValue: 'debug');
+  static const logLevel = String.fromEnvironment(
+    'LOG_LEVEL',
+    defaultValue: 'debug',
+  );
   static const enableAnalytics = bool.fromEnvironment('ENABLE_ANALYTICS');
 
   static bool get isDev => flavor == 'dev';

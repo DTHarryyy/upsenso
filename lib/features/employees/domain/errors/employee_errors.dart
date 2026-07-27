@@ -27,3 +27,19 @@ class EmployeeProtectedException implements Exception {
   @override
   String toString() => 'EmployeeProtectedException: $message';
 }
+
+/// Thrown when adding (or reactivating) an employee would exceed the plan's
+/// seat limit. Client-side courtesy check — the server RPC enforces the same
+/// cap authoritatively. Suspending an employee frees a seat immediately.
+class EmployeeSeatLimitException implements Exception {
+  final String message;
+
+  const EmployeeSeatLimitException([
+    this.message =
+        'You\'ve reached your plan\'s team-member limit. Upgrade your plan '
+        'to add more team members.',
+  ]);
+
+  @override
+  String toString() => message;
+}

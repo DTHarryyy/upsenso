@@ -72,6 +72,9 @@ enum AppFeature {
 
   /// Sales history / transaction log viewer.
   salesHistory,
+
+  /// Billing & subscription page (plan, usage meters, upgrade).
+  billingSubscription,
 }
 
 extension AppFeatureX on AppFeature {
@@ -120,6 +123,8 @@ extension AppFeatureX on AppFeature {
         return 'Profile Settings';
       case AppFeature.salesHistory:
         return 'Sales History';
+      case AppFeature.billingSubscription:
+        return 'Billing & Subscription';
     }
   }
 
@@ -170,6 +175,9 @@ extension AppFeatureX on AppFeature {
       case AppFeature.dashboardInventory:
       case AppFeature.dashboardManager:
       case AppFeature.dashboardOwner:
+      // Billing must stay reachable even on a lapsed/Free account — an owner
+      // can always see their plan, export, and reactivate.
+      case AppFeature.billingSubscription:
         return null;
     }
   }
@@ -211,6 +219,8 @@ extension AppFeatureX on AppFeature {
         return 'nav.inventory';
       case AppFeature.salesHistory:
         return 'nav.sales_history';
+      case AppFeature.billingSubscription:
+        return 'nav.billing';
       // Dashboard variants: everyone with a session may see *some* dashboard.
       case AppFeature.dashboardCashier:
       case AppFeature.dashboardInventory:

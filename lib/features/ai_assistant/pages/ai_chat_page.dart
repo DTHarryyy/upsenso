@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/const/app_colors.dart';
@@ -88,7 +89,9 @@ class _AiChatPageState extends State<AiChatPage> {
       elevation: 12,
       shadowColor: Colors.black.withAlpha(18),
       items: [
-        if (state.modelStatus == AiModelStatus.notDownloaded)
+        // The on-device model (nobodywho) can't run in a browser, so web never
+        // offers the download — it stays in rule-based "Cloud mode".
+        if (!kIsWeb && state.modelStatus == AiModelStatus.notDownloaded)
           PopupMenuItem<String>(
             value: 'download',
             child: _MenuItemContent(
@@ -516,7 +519,8 @@ class _WelcomeView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (state.modelStatus == AiModelStatus.notDownloaded) ...[
+              if (!kIsWeb &&
+                  state.modelStatus == AiModelStatus.notDownloaded) ...[
                 _DownloadNudge(onDownloadTap: onDownloadTap),
                 const SizedBox(height: 18),
               ],

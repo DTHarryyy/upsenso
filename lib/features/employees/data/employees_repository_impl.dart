@@ -8,6 +8,7 @@ import 'package:pos/core/database/daos/employee_permissions_dao.dart';
 import 'package:pos/core/database/daos/employees_dao.dart';
 import 'package:pos/core/permissions/data/permission_remote_ds.dart';
 import 'package:pos/core/permissions/default_permission_matrix.dart';
+import 'package:pos/core/permissions/entitlement_service.dart';
 import 'package:pos/core/permissions/role_permission_matrix.dart';
 import 'package:pos/core/sync/sync_status.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
@@ -84,6 +85,14 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
   }) async {
     final id = _uuid.v4();
     final now = DateTime.now();
+
+    // Seat-cap pre-check before the auth account is minted — counted live from
+    // local Drift. The server RPC enforces the same cap for cloud tiers (M7.1
+    // §6.2); on local-only Free this client check is the gate.
+    if (!await sl<EntitlementService>()
+        .canAddAnother(EntitlementResource.seats)) {
+      throw const EmployeeSeatLimitException();
+    }
 
     // The form only carries a display role name; resolve the real UUID so RBAC
     // is keyed on a stable role id rather than free-text.
@@ -181,6 +190,9 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
         syncStatus: Value(SyncStatus.synced.toInt()),
       ),
     );
+
+    // Keep the seat meter + cap pre-check in step with the new local row.
+    await sl<EntitlementService>().recomputeLocalUsage();
 
     // Step 6: Cache permissions locally so the employee's very first login
     // resolves permissions without a Supabase round-trip.

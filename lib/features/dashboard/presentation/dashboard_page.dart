@@ -103,7 +103,8 @@ class _DashboardPageState extends State<DashboardPage> {
             final isPhone = Breakpoints.isPhone(context);
             final pad = isPhone ? 12.0 : 16.0;
             return Scaffold(
-              // floatingActionButton: const FloatingAIAssistantBar(),
+              // AI assistant now lives in the bottom nav (mobile) and sidebar
+              // (tablet/desktop) — see AppBottomNav / MainNavigationPage.
               body: (state is DashboardInitial || state is DashboardLoading)
                   ? const _DashboardSkeleton()
                   : RefreshIndicator(

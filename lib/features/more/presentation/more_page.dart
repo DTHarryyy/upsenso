@@ -25,33 +25,7 @@ class MorePage extends StatefulWidget {
   State<MorePage> createState() => _MorePageState();
 }
 
-class _MorePageState extends State<MorePage>
-    with SingleTickerProviderStateMixin {
-  bool _settingsExpanded = false;
-  late final AnimationController _animCtrl;
-  late final Animation<double> _expandAnim;
-
-  @override
-  void initState() {
-    super.initState();
-    _animCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 240),
-    );
-    _expandAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeInOut);
-  }
-
-  @override
-  void dispose() {
-    _animCtrl.dispose();
-    super.dispose();
-  }
-
-  void _toggleSettings() {
-    setState(() => _settingsExpanded = !_settingsExpanded);
-    _settingsExpanded ? _animCtrl.forward() : _animCtrl.reverse();
-  }
-
+class _MorePageState extends State<MorePage> {
   void _navigate(String route) {
     Navigator.of(context).pop(); // close drawer
     context.push(route);
@@ -137,24 +111,29 @@ class _MorePageState extends State<MorePage>
           PermissionKeys.navExpenses,
         );
         // Audit logs: Business Owner only (branchManager excluded by permission matrix).
-        final canSeeAuditLogs = permService.can(PermissionKeys.navAuditLogs) &&
+        final canSeeAuditLogs =
+            permService.can(PermissionKeys.navAuditLogs) &&
             permService.isModuleEnabled('audit');
         // Employee management: branchManager / Business Owner.
-        final canSeeEmployees = permService.can(PermissionKeys.navEmployees) &&
+        final canSeeEmployees =
+            permService.can(PermissionKeys.navEmployees) &&
             permService.isModuleEnabled('employees');
         // Held sales: anyone who can hold a sale (incl. cashiers), POS module on.
-        final canSeeHeldSales = permService.can(PermissionKeys.navHeldSales) &&
+        final canSeeHeldSales =
+            permService.can(PermissionKeys.navHeldSales) &&
             permService.isModuleEnabled('pos');
         // Procurement: permission + module gate.
         final canSeeProcurement =
             permService.can(PermissionKeys.navProcurement) &&
-                permService.isModuleEnabled('procurement');
+            permService.isModuleEnabled('procurement');
         // Customers (CRM): permission + module gate.
-        final canSeeCustomers = permService.can(PermissionKeys.navCustomers) &&
+        final canSeeCustomers =
+            permService.can(PermissionKeys.navCustomers) &&
             permService.isModuleEnabled('crm');
         // Fraud & Risk: permission + audit module gate (UI only — the
         // detection engine runs regardless).
-        final canSeeFraud = permService.can(PermissionKeys.navFraud) &&
+        final canSeeFraud =
+            permService.can(PermissionKeys.navFraud) &&
             permService.isModuleEnabled('audit');
         // Sales history: permission only — no module gate (see AppFeature.salesHistory).
         final canSeeSalesHistory = permService.can(
@@ -261,7 +240,9 @@ class _MorePageState extends State<MorePage>
                       ],
 
                       // ADMIN
-                      if (canSeeEmployees || canSeeAuditLogs || canSeeFraud) ...[
+                      if (canSeeEmployees ||
+                          canSeeAuditLogs ||
+                          canSeeFraud) ...[
                         _SectionLabel('ADMIN'),
                         if (canSeeEmployees)
                           _DrawerTile(
@@ -299,30 +280,13 @@ class _MorePageState extends State<MorePage>
                         const SizedBox(height: 4),
                       ],
 
-                      // SETTINGS (expandable) — hidden for restricted employees
+                      // SETTINGS — opens the dedicated Settings page
                       if (!isRestrictedEmployee) ...[
                         _SectionLabel('SETTINGS'),
-                        _SettingsTile(
-                          isExpanded: _settingsExpanded,
-                          onTap: _toggleSettings,
-                        ),
-                        SizeTransition(
-                          sizeFactor: _expandAnim,
-                          axisAlignment: -1,
-                          child: _SettingsSubItems(
-                            onNavigate: _navigate,
-                            onModulesTap: permService.can(
-                              PermissionKeys.settingsEditBusiness,
-                            )
-                                ? () {
-                                    Navigator.of(context).pop();
-                                    context.push(
-                                      AppRoutes.moduleSettings,
-                                      extra: user?.businessId ?? '',
-                                    );
-                                  }
-                                : null,
-                          ),
+                        _DrawerTile(
+                          icon: IconlyLight.setting,
+                          label: 'Settings',
+                          onTap: () => _navigate(AppRoutes.settings),
                         ),
                       ],
                     ],
@@ -464,159 +428,6 @@ class _DrawerTile extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-// ── Settings expandable header tile ────────────────────────────────────────
-
-class _SettingsTile extends StatelessWidget {
-  final bool isExpanded;
-  final VoidCallback onTap;
-
-  const _SettingsTile({required this.isExpanded, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: isExpanded ? AppColors.brandSoft : Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        splashColor: AppColors.brand.withValues(alpha: 0.08),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-            child: Row(
-              children: [
-                Icon(
-                  isExpanded ? IconlyBold.setting : IconlyLight.setting,
-                  size: 20,
-                  color: isExpanded ? AppColors.brand : AppColors.textSecondary,
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    'Settings',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: getOutfitStyle(
-                      fontSize: 14,
-                      fontWeight: isExpanded
-                          ? FontWeight.w600
-                          : FontWeight.w500,
-                      color: isExpanded
-                          ? AppColors.textPrimary
-                          : AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-                AnimatedRotation(
-                  turns: isExpanded ? 0.5 : 0.0,
-                  duration: const Duration(milliseconds: 240),
-                  child: const Icon(
-                    IconlyLight.arrow_down_2,
-                    size: 20,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Settings sub-items ─────────────────────────────────────────────────────
-
-class _SettingsSubItems extends StatelessWidget {
-  final void Function(String route) onNavigate;
-  final VoidCallback? onModulesTap;
-
-  const _SettingsSubItems({
-    required this.onNavigate,
-    this.onModulesTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final items = [
-      (
-        icon: IconlyLight.paper,
-        label: 'Receipt Settings',
-        onTap: () => onNavigate(AppRoutes.receiptSettings),
-      ),
-      (
-        icon: IconlyLight.work,
-        label: 'Business Profile',
-        onTap: () => onNavigate(AppRoutes.businessProfile),
-      ),
-      (
-        icon: IconlyLight.profile,
-        label: 'My Profile',
-        onTap: () => onNavigate(AppRoutes.profile),
-      ),
-      if (onModulesTap != null)
-        (
-          icon: IconlyLight.setting,
-          label: 'Module Management',
-          onTap: onModulesTap!,
-        ),
-    ];
-
-    return Container(
-      margin: const EdgeInsets.only(left: 20, right: 12, bottom: 4),
-      decoration: BoxDecoration(
-        border: Border(
-          left: BorderSide(
-            color: AppColors.brand.withValues(alpha: 0.25),
-            width: 2,
-          ),
-        ),
-      ),
-      child: Column(
-        children: items.map((item) {
-          return Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: item.onTap,
-              borderRadius: BorderRadius.circular(8),
-              splashColor: AppColors.brand.withValues(alpha: 0.08),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                child: Row(
-                  children: [
-                    Icon(item.icon, size: 18, color: AppColors.brand),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        item.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: getOutfitStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
-                    const Icon(
-                      Icons.north_east_rounded,
-                      size: 16,
-                      color: AppColors.textMuted,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }).toList(),
       ),
     );
   }

@@ -1,10 +1,14 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:iconly/iconly.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 
+/// Floating bottom nav: a rounded pill holds the regular tabs, and a
+/// standalone circular scanner button sits to its right — tapping it jumps
+/// straight to the POS terminal (branch index 2).
 class AppBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -33,36 +37,67 @@ class AppBottomNav extends StatelessWidget {
     final isCashierLike = canUsePOS && !canUseReports && !canUseInventory;
     final isInventoryLike = canUseInventory && !hasPosByRole;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 16,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Container(
-          height: 72,
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+    final items = isCashierLike
+        ? _cashierItems(canViewProducts: canViewProducts)
+        : isInventoryLike
+            ? _inventoryStaffItems(canViewProducts: canViewProducts)
+            : _fullNavItems(canViewProducts: canViewProducts);
+
+    // The scanner is a centered docked button; nav items split around it.
+    // Without POS access there's no scanner, so all items stay in one row.
+    final splitAt = canUsePOS ? (items.length / 2).ceil() : items.length;
+    final leftItems = items.sublist(0, splitAt);
+    final rightItems = items.sublist(splitAt);
+
+    Widget pillItem(_NavSpec item) => _NavPillItem(
+          spec: item,
+          isActive: currentIndex == item.index,
+          onTap: () => onTap(item.index),
+        );
+
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+        child: SizedBox(
+          height: 62,
+          child: Stack(
+            clipBehavior: Clip.none,
             children: [
-              // ── Cashier-like (POS but no reports/inventory) ─────────────
-              if (isCashierLike) ..._cashierItems(canViewProducts: canViewProducts),
+              // ── Tab pill with a center notch for the docked scanner ──────
+              Positioned.fill(
+                child: Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(31),
+                    border: Border.all(color: AppColors.borderSoft),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      for (final item in leftItems) pillItem(item),
+                      // Notch gap reserving room for the raised scanner.
+                      if (canUsePOS) const SizedBox(width: 64),
+                      for (final item in rightItems) pillItem(item),
+                    ],
+                  ),
+                ),
+              ),
 
-              // ── Inventory-like (inventory but no POS) ────────────────────
-              if (isInventoryLike)
-                ..._inventoryStaffItems(canViewProducts: canViewProducts),
-
-              // ── All other roles: full nav bar ─────────────────────────────
-              if (!isCashierLike && !isInventoryLike)
-                ..._fullNavItems(
-                  canUsePOS: canUsePOS,
-                  canViewProducts: canViewProducts,
+              // ── Centered docked scanner button → POS terminal ────────────
+              if (canUsePOS)
+                Positioned(
+                  top: -12,
+                  left: 0,
+                  right: 0,
+                  child: Center(child: _ScannerButton(onTap: () => onTap(2))),
                 ),
             ],
           ),
@@ -71,144 +106,197 @@ class AppBottomNav extends StatelessWidget {
     );
   }
 
-  Widget _buildCenterPOSButton() {
+  // ── Role-specific nav item sets ────────────────────────────────────────
+
+  List<_NavSpec> _cashierItems({required bool canViewProducts}) => [
+        const _NavSpec(
+          icon: IconlyLight.home,
+          activeIcon: IconlyBold.home,
+          label: 'Home',
+          index: 0,
+        ),
+        if (canViewProducts)
+          const _NavSpec(
+            icon: IconlyLight.bag,
+            activeIcon: IconlyBold.bag,
+            label: 'Products',
+            index: 1,
+          ),
+      ];
+
+  List<_NavSpec> _inventoryStaffItems({required bool canViewProducts}) => [
+        const _NavSpec(
+          icon: IconlyLight.home,
+          activeIcon: IconlyBold.home,
+          label: 'Home',
+          index: 0,
+        ),
+        if (canViewProducts)
+          const _NavSpec(
+            icon: IconlyLight.bag,
+            activeIcon: IconlyBold.bag,
+            label: 'Products',
+            index: 1,
+          ),
+        const _NavSpec(
+          icon: IconlyLight.category,
+          activeIcon: IconlyBold.category,
+          label: 'Inventory',
+          index: 4,
+        ),
+      ];
+
+  List<_NavSpec> _fullNavItems({required bool canViewProducts}) => [
+        const _NavSpec(
+          icon: IconlyLight.home,
+          activeIcon: IconlyBold.home,
+          label: 'Home',
+          index: 0,
+        ),
+        if (canViewProducts)
+          const _NavSpec(
+            icon: IconlyLight.bag,
+            activeIcon: IconlyBold.bag,
+            label: 'Products',
+            index: 1,
+          ),
+        const _NavSpec(
+          icon: IconlyLight.chart,
+          activeIcon: IconlyBold.chart,
+          label: 'Reports',
+          index: 3,
+        ),
+        const _NavSpec(
+          icon: IconlyLight.category,
+          activeIcon: IconlyBold.category,
+          label: 'Inventory',
+          index: 4,
+        ),
+      ];
+}
+
+class _NavSpec {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final int index;
+
+  const _NavSpec({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.index,
+  });
+}
+
+class _NavPillItem extends StatelessWidget {
+  final _NavSpec spec;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _NavPillItem({
+    required this.spec,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Expanded(
-      child: GestureDetector(
-        onTap: () => onTap(2),
-        behavior: HitTestBehavior.opaque,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.brand,
-              ),
-              child: Icon(
-                IconlyBold.scan,
-                color: AppColors.textInverse,
-                size: 28,
-              ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          // Full-slot stadium highlight — hugging the content squeezed the
+          // label into clipped text on narrow screens.
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 320),
+            curve: Curves.easeOutCubic,
+            decoration: BoxDecoration(
+              color: isActive ? AppColors.brandSoft : Colors.transparent,
+              borderRadius: BorderRadius.circular(26),
             ),
-          ],
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Cross-fade + gentle scale between the light and bold glyph
+                // so the icon swap doesn't pop.
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 260),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  transitionBuilder: (child, anim) => FadeTransition(
+                    opacity: anim,
+                    child: ScaleTransition(
+                      scale: Tween<double>(begin: 0.8, end: 1.0).animate(anim),
+                      child: child,
+                    ),
+                  ),
+                  child: Icon(
+                    isActive ? spec.activeIcon : spec.icon,
+                    key: ValueKey<bool>(isActive),
+                    color: isActive ? AppColors.brand : AppColors.textMuted,
+                    size: 21,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                // Fixed-height FittedBox: the label shrinks to fit its slot
+                // instead of clipping, even at bumped device text scales.
+                SizedBox(
+                  height: 13,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: AnimatedDefaultTextStyle(
+                      duration: const Duration(milliseconds: 320),
+                      curve: Curves.easeOutCubic,
+                      style: getOutfitStyle(
+                        fontSize: 10.5,
+                        fontWeight:
+                            isActive ? FontWeight.w600 : FontWeight.w400,
+                        color:
+                            isActive ? AppColors.brand : AppColors.textMuted,
+                      ),
+                      child: Text(spec.label, maxLines: 1),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
+}
 
-  // ── Role-specific nav item sets ────────────────────────────────────────
+class _ScannerButton extends StatelessWidget {
+  final VoidCallback onTap;
 
-  List<Widget> _cashierItems({required bool canViewProducts}) => [
-    _buildNavItem(
-      icon: IconlyLight.home,
-      activeIcon: IconlyBold.home,
-      label: 'Dashboard',
-      index: 0,
-    ),
-    _buildCenterPOSButton(),
-    if (canViewProducts)
-      _buildNavItem(
-        icon: IconlyLight.bag,
-        activeIcon: IconlyBold.bag,
-        label: 'Products',
-        index: 1,
-      ),
-  ];
+  const _ScannerButton({required this.onTap});
 
-  List<Widget> _inventoryStaffItems({required bool canViewProducts}) => [
-    _buildNavItem(
-      icon: IconlyLight.home,
-      activeIcon: IconlyBold.home,
-      label: 'Dashboard',
-      index: 0,
-    ),
-    if (canViewProducts)
-      _buildNavItem(
-        icon: IconlyLight.bag,
-        activeIcon: IconlyBold.bag,
-        label: 'Products',
-        index: 1,
-      ),
-    _buildNavItem(
-      icon: IconlyLight.category,
-      activeIcon: IconlyBold.category,
-      label: 'Inventory',
-      index: 4,
-    ),
-  ];
-
-  List<Widget> _fullNavItems({
-    required bool canUsePOS,
-    required bool canViewProducts,
-  }) => [
-    _buildNavItem(
-      icon: IconlyLight.home,
-      activeIcon: IconlyBold.home,
-      label: 'Dashboard',
-      index: 0,
-    ),
-    if (canViewProducts)
-      _buildNavItem(
-        icon: IconlyLight.bag,
-        activeIcon: IconlyBold.bag,
-        label: 'Products',
-        index: 1,
-      ),
-    if (canUsePOS) _buildCenterPOSButton(),
-    _buildNavItem(
-      icon: IconlyLight.chart,
-      activeIcon: IconlyBold.chart,
-      label: 'Reports',
-      index: 3,
-    ),
-    _buildNavItem(
-      icon: IconlyLight.category,
-      activeIcon: IconlyBold.category,
-      label: 'Inventory',
-      index: 4,
-    ),
-  ];
-
-  Widget _buildNavItem({
-    required IconData icon,
-    required IconData activeIcon,
-    required String label,
-    required int index,
-  }) {
-    final isActive = currentIndex == index;
-
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => onTap(index),
-        behavior: HitTestBehavior.opaque,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isActive ? activeIcon : icon,
-              color: isActive ? AppColors.brand : AppColors.textMuted,
-              size: 24,
-            ),
-            const SizedBox(height: 2),
-            // Flexible + maxLines keeps the label from overflowing the fixed
-            // 72px bar when the device text scale is bumped up.
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.clip,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                  color: isActive ? AppColors.brand : AppColors.textMuted,
-                ),
-              ),
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 62,
+        height: 62,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.brand,
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.brand.withValues(alpha: 0.35),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
+        ),
+        child: const Icon(
+          IconlyBold.scan,
+          color: AppColors.textInverse,
+          size: 26,
         ),
       ),
     );

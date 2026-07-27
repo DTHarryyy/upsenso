@@ -25,11 +25,10 @@ class ProfitSummaryTab extends StatelessWidget {
     final hasRows = data.profitTrend.any((p) => p.label.isNotEmpty);
     final sideBySide = Breakpoints.isDesktop(context) && hasRows;
 
+    // The KPI overview is rendered by the reports page above the filters.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _ProfitOverview(data: data),
-        const SizedBox(height: 20),
         if (sideBySide)
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -51,9 +50,11 @@ class ProfitSummaryTab extends StatelessWidget {
 
 // ─── Overview KPIs ────────────────────────────────────────────────────────────
 
-class _ProfitOverview extends StatelessWidget {
+/// The four headline stat cards for the Profit tab. Rendered by the reports
+/// page at the top of the scroll body (above the filters), not inside the tab.
+class ProfitOverviewCards extends StatelessWidget {
   final ReportsData data;
-  const _ProfitOverview({required this.data});
+  const ProfitOverviewCards({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {

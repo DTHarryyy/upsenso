@@ -7,7 +7,8 @@ import 'package:pos/features/alert/presentation/widgets/alert_detail_content.dar
 class AlertDetailDialog extends StatelessWidget {
   final FraudAlert alert;
   final bool canResolve;
-  final void Function(AlertStatus status, String? note)? onSetStatus;
+  final Future<String?> Function(AlertStatus status, String? note)?
+      onSetStatus;
 
   const AlertDetailDialog({
     super.key,

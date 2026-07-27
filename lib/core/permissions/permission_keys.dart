@@ -116,6 +116,11 @@ abstract final class PermissionKeys {
   static const String navRecipes = 'nav.recipes';
   static const String navCustomers = 'nav.customers';
   static const String navFraud = 'nav.fraud';
+  static const String navBilling = 'nav.billing';
+
+  // ── Billing / subscription (M7.1) ─────────────────────────────────────────
+  static const String billingView = 'billing.view';
+  static const String billingManage = 'billing.manage';
 
   // ── Data scoping ──────────────────────────────────────────────────────────
   static const String dataCrossBranchAccess = 'data.cross_branch_access';
@@ -187,6 +192,9 @@ abstract final class PermissionKeys {
     navRecipes,
     navCustomers,
     navFraud,
+    navBilling,
+    billingView,
+    billingManage,
     ingredientsView,
     ingredientsManage,
     recipesManage,

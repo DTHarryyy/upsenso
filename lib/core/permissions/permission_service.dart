@@ -13,6 +13,7 @@ import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/profile_field.dart';
 import 'package:pos/core/permissions/role_permission_matrix.dart';
 import 'package:pos/core/permissions/data/permission_remote_ds.dart';
+import 'package:pos/core/permissions/entitlement_service.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 
 /// Result returned by [PermissionService.guard].
@@ -92,6 +93,15 @@ class PermissionService {
 
   /// The auth user ID currently bound to this service.
   String? get currentUserId => _userId;
+
+  /// Plan-entitlement layer (M7.1, design §7) — attached after DI wiring to
+  /// avoid a constructor cycle. When present it is consulted FIRST in
+  /// [canAccessFeature]; permission/module logic below never changes.
+  EntitlementService? _entitlementService;
+
+  void attachEntitlementService(EntitlementService service) {
+    _entitlementService = service;
+  }
 
   PermissionService({
     required AuthContextDao authContextDao,
@@ -204,6 +214,8 @@ class PermissionService {
         return const ['procurement.view'];
       case 'nav.recipes':
         return const ['recipes.manage', 'ingredients.view', 'ingredients.manage'];
+      case 'nav.billing':
+        return const ['billing.view', 'billing.manage'];
       default:
         return const [];
     }
@@ -486,9 +498,14 @@ class PermissionService {
   /// Returns `true` if the current user is allowed to open [feature].
   ///
   /// Evaluation order (mirrors the server-side 6-layer hierarchy):
+  ///   0. Plan entitlement — the subscription tier must include the feature.
   ///   1. Module gate — if the business has disabled the module, deny.
   ///   2. Per-employee permission check via [can] / [AppFeature.navKey].
   bool canAccessFeature(AppFeature feature) {
+    final entitlement = _entitlementService;
+    if (entitlement != null && !entitlement.featureAllowed(feature)) {
+      return false;
+    }
     final code = feature.moduleCode;
     if (code != null && !isModuleEnabled(code)) return false;
     return can(feature.navKey);

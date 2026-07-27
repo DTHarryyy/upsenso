@@ -15,9 +15,6 @@ class AiChatBloc extends Bloc<AiChatEvent, AiChatState> {
   final AiPipeline _pipeline;
   final ModelDownloadService _downloadService;
   final ModelManager _modelManager;
-  final String businessId;
-  final String cashierId;
-  final String? Function() selectedBranchId;
   final _uuid = const Uuid();
 
   StreamSubscription<ModelDownloadProgress>? _downloadSub;
@@ -26,13 +23,10 @@ class AiChatBloc extends Bloc<AiChatEvent, AiChatState> {
     required AiPipeline pipeline,
     required ModelDownloadService downloadService,
     required ModelManager modelManager,
-    required this.businessId,
-    required this.cashierId,
-    required this.selectedBranchId,
-  })  : _pipeline = pipeline,
-        _downloadService = downloadService,
-        _modelManager = modelManager,
-        super(AiChatState(messages: [])) {
+  }) : _pipeline = pipeline,
+       _downloadService = downloadService,
+       _modelManager = modelManager,
+       super(AiChatState(messages: [])) {
     on<AiChatInitialized>(_onInitialized);
     on<AiChatMessageSent>(_onMessageSent);
     on<AiChatTransactionConfirmed>(_onTransactionConfirmed);
@@ -84,18 +78,19 @@ class AiChatBloc extends Bloc<AiChatEvent, AiChatState> {
     _downloadSub = null;
 
     if (modelPath != null) {
-      emit(state.copyWith(
-        modelStatus: AiModelStatus.ready,
-        clearDownload: true,
-      ));
+      emit(
+        state.copyWith(modelStatus: AiModelStatus.ready, clearDownload: true),
+      );
       // Reload the pipeline with the real LLM
       await _pipeline.initialize();
     } else {
       // Download failed or was cancelled — reset to notDownloaded
-      emit(state.copyWith(
-        modelStatus: AiModelStatus.notDownloaded,
-        clearDownload: true,
-      ));
+      emit(
+        state.copyWith(
+          modelStatus: AiModelStatus.notDownloaded,
+          clearDownload: true,
+        ),
+      );
     }
   }
 
@@ -106,16 +101,20 @@ class AiChatBloc extends Bloc<AiChatEvent, AiChatState> {
     emit(state.copyWith(downloadProgress: event.progress));
 
     if (event.progress.status == ModelDownloadStatus.failed) {
-      emit(state.copyWith(
-        modelStatus: AiModelStatus.notDownloaded,
-        clearDownload: true,
-      ));
+      emit(
+        state.copyWith(
+          modelStatus: AiModelStatus.notDownloaded,
+          clearDownload: true,
+        ),
+      );
     }
     if (event.progress.status == ModelDownloadStatus.cancelled) {
-      emit(state.copyWith(
-        modelStatus: AiModelStatus.notDownloaded,
-        clearDownload: true,
-      ));
+      emit(
+        state.copyWith(
+          modelStatus: AiModelStatus.notDownloaded,
+          clearDownload: true,
+        ),
+      );
     }
   }
 
@@ -151,20 +150,17 @@ class AiChatBloc extends Bloc<AiChatEvent, AiChatState> {
       type: AiMessageType.loading,
     );
 
-    emit(state.copyWith(
-      messages: [...updatedMessages, loadingMsg],
-      isProcessing: true,
-      clearPreview: true,
-    ));
+    emit(
+      state.copyWith(
+        messages: [...updatedMessages, loadingMsg],
+        isProcessing: true,
+        clearPreview: true,
+      ),
+    );
 
     // Process through AI pipeline
     try {
-      final result = await _pipeline.processMessage(
-        userMessage: text,
-        businessId: businessId,
-        cashierId: cashierId,
-        branchId: selectedBranchId(),
-      );
+      final result = await _pipeline.processMessage(userMessage: text);
 
       // Remove loading message and add AI response
       final aiMsg = AiChatMessage(
@@ -174,16 +170,18 @@ class AiChatBloc extends Bloc<AiChatEvent, AiChatState> {
         type: result.type == AiResponseType.transactionPreview
             ? AiMessageType.transactionPreview
             : result.type == AiResponseType.error
-                ? AiMessageType.error
-                : AiMessageType.text,
+            ? AiMessageType.error
+            : AiMessageType.text,
         transactionPreview: result.preview,
       );
 
-      emit(state.copyWith(
-        messages: [...updatedMessages, aiMsg],
-        isProcessing: false,
-        pendingPreview: result.preview,
-      ));
+      emit(
+        state.copyWith(
+          messages: [...updatedMessages, aiMsg],
+          isProcessing: false,
+          pendingPreview: result.preview,
+        ),
+      );
     } catch (e, st) {
       debugPrint('[AiChatBloc] Error processing message: $e\n$st');
       final errorMsg = AiChatMessage(
@@ -192,10 +190,12 @@ class AiChatBloc extends Bloc<AiChatEvent, AiChatState> {
         isUser: false,
         type: AiMessageType.error,
       );
-      emit(state.copyWith(
-        messages: [...updatedMessages, errorMsg],
-        isProcessing: false,
-      ));
+      emit(
+        state.copyWith(
+          messages: [...updatedMessages, errorMsg],
+          isProcessing: false,
+        ),
+      );
     }
   }
 
@@ -206,12 +206,7 @@ class AiChatBloc extends Bloc<AiChatEvent, AiChatState> {
     emit(state.copyWith(isProcessing: true));
 
     // Layer 9: Execute transaction
-    final result = await _pipeline.confirmTransaction(
-      preview: event.preview,
-      cashierId: cashierId,
-      businessId: businessId,
-      branchId: selectedBranchId(),
-    );
+    final result = await _pipeline.confirmTransaction(preview: event.preview);
 
     final aiMsg = AiChatMessage(
       id: _uuid.v4(),
@@ -222,11 +217,13 @@ class AiChatBloc extends Bloc<AiChatEvent, AiChatState> {
           : AiMessageType.text,
     );
 
-    emit(state.copyWith(
-      messages: [...state.messages, aiMsg],
-      isProcessing: false,
-      clearPreview: true,
-    ));
+    emit(
+      state.copyWith(
+        messages: [...state.messages, aiMsg],
+        isProcessing: false,
+        clearPreview: true,
+      ),
+    );
   }
 
   void _onTransactionCancelled(
@@ -240,10 +237,9 @@ class AiChatBloc extends Bloc<AiChatEvent, AiChatState> {
       type: AiMessageType.text,
     );
 
-    emit(state.copyWith(
-      messages: [...state.messages, aiMsg],
-      clearPreview: true,
-    ));
+    emit(
+      state.copyWith(messages: [...state.messages, aiMsg], clearPreview: true),
+    );
   }
 
   void _onPreviewUpdated(
@@ -266,10 +262,12 @@ class AiChatBloc extends Bloc<AiChatEvent, AiChatState> {
       return msg;
     }).toList();
 
-    emit(state.copyWith(
-      messages: updatedMessages,
-      pendingPreview: event.updatedPreview,
-    ));
+    emit(
+      state.copyWith(
+        messages: updatedMessages,
+        pendingPreview: event.updatedPreview,
+      ),
+    );
   }
 
   void _onMessagesCleared(

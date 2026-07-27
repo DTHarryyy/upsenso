@@ -53,6 +53,8 @@ import 'package:pos/core/database/daos/fraud_flags_dao.dart';
 import 'package:pos/features/alert/data/datasources/fraud_flags_remote_ds.dart';
 import 'package:pos/core/database/daos/devices_dao.dart';
 import 'package:pos/core/device/devices_remote_ds.dart';
+import 'package:pos/core/device/device_registration_service.dart';
+import 'package:pos/core/permissions/entitlement_service.dart';
 
 /// Service to handle synchronization between local Drift DB and Supabase
 class SyncService {
@@ -97,6 +99,8 @@ class SyncService {
   final FraudFlagsRemoteDs _fraudFlagsRemoteDs;
   final DevicesDao _devicesDao;
   final DevicesRemoteDs _devicesRemoteDs;
+  final EntitlementService _entitlementService;
+  final DeviceRegistrationService _deviceRegistrationService;
 
   // Built lazily from existing deps (no DI change) so duplicate-invoice
   // recovery can re-claim a fresh server number on a 23505 conflict.
@@ -151,6 +155,12 @@ class SyncService {
   /// stale tails never survive long enough to read as tampering.
   Future<int> Function(String businessId)? repairAuditMirror;
 
+  /// Invoked once when cloud access is first gained (Free→paid upgrade),
+  /// before the first syncAll. Wired in DI to BackfillService.markAllForUpload
+  /// so a re-upgrade re-queues previously-synced rows (design §7.2). Callback,
+  /// so core/sync doesn't depend on the backfill service.
+  Future<void> Function()? onCloudGained;
+
   SyncService({
     required AuthContextDao authContextDao,
     required ActiveBusinessContext activeBusinessContext,
@@ -193,6 +203,8 @@ class SyncService {
     required FraudFlagsRemoteDs fraudFlagsRemoteDs,
     required DevicesDao devicesDao,
     required DevicesRemoteDs devicesRemoteDs,
+    required EntitlementService entitlementService,
+    required DeviceRegistrationService deviceRegistrationService,
   }) : _authContextDao = authContextDao,
        _activeBusinessContext = activeBusinessContext,
        _branchesDao = branchesDao,
@@ -233,7 +245,9 @@ class SyncService {
        _fraudFlagsDao = fraudFlagsDao,
        _fraudFlagsRemoteDs = fraudFlagsRemoteDs,
        _devicesDao = devicesDao,
-       _devicesRemoteDs = devicesRemoteDs;
+       _devicesRemoteDs = devicesRemoteDs,
+       _entitlementService = entitlementService,
+       _deviceRegistrationService = deviceRegistrationService;
 
   /// Resolves the businessId a sync should operate on.
   ///
@@ -262,12 +276,60 @@ class SyncService {
   /// (Added 2026-07-04 for local-DB testing.)
   static const bool syncEnabled = true;
 
+  /// M7.1 §7.1: cloud sync is a paid entitlement. Free = local-only — Drift
+  /// is the sole store and no business data ever leaves the device. This is
+  /// the UX gate; the server enforces the same rule with has_cloud_access()
+  /// RESTRICTIVE RLS, so a tampered client gains nothing.
+  /// Cloud sync requires BOTH a cloud entitlement AND this device being
+  /// registered under the plan's device cap (M7.1 §6.3). A registered device
+  /// that gets revoked, or a device over the cap, stops syncing — the server
+  /// enforces the same via register_device / has_cloud_access.
+  bool get _cloudAllowed =>
+      _entitlementService.cloudEnabled &&
+      _deviceRegistrationService.isRegistered;
+
+  /// Re-arm/pause when the plan changes (upgrade lands, trial expires, lapse
+  /// confirmed) or device registration status changes. Hooked once; survives
+  /// pause() so a later upgrade/registration can re-arm.
+  bool _entitlementHooked = false;
+
+  void _onEntitlementChanged() {
+    if (_cloudAllowed && !_initCalled) {
+      debugPrint('[SYNC] Cloud entitlement gained — backfill + arm sync.');
+      // Re-queue previously-synced rows first (§7.2), then arm; the first
+      // syncAll then pushes a complete snapshot. Fire-and-forget: the mark is
+      // idempotent and init() will also retry via the periodic timer.
+      final backfill = onCloudGained;
+      if (backfill != null) {
+        backfill().whenComplete(init);
+      } else {
+        init();
+      }
+    } else if (!_cloudAllowed && _initCalled) {
+      debugPrint('[SYNC] Cloud entitlement lost — pausing sync.');
+      pause();
+    }
+  }
+
   /// Initialize sync service and listen for connectivity changes.
   /// Guards against being called multiple times (e.g. if MainNavigationPage
   /// is rebuilt) so we never accumulate duplicate listeners.
   void init() {
     if (!syncEnabled) {
       debugPrint('[SYNC] Disabled (syncEnabled=false) — local-only test mode.');
+      return;
+    }
+    if (!_entitlementHooked) {
+      _entitlementHooked = true;
+      _entitlementService.entitlementRevision.addListener(
+        _onEntitlementChanged,
+      );
+      _deviceRegistrationService.registrationRevision.addListener(
+        _onEntitlementChanged,
+      );
+    }
+    if (!_cloudAllowed) {
+      debugPrint('[SYNC] Cloud sync off — local plan (M7.1 §7.1).');
       return;
     }
     if (_initCalled) return;
@@ -553,6 +615,11 @@ class SyncService {
         success: true,
         message: 'Sync disabled — local-only test mode',
       );
+    }
+    if (!_cloudAllowed) {
+      // Not an error: on a local plan, pending rows simply stay local. They
+      // are pushed by the first-sync backfill when the tenant upgrades.
+      return SyncResult(success: true, message: 'Cloud sync off — local plan');
     }
     if (_isSyncing) {
       // If the caller provided a businessId, keep it so the running sync (or
@@ -1741,6 +1808,24 @@ class SyncService {
         );
         synced++;
       } catch (e, st) {
+        // Duplicate id: this exact row already reached the server (most
+        // likely a crash-window retry — see stock_ledger_no_update RLS in
+        // 20260627000015). Ledger ids are client-generated UUIDs, so a
+        // collision can only mean self-conflict, never a different row —
+        // safe to self-heal as synced instead of retrying forever into the
+        // immutable-ledger UPDATE block (42501).
+        if (e is PostgrestException && e.code == '23505') {
+          debugPrint(
+            '[SYNC] StockLedger ${record.id}: already exists on server '
+            '(duplicate id) — marking synced',
+          );
+          await _stockLedgerDao.updateSyncStatus(
+            id: record.id,
+            status: SyncStatus.synced,
+          );
+          synced++;
+          continue;
+        }
         // FK violation: variant or product is locally synced but missing from
         // Supabase. Reset the parent(s) to pendingUpload for self-healing.
         if (e is PostgrestException && e.code == '23503') {
@@ -2306,8 +2391,16 @@ class SyncService {
       // everyone else just gets an empty page — not an error.
       final flags = await _fraudFlagsRemoteDs.getFlagsByBusiness(businessId);
       for (final row in flags) {
-        await _fraudFlagsDao.upsertFromServer(row);
-        pulled++;
+        if (await _fraudFlagsDao.upsertFromServer(row)) {
+          pulled++;
+        } else {
+          // Local triage hasn't pushed yet — kept local instead of letting
+          // the pull silently revert it. Converges on the next push.
+          debugPrint(
+            '[SYNC] Fraud flag ${row['id']} pull skipped: '
+            'local triage still pending push',
+          );
+        }
       }
     } catch (e, st) {
       failed++;
@@ -2621,7 +2714,17 @@ class SyncService {
           // trigger by design.
           await _fraudFlagsRemoteDs.updateTriage(r);
         } else {
-          await _fraudFlagsRemoteDs.insertFlag(fraudFlagToRemoteRow(r));
+          try {
+            await _fraudFlagsRemoteDs.insertFlag(fraudFlagToRemoteRow(r));
+          } on FraudFlagIdExists {
+            // This exact row already reached the server on an earlier
+            // attempt. If the local copy carries triage the server doesn't
+            // have, deliver it — swallowing here used to silently lose
+            // resolutions applied before the first upload succeeded.
+            if (r.status != 'new') {
+              await _fraudFlagsRemoteDs.updateTriage(r);
+            }
+          }
         }
         await _fraudFlagsDao.updateSyncStatus(
           id: r.id,
