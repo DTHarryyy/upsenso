@@ -2,6 +2,23 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:pos/features/billing/domain/billing_models.dart';
 
+/// A verify-play-purchase call that did not grant. [status] is the HTTP status
+/// from the edge function, which is what tells a caller whether retrying can
+/// ever help: 5xx / 0 (network) are transient, 4xx are the server's final word.
+class PlayVerifyException implements Exception {
+  final int status;
+  final String message;
+
+  const PlayVerifyException(this.status, this.message);
+
+  /// The server answered definitively — re-sending the same token will get the
+  /// same answer, so a retry loop is pointless.
+  bool get isPermanent => status >= 400 && status < 500;
+
+  @override
+  String toString() => 'PlayVerifyException($status): $message';
+}
+
 /// Supabase reads for the billing catalog + history, the Play SKU map, and the
 /// purchase-verify invoke.
 ///
@@ -108,24 +125,31 @@ class BillingRemoteDs {
   }
 
   /// Hands a Play purchase to the verify-play-purchase edge function — the sole
-  /// grantor of Premium. Throws with a message on any non-grant so the cubit can
-  /// surface it; success means Supabase has recorded the entitlement.
+  /// grantor of Premium. Throws [PlayVerifyException] on any non-grant so the
+  /// caller can tell a retryable fault from a permanent one; success means
+  /// Supabase has recorded the entitlement.
   Future<void> verifyPlayPurchase({
     required String productId,
     required String purchaseToken,
   }) async {
-    final res = await _client.functions.invoke('verify-play-purchase', body: {
-      'product_id': productId,
-      'purchase_token': purchaseToken,
-    });
-    final data = res.data;
-    final ok = res.status == 200 && data is Map && data['ok'] == true;
-    if (!ok) {
-      final msg = (data is Map && data['error'] != null)
-          ? data['error'].toString()
-          : 'Verification failed (${res.status})';
-      throw StateError(msg);
+    try {
+      final res = await _client.functions.invoke('verify-play-purchase', body: {
+        'product_id': productId,
+        'purchase_token': purchaseToken,
+      });
+      final data = res.data;
+      if (res.status == 200 && data is Map && data['ok'] == true) return;
+      throw PlayVerifyException(res.status, _messageOf(data, res.status));
+    } on FunctionException catch (e) {
+      // supabase_flutter raises this for any non-2xx; the body still carries
+      // our own {"error": …}, which is the only useful diagnostic.
+      throw PlayVerifyException(e.status, _messageOf(e.details, e.status));
     }
+  }
+
+  static String _messageOf(dynamic data, int status) {
+    if (data is Map && data['error'] != null) return data['error'].toString();
+    return 'Verification failed ($status)';
   }
 
   static DateTime? _ts(dynamic v) =>

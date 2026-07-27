@@ -158,6 +158,10 @@ export async function acknowledgeSubscription(
 }
 
 // subscriptionState → grant / expire / ignore.
+//
+// Hold and pause revoke access, per Google's own guidance — they are not
+// terminal though: a recovery/restart notification re-fetches this state and
+// re-applies, so access returns without a new purchase.
 export function decideFromState(state: string): PlayAccessDecision {
   switch (state) {
     case "SUBSCRIPTION_STATE_ACTIVE":
@@ -169,7 +173,13 @@ export function decideFromState(state: string): PlayAccessDecision {
     case "SUBSCRIPTION_STATE_PAUSED":
     case "SUBSCRIPTION_STATE_EXPIRED":
       return "expire";
+    case "SUBSCRIPTION_STATE_PENDING":
+    case "SUBSCRIPTION_STATE_PENDING_PURCHASE_CANCELED":
+      return "ignore";
     default:
+      // Unmapped states must be visible — a silent no-op here is how a new
+      // Play state would quietly stop updating entitlement.
+      console.error(`decideFromState: unmapped subscriptionState "${state}"`);
       return "ignore";
   }
 }

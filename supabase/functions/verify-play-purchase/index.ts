@@ -55,6 +55,15 @@ interface PlanRow {
   billing_period: string;
 }
 
+// A DB failure is NOT "product not mapped" — conflating the two is what made a
+// missing service_role GRANT surface in-app as "Unknown product". Throw so the
+// caller answers 500 with the real cause instead of a misleading 400.
+// deno-lint-ignore no-explicit-any
+function orThrow(error: any, what: string): void {
+  if (!error) return;
+  throw new Error(`${what}: ${error.code ?? "?"} ${error.message ?? error}`);
+}
+
 // deno-lint-ignore no-explicit-any
 async function resolvePlan(
   admin: any,
@@ -62,22 +71,24 @@ async function resolvePlan(
   basePlanId: string | null,
 ): Promise<PlanRow | null> {
   if (basePlanId) {
-    const { data } = await admin
+    const { data, error } = await admin
       .from("play_product_map")
       .select("plan_code, plan_version, billing_period")
       .eq("product_id", productId)
       .eq("base_plan_id", basePlanId)
       .eq("is_active", true)
       .maybeSingle();
+    orThrow(error, "play_product_map lookup (with base_plan_id)");
     if (data) return data as PlanRow;
   }
-  const { data } = await admin
+  const { data, error } = await admin
     .from("play_product_map")
     .select("plan_code, plan_version, billing_period")
     .eq("product_id", productId)
     .eq("is_active", true)
     .limit(1)
     .maybeSingle();
+  orThrow(error, "play_product_map lookup");
   return (data as PlanRow) ?? null;
 }
 
@@ -151,17 +162,61 @@ serve(async (req) => {
     }
 
     // Anti-hijack: a token already bound to a DIFFERENT business is refused.
-    const { data: existingTok } = await admin
+    // A read failure here must NOT be read as "unbound" — that would turn the
+    // hijack check into a no-op.
+    const { data: existingTok, error: tokErr } = await admin
       .from("play_purchase_tokens")
       .select("business_id")
       .eq("purchase_token", purchaseToken)
       .maybeSingle();
+    orThrow(tokErr, "play_purchase_tokens lookup");
     if (existingTok && existingTok.business_id !== bizId) {
       console.error(`token already bound to another business (${purchaseToken})`);
       return json(
         { error: "Purchase already registered to another account" },
         409,
       );
+    }
+
+    // Claim the token BEFORE granting. The read above is advisory only — two
+    // businesses verifying the same fresh token concurrently would both see it
+    // unbound and both grant. The purchase_token PRIMARY KEY is the real
+    // referee: a plain insert (not upsert) makes the loser fail with 23505.
+    const { error: claimErr } = await admin.from("play_purchase_tokens").insert({
+      purchase_token: purchaseToken,
+      business_id: bizId,
+      product_id: effectiveProductId,
+      base_plan_id: sub.basePlanId,
+      is_current: true,
+    });
+    if (claimErr) {
+      if ((claimErr as { code?: string }).code !== "23505") {
+        orThrow(claimErr, "play_purchase_tokens claim");
+      }
+      // Already claimed — ours (a re-verify / restore) or someone else's.
+      const { data: owner, error: ownerErr } = await admin
+        .from("play_purchase_tokens")
+        .select("business_id")
+        .eq("purchase_token", purchaseToken)
+        .maybeSingle();
+      orThrow(ownerErr, "play_purchase_tokens re-read");
+      if (!owner || owner.business_id !== bizId) {
+        console.error(`token race lost / foreign token (${purchaseToken})`);
+        return json(
+          { error: "Purchase already registered to another account" },
+          409,
+        );
+      }
+      // Ours: refresh the product linkage (an upgrade reuses this path).
+      const { error: touchErr } = await admin
+        .from("play_purchase_tokens")
+        .update({
+          product_id: effectiveProductId,
+          base_plan_id: sub.basePlanId,
+          is_current: true,
+        })
+        .eq("purchase_token", purchaseToken);
+      orThrow(touchErr, "play_purchase_tokens refresh");
     }
 
     // ── Grant (Supabase = source of truth) ──────────────────────────────────
@@ -182,25 +237,19 @@ serve(async (req) => {
       return json({ error: "grant failed" }, 500);
     }
 
-    // Durable token→business index (RTDN resolution).
-    await admin.from("play_purchase_tokens").upsert({
-      purchase_token: purchaseToken,
-      business_id: bizId,
-      product_id: effectiveProductId,
-      base_plan_id: sub.basePlanId,
-      is_current: true,
-    });
-
     // Ledger row for the in-app history (list price; Play holds the true receipt).
-    const { data: planPrice } = await admin
+    // Non-fatal from here on: entitlement is already granted, and failing the
+    // whole call would strand an acknowledged purchase over a history row.
+    const { data: planPrice, error: priceErr } = await admin
       .from("plans")
       .select("price_monthly")
       .eq("code", planRow.plan_code)
       .eq("version", planRow.plan_version)
       .maybeSingle();
+    if (priceErr) console.error("plans price lookup failed", priceErr);
     const monthly = Number(planPrice?.price_monthly ?? 0);
     const amount = planRow.billing_period === "annual" ? monthly * 10 : monthly;
-    await admin.from("billing_payments").insert({
+    const { error: ledgerErr } = await admin.from("billing_payments").insert({
       business_id: bizId,
       provider: "google_play",
       provider_ref: purchaseToken,
@@ -216,6 +265,7 @@ serve(async (req) => {
       status: "paid",
       paid_at: new Date().toISOString(),
     });
+    if (ledgerErr) console.error("billing_payments insert failed", ledgerErr);
 
     // Acknowledge server-side (stops the 3-day auto-refund). Non-fatal.
     if (sub.acknowledgementState !== "ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED") {

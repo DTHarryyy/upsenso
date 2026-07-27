@@ -103,6 +103,11 @@ class BillingState extends Equatable {
     bool? purchaseInProgress,
     String? purchaseError,
     bool clearPurchaseError = false,
+    // Marks this call as authoritative for the nullable entitlement fields:
+    // they are taken verbatim, null included. Without it `x ?? this.x` can only
+    // ever SET a value, so a trial→active transition would keep showing the
+    // trial's "2 days left" forever.
+    bool overwriteEntitlementNulls = false,
   }) {
     return BillingState(
       status: status ?? this.status,
@@ -110,14 +115,23 @@ class BillingState extends Equatable {
       planCode: planCode ?? this.planCode,
       effectiveStatus: effectiveStatus ?? this.effectiveStatus,
       cloudEnabled: cloudEnabled ?? this.cloudEnabled,
-      daysRemaining: daysRemaining ?? this.daysRemaining,
-      grandfatheredPrice: grandfatheredPrice ?? this.grandfatheredPrice,
+      daysRemaining: overwriteEntitlementNulls
+          ? daysRemaining
+          : (daysRemaining ?? this.daysRemaining),
+      grandfatheredPrice: overwriteEntitlementNulls
+          ? grandfatheredPrice
+          : (grandfatheredPrice ?? this.grandfatheredPrice),
       branchUsage: branchUsage ?? this.branchUsage,
       seatUsage: seatUsage ?? this.seatUsage,
       deviceUsage: deviceUsage ?? this.deviceUsage,
-      maxBranches: maxBranches ?? this.maxBranches,
-      maxSeats: maxSeats ?? this.maxSeats,
-      maxDevices: maxDevices ?? this.maxDevices,
+      maxBranches: overwriteEntitlementNulls
+          ? maxBranches
+          : (maxBranches ?? this.maxBranches),
+      maxSeats:
+          overwriteEntitlementNulls ? maxSeats : (maxSeats ?? this.maxSeats),
+      maxDevices: overwriteEntitlementNulls
+          ? maxDevices
+          : (maxDevices ?? this.maxDevices),
       plans: plans ?? this.plans,
       payments: payments ?? this.payments,
       devices: devices ?? this.devices,

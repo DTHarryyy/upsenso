@@ -11,6 +11,7 @@ import 'package:pos/core/device/device_registration_remote_ds.dart';
 import 'package:pos/core/device/device_registration_service.dart';
 import 'package:pos/features/billing/data/billing_remote_ds.dart';
 import 'package:pos/features/billing/data/iap_service.dart';
+import 'package:pos/features/billing/data/play_purchase_sync_service.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 
 import 'package:pos/core/database/app_database.dart';
@@ -515,6 +516,17 @@ Future<void> initDI() async {
       (!kIsWeb && defaultTargetPlatform == TargetPlatform.android)
           ? InAppPurchase.instance
           : null,
+    ),
+  );
+  // App-scoped owner of the Play purchase stream. Must outlive the billing page:
+  // Play delivers purchases (and resolves pending payments) whenever it likes,
+  // and an undelivered purchase is never acknowledged — Google auto-refunds it.
+  sl.registerLazySingleton<PlayPurchaseSyncService>(
+    () => PlayPurchaseSyncService(
+      iap: sl<IapService>(),
+      remoteDs: sl<BillingRemoteDs>(),
+      entitlement: sl<EntitlementService>(),
+      connectivity: sl<ConnectivityService>(),
     ),
   );
   // M7.1 device registration — cap-enforced, online-only (§6.3).

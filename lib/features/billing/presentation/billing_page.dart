@@ -13,6 +13,7 @@ import 'package:pos/core/widgets/app_section_card.dart';
 import 'package:pos/core/widgets/app_skeleton.dart';
 import 'package:pos/features/billing/data/billing_remote_ds.dart';
 import 'package:pos/features/billing/data/iap_service.dart';
+import 'package:pos/features/billing/data/play_purchase_sync_service.dart';
 import 'package:pos/features/billing/domain/billing_models.dart';
 import 'package:pos/features/billing/presentation/cubit/billing_cubit.dart';
 import 'package:pos/features/billing/presentation/cubit/billing_state.dart';
@@ -35,6 +36,7 @@ class BillingPage extends StatelessWidget {
         connectivity: sl<ConnectivityService>(),
         deviceRegistration: sl(),
         iap: sl<IapService>(),
+        purchaseSync: sl<PlayPurchaseSyncService>(),
         activeBusiness: sl<ActiveBusinessContext>(),
       )..load(),
       child: const _BillingView(),

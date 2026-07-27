@@ -14,6 +14,7 @@ import 'package:pos/core/session/active_business_context.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/features/billing/data/billing_remote_ds.dart';
 import 'package:pos/features/billing/data/iap_service.dart';
+import 'package:pos/features/billing/data/play_purchase_sync_service.dart';
 import 'package:pos/features/billing/domain/billing_models.dart';
 import 'package:pos/features/billing/presentation/cubit/billing_state.dart';
 
@@ -21,28 +22,23 @@ import 'package:pos/features/billing/presentation/cubit/billing_state.dart';
 /// EntitlementService's cache); catalog/history/devices are fetched when online.
 ///
 /// Purchasing is Google Play (Android only). The cubit queries Play for live
-/// prices, listens to the purchase stream, and hands every completed purchase
-/// to the server for verification — it grants nothing itself. On web the Play
-/// paths are inert and the page is read-only.
+/// prices and launches the buy flow, but it neither verifies nor completes a
+/// purchase — PlayPurchaseSyncService owns that for the whole app lifetime, and
+/// this listens to it only for spinner/error feedback. On web the Play paths
+/// are inert and the page is read-only.
 class BillingCubit extends Cubit<BillingState> {
   final EntitlementService _entitlement;
   final BillingRemoteDs _remoteDs;
   final ConnectivityService _connectivity;
   final DeviceRegistrationService _deviceRegistration;
   final IapService _iap;
+  final PlayPurchaseSyncService _purchaseSync;
   final ActiveBusinessContext _activeBusiness;
 
   /// Play product handles kept off the equatable state (they aren't value
   /// types); keyed by product id for the buy call.
   final Map<String, ProductDetails> _detailsById = {};
-  StreamSubscription<List<PurchaseDetails>>? _purchaseSub;
-
-  /// The tenant's currently-owned Play purchase, if any — required as
-  /// `oldPurchaseDetails` so a plan switch replaces it instead of stacking a
-  /// second subscription. Populated from purchases seen on [purchaseStream]
-  /// this session, backfilled once per cubit lifetime via a silent restore.
-  PurchaseDetails? _activePurchase;
-  bool _activePurchaseSyncAttempted = false;
+  StreamSubscription<PlayPurchaseEvent>? _purchaseEventSub;
 
   BillingCubit({
     required EntitlementService entitlement,
@@ -50,23 +46,32 @@ class BillingCubit extends Cubit<BillingState> {
     required ConnectivityService connectivity,
     required DeviceRegistrationService deviceRegistration,
     required IapService iap,
+    required PlayPurchaseSyncService purchaseSync,
     required ActiveBusinessContext activeBusiness,
   })  : _entitlement = entitlement,
         _remoteDs = remoteDs,
         _connectivity = connectivity,
         _deviceRegistration = deviceRegistration,
         _iap = iap,
+        _purchaseSync = purchaseSync,
         _activeBusiness = activeBusiness,
         super(const BillingState()) {
-    // Catch purchases + restores (and interrupted deliveries) while the page
-    // is open. Verification happens per event, never on the client's say-so.
     if (_iap.isSupportedPlatform) {
-      _purchaseSub = _iap.purchaseStream.listen(
-        _onPurchases,
+      _purchaseEventSub = _purchaseSync.events.listen(
+        _onPurchaseEvent,
         onError: (Object e, StackTrace st) =>
-            debugPrint('[BillingCubit] purchaseStream error: $e\n$st'),
+            debugPrint('[BillingCubit] purchase events error: $e\n$st'),
       );
     }
+    // The page renders a copy of the entitlement, so it has to be told when the
+    // original changes — an RTDN-driven renewal or cancel lands via a
+    // background sync, not through load().
+    _entitlement.entitlementRevision.addListener(_onEntitlementChanged);
+  }
+
+  void _onEntitlementChanged() {
+    if (isClosed) return;
+    emit(_withEntitlement(state));
   }
 
   Future<void> load() async {
@@ -106,7 +111,6 @@ class BillingCubit extends Cubit<BillingState> {
       // the rest of the page.
       if (_iap.isSupportedPlatform) {
         await _loadPlayOffers();
-        await _syncActivePurchaseOnce();
       }
     } catch (e, st) {
       debugPrint('[BillingCubit] Error in load: $e\n$st');
@@ -177,10 +181,9 @@ class BillingCubit extends Cubit<BillingState> {
     }
     emit(state.copyWith(purchaseInProgress: true, clearPurchaseError: true));
 
-    final oldPurchase = (_activePurchase != null &&
-            _activePurchase!.productID != details.id)
-        ? _activePurchase
-        : null;
+    final owned = _purchaseSync.activePurchase;
+    final oldPurchase =
+        (owned != null && owned.productID != details.id) ? owned : null;
 
     final launched = await _iap.buySubscription(
       details,
@@ -212,28 +215,16 @@ class BillingCubit extends Cubit<BillingState> {
     return targetPrice < currentPrice;
   }
 
-  /// Best-effort, silent backfill of [_activePurchase] so a plan change works
-  /// correctly even if the user hasn't triggered an explicit Restore this
-  /// session. Runs once per cubit lifetime — restored purchases route through
-  /// the normal verify-and-complete path, so repeating this on every refresh
-  /// would just re-invoke server verification for no benefit.
-  Future<void> _syncActivePurchaseOnce() async {
-    if (_activePurchaseSyncAttempted || state.planCode == 'free') return;
-    _activePurchaseSyncAttempted = true;
-    try {
-      await _iap.restorePurchases();
-    } catch (e, st) {
-      debugPrint('[BillingCubit] Error in _syncActivePurchaseOnce: $e\n$st');
-    }
-  }
-
-  /// Re-emit active purchases so a reinstall / new device recovers its plan.
+  /// Ask Play to re-emit what this account owns, so a reinstall or a second
+  /// device recovers its plan. Verification happens in PlayPurchaseSyncService;
+  /// this only drives the spinner.
   Future<void> restore() async {
     if (!_iap.isSupportedPlatform) return;
     emit(state.copyWith(purchaseInProgress: true, clearPurchaseError: true));
     try {
-      await _iap.restorePurchases();
-      // Restored items arrive on the stream and verify there; drop the spinner.
+      await _purchaseSync.restore();
+      // Restored items land on the event stream and settle the spinner there;
+      // drop it now in case the account owns nothing to restore.
       emit(state.copyWith(purchaseInProgress: false));
     } catch (e, st) {
       debugPrint('[BillingCubit] Error in restore: $e\n$st');
@@ -244,59 +235,23 @@ class BillingCubit extends Cubit<BillingState> {
     }
   }
 
-  Future<void> _onPurchases(List<PurchaseDetails> purchases) async {
-    for (final p in purchases) {
-      await _handlePurchase(p);
-    }
-  }
-
-  Future<void> _handlePurchase(PurchaseDetails p) async {
-    switch (p.status) {
-      case PurchaseStatus.pending:
+  /// UI feedback only — the grant already happened (or didn't) in the service,
+  /// and the plan itself repaints through [_onEntitlementChanged].
+  void _onPurchaseEvent(PlayPurchaseEvent event) {
+    switch (event.phase) {
+      case PlayPurchasePhase.pending:
         emit(state.copyWith(purchaseInProgress: true, clearPurchaseError: true));
-        break;
-      case PurchaseStatus.canceled:
+      case PlayPurchasePhase.granted:
+        emit(state.copyWith(purchaseInProgress: false, clearPurchaseError: true));
+        // Pull the catalog/history/devices too; the plan itself is already live.
+        unawaited(load());
+      case PlayPurchasePhase.canceled:
         emit(state.copyWith(purchaseInProgress: false));
-        await _iap.completePurchase(p);
-        break;
-      case PurchaseStatus.error:
-        debugPrint('[BillingCubit] purchase error: ${p.error}');
+      case PlayPurchasePhase.failed:
         emit(state.copyWith(
           purchaseInProgress: false,
-          purchaseError: 'The purchase couldn\'t be completed. Please try again.',
+          purchaseError: event.message,
         ));
-        await _iap.completePurchase(p);
-        break;
-      case PurchaseStatus.purchased:
-      case PurchaseStatus.restored:
-        // Cache regardless of server-verify outcome below — this reflects
-        // Play's own view of what's currently owned, which is what a later
-        // plan-change purchase needs as `oldPurchaseDetails`.
-        _activePurchase = p;
-        await _verifyAndFinish(p);
-        break;
-    }
-  }
-
-  /// Server-verify a delivered purchase, then complete it and refresh. If verify
-  /// fails we do NOT complete — a later retry/restore can re-verify (Play only
-  /// acknowledges on a server grant, so the purchase isn't lost).
-  Future<void> _verifyAndFinish(PurchaseDetails p) async {
-    try {
-      await _remoteDs.verifyPlayPurchase(
-        productId: p.productID,
-        purchaseToken: p.verificationData.serverVerificationData,
-      );
-      await _iap.completePurchase(p);
-      await load();
-      emit(state.copyWith(purchaseInProgress: false, clearPurchaseError: true));
-    } catch (e, st) {
-      debugPrint('[BillingCubit] Error in _verifyAndFinish: $e\n$st');
-      emit(state.copyWith(
-        purchaseInProgress: false,
-        purchaseError:
-            'We couldn\'t confirm your purchase yet. Tap Restore to retry.',
-      ));
     }
   }
 
@@ -314,7 +269,11 @@ class BillingCubit extends Cubit<BillingState> {
   }
 
   BillingState _withEntitlement(BillingState s) {
+    // These mirror the entitlement exactly, so "the server no longer reports a
+    // value" has to be able to erase the old one — a trial's daysRemaining must
+    // not outlive the trial.
     return s.copyWith(
+      overwriteEntitlementNulls: true,
       planCode: _entitlement.planCode,
       effectiveStatus: _entitlement.effectiveStatus,
       cloudEnabled: _entitlement.cloudEnabled,
@@ -331,7 +290,8 @@ class BillingCubit extends Cubit<BillingState> {
 
   @override
   Future<void> close() {
-    _purchaseSub?.cancel();
+    _purchaseEventSub?.cancel();
+    _entitlement.entitlementRevision.removeListener(_onEntitlementChanged);
     return super.close();
   }
 }

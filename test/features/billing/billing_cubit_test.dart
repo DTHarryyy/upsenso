@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:bloc_test/bloc_test.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/billing_client_wrappers.dart';
@@ -12,6 +13,7 @@ import 'package:pos/core/session/active_business_context.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/features/billing/data/billing_remote_ds.dart';
 import 'package:pos/features/billing/data/iap_service.dart';
+import 'package:pos/features/billing/data/play_purchase_sync_service.dart';
 import 'package:pos/features/billing/domain/billing_models.dart';
 import 'package:pos/features/billing/presentation/cubit/billing_cubit.dart';
 import 'package:pos/features/billing/presentation/cubit/billing_state.dart';
@@ -25,6 +27,8 @@ class _MockConnectivity extends Mock implements ConnectivityService {}
 class _MockDeviceReg extends Mock implements DeviceRegistrationService {}
 
 class _MockIap extends Mock implements IapService {}
+
+class _MockPurchaseSync extends Mock implements PlayPurchaseSyncService {}
 
 class _MockActiveBusiness extends Mock implements ActiveBusinessContext {}
 
@@ -104,7 +108,10 @@ void main() {
   late _MockConnectivity connectivity;
   late _MockDeviceReg deviceReg;
   late _MockIap iap;
+  late _MockPurchaseSync purchaseSync;
   late _MockActiveBusiness activeBusiness;
+  late ValueNotifier<int> revision;
+  late StreamController<PlayPurchaseEvent> purchaseEvents;
 
   setUpAll(() {
     registerFallbackValue(EntitlementResource.branches);
@@ -120,14 +127,21 @@ void main() {
     connectivity = _MockConnectivity();
     deviceReg = _MockDeviceReg();
     iap = _MockIap();
+    purchaseSync = _MockPurchaseSync();
     activeBusiness = _MockActiveBusiness();
+    revision = ValueNotifier<int>(0);
+    purchaseEvents = StreamController<PlayPurchaseEvent>.broadcast();
 
     // Default: not on a Play platform — exercises the non-purchase paths.
     when(() => iap.isSupportedPlatform).thenReturn(false);
     when(() => iap.purchaseStream)
         .thenAnswer((_) => const Stream<List<PurchaseDetails>>.empty());
+    when(() => purchaseSync.events).thenAnswer((_) => purchaseEvents.stream);
+    when(() => purchaseSync.activePurchase).thenReturn(null);
+    when(() => purchaseSync.restore()).thenAnswer((_) async {});
     when(() => activeBusiness.businessId).thenReturn('biz-1');
 
+    when(() => entitlement.entitlementRevision).thenReturn(revision);
     when(() => entitlement.planCode).thenReturn('starter');
     when(() => entitlement.effectiveStatus).thenReturn('active');
     when(() => entitlement.cloudEnabled).thenReturn(true);
@@ -139,12 +153,18 @@ void main() {
     when(() => entitlement.recomputeLocalUsage()).thenAnswer((_) async {});
   });
 
+  tearDown(() {
+    purchaseEvents.close();
+    revision.dispose();
+  });
+
   BillingCubit build() => BillingCubit(
         entitlement: entitlement,
         remoteDs: remoteDs,
         connectivity: connectivity,
         deviceRegistration: deviceReg,
         iap: iap,
+        purchaseSync: purchaseSync,
         activeBusiness: activeBusiness,
       );
 
@@ -272,12 +292,8 @@ void main() {
   // A tenant switching tiers must REPLACE its existing Play subscription —
   // sending the buy without oldPurchase leaves both subscriptions billing.
   group('google play plan changes', () {
-    late StreamController<List<PurchaseDetails>> purchases;
-
     setUp(() {
-      purchases = StreamController<List<PurchaseDetails>>.broadcast();
       when(() => iap.isSupportedPlatform).thenReturn(true);
-      when(() => iap.purchaseStream).thenAnswer((_) => purchases.stream);
       when(() => connectivity.isConnected).thenAnswer((_) async => true);
       when(() => remoteDs.fetchPlans())
           .thenAnswer((_) async => [_starter, _growth]);
@@ -301,13 +317,15 @@ void main() {
           )).thenAnswer((_) async => true);
     });
 
-    tearDown(() => purchases.close());
+    // What Play reports the tenant currently owns. The cubit reads this from
+    // the app-scoped sync service rather than tracking the stream itself.
+    void own(String productId) {
+      when(() => purchaseSync.activePurchase)
+          .thenReturn(_ownedPurchase(productId));
+    }
 
-    // Drives a purchase through the stream so the cubit caches it as the
-    // tenant's currently-owned subscription.
     Future<void> ownStarter(BillingCubit c) async {
-      purchases.add([_ownedPurchase('upsenso_starter_monthly')]);
-      await Future<void>.delayed(Duration.zero);
+      own('upsenso_starter_monthly');
     }
 
     blocTest<BillingCubit, BillingState>(
@@ -341,8 +359,7 @@ void main() {
       build: build,
       act: (c) async {
         await c.load();
-        purchases.add([_ownedPurchase('upsenso_growth_monthly')]);
-        await Future<void>.delayed(Duration.zero);
+        own('upsenso_growth_monthly');
         await c.buyPlan('starter', 'monthly');
       },
       verify: (_) {
@@ -397,6 +414,85 @@ void main() {
               replacementMode: any(named: 'replacementMode'),
             )).captured;
         expect(captured.single, isNull);
+      },
+    );
+  });
+
+  // Regression: the page renders a COPY of the entitlement. Without these the
+  // plan only refreshed on a full restart (S2).
+  group('entitlement changes repaint the page', () {
+    blocTest<BillingCubit, BillingState>(
+      'a revision bump re-reads the plan with no reload',
+      setUp: () =>
+          when(() => connectivity.isConnected).thenAnswer((_) async => false),
+      build: build,
+      act: (c) async {
+        await c.load();
+        // Simulates an RTDN-driven grant landing via a background sync.
+        when(() => entitlement.planCode).thenReturn('growth');
+        when(() => entitlement.effectiveStatus).thenReturn('active');
+        revision.value++;
+      },
+      verify: (c) {
+        expect(c.state.planCode, 'growth');
+        expect(c.state.effectiveStatus, 'active');
+      },
+    );
+
+    blocTest<BillingCubit, BillingState>(
+      'a trial ending clears daysRemaining instead of stranding it',
+      setUp: () {
+        when(() => connectivity.isConnected).thenAnswer((_) async => false);
+        when(() => entitlement.effectiveStatus).thenReturn('trialing');
+        when(() => entitlement.daysRemaining).thenReturn(2);
+      },
+      build: build,
+      act: (c) async {
+        await c.load();
+        expect(c.state.daysRemaining, 2);
+        when(() => entitlement.effectiveStatus).thenReturn('active');
+        when(() => entitlement.daysRemaining).thenReturn(null);
+        revision.value++;
+      },
+      verify: (c) => expect(c.state.daysRemaining, isNull),
+    );
+  });
+
+  group('purchase events drive the spinner only', () {
+    blocTest<BillingCubit, BillingState>(
+      'a failed purchase surfaces the service message and clears the spinner',
+      setUp: () {
+        when(() => iap.isSupportedPlatform).thenReturn(true);
+        when(() => connectivity.isConnected).thenAnswer((_) async => false);
+      },
+      build: build,
+      act: (c) async {
+        purchaseEvents.add(const PlayPurchaseEvent(PlayPurchasePhase.pending));
+        await Future<void>.delayed(Duration.zero);
+        expect(c.state.purchaseInProgress, isTrue);
+        purchaseEvents.add(const PlayPurchaseEvent(
+          PlayPurchasePhase.failed,
+          message: 'nope',
+        ));
+        await Future<void>.delayed(Duration.zero);
+      },
+      verify: (c) {
+        expect(c.state.purchaseInProgress, isFalse);
+        expect(c.state.purchaseError, 'nope');
+      },
+    );
+
+    blocTest<BillingCubit, BillingState>(
+      'restore delegates to the app-scoped service, not the store directly',
+      setUp: () {
+        when(() => iap.isSupportedPlatform).thenReturn(true);
+        when(() => connectivity.isConnected).thenAnswer((_) async => false);
+      },
+      build: build,
+      act: (c) => c.restore(),
+      verify: (_) {
+        verify(() => purchaseSync.restore()).called(1);
+        verifyNever(() => iap.restorePurchases());
       },
     );
   });

@@ -15,6 +15,7 @@ import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
+import 'package:pos/features/billing/data/play_purchase_sync_service.dart';
 
 Future<Widget> bootstrap() async {
   AppEnv.assertValid();
@@ -103,6 +104,7 @@ Future<Widget> bootstrap() async {
     sl<EntitlementService>().syncEntitlement().then((_) {
       sl<DeviceRegistrationService>().ensureRegistered();
     }).ignore();
+    _startPlayPurchaseSync();
   } else {
     // Fallback: try to load role from local Drift cache (offline start where
     // Supabase did not respond in time).
@@ -135,6 +137,7 @@ Future<Widget> bootstrap() async {
           sl<DeviceRegistrationService>().ensureRegistered();
         });
       });
+      _startPlayPurchaseSync();
     } else if (state is AuthUnauthenticated) {
       sl<PermissionService>().setContext(
         roleName: null,
@@ -153,6 +156,23 @@ Future<Widget> bootstrap() async {
     ],
     child: const AppBootstrap(),
   );
+}
+
+/// Attach the app-scoped Play purchase listener and sweep for anything Play
+/// still considers owned.
+///
+/// The listener has to be live before the user reaches Billing: Play re-emits
+/// interrupted deliveries on attach, and resolves pending payments whenever
+/// they clear. The restore sweep is what makes a reinstall or a second device
+/// recover its plan with no user action. Both are no-ops off Android.
+void _startPlayPurchaseSync() {
+  final sync = sl<PlayPurchaseSyncService>();
+  if (!sync.isSupportedPlatform) return;
+  sync.start();
+  sync.restore().catchError((Object e, StackTrace st) {
+    // A failed sweep is not fatal — the manual Restore button still works.
+    debugPrint('[Bootstrap] Error in Play restore sweep: $e\n$st');
+  });
 }
 
 Future<void> _initSupabase() async {

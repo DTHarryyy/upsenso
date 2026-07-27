@@ -46,25 +46,35 @@ function timingSafeEqual(a: string, b: string): boolean {
 const SUBSCRIPTION_REVOKED = 12;
 const SUBSCRIPTION_EXPIRED = 13;
 
+// A DB failure must not be mistaken for "product not mapped" — that silently
+// turned a missing GRANT into a 200 no-op and dropped the notification.
+// deno-lint-ignore no-explicit-any
+function orThrow(error: any, what: string): void {
+  if (!error) return;
+  throw new Error(`${what}: ${error.code ?? "?"} ${error.message ?? error}`);
+}
+
 // deno-lint-ignore no-explicit-any
 async function resolvePlan(admin: any, productId: string, basePlanId: string | null) {
   if (basePlanId) {
-    const { data } = await admin
+    const { data, error } = await admin
       .from("play_product_map")
       .select("plan_code, plan_version, billing_period")
       .eq("product_id", productId)
       .eq("base_plan_id", basePlanId)
       .eq("is_active", true)
       .maybeSingle();
+    orThrow(error, "play_product_map lookup (with base_plan_id)");
     if (data) return data;
   }
-  const { data } = await admin
+  const { data, error } = await admin
     .from("play_product_map")
     .select("plan_code, plan_version, billing_period")
     .eq("product_id", productId)
     .eq("is_active", true)
     .limit(1)
     .maybeSingle();
+  orThrow(error, "play_product_map lookup");
   return data ?? null;
 }
 
@@ -104,8 +114,13 @@ serve(async (req) => {
         if ((dupErr as { code?: string }).code === "23505") {
           return json({ ok: true, duplicate: true }, 200);
         }
-        console.error("rtdn ledger insert failed", dupErr);
-        return json({ error: "ledger error" }, 500);
+        // Log the real code — a bare "ledger error" is what hid a 42501
+        // permission denial behind an unbounded Pub/Sub retry loop.
+        console.error(
+          `rtdn ledger insert failed: ${(dupErr as { code?: string }).code} ` +
+            `${dupErr.message ?? dupErr}`,
+        );
+        return json({ error: "ledger error", code: (dupErr as { code?: string }).code }, 500);
       }
     }
 
@@ -130,11 +145,12 @@ serve(async (req) => {
     const type = Number(subNote.notificationType);
 
     // Resolve the tenant from the durable token index (RTDN never carries it).
-    const { data: tok } = await admin
+    const { data: tok, error: tokErr } = await admin
       .from("play_purchase_tokens")
       .select("business_id")
       .eq("purchase_token", purchaseToken)
       .maybeSingle();
+    orThrow(tokErr, "play_purchase_tokens lookup");
     if (!tok) {
       // First-purchase RTDN can beat the client verify that registers the token.
       console.error(`rtdn: unknown token ${purchaseToken} (type ${type})`);
@@ -200,11 +216,12 @@ async function expireByToken(
   purchaseToken: string,
   reason: string,
 ): Promise<Response> {
-  const { data: tok } = await admin
+  const { data: tok, error: tokErr } = await admin
     .from("play_purchase_tokens")
     .select("business_id")
     .eq("purchase_token", purchaseToken)
     .maybeSingle();
+  orThrow(tokErr, "play_purchase_tokens lookup (expire)");
   if (!tok) {
     return json({ ok: true, note: "unknown token — nothing to expire" }, 200);
   }
