@@ -56,7 +56,7 @@ void main() {
     when(() => iap.purchaseStream).thenAnswer((_) => purchases.stream);
     when(() => iap.completePurchase(any())).thenAnswer((_) async {});
     when(() => iap.restorePurchases()).thenAnswer((_) async {});
-    when(() => entitlement.syncEntitlement()).thenAnswer((_) async {});
+    when(() => entitlement.syncEntitlement()).thenAnswer((_) async => true);
     when(() => connectivity.onConnectivityChanged)
         .thenAnswer((_) => const Stream<bool>.empty());
 
@@ -168,7 +168,10 @@ void main() {
     expect(service.activePurchase?.productID, 'upsenso_growth_monthly');
   });
 
-  test('emits granted then failed on the event stream', () async {
+  // A 4xx means the server will never grant this purchase, so the user is
+  // charged with nothing to show for it — that gets `stuck` (a dialog they must
+  // acknowledge), not `failed` (a snackbar they can scroll past).
+  test('emits granted then stuck on the event stream', () async {
     when(() => remoteDs.verifyPlayPurchase(
           productId: any(named: 'productId'),
           purchaseToken: any(named: 'purchaseToken'),
@@ -186,7 +189,80 @@ void main() {
     await deliver([_purchase('b')]);
 
     await sub.cancel();
-    expect(seen, [PlayPurchasePhase.granted, PlayPurchasePhase.failed]);
+    expect(seen, [PlayPurchasePhase.granted, PlayPurchasePhase.stuck]);
+  });
+
+  // Our own misconfiguration surfaces as a 5xx, but no client retry can clear
+  // it. Promising "retrying automatically" there leaves a charged user waiting
+  // for something that will never happen.
+  test('a server config fault is terminal, not retried', () async {
+    when(() => remoteDs.verifyPlayPurchase(
+          productId: any(named: 'productId'),
+          purchaseToken: any(named: 'purchaseToken'),
+        )).thenThrow(const PlayVerifyException(
+      500,
+      'Billing is temporarily misconfigured',
+      code: 'play_config',
+      stage: 'google_get_sub',
+    ));
+    service.start();
+
+    final seen = <PlayPurchaseEvent>[];
+    final sub = service.events.listen(seen.add);
+    await deliver([_purchase('a')]);
+    await sub.cancel();
+
+    expect(seen.single.phase, PlayPurchasePhase.stuck);
+    expect(seen.single.message, contains('problem on our side'));
+    // Never acknowledged: Google's auto-refund is the correct outcome when we
+    // cannot grant what the user paid for.
+    verifyNever(() => iap.completePurchase(any()));
+  });
+
+  // A token Play no longer considers active must not be offered back to Play as
+  // the `oldPurchaseDetails` of a plan change — that is rejected as
+  // "unable to change your subscription plan".
+  test('a 409 clears the cached active purchase', () async {
+    when(() => remoteDs.verifyPlayPurchase(
+          productId: any(named: 'productId'),
+          purchaseToken: any(named: 'purchaseToken'),
+        )).thenThrow(const PlayVerifyException(409, 'Subscription not active'));
+    service.start();
+
+    await deliver([_purchase('upsenso_starter_monthly')]);
+
+    expect(service.activePurchase, isNull);
+  });
+
+  test('an errored purchase clears the cached active purchase', () async {
+    when(() => remoteDs.verifyPlayPurchase(
+          productId: any(named: 'productId'),
+          purchaseToken: any(named: 'purchaseToken'),
+        )).thenAnswer((_) async {});
+    service.start();
+
+    await deliver([_purchase('upsenso_starter_monthly')]);
+    expect(service.activePurchase, isNotNull);
+
+    await deliver([
+      _purchase('upsenso_starter_monthly', status: PurchaseStatus.error),
+    ]);
+
+    expect(service.activePurchase, isNull);
+  });
+
+  test('reset drops the previous tenant\'s purchase', () async {
+    when(() => remoteDs.verifyPlayPurchase(
+          productId: any(named: 'productId'),
+          purchaseToken: any(named: 'purchaseToken'),
+        )).thenAnswer((_) async {});
+    service.start();
+    await deliver([_purchase('upsenso_growth_monthly')]);
+    expect(service.activePurchase, isNotNull);
+
+    service.reset();
+
+    expect(service.activePurchase, isNull);
   });
 
   test('off Android nothing attaches and restore is a no-op', () async {
@@ -196,5 +272,206 @@ void main() {
     await service.restore();
 
     verifyNever(() => iap.restorePurchases());
+  });
+
+  // ── Plan change: the superseded old subscription ──────────────────────────
+  // The reported bug. After an upgrade Play keeps handing back the replaced
+  // subscription; verifying it returned 409, which the client read as "charged
+  // but not granted" and raised a blocking dialog over a plan that had in fact
+  // just upgraded successfully.
+  group('superseded token', () {
+    setUp(() {
+      when(() => remoteDs.verifyPlayPurchase(
+            productId: any(named: 'productId'),
+            purchaseToken: any(named: 'purchaseToken'),
+          )).thenThrow(const PlayVerifyException(
+        409,
+        'Subscription superseded',
+        code: 'play_superseded',
+      ));
+    });
+
+    test('never raises a stuck alert', () async {
+      service.start();
+      final events = <PlayPurchaseEvent>[];
+      service.events.listen(events.add);
+
+      await deliver([
+        _purchase('upsenso_starter_monthly', status: PurchaseStatus.restored),
+      ]);
+
+      expect(
+        events.map((e) => e.phase),
+        contains(PlayPurchasePhase.superseded),
+      );
+      expect(
+        events.map((e) => e.phase),
+        isNot(contains(PlayPurchasePhase.stuck)),
+      );
+    });
+
+    test('is not acknowledged and clears the cached purchase', () async {
+      service.start();
+
+      await deliver([
+        _purchase('upsenso_starter_monthly', status: PurchaseStatus.restored),
+      ]);
+
+      expect(service.activePurchase, isNull);
+      verifyNever(() => iap.completePurchase(any()));
+    });
+  });
+
+  // The loop: granted → page reload → restore → Play re-emits → verify → granted.
+  // Each lap cost a full verify round trip and it only ever ended when a verify
+  // FAILED, which is how the stale-token 409 above reliably won the race.
+  test('an already-granted token is never re-verified', () async {
+    when(() => remoteDs.verifyPlayPurchase(
+          productId: any(named: 'productId'),
+          purchaseToken: any(named: 'purchaseToken'),
+        )).thenAnswer((_) async {});
+    service.start();
+
+    await deliver([_purchase('upsenso_growth_monthly')]);
+    // Three restores, as a page reload would produce.
+    for (var i = 0; i < 3; i++) {
+      await deliver([
+        _purchase('upsenso_growth_monthly', status: PurchaseStatus.restored),
+      ]);
+    }
+
+    verify(() => remoteDs.verifyPlayPurchase(
+          productId: any(named: 'productId'),
+          purchaseToken: any(named: 'purchaseToken'),
+        )).called(1);
+    verify(() => iap.completePurchase(any())).called(1);
+  });
+
+  // Play returns the replaced subscription alongside the new one for a while.
+  // Letting it win here is what fed the OLD token to the next plan change as
+  // `oldPurchaseDetails`, which Play rejects outright.
+  test('a restored old token does not displace a granted purchase', () async {
+    when(() => remoteDs.verifyPlayPurchase(
+          productId: any(named: 'productId'),
+          purchaseToken: any(named: 'purchaseToken'),
+        )).thenAnswer((_) async {});
+    service.start();
+
+    await deliver([_purchase('upsenso_growth_monthly')]);
+    expect(service.activePurchase?.productID, 'upsenso_growth_monthly');
+
+    await deliver([
+      _purchase('upsenso_starter_monthly', status: PurchaseStatus.restored),
+    ]);
+
+    expect(service.activePurchase?.productID, 'upsenso_growth_monthly');
+  });
+
+  // Only a 409 used to clear it, so a 400/403-refused token stayed eligible as
+  // the "old purchase" of the next change.
+  test('any permanent refusal clears the cached active purchase', () async {
+    when(() => remoteDs.verifyPlayPurchase(
+          productId: any(named: 'productId'),
+          purchaseToken: any(named: 'purchaseToken'),
+        )).thenThrow(const PlayVerifyException(403, 'Belongs to another account'));
+    service.start();
+
+    await deliver([_purchase('upsenso_starter_monthly')]);
+
+    expect(service.activePurchase, isNull);
+  });
+
+  // The grant is banked server-side; only this device's repaint is missing. It
+  // must still report granted, or the purchase flow strands on a spinner.
+  test('a failed entitlement refresh still grants, with a notice', () async {
+    when(() => remoteDs.verifyPlayPurchase(
+          productId: any(named: 'productId'),
+          purchaseToken: any(named: 'purchaseToken'),
+        )).thenAnswer((_) async {});
+    when(() => entitlement.syncEntitlement()).thenAnswer((_) async => false);
+    service.start();
+    final events = <PlayPurchaseEvent>[];
+    service.events.listen(events.add);
+
+    await deliver([_purchase('upsenso_growth_monthly')]);
+
+    final granted =
+        events.firstWhere((e) => e.phase == PlayPurchasePhase.granted);
+    expect(granted.message, isNotNull);
+    verify(() => iap.completePurchase(any())).called(1);
+  });
+
+  // Every branch was unreachable: the Android plugin always sets
+  // code 'purchase_error' and puts the real answer in `message` as the Dart enum
+  // name, so users were shown "BillingResponse.itemAlreadyOwned" verbatim.
+  group('Play error messages are translated', () {
+    Future<String> messageFor(IAPError error) async {
+      service.start();
+      final events = <PlayPurchaseEvent>[];
+      service.events.listen(events.add);
+      await deliver([
+        PurchaseDetails(
+          purchaseID: 'p',
+          productID: 'upsenso_starter_monthly',
+          verificationData: PurchaseVerificationData(
+            localVerificationData: '{}',
+            serverVerificationData: 'tok',
+            source: 'google_play',
+          ),
+          transactionDate: '1700000000000',
+          status: PurchaseStatus.error,
+        )..error = error,
+      ]);
+      return events
+          .firstWhere((e) => e.phase == PlayPurchasePhase.failed)
+          .message!;
+    }
+
+    test('the Android enum-name form matches', () async {
+      final msg = await messageFor(IAPError(
+        source: 'google_play',
+        code: 'purchase_error',
+        message: 'BillingResponse.itemAlreadyOwned',
+      ));
+      expect(msg, contains('already own'));
+      expect(msg, contains('Restore purchases'));
+    });
+
+    test('the screaming-snake form still matches', () async {
+      final msg = await messageFor(IAPError(
+        source: 'google_play',
+        code: 'ITEM_ALREADY_OWNED',
+        message: '',
+      ));
+      expect(msg, contains('already own'));
+    });
+
+    test('billing unavailable names the payment method', () async {
+      final msg = await messageFor(IAPError(
+        source: 'google_play',
+        code: 'purchase_error',
+        message: 'BillingResponse.billingUnavailable',
+      ));
+      expect(msg, contains('payment method'));
+    });
+
+    test('a developer error points at support', () async {
+      final msg = await messageFor(IAPError(
+        source: 'google_play',
+        code: 'purchase_error',
+        message: 'BillingResponse.developerError',
+      ));
+      expect(msg, contains('contact support'));
+    });
+
+    test('an unrecognised error never leaks the raw SDK string', () async {
+      final msg = await messageFor(IAPError(
+        source: 'google_play',
+        code: 'purchase_error',
+        message: 'BillingResponse.someFutureCode',
+      ));
+      expect(msg, isNot(contains('BillingResponse')));
+      expect(msg, contains('couldn\'t be completed'));
+    });
   });
 }

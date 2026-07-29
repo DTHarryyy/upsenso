@@ -90,6 +90,40 @@ const _growthMapping = PlayProductMapping(
   billingPeriod: 'monthly',
 );
 
+final _starterAnnualPd = ProductDetails(
+  id: 'upsenso_starter_annual',
+  title: 'Starter (Annual)',
+  description: 'Cloud backup & sync',
+  price: '₱1,990.00',
+  rawPrice: 1990.0,
+  currencyCode: 'PHP',
+);
+
+const _starterAnnualMapping = PlayProductMapping(
+  productId: 'upsenso_starter_annual',
+  basePlanId: 'annual',
+  planCode: 'starter',
+  planVersion: 1,
+  billingPeriod: 'annual',
+);
+
+final _growthAnnualPd = ProductDetails(
+  id: 'upsenso_growth_annual',
+  title: 'Growth (Annual)',
+  description: 'Full access',
+  price: '₱4,990.00',
+  rawPrice: 4990.0,
+  currencyCode: 'PHP',
+);
+
+const _growthAnnualMapping = PlayProductMapping(
+  productId: 'upsenso_growth_annual',
+  basePlanId: 'annual',
+  planCode: 'growth',
+  planVersion: 1,
+  billingPeriod: 'annual',
+);
+
 PurchaseDetails _ownedPurchase(String productId) => PurchaseDetails(
       purchaseID: 'order-$productId',
       productID: productId,
@@ -139,6 +173,8 @@ void main() {
     when(() => purchaseSync.events).thenAnswer((_) => purchaseEvents.stream);
     when(() => purchaseSync.activePurchase).thenReturn(null);
     when(() => purchaseSync.restore()).thenAnswer((_) async {});
+    when(() => purchaseSync.reverifyActive()).thenAnswer((_) async => true);
+    when(() => iap.isAvailable()).thenAnswer((_) async => true);
     when(() => activeBusiness.businessId).thenReturn('biz-1');
 
     when(() => entitlement.entitlementRevision).thenReturn(revision);
@@ -149,7 +185,7 @@ void main() {
     when(() => entitlement.grandfatheredPrice).thenReturn(null);
     when(() => entitlement.usageOf(any())).thenReturn(1);
     when(() => entitlement.effectiveMax(any())).thenReturn(3);
-    when(() => entitlement.syncEntitlement()).thenAnswer((_) async {});
+    when(() => entitlement.syncEntitlement()).thenAnswer((_) async => true);
     when(() => entitlement.recomputeLocalUsage()).thenAnswer((_) async {});
   });
 
@@ -299,10 +335,19 @@ void main() {
           .thenAnswer((_) async => [_starter, _growth]);
       when(() => remoteDs.fetchPayments()).thenAnswer((_) async => []);
       when(() => remoteDs.fetchDevices()).thenAnswer((_) async => []);
-      when(() => remoteDs.fetchPlayProducts())
-          .thenAnswer((_) async => [_starterMapping, _growthMapping]);
-      when(() => iap.queryProducts(any())).thenAnswer(
-          (_) async => IapProductQuery(products: [_starterPd, _growthPd]));
+      when(() => remoteDs.fetchPlayProducts()).thenAnswer((_) async => [
+            _starterMapping,
+            _growthMapping,
+            _starterAnnualMapping,
+            _growthAnnualMapping,
+          ]);
+      when(() => iap.queryProducts(any())).thenAnswer((_) async =>
+          IapProductQuery(products: [
+            _starterPd,
+            _growthPd,
+            _starterAnnualPd,
+            _growthAnnualPd,
+          ]));
       when(() => iap.restorePurchases()).thenAnswer((_) async {});
       when(() => iap.completePurchase(any())).thenAnswer((_) async {});
       when(() => remoteDs.verifyPlayPurchase(
@@ -328,8 +373,11 @@ void main() {
       own('upsenso_starter_monthly');
     }
 
+    // Google only accepts chargeProratedPrice for a same-period upgrade, so it
+    // is never safe as a blanket choice. withTimeProration credits unused time
+    // and is accepted across periods.
     blocTest<BillingCubit, BillingState>(
-      'upgrade replaces the owned subscription and charges the difference now',
+      'upgrade replaces the owned subscription, crediting unused time',
       build: build,
       act: (c) async {
         await c.load();
@@ -348,7 +396,72 @@ void main() {
                   'upsenso_starter_monthly',
                 ),
               ),
-              replacementMode: ReplacementMode.chargeProratedPrice,
+              replacementMode: ReplacementMode.withTimeProration,
+            )).called(1);
+      },
+    );
+
+    // The reported bug: flipping the period toggle and upgrading sent
+    // chargeProratedPrice for a monthly→annual switch, which Play rejects with
+    // "We are unable to change your subscription plan".
+    blocTest<BillingCubit, BillingState>(
+      'monthly to annual never uses chargeProratedPrice',
+      build: build,
+      act: (c) async {
+        await c.load();
+        own('upsenso_starter_monthly');
+        await c.buyPlan('growth', 'annual');
+      },
+      verify: (_) {
+        verify(() => iap.buySubscription(
+              _growthAnnualPd,
+              accountId: any(named: 'accountId'),
+              oldPurchase: any(named: 'oldPurchase'),
+              replacementMode: ReplacementMode.withTimeProration,
+            )).called(1);
+      },
+    );
+
+    // The entitlement reads 'free' whenever a purchase was never verified — the
+    // exact state this bug left every tenant in. Pricing the change against that
+    // would call a Growth→Starter downgrade an upgrade. Play's owned product is
+    // the only trustworthy baseline.
+    blocTest<BillingCubit, BillingState>(
+      'downgrade is detected from Play\'s owned product, not the entitlement',
+      setUp: () => when(() => entitlement.planCode).thenReturn('free'),
+      build: build,
+      act: (c) async {
+        await c.load();
+        own('upsenso_growth_monthly');
+        await c.buyPlan('starter', 'monthly');
+      },
+      verify: (_) {
+        verify(() => iap.buySubscription(
+              _starterPd,
+              accountId: any(named: 'accountId'),
+              oldPurchase: any(named: 'oldPurchase'),
+              replacementMode: ReplacementMode.deferred,
+            )).called(1);
+      },
+    );
+
+    // Annual→monthly on the SAME tier is cheaper per year, but deferring it
+    // would strand the user for up to a year. A period change switches now.
+    blocTest<BillingCubit, BillingState>(
+      'annual to monthly on the same tier switches immediately',
+      setUp: () => when(() => entitlement.planCode).thenReturn('starter'),
+      build: build,
+      act: (c) async {
+        await c.load();
+        own('upsenso_starter_annual');
+        await c.buyPlan('starter', 'monthly');
+      },
+      verify: (_) {
+        verify(() => iap.buySubscription(
+              _starterPd,
+              accountId: any(named: 'accountId'),
+              oldPurchase: any(named: 'oldPurchase'),
+              replacementMode: ReplacementMode.withTimeProration,
             )).called(1);
       },
     );
@@ -379,22 +492,26 @@ void main() {
       },
     );
 
+    // Buying something Play already owns fails with ITEM_ALREADY_OWNED. What the
+    // user is actually missing is the grant, so re-verify rather than opening a
+    // purchase sheet that cannot succeed.
     blocTest<BillingCubit, BillingState>(
-      'rebuying the owned product sends no change param',
+      'tapping the plan Play already owns re-verifies instead of buying',
       build: build,
       act: (c) async {
         await c.load();
         await ownStarter(c);
         await c.buyPlan('starter', 'monthly');
       },
-      verify: (_) {
-        final captured = verify(() => iap.buySubscription(
-              _starterPd,
+      verify: (c) {
+        verify(() => purchaseSync.reverifyActive()).called(1);
+        verifyNever(() => iap.buySubscription(
+              any(),
               accountId: any(named: 'accountId'),
-              oldPurchase: captureAny(named: 'oldPurchase'),
+              oldPurchase: any(named: 'oldPurchase'),
               replacementMode: any(named: 'replacementMode'),
-            )).captured;
-        expect(captured.single, isNull);
+            ));
+        expect(c.state.purchaseInProgress, isFalse);
       },
     );
 
@@ -415,6 +532,52 @@ void main() {
             )).captured;
         expect(captured.single, isNull);
       },
+    );
+
+    // The restore that populates `oldPurchaseDetails` was fire-and-forget, so an
+    // Upgrade tapped before it landed went out with oldPurchase: null — and Play
+    // then STACKED a second, separately-billed subscription instead of replacing.
+    blocTest<BillingCubit, BillingState>(
+      'buyPlan waits for the in-flight restore before reading what Play owns',
+      setUp: () {
+        when(() => entitlement.planCode).thenReturn('free');
+        // Play answers slowly, and only then reports the owned subscription.
+        when(() => purchaseSync.restore()).thenAnswer((_) async {
+          await Future<void>.delayed(const Duration(milliseconds: 40));
+          when(() => purchaseSync.activePurchase)
+              .thenReturn(_ownedPurchase('upsenso_starter_monthly'));
+        });
+      },
+      build: build,
+      act: (c) async {
+        await c.load();
+        await c.buyPlan('growth', 'monthly');
+      },
+      verify: (_) {
+        final captured = verify(() => iap.buySubscription(
+              _growthPd,
+              accountId: any(named: 'accountId'),
+              oldPurchase: captureAny(named: 'oldPurchase'),
+              replacementMode: any(named: 'replacementMode'),
+            )).captured;
+        expect(
+          (captured.single as PurchaseDetails?)?.productID,
+          'upsenso_starter_monthly',
+        );
+      },
+    );
+
+    // granted → load() → restore() → Play re-emits → verify → granted → …
+    // Unbounded while the page is open, one edge-function invoke per lap.
+    blocTest<BillingCubit, BillingState>(
+      'load does not restore again once Play has already reported a purchase',
+      setUp: () {
+        when(() => purchaseSync.activePurchase)
+            .thenReturn(_ownedPurchase('upsenso_growth_monthly'));
+      },
+      build: build,
+      act: (c) => c.load(),
+      verify: (_) => verifyNever(() => purchaseSync.restore()),
     );
   });
 
@@ -495,6 +658,194 @@ void main() {
         verifyNever(() => iap.restorePurchases());
       },
     );
+
+    // THE reported bug, end to end: upgrading to Growth granted correctly, but
+    // the trailing restore surfaced the replaced Starter token, whose verify
+    // 409'd — and the user got a blocking "we couldn't confirm your purchase"
+    // over a plan card already showing Growth.
+    blocTest<BillingCubit, BillingState>(
+      'a superseded old token after an upgrade shows the user nothing',
+      setUp: () {
+        when(() => iap.isSupportedPlatform).thenReturn(true);
+        when(() => connectivity.isConnected).thenAnswer((_) async => false);
+        when(() => entitlement.planCode).thenReturn('growth');
+      },
+      build: build,
+      act: (c) async {
+        purchaseEvents.add(const PlayPurchaseEvent(PlayPurchasePhase.granted));
+        await Future<void>.delayed(Duration.zero);
+        purchaseEvents
+            .add(const PlayPurchaseEvent(PlayPurchasePhase.superseded));
+        await Future<void>.delayed(Duration.zero);
+      },
+      verify: (c) {
+        expect(c.state.planCode, 'growth');
+        expect(c.state.purchaseAlert, isNull);
+        expect(c.state.purchaseError, isNull);
+        expect(c.state.purchaseInProgress, isFalse);
+      },
+    );
+
+    blocTest<BillingCubit, BillingState>(
+      'backing out of a purchase clears the error left by the attempt',
+      setUp: () {
+        when(() => iap.isSupportedPlatform).thenReturn(true);
+        when(() => connectivity.isConnected).thenAnswer((_) async => false);
+      },
+      build: build,
+      act: (c) async {
+        purchaseEvents.add(const PlayPurchaseEvent(
+          PlayPurchasePhase.failed,
+          message: 'something went wrong',
+        ));
+        await Future<void>.delayed(Duration.zero);
+        expect(c.state.purchaseError, isNotNull);
+        purchaseEvents.add(const PlayPurchaseEvent(PlayPurchasePhase.canceled));
+        await Future<void>.delayed(Duration.zero);
+      },
+      verify: (c) => expect(c.state.purchaseError, isNull),
+    );
+
+    // An entitlement repaint used to preserve purchaseError, so a dead message
+    // sat beside a plan card that had already moved on.
+    blocTest<BillingCubit, BillingState>(
+      'an entitlement change clears a stale purchase error',
+      setUp: () {
+        when(() => iap.isSupportedPlatform).thenReturn(true);
+        when(() => connectivity.isConnected).thenAnswer((_) async => false);
+      },
+      build: build,
+      act: (c) async {
+        purchaseEvents.add(const PlayPurchaseEvent(
+          PlayPurchasePhase.failed,
+          message: 'stale',
+        ));
+        await Future<void>.delayed(Duration.zero);
+        when(() => entitlement.planCode).thenReturn('growth');
+        revision.value++;
+        await Future<void>.delayed(Duration.zero);
+      },
+      verify: (c) {
+        expect(c.state.planCode, 'growth');
+        expect(c.state.purchaseError, isNull);
+      },
+    );
+
+    // The grant landed server-side but this device couldn't refresh. That is a
+    // notice, not an error — the plan really is active.
+    //
+    // Asserted on the emitted state, not the final one: a notice describes a
+    // moment and is deliberately non-sticky, so the reload that follows a grant
+    // clears it. The page shows it via a listener, which sees every state.
+    test('a granted event carrying a message surfaces it as a notice', () async {
+      when(() => iap.isSupportedPlatform).thenReturn(true);
+      when(() => connectivity.isConnected).thenAnswer((_) async => false);
+      final cubit = build();
+      final notices = <String?>[];
+      final errors = <String?>[];
+      final sub = cubit.stream.listen((s) {
+        notices.add(s.purchaseNotice);
+        errors.add(s.purchaseError);
+      });
+
+      purchaseEvents.add(const PlayPurchaseEvent(
+        PlayPurchasePhase.granted,
+        message: 'Your plan is active. Refreshing this device…',
+      ));
+      await Future<void>.delayed(Duration.zero);
+
+      await sub.cancel();
+      await cubit.close();
+      expect(notices, contains(contains('active')));
+      expect(errors.every((e) => e == null), isTrue);
+    });
+  });
+
+  // The probe exists so a broken Play setup can be found without charging
+  // anyone — that only holds if a failing check still reaches the user.
+  group('config probe', () {
+    blocTest<BillingCubit, BillingState>(
+      'surfaces failing checks rather than only a pass/fail',
+      setUp: () {
+        when(() => connectivity.isConnected).thenAnswer((_) async => false);
+        when(() => remoteDs.probePlayConfig()).thenAnswer((_) async => const [
+              BillingProbeCheck(
+                stage: 'secrets',
+                ok: true,
+                detail: 'package "com.ledgidy.pos", key secret 2300 chars',
+              ),
+              BillingProbeCheck(
+                stage: 'google_app_access',
+                ok: false,
+                detail: 'subscriptions.list failed: 403',
+              ),
+            ]);
+      },
+      build: build,
+      act: (c) => c.runConfigProbe(),
+      verify: (c) {
+        expect(c.state.probeRunning, isFalse);
+        expect(c.state.probeError, isNull);
+        expect(c.state.probeChecks.length, 2);
+        expect(c.state.probeChecks.last.ok, isFalse);
+        expect(c.state.probeChecks.last.label, 'Play Store access');
+      },
+    );
+
+    blocTest<BillingCubit, BillingState>(
+      'a probe that cannot run reports an error and clears the spinner',
+      setUp: () {
+        when(() => connectivity.isConnected).thenAnswer((_) async => false);
+        when(() => remoteDs.probePlayConfig())
+            .thenThrow(const PlayVerifyException(500, 'boom'));
+      },
+      build: build,
+      act: (c) => c.runConfigProbe(),
+      verify: (c) {
+        expect(c.state.probeRunning, isFalse);
+        expect(c.state.probeError, isNotNull);
+        expect(c.state.probeChecks, isEmpty);
+      },
+    );
+  });
+
+  // Leaving the Billing page mid-load closed the cubit while the catalog fetch
+  // was still in flight, and the emit that followed threw
+  // "Cannot emit new states after calling close".
+  group('closing mid-flight', () {
+    test('a load still in flight when the page closes does not throw', () async {
+      final gate = Completer<List<PlanOption>>();
+      when(() => connectivity.isConnected).thenAnswer((_) async => true);
+      when(() => remoteDs.fetchPlans()).thenAnswer((_) => gate.future);
+      when(() => remoteDs.fetchPayments()).thenAnswer((_) async => []);
+      when(() => remoteDs.fetchDevices()).thenAnswer((_) async => []);
+
+      final cubit = build();
+      final pending = cubit.load();
+
+      await cubit.close(); // user pops the page
+      gate.complete([_starter]); // the fetch lands afterwards
+
+      await expectLater(pending, completes);
+    });
+
+    test('a purchase event arriving after close does not throw', () async {
+      when(() => iap.isSupportedPlatform).thenReturn(true);
+      when(() => connectivity.isConnected).thenAnswer((_) async => false);
+
+      final cubit = build();
+      await cubit.close();
+
+      purchaseEvents.add(const PlayPurchaseEvent(
+        PlayPurchasePhase.stuck,
+        message: 'charged but not granted',
+      ));
+
+      await expectLater(
+        Future<void>.delayed(const Duration(milliseconds: 10)),
+        completes,
+      );
+    });
   });
 
   group('revokeDevice', () {

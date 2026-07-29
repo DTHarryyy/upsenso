@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:pos/features/billing/domain/billing_models.dart';
@@ -9,14 +10,35 @@ class PlayVerifyException implements Exception {
   final int status;
   final String message;
 
-  const PlayVerifyException(this.status, this.message);
+  /// Machine-readable fault class from the edge function (`play_config`,
+  /// `play_transient`), when it sent one. Free text is for humans; retry policy
+  /// keys off this.
+  final String? code;
+
+  /// Which server stage failed (`google_get_sub`, `grant`, …). Diagnostics only.
+  final String? stage;
+
+  const PlayVerifyException(this.status, this.message, {this.code, this.stage});
 
   /// The server answered definitively — re-sending the same token will get the
   /// same answer, so a retry loop is pointless.
   bool get isPermanent => status >= 400 && status < 500;
 
+  /// Our own misconfiguration (bad Play credentials, missing API access). It
+  /// arrives as a 5xx, but no client retry can ever clear it — so it must not
+  /// be presented to the user as "retrying automatically".
+  bool get isConfigFault => code == 'play_config';
+
+  /// The token was replaced by a newer purchase — an upgrade's old subscription.
+  /// Nothing is wrong and nothing was lost, so it must never reach the user:
+  /// Play keeps returning the superseded token for a while after a plan change,
+  /// and reporting that as a failed purchase is how a successful upgrade ended
+  /// up showing "we couldn't confirm your purchase".
+  bool get isSuperseded => code == 'play_superseded';
+
   @override
-  String toString() => 'PlayVerifyException($status): $message';
+  String toString() =>
+      'PlayVerifyException($status${stage == null ? '' : '/$stage'}): $message';
 }
 
 /// Supabase reads for the billing catalog + history, the Play SKU map, and the
@@ -139,17 +161,54 @@ class BillingRemoteDs {
       });
       final data = res.data;
       if (res.status == 200 && data is Map && data['ok'] == true) return;
-      throw PlayVerifyException(res.status, _messageOf(data, res.status));
+      throw _exceptionOf(data, res.status);
     } on FunctionException catch (e) {
       // supabase_flutter raises this for any non-2xx; the body still carries
-      // our own {"error": …}, which is the only useful diagnostic.
-      throw PlayVerifyException(e.status, _messageOf(e.details, e.status));
+      // our own {"error", "code", "stage"}, which is the only useful diagnostic.
+      throw _exceptionOf(e.details, e.status);
     }
   }
 
-  static String _messageOf(dynamic data, int status) {
-    if (data is Map && data['error'] != null) return data['error'].toString();
-    return 'Verification failed ($status)';
+  /// Ask the server to self-check its Play configuration. No purchase involved,
+  /// so this is safe to run any number of times. Throws [PlayVerifyException] if
+  /// the call itself couldn't complete — a check that merely *failed* comes back
+  /// as a normal result with `ok: false`.
+  Future<List<BillingProbeCheck>> probePlayConfig() async {
+    try {
+      final res = await _client.functions
+          .invoke('verify-play-purchase', body: {'probe': true});
+      return _checksOf(res.data, res.status);
+    } on FunctionException catch (e) {
+      throw _exceptionOf(e.details, e.status);
+    }
+  }
+
+  static List<BillingProbeCheck> _checksOf(dynamic data, int status) {
+    final raw = data is Map ? data['checks'] : null;
+    if (raw is! List) throw _exceptionOf(data, status);
+    return raw.whereType<Map>().map((c) {
+      return BillingProbeCheck(
+        stage: c['stage']?.toString() ?? 'unknown',
+        ok: c['ok'] == true,
+        detail: c['detail']?.toString() ?? '',
+      );
+    }).toList();
+  }
+
+  static PlayVerifyException _exceptionOf(dynamic data, int status) {
+    final map = data is Map ? data : const {};
+    final detail = map['detail']?.toString();
+    if (detail != null && detail.isNotEmpty) {
+      // Server-side stage detail never reaches the user, but it is exactly what
+      // makes a production failure diagnosable from a device log.
+      debugPrint('[BillingRemoteDs] verify failed ($status): $detail');
+    }
+    return PlayVerifyException(
+      status,
+      map['error']?.toString() ?? 'Verification failed ($status)',
+      code: map['code']?.toString(),
+      stage: map['stage']?.toString(),
+    );
   }
 
   static DateTime? _ts(dynamic v) =>

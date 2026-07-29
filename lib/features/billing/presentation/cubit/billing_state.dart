@@ -54,6 +54,31 @@ class BillingState extends Equatable {
   /// Last purchase/restore failure, surfaced to the user then cleared.
   final String? purchaseError;
 
+  /// Play's catalog is reachable but incomplete (a SKU isn't live yet, or the
+  /// query errored). Shown as a calm inline note rather than only failing at the
+  /// moment the user taps Upgrade.
+  final String? storeNotice;
+
+  /// A purchase that was CHARGED but not granted. This gets a blocking dialog
+  /// with a Retry, never a snackbar — money is involved and a snackbar is
+  /// missable.
+  final String? purchaseAlert;
+
+  /// Good news that still needs saying — a grant that landed on the server while
+  /// this device's refresh didn't. Reads as a neutral note, never an error,
+  /// because the plan really is active.
+  final String? purchaseNotice;
+
+  /// Result of the last Play config health check; empty until it runs.
+  final List<BillingProbeCheck> probeChecks;
+
+  /// The health check is in flight.
+  final bool probeRunning;
+
+  /// The health check couldn't run at all — distinct from a check that ran and
+  /// reported a problem, which lives in [probeChecks].
+  final String? probeError;
+
   const BillingState({
     this.status = BillingStatus.loading,
     this.errorMessage,
@@ -77,6 +102,12 @@ class BillingState extends Equatable {
     this.playOffers = const [],
     this.purchaseInProgress = false,
     this.purchaseError,
+    this.storeNotice,
+    this.purchaseAlert,
+    this.purchaseNotice,
+    this.probeChecks = const [],
+    this.probeRunning = false,
+    this.probeError,
   });
 
   BillingState copyWith({
@@ -102,7 +133,17 @@ class BillingState extends Equatable {
     List<PlayPlanOffer>? playOffers,
     bool? purchaseInProgress,
     String? purchaseError,
+    String? storeNotice,
+    String? purchaseAlert,
+    String? purchaseNotice,
+    List<BillingProbeCheck>? probeChecks,
+    bool? probeRunning,
+    String? probeError,
+    bool clearProbeError = false,
     bool clearPurchaseError = false,
+    bool clearStoreNotice = false,
+    bool clearPurchaseAlert = false,
+    bool clearPurchaseNotice = false,
     // Marks this call as authoritative for the nullable entitlement fields:
     // they are taken verbatim, null included. Without it `x ?? this.x` can only
     // ever SET a value, so a trial→active transition would keep showing the
@@ -142,6 +183,16 @@ class BillingState extends Equatable {
       purchaseInProgress: purchaseInProgress ?? this.purchaseInProgress,
       purchaseError:
           clearPurchaseError ? null : (purchaseError ?? this.purchaseError),
+      storeNotice:
+          clearStoreNotice ? null : (storeNotice ?? this.storeNotice),
+      purchaseAlert:
+          clearPurchaseAlert ? null : (purchaseAlert ?? this.purchaseAlert),
+      // Never sticky: a notice describes one moment, so it must not survive the
+      // next state change the way an unresolved error legitimately does.
+      purchaseNotice: clearPurchaseNotice ? null : purchaseNotice,
+      probeChecks: probeChecks ?? this.probeChecks,
+      probeRunning: probeRunning ?? this.probeRunning,
+      probeError: clearProbeError ? null : (probeError ?? this.probeError),
     );
   }
 
@@ -169,5 +220,11 @@ class BillingState extends Equatable {
         playOffers,
         purchaseInProgress,
         purchaseError,
+        storeNotice,
+        purchaseAlert,
+        purchaseNotice,
+        probeChecks,
+        probeRunning,
+        probeError,
       ];
 }

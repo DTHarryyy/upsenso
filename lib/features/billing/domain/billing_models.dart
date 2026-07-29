@@ -96,6 +96,35 @@ class PlayPlanOffer {
   });
 }
 
+/// One line of the Play billing config health check.
+///
+/// Exists so an owner (or support) can confirm the Play setup without making a
+/// real purchase — every setup fault this project hit used to be discoverable
+/// only by charging someone.
+class BillingProbeCheck {
+  /// Server stage: secrets, parse_sa, google_token, google_app_access,
+  /// product_map.
+  final String stage;
+  final bool ok;
+  final String detail;
+
+  const BillingProbeCheck({
+    required this.stage,
+    required this.ok,
+    required this.detail,
+  });
+
+  /// Human label for the stage — the raw tag is for logs, not shop owners.
+  String get label => switch (stage) {
+        'secrets' => 'Server configuration',
+        'parse_sa' => 'Service account key',
+        'google_token' => 'Google sign-in',
+        'google_app_access' => 'Play Store access',
+        'product_map' => 'Plan products',
+        _ => stage,
+      };
+}
+
 /// A registered device under the plan's device cap.
 class RegisteredDevice {
   final String deviceUid;

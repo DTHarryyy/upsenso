@@ -434,6 +434,54 @@ UPSENSO uses 3 layers:
 
 ---
 
+# BILLING TABLES (M7.1)
+
+The billing tables follow a different rule from the rest of the schema, and the
+generic patterns above do **not** apply to them.
+
+> ⚠️ The `auth.jwt() ->> 'business_id'` pattern documented earlier in this file is
+> **not** what the billing migrations use. They call `public.get_my_business_id()`.
+> Verify against `supabase/migrations/`, which is the source of truth.
+
+**Clients get SELECT only. Every write is service-role.** A client that could
+write its own `subscriptions` row could grant itself any plan, so there is no
+tenant-scoped INSERT/UPDATE/DELETE policy anywhere in this group — and since
+`20260728000001` the DML privilege itself is revoked from `authenticated`, so a
+future permissive policy cannot re-open it.
+
+| Table | Client access | Written by |
+|---|---|---|
+| `subscriptions` | SELECT own (`subscriptions_select_own`) | `apply_play_subscription` / `expire_play_subscription` / `admin_grant_subscription` (SECURITY DEFINER, service_role only) |
+| `subscription_events` | SELECT own | `record_subscription_event` — hash-chained |
+| `billing_payments` | SELECT own | verify-play-purchase, google-play-rtdn |
+| `play_purchase_tokens` | **none** — invisible | verify-play-purchase |
+| `billing_webhook_events` | **none** | google-play-rtdn |
+| `trial_claims` | **none** | signup trigger |
+| `play_product_map` | SELECT where `is_active` | migration / manual seed |
+| `plans`, `plan_limits`, `plan_addons` | SELECT all (public catalog) | migration |
+| `billing_settings` | **none** since `20260728000001` | migration / manual |
+
+**The cloud gate.** `20260708000001_cloud_gate_rls.sql` adds a RESTRICTIVE
+`has_cloud_access()` policy to the write path of 25 business-data tables. SELECT
+is deliberately ungated so a lapsed tenant keeps reading its own frozen data, and
+the identity plane (businesses, branches, employees, roles, modules) is ungated so
+they can still sign in and pay.
+
+> **`has_cloud_access()` returns TRUE for everyone while
+> `billing_settings.cloud_gate_enforced` is FALSE — its default.** No migration
+> sets it. Until it is flipped, every RESTRICTIVE gate above is inert and the
+> local Drift `entitlement_cache` is the only thing standing between a user and
+> cloud sync — and that cache is unsigned and trivially editable. Treat the
+> paywall as advisory until this flag is confirmed TRUE in prod.
+
+**Verifying.** `tool/billing_rls_checks.sql` §7–§11 is the runbook: run it against
+a preview branch, not prod. It asserts that a direct
+`UPDATE subscriptions SET plan_code='growth'` as `authenticated` affects zero
+rows, that structural caps reject an over-limit INSERT, and that a lapsed tenant
+can read but not write.
+
+---
+
 # OFFLINE SYNC IMPACT
 
 All sync operations must:

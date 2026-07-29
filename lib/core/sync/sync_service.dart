@@ -114,6 +114,17 @@ class SyncService {
 
   StreamSubscription<bool>? _connectivitySubscription;
   Timer? _retryTimer;
+
+  /// Re-reads the entitlement on a slow cadence. Without it the plan was only
+  /// fetched at startup, on auth change, and when the Billing page opened — so a
+  /// subscription revoked server-side (refund, chargeback, RTDN expiry) kept its
+  /// access for as long as the app stayed open.
+  Timer? _entitlementTimer;
+
+  /// Long on purpose: entitlement changes are rare and the RPC is not free. The
+  /// server is the enforcement point regardless — this only keeps the local
+  /// mirror from going stale for days.
+  static const _entitlementRefreshInterval = Duration(hours: 6);
   bool _isSyncing = false;
   bool _initCalled = false;
   // Holds the most recent businessId provided to syncAll() while a sync was
@@ -328,6 +339,14 @@ class SyncService {
         _onEntitlementChanged,
       );
     }
+    // Armed regardless of the cloud gate, and before the early return below:
+    // it has to catch entitlement moving in BOTH directions — a plan bought on
+    // another device, and one revoked out from under a running session.
+    _entitlementTimer ??= Timer.periodic(
+      _entitlementRefreshInterval,
+      (_) => _refreshEntitlement(),
+    );
+
     if (!_cloudAllowed) {
       debugPrint('[SYNC] Cloud sync off — local plan (M7.1 §7.1).');
       return;
@@ -354,8 +373,18 @@ class SyncService {
     });
   }
 
+  /// Pull the current plan from the server. Offline is not a failure — the
+  /// cached snapshot stays authoritative and its own expiry math still applies.
+  Future<void> _refreshEntitlement() async {
+    if (!await _connectivityService.isConnected) return;
+    final ok = await _entitlementService.syncEntitlement();
+    if (!ok) debugPrint('[SYNC] Periodic entitlement refresh did not land.');
+  }
+
   void dispose() {
     _retryTimer?.cancel();
+    _entitlementTimer?.cancel();
+    _entitlementTimer = null;
     _connectivitySubscription?.cancel();
   }
 
@@ -369,6 +398,11 @@ class SyncService {
     _connectivitySubscription = null;
     _pendingBusinessId = null;
     _initCalled = false;
+    // _entitlementTimer deliberately survives. pause() also runs when cloud
+    // access is LOST, and stopping the refresh there would leave a lapsed
+    // account with no way back — nothing else re-arms it until a restart.
+    // It is safe across a logout too: syncEntitlement() resolves the active
+    // business at call time and no-ops when there isn't one.
   }
 
   /// Wipe all business-specific local data on logout so the next account

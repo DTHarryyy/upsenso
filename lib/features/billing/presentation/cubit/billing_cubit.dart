@@ -36,9 +36,24 @@ class BillingCubit extends Cubit<BillingState> {
   final ActiveBusinessContext _activeBusiness;
 
   /// Play product handles kept off the equatable state (they aren't value
-  /// types); keyed by product id for the buy call.
-  final Map<String, ProductDetails> _detailsById = {};
+  /// types). Keyed by product id AND base plan id: Play returns one entry per
+  /// base plan and per discounted offer, all sharing the product id, so the id
+  /// alone is not a unique key.
+  final Map<String, ProductDetails> _detailsByOffer = {};
   StreamSubscription<PlayPurchaseEvent>? _purchaseEventSub;
+
+  /// The restore kicked off by [load]. A plan change needs Play's owned purchase
+  /// as `oldPurchaseDetails`, so [buyPlan] waits for this before reading it —
+  /// tapping Upgrade while it was still in flight sent `oldPurchase: null` and
+  /// Play stacked a second, separately-billed subscription.
+  Future<void>? _pendingRestore;
+
+  /// How long buyPlan will wait for that restore. Long enough for a normal Play
+  /// round trip, short enough that a hung store doesn't strand the button.
+  static const _restoreWait = Duration(seconds: 3);
+
+  static String _offerKey(String productId, String basePlanId) =>
+      '$productId|$basePlanId';
 
   BillingCubit({
     required EntitlementService entitlement,
@@ -69,10 +84,25 @@ class BillingCubit extends Cubit<BillingState> {
     _entitlement.entitlementRevision.addListener(_onEntitlementChanged);
   }
 
-  void _onEntitlementChanged() {
+  /// Every state change goes through here.
+  ///
+  /// Almost all of this cubit's work is async — catalog fetches, a Play query,
+  /// a verify round trip — and the user can leave the Billing page at any point
+  /// during it. The cubit is then closed while those futures are still in
+  /// flight, and the emit that follows throws "Cannot emit new states after
+  /// calling close". Dropping the update is exactly right: nothing is listening.
+  void _safeEmit(BillingState next) {
     if (isClosed) return;
-    emit(_withEntitlement(state));
+    emit(next);
   }
+
+  /// The entitlement just changed, so whatever the last purchase attempt said is
+  /// no longer the current truth. Clearing here is what stops a dead error from
+  /// sitting next to a plan card that already shows the new tier.
+  void _onEntitlementChanged() => _safeEmit(_withEntitlement(state).copyWith(
+        clearPurchaseError: true,
+        clearPurchaseAlert: true,
+      ));
 
   Future<void> load() async {
     // Recount seats/branches from local Drift so the usage meters are accurate
@@ -80,7 +110,7 @@ class BillingCubit extends Cubit<BillingState> {
     await _entitlement.recomputeLocalUsage();
     // Always render the current plan from the local entitlement cache first,
     // clearing any prior offline/failure flags for this fresh attempt.
-    emit(_withEntitlement(state).copyWith(
+    _safeEmit(_withEntitlement(state).copyWith(
       status: BillingStatus.ready,
       offline: false,
       catalogFailed: false,
@@ -89,7 +119,7 @@ class BillingCubit extends Cubit<BillingState> {
 
     final online = await _connectivity.isConnected;
     if (!online) {
-      emit(state.copyWith(offline: true));
+      _safeEmit(state.copyWith(offline: true));
       return;
     }
 
@@ -99,7 +129,7 @@ class BillingCubit extends Cubit<BillingState> {
       final plans = await _remoteDs.fetchPlans();
       final payments = await _remoteDs.fetchPayments();
       final devices = await _remoteDs.fetchDevices();
-      emit(_withEntitlement(state).copyWith(
+      _safeEmit(_withEntitlement(state).copyWith(
         status: BillingStatus.ready,
         offline: false,
         catalogFailed: false,
@@ -111,12 +141,28 @@ class BillingCubit extends Cubit<BillingState> {
       // the rest of the page.
       if (_iap.isSupportedPlatform) {
         await _loadPlayOffers();
+        // Ask Play what this account owns before the user can tap Upgrade. A
+        // plan change needs that purchase as `oldPurchaseDetails`, and the only
+        // other thing that populates it is a fire-and-forget call at startup —
+        // so without this the first upgrade of a session can go out with a
+        // stale or missing old purchase.
+        //
+        // Skipped once we already hold one, because a grant reloads the page and
+        // a reload used to restore, which re-emitted the purchase and granted
+        // again — a loop with a server round trip on every lap.
+        if (_purchaseSync.activePurchase == null) {
+          _pendingRestore =
+              _purchaseSync.restore().catchError((Object e, StackTrace st) {
+            debugPrint('[BillingCubit] restore on open failed: $e\n$st');
+          });
+          unawaited(_pendingRestore);
+        }
       }
     } catch (e, st) {
       debugPrint('[BillingCubit] Error in load: $e\n$st');
       // Online but the catalog didn't load (schema not deployed / transient).
       // Keep the cached current plan; offer a Retry, not a false "offline".
-      emit(_withEntitlement(state).copyWith(
+      _safeEmit(_withEntitlement(state).copyWith(
         status: BillingStatus.ready,
         offline: false,
         catalogFailed: true,
@@ -129,24 +175,43 @@ class BillingCubit extends Cubit<BillingState> {
   // ── Google Play purchase flow ───────────────────────────────────────────────
 
   /// Queries Play for live prices of the mapped SKUs and builds the offer list.
-  /// Products Play doesn't return (not yet configured) are simply skipped.
+  /// Products Play doesn't return (not yet configured) are skipped, but the gap
+  /// is reported rather than swallowed — a silently empty catalog is how "this
+  /// plan isn't available right now" became a dead end with no explanation.
   Future<void> _loadPlayOffers() async {
     try {
+      if (!await _iap.isAvailable()) {
+        _safeEmit(state.copyWith(
+          playOffers: const [],
+          storeNotice: 'Google Play billing isn\'t available on this device '
+              'right now. Check that the Play Store is installed, updated, and '
+              'signed in.',
+        ));
+        return;
+      }
+
       final mappings = await _remoteDs.fetchPlayProducts();
       if (mappings.isEmpty) {
-        emit(state.copyWith(playOffers: const []));
+        _safeEmit(state.copyWith(playOffers: const []));
         return;
       }
       final ids = mappings.map((m) => m.productId).toSet();
       final query = await _iap.queryProducts(ids);
-      _detailsById
-        ..clear()
-        ..addEntries(query.products.map((d) => MapEntry(d.id, d)));
 
+      // Group by product id first: every offer of a product shares that id.
+      final byProduct = <String, List<ProductDetails>>{};
+      for (final d in query.products) {
+        byProduct.putIfAbsent(d.id, () => []).add(d);
+      }
+
+      _detailsByOffer.clear();
       final offers = <PlayPlanOffer>[];
       for (final m in mappings) {
-        final d = _detailsById[m.productId];
-        if (d == null) continue; // not live in Play Console yet
+        final candidates = byProduct[m.productId];
+        if (candidates == null || candidates.isEmpty) continue;
+        final d = IapService.selectBasePlanOffer(candidates, m.basePlanId);
+        if (d == null) continue;
+        _detailsByOffer[_offerKey(m.productId, m.basePlanId)] = d;
         offers.add(PlayPlanOffer(
           planCode: m.planCode,
           billingPeriod: m.billingPeriod,
@@ -155,10 +220,34 @@ class BillingCubit extends Cubit<BillingState> {
           priceLabel: d.price,
         ));
       }
-      emit(state.copyWith(playOffers: offers));
+
+      _safeEmit(state.copyWith(
+        playOffers: offers,
+        storeNotice: _storeNoticeFor(query, mappings.length, offers.length),
+        clearStoreNotice:
+            _storeNoticeFor(query, mappings.length, offers.length) == null,
+      ));
     } catch (e, st) {
       debugPrint('[BillingCubit] Error in _loadPlayOffers: $e\n$st');
+      _safeEmit(state.copyWith(
+        storeNotice: 'Couldn\'t load plan prices from Google Play. Pull to '
+            'refresh to try again.',
+      ));
     }
+  }
+
+  /// Turns a partial Play catalog into something a human can act on. Null when
+  /// everything resolved.
+  String? _storeNoticeFor(IapProductQuery query, int expected, int resolved) {
+    if (query.hasError) {
+      return 'Google Play couldn\'t return plan prices (${query.error}). '
+          'Pull to refresh to try again.';
+    }
+    if (query.notFoundIds.isNotEmpty || resolved < expected) {
+      return 'Some plans aren\'t available for purchase yet. If this persists, '
+          'contact support.';
+    }
+    return null;
   }
 
   /// Launch the Play purchase flow for [planCode] at [period]. The outcome
@@ -172,47 +261,131 @@ class BillingCubit extends Cubit<BillingState> {
     final offer = state.playOffers.firstWhereOrNull(
       (o) => o.planCode == planCode && o.billingPeriod == period,
     );
-    final details = offer == null ? null : _detailsById[offer.productId];
-    if (details == null) {
-      emit(state.copyWith(
-        purchaseError: 'This plan isn\'t available for purchase right now.',
+    final details =
+        offer == null ? null : _detailsByOffer[_offerKey(offer.productId, offer.basePlanId)];
+    if (offer == null || details == null) {
+      _safeEmit(state.copyWith(
+        purchaseError: state.storeNotice ??
+            'This plan isn\'t available for purchase right now.',
       ));
       return;
     }
-    emit(state.copyWith(purchaseInProgress: true, clearPurchaseError: true));
+    _safeEmit(state.copyWith(
+      purchaseInProgress: true,
+      clearPurchaseError: true,
+      clearPurchaseAlert: true,
+    ));
 
+    // Let the page-open restore land first. Play's answer is what supplies
+    // `oldPurchaseDetails`, and buying without it stacks a second subscription
+    // rather than replacing the current one.
+    await _awaitPendingRestore();
+
+    // Play's own view of what's owned — NOT the entitlement. The two disagree
+    // whenever a purchase was made but never verified, and trusting the
+    // entitlement there is what turned a plan change into a duplicate buy.
     final owned = _purchaseSync.activePurchase;
-    final oldPurchase =
-        (owned != null && owned.productID != details.id) ? owned : null;
+
+    // Already own exactly this product: Play would reject a second purchase with
+    // ITEM_ALREADY_OWNED. What the user actually needs is the grant they never
+    // got, so re-verify the token instead of opening a doomed purchase sheet.
+    if (owned != null && owned.productID == details.id) {
+      final recovered = await _purchaseSync.reverifyActive();
+      _safeEmit(state.copyWith(
+        purchaseInProgress: false,
+        purchaseError: recovered
+            ? null
+            : 'You already own this plan on Google Play. We\'re restoring it — '
+                'this can take a moment.',
+        clearPurchaseError: recovered,
+      ));
+      return;
+    }
 
     final launched = await _iap.buySubscription(
       details,
       accountId: _obfuscatedAccountId(),
-      oldPurchase: oldPurchase,
-      replacementMode: _isDowngrade(planCode)
-          ? ReplacementMode.deferred
-          : ReplacementMode.chargeProratedPrice,
+      oldPurchase: owned,
+      replacementMode: _replacementModeFor(planCode, period, owned),
     );
     if (!launched) {
-      emit(state.copyWith(
+      _safeEmit(state.copyWith(
         purchaseInProgress: false,
         purchaseError: 'Couldn\'t start the purchase. Please try again.',
       ));
     }
   }
 
-  /// True when [targetPlanCode] is priced below the tenant's current plan —
-  /// a downgrade defers the switch to renewal so paid-for time isn't lost,
-  /// rather than crediting/charging mid-cycle like an upgrade does.
-  bool _isDowngrade(String targetPlanCode) {
-    final currentPrice = state.plans
-        .firstWhereOrNull((p) => p.code == state.planCode)
-        ?.priceMonthly;
-    final targetPrice = state.plans
-        .firstWhereOrNull((p) => p.code == targetPlanCode)
-        ?.priceMonthly;
-    if (currentPrice == null || targetPrice == null) return false;
-    return targetPrice < currentPrice;
+  /// Wait for an in-flight restore, but never indefinitely — a Play Store that
+  /// never answers must not leave Upgrade dead. Timing out is safe: the buy
+  /// still goes ahead, just without a replacement target.
+  Future<void> _awaitPendingRestore() async {
+    final pending = _pendingRestore;
+    if (pending == null) return;
+    try {
+      await pending.timeout(_restoreWait);
+    } catch (e, st) {
+      debugPrint('[BillingCubit] restore did not settle before buy: $e\n$st');
+    } finally {
+      _pendingRestore = null;
+    }
+  }
+
+  /// How Play should bill the switch from [owned] to the target plan.
+  ///
+  /// Never `chargeProratedPrice`: Google only accepts it for an upgrade that
+  /// keeps the SAME billing period, so a monthly→annual switch is rejected
+  /// outright — which is what surfaced as "We are unable to change your
+  /// subscription plan". `withTimeProration` credits the unused time and works
+  /// across periods, so it is the safe immediate-switch mode.
+  ReplacementMode _replacementModeFor(
+    String targetPlanCode,
+    String targetPeriod,
+    PurchaseDetails? owned,
+  ) {
+    if (owned == null) return ReplacementMode.withTimeProration;
+    // A period change is a different commitment, not a cheaper tier — switch now
+    // and let Play credit the remainder rather than deferring for up to a year.
+    final ownedPeriod = _periodOfProduct(owned.productID);
+    if (ownedPeriod != null && ownedPeriod != targetPeriod) {
+      return ReplacementMode.withTimeProration;
+    }
+    return _isDowngrade(targetPlanCode, targetPeriod)
+        ? ReplacementMode.deferred
+        : ReplacementMode.withTimeProration;
+  }
+
+  PlayPlanOffer? _offerOfProduct(String productId) =>
+      state.playOffers.firstWhereOrNull((o) => o.productId == productId);
+
+  String? _periodOfProduct(String productId) =>
+      _offerOfProduct(productId)?.billingPeriod;
+
+  /// True when the target costs less per year than what's currently owned — a
+  /// downgrade defers to renewal so paid-for time isn't lost.
+  ///
+  /// Compares annualised prices, because comparing `priceMonthly` alone ignores
+  /// the period toggle entirely and calls annual→monthly an "upgrade". The
+  /// baseline comes from the product Play says is owned, not the entitlement:
+  /// when a purchase hasn't been verified the entitlement still reads `free`,
+  /// which would misprice every comparison against it.
+  bool _isDowngrade(String targetPlanCode, String targetPeriod) {
+    final ownedOffer =
+        _offerOfProduct(_purchaseSync.activePurchase?.productID ?? '');
+    final currentPlan = ownedOffer?.planCode ?? state.planCode;
+    final currentPeriod = ownedOffer?.billingPeriod ?? 'monthly';
+    final current = _annualisedPrice(currentPlan, currentPeriod);
+    final target = _annualisedPrice(targetPlanCode, targetPeriod);
+    if (current == null || target == null) return false;
+    return target < current;
+  }
+
+  /// Annual plans bill 10 months' worth (2 free), matching the server's ledger.
+  double? _annualisedPrice(String planCode, String period) {
+    final monthly =
+        state.plans.firstWhereOrNull((p) => p.code == planCode)?.priceMonthly;
+    if (monthly == null) return null;
+    return period == 'annual' ? monthly * 10 : monthly * 12;
   }
 
   /// Ask Play to re-emit what this account owns, so a reinstall or a second
@@ -220,15 +393,15 @@ class BillingCubit extends Cubit<BillingState> {
   /// this only drives the spinner.
   Future<void> restore() async {
     if (!_iap.isSupportedPlatform) return;
-    emit(state.copyWith(purchaseInProgress: true, clearPurchaseError: true));
+    _safeEmit(state.copyWith(purchaseInProgress: true, clearPurchaseError: true));
     try {
       await _purchaseSync.restore();
       // Restored items land on the event stream and settle the spinner there;
       // drop it now in case the account owns nothing to restore.
-      emit(state.copyWith(purchaseInProgress: false));
+      _safeEmit(state.copyWith(purchaseInProgress: false));
     } catch (e, st) {
       debugPrint('[BillingCubit] Error in restore: $e\n$st');
-      emit(state.copyWith(
+      _safeEmit(state.copyWith(
         purchaseInProgress: false,
         purchaseError: 'Couldn\'t restore purchases. Please try again.',
       ));
@@ -240,18 +413,79 @@ class BillingCubit extends Cubit<BillingState> {
   void _onPurchaseEvent(PlayPurchaseEvent event) {
     switch (event.phase) {
       case PlayPurchasePhase.pending:
-        emit(state.copyWith(purchaseInProgress: true, clearPurchaseError: true));
+        _safeEmit(state.copyWith(purchaseInProgress: true, clearPurchaseError: true));
       case PlayPurchasePhase.granted:
-        emit(state.copyWith(purchaseInProgress: false, clearPurchaseError: true));
+        _safeEmit(state.copyWith(
+          purchaseInProgress: false,
+          clearPurchaseError: true,
+          clearPurchaseAlert: true,
+          // Set only when the grant landed but the local refresh didn't — the
+          // plan IS active, so this is a notice, never an error.
+          purchaseNotice: event.message,
+        ));
         // Pull the catalog/history/devices too; the plan itself is already live.
         unawaited(load());
+      case PlayPurchasePhase.superseded:
+        // The old subscription of a plan change that already succeeded. Nothing
+        // to tell the user — surfacing it is precisely the bug where a working
+        // upgrade reported "we couldn't confirm your purchase".
+        _safeEmit(state.copyWith(purchaseInProgress: false));
       case PlayPurchasePhase.canceled:
-        emit(state.copyWith(purchaseInProgress: false));
+        // Backing out is not a failure, and a leftover error from the attempt
+        // would otherwise sit on the page until the next state change.
+        _safeEmit(state.copyWith(
+          purchaseInProgress: false,
+          clearPurchaseError: true,
+          clearPurchaseAlert: true,
+        ));
       case PlayPurchasePhase.failed:
-        emit(state.copyWith(
+        _safeEmit(state.copyWith(
           purchaseInProgress: false,
           purchaseError: event.message,
         ));
+      case PlayPurchasePhase.stuck:
+        // Charged but not granted — a snackbar is too easy to miss for
+        // something the user paid for.
+        _safeEmit(state.copyWith(
+          purchaseInProgress: false,
+          purchaseAlert: event.message,
+        ));
+    }
+  }
+
+  /// Ask the server to self-check its Play configuration.
+  ///
+  /// Costs nothing and involves no purchase, so it is the right first step for
+  /// any "billing isn't working" report — previously the only way to learn that
+  /// the setup was broken was for someone to be charged.
+  Future<void> runConfigProbe() async {
+    _safeEmit(state.copyWith(probeRunning: true, clearProbeError: true));
+    try {
+      final checks = await _remoteDs.probePlayConfig();
+      _safeEmit(state.copyWith(probeRunning: false, probeChecks: checks));
+    } catch (e, st) {
+      debugPrint('[BillingCubit] Error in runConfigProbe: $e\n$st');
+      _safeEmit(state.copyWith(
+        probeRunning: false,
+        probeChecks: const [],
+        probeError: 'Couldn\'t reach the server to check your billing setup.',
+      ));
+    }
+  }
+
+  /// User acknowledged the stuck-purchase dialog.
+  void dismissPurchaseAlert() =>
+      _safeEmit(state.copyWith(clearPurchaseAlert: true));
+
+  /// Retry from the stuck-purchase dialog.
+  Future<void> retryStuckPurchase() async {
+    _safeEmit(state.copyWith(clearPurchaseAlert: true, purchaseInProgress: true));
+    final granted = await _purchaseSync.reverifyActive();
+    if (!granted) {
+      // reverifyActive emits its own failure event when it has a purchase to
+      // work with; this covers the case where there is nothing cached at all.
+      _safeEmit(state.copyWith(purchaseInProgress: false));
+      await _purchaseSync.restore();
     }
   }
 

@@ -26,6 +26,8 @@ flavors/
 keystore-base64.txt
 **/key.properties
 supabase/.temp/
+ledgify-deploy-*.json
+*service-account*.json
 
 # Local agent worktrees — per-machine, never shared via git
 .claude/worktrees/

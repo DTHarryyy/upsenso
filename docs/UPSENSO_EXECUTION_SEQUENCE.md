@@ -237,10 +237,13 @@ driven (see the roadmap's dependency graph).
         tamper-proof (reuses M1 audit chain), then eAccReg enrollment + TWG demo.
         Build the `pos_devices` model **together with** M7.1's device cap. Note:
         once accredited, major invoice-logic changes require **re-accreditation**.
-26. [ ] **M7.1 Subscription & limits** — spec in
+26. [~] **M7.1 Subscription & limits** — spec in
         `UPSENSO_SUBSCRIPTION_AND_LIMITS_DESIGN.md` (PHP pricing, entitlement
-        layer, offline distributed-limit reconciliation). Needs a payment gateway
-        (GCash/Maya/card) — its own sub-project.
+        layer, offline distributed-limit reconciliation). **Gateway is Google
+        Play Billing, not GCash/Maya** — PayMongo retired 2026-07-24, see
+        `UPSENSO_PLAY_BILLING.md`. Engine, migrations, edge functions, client
+        flow and hardening are built; remaining work is activation + the
+        `cloud_gate_enforced` flip (below).
 27. [ ] **M7.2–7.4** multi-currency, hardware/integrations, push notifications.
 28. [ ] **M8** (continuous) — delta-sync at scale + conflict UI, security/RLS
         audit, CI test gates, performance, web parity.
@@ -310,6 +313,51 @@ From `CLAUDE.md` — a step isn't `[x]` until all hold:
 > cannot resolve a flag naming themselves (live RLS); cashier sees no fraud
 > nav; (2) commit (nothing committed yet — the whole M1 diff is in the
 > working tree).**
+
+> **2026-07-28 — M7.1 Play Billing hardening. CODE COMPLETE, NOTHING APPLIED TO
+> PROD.** `flutter analyze` clean, 195 tests green (72 in `test/features/billing/`).
+> Full detail in `UPSENSO_PLAY_BILLING.md`; plan at
+> `C:\Users\User\.claude\plans\so-iwant-you-to-splendid-bonbon.md`.
+>
+> Fixed the reported bug — a Starter→Growth upgrade granted correctly but still
+> raised a blocking "we couldn't confirm your purchase" dialog, because Play kept
+> returning the replaced token and its 409 was read as charged-but-not-granted.
+> Server now returns `play_superseded`; client treats it as silent.
+>
+> Also closed, in the same path: purchase-token hijack (Google's
+> `obfuscatedExternalAccountId` is now compared against `sha256(business_id)` —
+> previously any valid unbound token could be claimed by whoever presented it
+> first); client-controlled plan id (`sub.productId ?? productId` fallback let a
+> Starter buyer claim Growth); post-upgrade silent downgrade (stale-token guard on
+> `apply_play_subscription`); permanently-dropped RTDNs (ledger row was written
+> before processing, so a retry was answered "duplicate"); RTDN forgery (OIDC push
+> auth replaces the URL-query secret that was logged in plaintext); unbounded
+> verify/restore loop; unthrottled probe that could exhaust the shared Google
+> quota for every tenant.
+>
+> **REMAINING, in order:**
+> 1. Apply `20260728000001_play_billing_hardening.sql` statement-by-statement
+>    (**never `supabase db push`**).
+> 2. Deploy both edge functions — `verify-play-purchase` with JWT,
+>    `google-play-rtdn` with `--no-verify-jwt`.
+> 3. RTDN auth cutover: set `PLAY_RTDN_PUSH_SA` + `PLAY_RTDN_ALLOW_LEGACY=true`,
+>    run `gcloud pubsub subscriptions update --push-auth-service-account`, confirm
+>    OIDC deliveries, then turn legacy off and delete the shared secret.
+> 4. **Flip the cloud gate** — `20260728000002_enable_cloud_gate.sql`, applied
+>    SEPARATELY and last. Verified read-only against prod 2026-07-28:
+>    `cloud_gate_enforced = false` (confirmed), 8 businesses `trialing` until
+>    **2026-08-09** (unaffected today, they lapse on that date), 1 `lapsed`
+>    license-tester account that loses cloud writes immediately. Nobody is
+>    mid-grace. Until this flips, the paywall is advisory — `has_cloud_access()`
+>    returns TRUE for everyone and the unsigned local `entitlement_cache` is the
+>    only gate. Rollback is a one-row UPDATE.
+> 5. Run `tool/billing_rls_checks.sql` §7–§11 against a preview branch — it has
+>    never been run.
+> 6. Live E2E with a Play license tester: free → Starter → Growth → annual →
+>    downgrade → cancel → refund. The Starter→Growth leg must complete with no
+>    dialog.
+> 7. Commit (nothing committed yet — the billing diff is in the working tree
+>    alongside the M1 diff).
 
 ### Active priority order
 **M2 (AI insights) → M5 (CRM) → M1 (fraud+audit, deferred) → M-BIR → M-LEGAL → ship.**

@@ -84,9 +84,13 @@ class EntitlementService {
 
   /// Refresh from the server and persist. Non-blocking at call sites
   /// (fire-and-forget from bootstrap); failures keep the cached snapshot.
-  Future<void> syncEntitlement() async {
+  ///
+  /// Returns whether the refresh actually landed. A swallowed failure here used
+  /// to be invisible to the purchase flow, which reported "granted" while the
+  /// plan card still showed the old tier.
+  Future<bool> syncEntitlement() async {
     final businessId = _activeBusinessContext.businessId;
-    if (businessId == null || businessId.isEmpty) return;
+    if (businessId == null || businessId.isEmpty) return false;
     try {
       final data = await _remoteDs.fetchMyEntitlement();
       await _persist(businessId, data);
@@ -95,11 +99,17 @@ class EntitlementService {
       // The server usage counts can lag or under-count local-only data — take
       // seats & branches from the live local tally (device stays server-sourced).
       await recomputeLocalUsage();
+      // Bump regardless: recomputeLocalUsage owns the only other bump and it
+      // swallows its own failures, so a plan that changed here would otherwise
+      // never reach the UI.
+      _entitlementRevision.value++;
       debugPrint(
           '[EntitlementService] synced — plan=${_cached?.planCode} status=$effectiveStatus');
+      return true;
     } catch (e, st) {
       // Offline or pre-migration server: cached snapshot stays authoritative.
       debugPrint('[EntitlementService] Error in syncEntitlement: $e\n$st');
+      return false;
     }
   }
 

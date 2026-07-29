@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
+import 'package:pos/core/env/app_env.dart';
 import 'package:pos/core/permissions/entitlement_service.dart';
 import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
@@ -58,6 +59,10 @@ class _BillingViewState extends State<_BillingView>
   bool get _canManage =>
       sl<PermissionService>().can(PermissionKeys.billingManage);
 
+  /// Server-configuration diagnostics belong to us, not to the shop owner
+  /// looking at their bill — so they never ship in a release build.
+  bool get _showDiagnostics => _canManage && !AppEnv.isProd;
+
   @override
   void initState() {
     super.initState();
@@ -93,6 +98,127 @@ class _BillingViewState extends State<_BillingView>
   void _snack(String msg) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
+  /// Run the Play config health check and show what it found.
+  ///
+  /// Uses the State's own context after the await, so `mounted` is the correct
+  /// guard for it.
+  Future<void> _runProbe() async {
+    final cubit = context.read<BillingCubit>();
+    await cubit.runConfigProbe();
+    if (!mounted) return;
+    final s = cubit.state;
+    if (s.probeError != null) {
+      _snack(s.probeError!);
+      return;
+    }
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          s.probeChecks.every((c) => c.ok)
+              ? 'Billing setup looks good'
+              : 'Billing setup needs attention',
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final c in s.probeChecks) _probeRow(c),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _probeRow(BillingProbeCheck c) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            c.ok ? Icons.check_circle_rounded : Icons.error_rounded,
+            size: 18,
+            color: c.ok ? AppColors.success : AppColors.error,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  c.label,
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                Text(
+                  c.detail,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    height: 1.35,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The user's money is already gone but the plan isn't on — that must not be
+  /// a snackbar they can scroll past.
+  Future<void> _showPurchaseAlert(BuildContext context, String message) async {
+    final cubit = context.read<BillingCubit>();
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Purchase needs attention'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              cubit.dismissPurchaseAlert();
+            },
+            child: const Text('Close'),
+          ),
+          // A charged-but-ungranted purchase is usually a config fault, so put
+          // the diagnostic exactly where the user notices the problem.
+          if (_canManage)
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                cubit.dismissPurchaseAlert();
+                _runProbe();
+              },
+              child: const Text('Diagnose'),
+            ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              cubit.retryStuckPurchase();
+            },
+            child: const Text('Try again'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -104,9 +230,23 @@ class _BillingViewState extends State<_BillingView>
       ),
       body: BlocConsumer<BillingCubit, BillingState>(
         listenWhen: (prev, curr) =>
-            curr.purchaseError != null &&
-            curr.purchaseError != prev.purchaseError,
-        listener: (context, state) => _snack(state.purchaseError!),
+            (curr.purchaseError != null &&
+                curr.purchaseError != prev.purchaseError) ||
+            (curr.purchaseAlert != null &&
+                curr.purchaseAlert != prev.purchaseAlert) ||
+            curr.purchaseNotice != null,
+        listener: (context, state) {
+          // Each channel gets its own treatment and none of them swallows
+          // another: an alert used to suppress a co-present error entirely, so
+          // whichever arrived second was simply never shown.
+          if (state.purchaseNotice != null) _snack(state.purchaseNotice!);
+          if (state.purchaseError != null) _snack(state.purchaseError!);
+          // A charged-but-ungranted purchase gets a dialog it must dismiss; a
+          // plain failure stays a snackbar.
+          if (state.purchaseAlert != null) {
+            _showPurchaseAlert(context, state.purchaseAlert!);
+          }
+        },
         builder: (context, state) {
           if (state.status == BillingStatus.loading) {
             return const AppSkeletonList(itemCount: 4);
@@ -227,18 +367,43 @@ class _BillingViewState extends State<_BillingView>
           ),
           const SizedBox(height: 16),
         ],
+        // Say why a plan can't be bought here, rather than only at the moment
+        // the user taps Upgrade and gets a dead end.
+        if (s.playSupported && s.storeNotice != null) ...[
+          AppInlineBanner(
+            message: s.storeNotice!,
+            variant: AppInlineBannerVariant.warning,
+          ),
+          const SizedBox(height: 16),
+        ],
         Center(child: _periodToggle()),
         const SizedBox(height: 24),
         _planCards(context, s),
         if (s.playSupported) ...[
           const SizedBox(height: 16),
           Center(
-            child: TextButton.icon(
-              onPressed: s.purchaseInProgress
-                  ? null
-                  : () => context.read<BillingCubit>().restore(),
-              icon: const Icon(Icons.restore_rounded, size: 18),
-              label: const Text('Restore purchases'),
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              children: [
+                TextButton.icon(
+                  onPressed: s.purchaseInProgress
+                      ? null
+                      : () => context.read<BillingCubit>().restore(),
+                  icon: const Icon(Icons.restore_rounded, size: 18),
+                  label: const Text('Restore purchases'),
+                ),
+                // Off in production: this reports on OUR server configuration,
+                // which is a support question, not a merchant one — a red row
+                // here reads as "the app is broken" to someone who can't act on
+                // it. Still one tap away in dev/staging, and reachable from the
+                // stuck-purchase dialog where it's actually diagnostic.
+                if (_showDiagnostics)
+                  TextButton.icon(
+                    onPressed: s.probeRunning ? null : _runProbe,
+                    icon: const Icon(Icons.health_and_safety_outlined, size: 18),
+                    label: const Text('Check billing setup'),
+                  ),
+              ],
             ),
           ),
         ],

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:iconly/iconly.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
@@ -6,9 +6,9 @@ import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 
-/// Floating bottom nav: a rounded pill holds the regular tabs, and a
-/// standalone circular scanner button sits to its right — tapping it jumps
-/// straight to the POS terminal (branch index 2).
+/// Flat bottom nav: a full-width bar with a hairline top border, tabs split
+/// evenly around a centered circular scanner button that jumps straight to
+/// the POS terminal (branch index 2).
 class AppBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -43,62 +43,30 @@ class AppBottomNav extends StatelessWidget {
             ? _inventoryStaffItems(canViewProducts: canViewProducts)
             : _fullNavItems(canViewProducts: canViewProducts);
 
-    // The scanner is a centered docked button; nav items split around it.
-    // Without POS access there's no scanner, so all items stay in one row.
+    // The scanner sits in the middle of the row; tabs split around it.
+    // Without POS access there's no scanner, so all tabs stay in one run.
     final splitAt = canUsePOS ? (items.length / 2).ceil() : items.length;
-    final leftItems = items.sublist(0, splitAt);
-    final rightItems = items.sublist(splitAt);
 
-    Widget pillItem(_NavSpec item) => _NavPillItem(
+    Widget tab(_NavSpec item) => _NavTab(
           spec: item,
           isActive: currentIndex == item.index,
           onTap: () => onTap(item.index),
         );
 
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.borderSoft)),
+      ),
+      child: SafeArea(
+        top: false,
         child: SizedBox(
-          height: 62,
-          child: Stack(
-            clipBehavior: Clip.none,
+          height: 60,
+          child: Row(
             children: [
-              // ── Tab pill with a center notch for the docked scanner ──────
-              Positioned.fill(
-                child: Container(
-                  padding: const EdgeInsets.all(5),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(31),
-                    border: Border.all(color: AppColors.borderSoft),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 24,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      for (final item in leftItems) pillItem(item),
-                      // Notch gap reserving room for the raised scanner.
-                      if (canUsePOS) const SizedBox(width: 64),
-                      for (final item in rightItems) pillItem(item),
-                    ],
-                  ),
-                ),
-              ),
-
-              // ── Centered docked scanner button → POS terminal ────────────
-              if (canUsePOS)
-                Positioned(
-                  top: -12,
-                  left: 0,
-                  right: 0,
-                  child: Center(child: _ScannerButton(onTap: () => onTap(2))),
-                ),
+              for (final item in items.sublist(0, splitAt)) tab(item),
+              if (canUsePOS) _ScannerButton(onTap: () => onTap(2)),
+              for (final item in items.sublist(splitAt)) tab(item),
             ],
           ),
         ),
@@ -189,12 +157,12 @@ class _NavSpec {
   });
 }
 
-class _NavPillItem extends StatelessWidget {
+class _NavTab extends StatelessWidget {
   final _NavSpec spec;
   final bool isActive;
   final VoidCallback onTap;
 
-  const _NavPillItem({
+  const _NavTab({
     required this.spec,
     required this.isActive,
     required this.onTap,
@@ -202,68 +170,39 @@ class _NavPillItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = isActive ? AppColors.brand : AppColors.textMuted;
+
     return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2),
-        child: GestureDetector(
-          onTap: onTap,
-          behavior: HitTestBehavior.opaque,
-          // Full-slot stadium highlight — hugging the content squeezed the
-          // label into clipped text on narrow screens.
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 320),
-            curve: Curves.easeOutCubic,
-            decoration: BoxDecoration(
-              color: isActive ? AppColors.brandSoft : Colors.transparent,
-              borderRadius: BorderRadius.circular(26),
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isActive ? spec.activeIcon : spec.icon,
+              color: color,
+              size: 22,
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Cross-fade + gentle scale between the light and bold glyph
-                // so the icon swap doesn't pop.
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 260),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  transitionBuilder: (child, anim) => FadeTransition(
-                    opacity: anim,
-                    child: ScaleTransition(
-                      scale: Tween<double>(begin: 0.8, end: 1.0).animate(anim),
-                      child: child,
-                    ),
-                  ),
-                  child: Icon(
-                    isActive ? spec.activeIcon : spec.icon,
-                    key: ValueKey<bool>(isActive),
-                    color: isActive ? AppColors.brand : AppColors.textMuted,
-                    size: 21,
+            const SizedBox(height: 4),
+            // Fixed-height FittedBox: the label shrinks to fit its slot instead
+            // of clipping, even at bumped device text scales.
+            SizedBox(
+              height: 13,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  spec.label,
+                  maxLines: 1,
+                  style: getOutfitStyle(
+                    fontSize: 10.5,
+                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                    color: color,
                   ),
                 ),
-                const SizedBox(height: 3),
-                // Fixed-height FittedBox: the label shrinks to fit its slot
-                // instead of clipping, even at bumped device text scales.
-                SizedBox(
-                  height: 13,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: AnimatedDefaultTextStyle(
-                      duration: const Duration(milliseconds: 320),
-                      curve: Curves.easeOutCubic,
-                      style: getOutfitStyle(
-                        fontSize: 10.5,
-                        fontWeight:
-                            isActive ? FontWeight.w600 : FontWeight.w400,
-                        color:
-                            isActive ? AppColors.brand : AppColors.textMuted,
-                      ),
-                      child: Text(spec.label, maxLines: 1),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -277,26 +216,23 @@ class _ScannerButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 62,
-        height: 62,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: AppColors.brand,
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.brand.withValues(alpha: 0.35),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+    return Expanded(
+      child: Center(
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: 50,
+            height: 50,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.brand,
             ),
-          ],
-        ),
-        child: const Icon(
-          IconlyBold.scan,
-          color: AppColors.textInverse,
-          size: 26,
+            child: const Icon(
+              IconlyBold.scan,
+              color: AppColors.textInverse,
+              size: 24,
+            ),
+          ),
         ),
       ),
     );

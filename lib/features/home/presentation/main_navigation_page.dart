@@ -264,9 +264,9 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
             return _SyncStatusProvider(
               builder: (isOnline, pendingSyncCount) => Scaffold(
                 key: _scaffoldKey,
-                // The floating nav has no opaque background — let content
-                // scroll behind it so it reads as an overlay, not a strip.
-                extendBody: true,
+                // The nav is an opaque strip now — content stops above it
+                // instead of scrolling underneath and getting hidden.
+                extendBody: false,
                 drawer: const Drawer(
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.zero,

@@ -11,6 +11,7 @@ import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_service.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/features/auth/domain/entities/app_user.dart';
+import 'package:pos/features/billing/data/play_purchase_sync_service.dart';
 
 import '../../domain/usecases/check_email_exists.dart';
 import '../../domain/usecases/get_current_user.dart';
@@ -592,6 +593,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     // Drop the authoritative active tenant — guards every getAny-free resolver.
     sl<ActiveBusinessContext>().clear();
+    // Same reasoning for the cached Play purchase: the next account on this
+    // device must not offer the previous tenant's subscription to Play as the
+    // "old purchase" of its own plan change.
+    sl<PlayPurchaseSyncService>().reset();
 
     emit(AuthUnauthenticated());
 
@@ -616,6 +621,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         );
       }
       sl<ActiveBusinessContext>().clear();
+      sl<PlayPurchaseSyncService>().reset();
       syncService?.pause();
       emit(AuthUnauthenticated());
       return;

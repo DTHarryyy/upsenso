@@ -76,6 +76,41 @@ class IapService {
     }
   }
 
+  /// Pick the [ProductDetails] that actually represents [basePlanId]'s standard
+  /// price.
+  ///
+  /// Play returns ONE entry per base plan *and per discounted offer*, and every
+  /// one of them carries the same product id — so keying a map on the id keeps
+  /// whichever happened to come last. That is how a free-trial offer's token and
+  /// its ₱0 price can end up driving a purchase the user isn't eligible for.
+  /// Prefer the entry whose `offerId` is null: that is the plain base plan.
+  static ProductDetails? selectBasePlanOffer(
+    Iterable<ProductDetails> candidates,
+    String basePlanId,
+  ) {
+    ProductDetails? basePlanMatch;
+    ProductDetails? anyMatch;
+    ProductDetails? fallback;
+
+    for (final d in candidates) {
+      fallback ??= d;
+      final offer = _offerOf(d);
+      if (offer == null) continue;
+      if (basePlanId.isNotEmpty && offer.basePlanId != basePlanId) continue;
+      anyMatch ??= d;
+      if (offer.offerId == null) basePlanMatch ??= d;
+    }
+    return basePlanMatch ?? anyMatch ?? fallback;
+  }
+
+  static SubscriptionOfferDetailsWrapper? _offerOf(ProductDetails d) {
+    if (d is! GooglePlayProductDetails) return null;
+    final offers = d.productDetails.subscriptionOfferDetails;
+    final i = d.subscriptionIndex;
+    if (offers == null || i == null || i < 0 || i >= offers.length) return null;
+    return offers[i];
+  }
+
   /// Launch the Play purchase flow for a subscription (subscriptions are
   /// non-consumable). [accountId] binds the purchase to the tenant on Google's
   /// side (obfuscated account id) for anti-fraud + webhook linkage. The return
@@ -91,12 +126,16 @@ class IapService {
     ProductDetails product, {
     String? accountId,
     PurchaseDetails? oldPurchase,
-    ReplacementMode replacementMode = ReplacementMode.chargeProratedPrice,
+    ReplacementMode replacementMode = ReplacementMode.withTimeProration,
   }) async {
     if (!isSupportedPlatform) return false;
     // Falls back to a plain purchase if the old one isn't a Play purchase —
-    // never worth crashing the buy flow over, and Play rejects a bad change
-    // param anyway.
+    // never worth crashing the buy flow over. It used to fail mute, which hid
+    // the case where a replacement silently became a second subscription.
+    if (oldPurchase != null && oldPurchase is! GooglePlayPurchaseDetails) {
+      debugPrint('[IapService] oldPurchase is ${oldPurchase.runtimeType}, not a '
+          'GooglePlayPurchaseDetails — buying without replacement');
+    }
     final change = oldPurchase is GooglePlayPurchaseDetails
         ? ChangeSubscriptionParam(
             oldPurchaseDetails: oldPurchase,
