@@ -104,7 +104,12 @@ class BillingCubit extends Cubit<BillingState> {
         clearPurchaseAlert: true,
       ));
 
-  Future<void> load() async {
+  /// Refresh everything the page shows.
+  ///
+  /// [restorePurchases] is false only for the reload a successful grant
+  /// triggers: that purchase is already verified, and restoring it would
+  /// re-emit it, re-grant it, and reload again — a server round trip per lap.
+  Future<void> load({bool restorePurchases = true}) async {
     // Recount seats/branches from local Drift so the usage meters are accurate
     // from the first paint — even offline, before any server sync.
     await _entitlement.recomputeLocalUsage();
@@ -150,13 +155,19 @@ class BillingCubit extends Cubit<BillingState> {
         // Skipped once we already hold one, because a grant reloads the page and
         // a reload used to restore, which re-emitted the purchase and granted
         // again — a loop with a server round trip on every lap.
-        if (_purchaseSync.activePurchase == null) {
-          _pendingRestore =
-              _purchaseSync.restore().catchError((Object e, StackTrace st) {
-            debugPrint('[BillingCubit] restore on open failed: $e\n$st');
+        if (restorePurchases && _purchaseSync.activePurchase == null) {
+          _safeEmit(state.copyWith(restoreInProgress: true));
+          _pendingRestore = _purchaseSync.restore().catchError(
+            (Object e, StackTrace st) {
+              debugPrint('[BillingCubit] restore on open failed: $e\n$st');
+            },
+          ).whenComplete(() {
+            _safeEmit(_withOwnedProduct(
+                state.copyWith(restoreInProgress: false)));
           });
           unawaited(_pendingRestore);
         }
+        _safeEmit(_withOwnedProduct(state));
       }
     } catch (e, st) {
       debugPrint('[BillingCubit] Error in load: $e\n$st');
@@ -170,7 +181,8 @@ class BillingCubit extends Cubit<BillingState> {
     }
   }
 
-  Future<void> refresh() => load();
+  Future<void> refresh({bool restorePurchases = true}) =>
+      load(restorePurchases: restorePurchases);
 
   // ── Google Play purchase flow ───────────────────────────────────────────────
 
@@ -390,22 +402,39 @@ class BillingCubit extends Cubit<BillingState> {
 
   /// Ask Play to re-emit what this account owns, so a reinstall or a second
   /// device recovers its plan. Verification happens in PlayPurchaseSyncService;
-  /// this only drives the spinner.
+  /// this only drives the progress line.
+  ///
+  /// There is no button for this — restore runs by itself at startup, on
+  /// opening this page, on resume, when connectivity returns, and on retry
+  /// backoff. It stays public for the stuck-purchase dialog's fallback and for
+  /// pull-to-refresh.
   Future<void> restore() async {
     if (!_iap.isSupportedPlatform) return;
-    _safeEmit(state.copyWith(purchaseInProgress: true, clearPurchaseError: true));
+    _safeEmit(state.copyWith(restoreInProgress: true, clearPurchaseError: true));
     try {
       await _purchaseSync.restore();
-      // Restored items land on the event stream and settle the spinner there;
-      // drop it now in case the account owns nothing to restore.
-      _safeEmit(state.copyWith(purchaseInProgress: false));
+      // Restored items land on the event stream and settle the purchase spinner
+      // there; this only clears our own progress line.
+      _safeEmit(_withOwnedProduct(state.copyWith(restoreInProgress: false)));
     } catch (e, st) {
       debugPrint('[BillingCubit] Error in restore: $e\n$st');
       _safeEmit(state.copyWith(
-        purchaseInProgress: false,
-        purchaseError: 'Couldn\'t restore purchases. Please try again.',
+        restoreInProgress: false,
+        purchaseError: 'Couldn\'t check your Google Play purchases. Pull down '
+            'to refresh and try again.',
       ));
     }
+  }
+
+  /// Mirror Play's owned product onto the state so the summary card can deep
+  /// link to that exact subscription. Play — not the entitlement — is the
+  /// authority here; the two disagree whenever a purchase went unverified.
+  BillingState _withOwnedProduct(BillingState s) {
+    final owned = _purchaseSync.activePurchase?.productID;
+    return s.copyWith(
+      ownedProductId: owned,
+      clearOwnedProductId: owned == null,
+    );
   }
 
   /// UI feedback only — the grant already happened (or didn't) in the service,
@@ -424,7 +453,9 @@ class BillingCubit extends Cubit<BillingState> {
           purchaseNotice: event.message,
         ));
         // Pull the catalog/history/devices too; the plan itself is already live.
-        unawaited(load());
+        // No restore: this purchase is already verified, and re-emitting it
+        // would grant → reload → restore → grant in a loop.
+        unawaited(load(restorePurchases: false));
       case PlayPurchasePhase.superseded:
         // The old subscription of a plan change that already succeeded. Nothing
         // to tell the user — surfacing it is precisely the bug where a working
@@ -450,26 +481,6 @@ class BillingCubit extends Cubit<BillingState> {
           purchaseInProgress: false,
           purchaseAlert: event.message,
         ));
-    }
-  }
-
-  /// Ask the server to self-check its Play configuration.
-  ///
-  /// Costs nothing and involves no purchase, so it is the right first step for
-  /// any "billing isn't working" report — previously the only way to learn that
-  /// the setup was broken was for someone to be charged.
-  Future<void> runConfigProbe() async {
-    _safeEmit(state.copyWith(probeRunning: true, clearProbeError: true));
-    try {
-      final checks = await _remoteDs.probePlayConfig();
-      _safeEmit(state.copyWith(probeRunning: false, probeChecks: checks));
-    } catch (e, st) {
-      debugPrint('[BillingCubit] Error in runConfigProbe: $e\n$st');
-      _safeEmit(state.copyWith(
-        probeRunning: false,
-        probeChecks: const [],
-        probeError: 'Couldn\'t reach the server to check your billing setup.',
-      ));
     }
   }
 
@@ -513,6 +524,8 @@ class BillingCubit extends Cubit<BillingState> {
       cloudEnabled: _entitlement.cloudEnabled,
       daysRemaining: _entitlement.daysRemaining,
       grandfatheredPrice: _entitlement.grandfatheredPrice,
+      billingPeriod: _entitlement.billingPeriod,
+      renewsOn: _entitlement.renewsOn,
       branchUsage: _entitlement.usageOf(EntitlementResource.branches),
       seatUsage: _entitlement.usageOf(EntitlementResource.seats),
       deviceUsage: _entitlement.usageOf(EntitlementResource.devices),

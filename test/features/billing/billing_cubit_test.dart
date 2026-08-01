@@ -183,6 +183,8 @@ void main() {
     when(() => entitlement.cloudEnabled).thenReturn(true);
     when(() => entitlement.daysRemaining).thenReturn(null);
     when(() => entitlement.grandfatheredPrice).thenReturn(null);
+    when(() => entitlement.billingPeriod).thenReturn('monthly');
+    when(() => entitlement.renewsOn).thenReturn(null);
     when(() => entitlement.usageOf(any())).thenReturn(1);
     when(() => entitlement.effectiveMax(any())).thenReturn(3);
     when(() => entitlement.syncEntitlement()).thenAnswer((_) async => true);
@@ -579,6 +581,36 @@ void main() {
       act: (c) => c.load(),
       verify: (_) => verifyNever(() => purchaseSync.restore()),
     );
+
+    // There is no Restore button any more, so this automatic sweep IS the
+    // recovery path for a reinstall or a second device.
+    blocTest<BillingCubit, BillingState>(
+      'opening the page restores when Play has reported nothing yet',
+      build: build,
+      act: (c) => c.load(),
+      verify: (_) => verify(() => purchaseSync.restore()).called(1),
+    );
+
+    // The grant already verified this purchase; restoring re-emits it, which
+    // grants again, which reloads — a server round trip per lap.
+    blocTest<BillingCubit, BillingState>(
+      'a grant-driven reload does not restore',
+      build: build,
+      act: (c) => c.load(restorePurchases: false),
+      verify: (_) => verifyNever(() => purchaseSync.restore()),
+    );
+
+    blocTest<BillingCubit, BillingState>(
+      'the owned Play product reaches the state for the manage deep link',
+      setUp: () {
+        when(() => purchaseSync.activePurchase)
+            .thenReturn(_ownedPurchase('upsenso_growth_annual'));
+      },
+      build: build,
+      act: (c) => c.load(),
+      verify: (c) =>
+          expect(c.state.ownedProductId, 'upsenso_growth_annual'),
+    );
   });
 
   // Regression: the page renders a COPY of the entitlement. Without these the
@@ -759,54 +791,6 @@ void main() {
       expect(notices, contains(contains('active')));
       expect(errors.every((e) => e == null), isTrue);
     });
-  });
-
-  // The probe exists so a broken Play setup can be found without charging
-  // anyone — that only holds if a failing check still reaches the user.
-  group('config probe', () {
-    blocTest<BillingCubit, BillingState>(
-      'surfaces failing checks rather than only a pass/fail',
-      setUp: () {
-        when(() => connectivity.isConnected).thenAnswer((_) async => false);
-        when(() => remoteDs.probePlayConfig()).thenAnswer((_) async => const [
-              BillingProbeCheck(
-                stage: 'secrets',
-                ok: true,
-                detail: 'package "com.ledgidy.pos", key secret 2300 chars',
-              ),
-              BillingProbeCheck(
-                stage: 'google_app_access',
-                ok: false,
-                detail: 'subscriptions.list failed: 403',
-              ),
-            ]);
-      },
-      build: build,
-      act: (c) => c.runConfigProbe(),
-      verify: (c) {
-        expect(c.state.probeRunning, isFalse);
-        expect(c.state.probeError, isNull);
-        expect(c.state.probeChecks.length, 2);
-        expect(c.state.probeChecks.last.ok, isFalse);
-        expect(c.state.probeChecks.last.label, 'Play Store access');
-      },
-    );
-
-    blocTest<BillingCubit, BillingState>(
-      'a probe that cannot run reports an error and clears the spinner',
-      setUp: () {
-        when(() => connectivity.isConnected).thenAnswer((_) async => false);
-        when(() => remoteDs.probePlayConfig())
-            .thenThrow(const PlayVerifyException(500, 'boom'));
-      },
-      build: build,
-      act: (c) => c.runConfigProbe(),
-      verify: (c) {
-        expect(c.state.probeRunning, isFalse);
-        expect(c.state.probeError, isNotNull);
-        expect(c.state.probeChecks, isEmpty);
-      },
-    );
   });
 
   // Leaving the Billing page mid-load closed the cubit while the catalog fetch

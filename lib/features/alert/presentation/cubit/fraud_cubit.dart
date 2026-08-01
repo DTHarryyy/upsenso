@@ -26,21 +26,28 @@ class FraudCubit extends Cubit<FraudState> {
   Map<String, String> _branchNameById = const {};
   String? _ownerUserId;
 
+  // Filters live here rather than in the widget so a stream tick can re-emit
+  // without dropping them — a background sync used to be able to reset what
+  // the operator was looking at mid-triage.
+  List<FraudAlert> _alerts = const [];
+  AlertStatus? _statusFilter;
+  AlertSeverity? _severityFilter;
+  String _query = '';
+
   FraudCubit({
     required FraudFlagsDao flagsDao,
     required AppDatabase db,
     required PermissionService permissionService,
     required ActiveBusinessContext activeBusinessContext,
     required AuditLogService auditLogService,
-  })  : _flagsDao = flagsDao,
-        _db = db,
-        _permissionService = permissionService,
-        _activeBusinessContext = activeBusinessContext,
-        _auditLogService = auditLogService,
-        super(const FraudLoading());
+  }) : _flagsDao = flagsDao,
+       _db = db,
+       _permissionService = permissionService,
+       _activeBusinessContext = activeBusinessContext,
+       _auditLogService = auditLogService,
+       super(const FraudLoading());
 
-  bool get canResolve =>
-      _permissionService.can(PermissionKeys.fraudResolve);
+  bool get canResolve => _permissionService.can(PermissionKeys.fraudResolve);
 
   bool canResolveAlert(FraudAlert alert) => triageDenialReason(alert) == null;
 
@@ -52,7 +59,7 @@ class FraudCubit extends Cubit<FraudState> {
   /// need cross-branch access). Returns a user-facing reason, null = allowed.
   String? triageDenialReason(FraudAlert alert) {
     if (!canResolve) {
-      return 'You don\'t have permission to triage fraud alerts.';
+      return 'You don\'t have permission to review unusual activity.';
     }
     final me = _activeBusinessContext.userId;
     if (alert.subjectUserId != null &&
@@ -80,40 +87,79 @@ class FraudCubit extends Cubit<FraudState> {
       emit(const FraudError('No active business.'));
       return;
     }
+    // Retry after an error has to fall back to the spinner, or the failed
+    // screen stays up until the first stream tick lands.
+    if (state is FraudError) emit(const FraudLoading());
     try {
       await _loadLookups(businessId);
 
       // Client mirror of the server's branch scoping: without cross-branch
       // access, only your own branch's flags are shown.
-      final branchId = _permissionService
-              .can(PermissionKeys.dataCrossBranchAccess)
+      final branchId =
+          _permissionService.can(PermissionKeys.dataCrossBranchAccess)
           ? null
           : ((_activeBusinessContext.branchId?.isNotEmpty ?? false)
-              ? _activeBusinessContext.branchId
-              : null);
+                ? _activeBusinessContext.branchId
+                : null);
 
       await _sub?.cancel();
-      _sub = _flagsDao
-          .watchByBusiness(businessId, branchId: branchId)
-          .listen((rows) {
+      _sub = _flagsDao.watchByBusiness(businessId, branchId: branchId).listen((
+        rows,
+      ) {
         if (isClosed) return;
-        emit(FraudLoaded(
-          alerts: [
-            for (final row in rows)
-              FraudAlert.fromRow(
-                row,
-                nameFor: _nameFor,
-                branchNameFor: _branchNameFor,
-              ),
-          ],
-        ));
+        _alerts = [
+          for (final row in rows)
+            FraudAlert.fromRow(
+              row,
+              nameFor: _nameFor,
+              branchNameFor: _branchNameFor,
+            ),
+        ];
+        _emitLoaded();
       });
     } catch (e, st) {
       debugPrint('[FraudCubit] Error in load: $e\n$st');
       if (!isClosed) {
-        emit(const FraudError('Could not load fraud alerts.'));
+        emit(const FraudError('Could not load unusual activity.'));
       }
     }
+  }
+
+  /// null clears the filter.
+  void setStatusFilter(AlertStatus? status) =>
+      _applyFilter(() => _statusFilter = status);
+
+  void setSeverityFilter(AlertSeverity? severity) =>
+      _applyFilter(() => _severityFilter = severity);
+
+  void search(String query) => _applyFilter(() => _query = query.trim());
+
+  void clearFilters() => _applyFilter(() {
+    _statusFilter = null;
+    _severityFilter = null;
+    _query = '';
+  });
+
+  // A filter change is only meaningful once there is a list to filter —
+  // otherwise it would paint an empty list over a loading or error screen.
+  void _applyFilter(VoidCallback mutate) {
+    if (state is! FraudLoaded) return;
+    mutate();
+    _emitLoaded();
+  }
+
+  // Single funnel for every loaded emit, so the current filters are always
+  // carried through — including on a stream tick the user didn't trigger.
+  void _emitLoaded() {
+    if (isClosed) return;
+    emit(
+      FraudLoaded(
+        alerts: _alerts,
+        statusFilter: _statusFilter,
+        severityFilter: _severityFilter,
+        query: _query,
+      ),
+    );
   }
 
   /// Applies a triage transition. Returns null on success, otherwise a
@@ -139,7 +185,7 @@ class FraudCubit extends Cubit<FraudState> {
         entityType: 'fraud_flag',
         entityId: alert.id,
         description:
-            'Fraud alert "${alert.title}" marked ${status.dbValue}',
+            'Unusual activity "${alert.title}" marked ${status.dbValue}',
         metadata: {
           'rule_code': alert.ruleCode,
           'status': status.dbValue,

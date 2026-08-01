@@ -22,9 +22,10 @@ for Premium access.
 | Google Play API helper (JWT auth, get, acknowledge) | `supabase/functions/_shared/google_play.ts` |
 | Verify a purchase → grant (client-initiated) | `supabase/functions/verify-play-purchase/index.ts` |
 | RTDN lifecycle (renew/cancel/hold/refund) | `supabase/functions/google-play-rtdn/index.ts` |
-| Store driver (query/buy/restore/complete) | `lib/features/billing/data/iap_service.dart` |
+| Store driver (query/buy/restore/complete, manage deep link) | `lib/features/billing/data/iap_service.dart` |
 | Purchase flow, offers, restore, error states | `lib/features/billing/presentation/cubit/billing_cubit.dart` |
 | Android→Play / Web→read-only UI | `lib/features/billing/presentation/billing_page.dart` |
+| Ladder vs. subscribed summary | `lib/features/billing/presentation/tabs/billing_plans_tab.dart`, `widgets/current_plan_card.dart` |
 
 Nothing here hardcodes a Play SKU id — the ids live only in `play_product_map`,
 seeded during activation (step 4).
@@ -239,9 +240,9 @@ ON CONFLICT (product_id, base_plan_id) DO NOTHING;
 
 ### 6. Verify the configuration — free, before spending anything
 
-Open Billing as an owner and tap **Check billing setup**. Every row must be
-green; each failure names its own fix (see *Config health check* below). Do this
-first — it costs nothing, and it catches every setup fault that used to be
+Run the config probe (see *Config health check* below — it is a curl, not an
+in-app button). Every stage must be green; each failure names its own fix. Do
+this first — it costs nothing, and it catches every setup fault that used to be
 discoverable only by charging someone.
 
 ### 7. Test end-to-end (license tester on Android internal track)
@@ -260,7 +261,8 @@ Only once step 6 is fully green.
    Starter annual. No Play dialog at any step; `plan_code` / `billing_period`
    follow each change. Cross-period switches must use `withTimeProration`;
    `chargeProratedPrice` is rejected by Play across periods.
-5. **Restore purchases** on a reinstall re-verifies and re-grants.
+5. **Restore is automatic** — reinstall and open the app; the plan comes back
+   with no button pressed (see *Restore* below).
 6. RTDN: cancel in Play → `SUBSCRIPTION_CANCELED` keeps access to expiry;
    let it expire / refund → entitlement lapses, cloud pauses, local data intact.
 7. Run `tool/billing_rls_checks.sql` §7–§11 against a preview branch.
@@ -278,12 +280,50 @@ Only once step 6 is fully green.
 
 ---
 
+## Restore — automatic, with no button
+
+There is deliberately **no "Restore purchases" button**. A merchant who has paid
+should not have to know the word "restore", let alone find it. Restore runs on
+its own in five places:
+
+| Trigger | Where |
+|---|---|
+| App start | `bootstrap.dart` → `PlayPurchaseSyncService.start()` then `restore()` |
+| Opening Billing | `BillingCubit.load()`, only when Play has reported nothing owned |
+| App resume | `BillingPage.didChangeAppLifecycleState` → `refresh()` → `load()` — this is what catches a change made in the Play subscriptions screen |
+| Connectivity returns | `PlayPurchaseSyncService`, when retryable tokens are pending |
+| Backoff retry | `PlayPurchaseSyncService`, 5s × 2ⁿ, max 5 attempts per token |
+
+While one is in flight the Plans tab says *"Checking your Google Play
+purchases…"* — silent background work on a billing page reads as a hang.
+
+`load()` takes `restorePurchases:`, and the reload a successful grant triggers
+passes `false`: that purchase is already verified, and restoring it re-emits it,
+which grants again, which reloads — one edge-function invoke per lap.
+
+Two manual paths remain for a merchant who is genuinely stuck:
+**pull-to-refresh** on the Plans tab, and **Try again** in the
+charged-but-not-granted dialog (`retryStuckPurchase()` → `reverifyActive()`,
+falling back to `restore()`).
+
+---
+
 ## Config health check (start here)
 
 Before reading logs — and **before charging anyone to find out something is
-broken** — run the built-in probe. On the Billing page, an owner sees
-**"Check billing setup"** next to *Restore purchases* (also offered as
-**Diagnose** in the charged-but-not-granted dialog).
+broken** — run the probe.
+
+This is a **support tool, not a merchant one**, so it has no UI. It reports on
+*our* server configuration: a shop owner can neither read nor act on a failing
+row, and a red row there reads to them as "the app is broken". Call it directly:
+
+```bash
+curl -sS -X POST "$SUPABASE_URL/functions/v1/verify-play-purchase" \
+  -H "Authorization: Bearer $USER_ACCESS_TOKEN" \
+  -H "apikey: $SUPABASE_ANON_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"probe": true}' | jq .
+```
 
 It calls `verify-play-purchase` with `{"probe": true}` — same auth as a real
 verify (signed-in user with `billing.manage`), no purchase token, no secrets in
@@ -380,4 +420,6 @@ Three things now prevent it:
   `apply_play_subscription` — without it a late RTDN for the old token silently
   downgraded the tenant back to the previous plan.
 - The client memoises granted tokens, so `granted → reload → restore → verify →
-  granted` no longer loops, and `load()` only restores when it holds no purchase.
+  granted` no longer loops. `load()` only restores when it holds no purchase,
+  and the grant-driven reload now passes `restorePurchases: false` outright
+  rather than relying on that guard alone.

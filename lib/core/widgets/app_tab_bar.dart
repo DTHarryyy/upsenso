@@ -2,19 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
 
-/// Underline tab bar for the report sections — mirrors the Receipt Settings
-/// tabs (brand-tinted active label with a sliding underline) so the app reads
-/// with one tab language everywhere.
+/// Underline tab bar (brand-tinted active label with a sliding underline) so
+/// every tabbed page in the app — Reports, Billing, Settings — reads with one
+/// tab language.
 ///
-/// Driven by an index + callback so it stays a drop-in for the manual body
-/// switch in the reports page; it owns a private [TabController] purely to
-/// borrow Material's sliding indicator instead of hand-rolling one.
-class ReportTabBar extends StatefulWidget {
+/// Driven by an index + callback so it stays a drop-in for a manual body
+/// switch (e.g. an [IndexedStack]); it owns a private [TabController] purely
+/// to borrow Material's sliding indicator instead of hand-rolling one.
+class AppTabBar extends StatefulWidget {
   final List<String> tabs;
   final int selectedIndex;
   final ValueChanged<int> onTabSelected;
 
-  const ReportTabBar({
+  const AppTabBar({
     super.key,
     required this.tabs,
     required this.selectedIndex,
@@ -22,10 +22,10 @@ class ReportTabBar extends StatefulWidget {
   });
 
   @override
-  State<ReportTabBar> createState() => _ReportTabBarState();
+  State<AppTabBar> createState() => _AppTabBarState();
 }
 
-class _ReportTabBarState extends State<ReportTabBar>
+class _AppTabBarState extends State<AppTabBar>
     with SingleTickerProviderStateMixin {
   TabController? _controller;
 
@@ -45,8 +45,9 @@ class _ReportTabBarState extends State<ReportTabBar>
     )..addListener(_onControllerChanged);
   }
 
-  int get _clampedIndex =>
-      widget.tabs.isEmpty ? 0 : widget.selectedIndex.clamp(0, widget.tabs.length - 1);
+  int get _clampedIndex => widget.tabs.isEmpty
+      ? 0
+      : widget.selectedIndex.clamp(0, widget.tabs.length - 1);
 
   void _onControllerChanged() {
     final c = _controller!;
@@ -57,10 +58,10 @@ class _ReportTabBarState extends State<ReportTabBar>
   }
 
   @override
-  void didUpdateWidget(ReportTabBar old) {
+  void didUpdateWidget(AppTabBar old) {
     super.didUpdateWidget(old);
-    // The Branches tab appears/disappears with branch count, so the tab count
-    // can change under us — rebuild the controller when it does.
+    // Tab sets can change under us (e.g. a branch-count-driven tab) — rebuild
+    // the controller when the count changes.
     if (old.tabs.length != widget.tabs.length) {
       _rebuildController();
     } else if (widget.selectedIndex != _controller!.index) {

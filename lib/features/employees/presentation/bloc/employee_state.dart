@@ -101,15 +101,20 @@ class EmployeeValidationFailure extends EmployeeState {
   final Map<String, String> fieldErrors;
   final EmployeeLoaded? loaded;
 
+  /// The failure was the plan's seat cap, not bad input — lets the form offer
+  /// the upgrade moment (§4.3) instead of only an inline error.
+  final bool seatLimitReached;
+
   const EmployeeValidationFailure({
     required this.fieldErrors,
     this.loaded,
+    this.seatLimitReached = false,
   });
 
   String get firstMessage => fieldErrors.values.first;
 
   @override
-  List<Object?> get props => [fieldErrors, loaded];
+  List<Object?> get props => [fieldErrors, loaded, seatLimitReached];
 }
 
 class EmployeeOperationSuccess extends EmployeeState {

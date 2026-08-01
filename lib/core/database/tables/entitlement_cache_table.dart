@@ -7,7 +7,7 @@ import 'package:drift/drift.dart';
 /// only makes the answer available offline. Tampering with it unlocks nothing
 /// with cloud value: every remote write dies at RLS regardless.
 ///
-/// This table is schema version 58.
+/// This table is schema version 58 (billing_period added in 59).
 @DataClassName('EntitlementCacheRow')
 class EntitlementCacheTable extends Table {
   @override
@@ -24,6 +24,10 @@ class EntitlementCacheTable extends Table {
   TextColumn get status => text().withDefault(const Constant('free'))();
 
   BoolColumn get cloudEnabled => boolean().withDefault(const Constant(false))();
+
+  /// monthly | annual. Null on Free and on rows written before v59 — the UI
+  /// then omits the period suffix rather than guessing one.
+  TextColumn get billingPeriod => text().nullable()();
 
   /// JSON-encoded feature flags, e.g. `{"crm":"basic","procurement":false}`.
   TextColumn get featureFlagsJson => text().withDefault(const Constant('{}'))();

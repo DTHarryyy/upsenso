@@ -16,6 +16,10 @@ class AppEmptyState extends StatelessWidget {
   final String? actionLabel;
   final VoidCallback? onAction;
 
+  /// Defaults to a plus because most empty states invite creating the first
+  /// record — override it when the CTA recovers instead of creates.
+  final IconData actionIcon;
+
   const AppEmptyState({
     super.key,
     required this.icon,
@@ -23,6 +27,7 @@ class AppEmptyState extends StatelessWidget {
     this.message,
     this.actionLabel,
     this.onAction,
+    this.actionIcon = Icons.add_rounded,
   });
 
   @override
@@ -71,7 +76,7 @@ class AppEmptyState extends StatelessWidget {
                 width: 220,
                 child: AppFilledButton(
                   label: actionLabel!,
-                  icon: Icons.add_rounded,
+                  icon: actionIcon,
                   onPressed: onAction,
                 ),
               ),

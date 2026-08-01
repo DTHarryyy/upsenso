@@ -8,6 +8,7 @@ import 'package:pos/core/database/daos/employee_permissions_dao.dart';
 import 'package:pos/core/database/daos/employees_dao.dart';
 import 'package:pos/core/permissions/data/permission_remote_ds.dart';
 import 'package:pos/core/permissions/default_permission_matrix.dart';
+import 'package:pos/core/permissions/entitlement_enforcement_service.dart';
 import 'package:pos/core/permissions/entitlement_service.dart';
 import 'package:pos/core/permissions/role_permission_matrix.dart';
 import 'package:pos/core/sync/sync_status.dart';
@@ -297,6 +298,17 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
       throw const EmployeeProtectedException();
     }
 
+    // Reactivating consumes a seat exactly like hiring does. Without this a
+    // downgraded tenant could suspend nobody and simply re-enable everyone the
+    // enforcement pass had just parked — and the server's
+    // enforce_seat_cap_on_reactivate trigger would reject the sync much later,
+    // leaving the local row lying about who can sign in.
+    if (active &&
+        !await sl<EntitlementService>()
+            .canAddAnother(EntitlementResource.seats)) {
+      throw const EmployeeSeatLimitException();
+    }
+
     await _dao.updateEmployee(
       id,
       EmployeesTableCompanion(
@@ -316,6 +328,9 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
       description: 'Employee ${existing?.fullName ?? id} $statusLabel',
       metadata: {'is_active': active},
     );
+    // Seat count moved either way — keep the meter and the lock set honest.
+    await sl<EntitlementService>().recomputeLocalUsage();
+    await sl<EntitlementEnforcementService>().reconcile();
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────

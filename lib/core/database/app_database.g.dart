@@ -29203,6 +29203,17 @@ class $EntitlementCacheTableTable extends EntitlementCacheTable
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _billingPeriodMeta = const VerificationMeta(
+    'billingPeriod',
+  );
+  @override
+  late final GeneratedColumn<String> billingPeriod = GeneratedColumn<String>(
+    'billing_period',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _featureFlagsJsonMeta = const VerificationMeta(
     'featureFlagsJson',
   );
@@ -29360,6 +29371,7 @@ class $EntitlementCacheTableTable extends EntitlementCacheTable
     planVersion,
     status,
     cloudEnabled,
+    billingPeriod,
     featureFlagsJson,
     maxBranches,
     maxSeats,
@@ -29421,6 +29433,15 @@ class $EntitlementCacheTableTable extends EntitlementCacheTable
         cloudEnabled.isAcceptableOrUnknown(
           data['cloud_enabled']!,
           _cloudEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('billing_period')) {
+      context.handle(
+        _billingPeriodMeta,
+        billingPeriod.isAcceptableOrUnknown(
+          data['billing_period']!,
+          _billingPeriodMeta,
         ),
       );
     }
@@ -29552,6 +29573,10 @@ class $EntitlementCacheTableTable extends EntitlementCacheTable
         DriftSqlType.bool,
         data['${effectivePrefix}cloud_enabled'],
       )!,
+      billingPeriod: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}billing_period'],
+      ),
       featureFlagsJson: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}feature_flags_json'],
@@ -29625,6 +29650,10 @@ class EntitlementCacheRow extends DataClass
   final String status;
   final bool cloudEnabled;
 
+  /// monthly | annual. Null on Free and on rows written before v59 — the UI
+  /// then omits the period suffix rather than guessing one.
+  final String? billingPeriod;
+
   /// JSON-encoded feature flags, e.g. `{"crm":"basic","procurement":false}`.
   final String featureFlagsJson;
 
@@ -29652,6 +29681,7 @@ class EntitlementCacheRow extends DataClass
     required this.planVersion,
     required this.status,
     required this.cloudEnabled,
+    this.billingPeriod,
     required this.featureFlagsJson,
     this.maxBranches,
     this.maxSeats,
@@ -29674,6 +29704,9 @@ class EntitlementCacheRow extends DataClass
     map['plan_version'] = Variable<int>(planVersion);
     map['status'] = Variable<String>(status);
     map['cloud_enabled'] = Variable<bool>(cloudEnabled);
+    if (!nullToAbsent || billingPeriod != null) {
+      map['billing_period'] = Variable<String>(billingPeriod);
+    }
     map['feature_flags_json'] = Variable<String>(featureFlagsJson);
     if (!nullToAbsent || maxBranches != null) {
       map['max_branches'] = Variable<int>(maxBranches);
@@ -29713,6 +29746,9 @@ class EntitlementCacheRow extends DataClass
       planVersion: Value(planVersion),
       status: Value(status),
       cloudEnabled: Value(cloudEnabled),
+      billingPeriod: billingPeriod == null && nullToAbsent
+          ? const Value.absent()
+          : Value(billingPeriod),
       featureFlagsJson: Value(featureFlagsJson),
       maxBranches: maxBranches == null && nullToAbsent
           ? const Value.absent()
@@ -29756,6 +29792,7 @@ class EntitlementCacheRow extends DataClass
       planVersion: serializer.fromJson<int>(json['planVersion']),
       status: serializer.fromJson<String>(json['status']),
       cloudEnabled: serializer.fromJson<bool>(json['cloudEnabled']),
+      billingPeriod: serializer.fromJson<String?>(json['billingPeriod']),
       featureFlagsJson: serializer.fromJson<String>(json['featureFlagsJson']),
       maxBranches: serializer.fromJson<int?>(json['maxBranches']),
       maxSeats: serializer.fromJson<int?>(json['maxSeats']),
@@ -29786,6 +29823,7 @@ class EntitlementCacheRow extends DataClass
       'planVersion': serializer.toJson<int>(planVersion),
       'status': serializer.toJson<String>(status),
       'cloudEnabled': serializer.toJson<bool>(cloudEnabled),
+      'billingPeriod': serializer.toJson<String?>(billingPeriod),
       'featureFlagsJson': serializer.toJson<String>(featureFlagsJson),
       'maxBranches': serializer.toJson<int?>(maxBranches),
       'maxSeats': serializer.toJson<int?>(maxSeats),
@@ -29808,6 +29846,7 @@ class EntitlementCacheRow extends DataClass
     int? planVersion,
     String? status,
     bool? cloudEnabled,
+    Value<String?> billingPeriod = const Value.absent(),
     String? featureFlagsJson,
     Value<int?> maxBranches = const Value.absent(),
     Value<int?> maxSeats = const Value.absent(),
@@ -29827,6 +29866,9 @@ class EntitlementCacheRow extends DataClass
     planVersion: planVersion ?? this.planVersion,
     status: status ?? this.status,
     cloudEnabled: cloudEnabled ?? this.cloudEnabled,
+    billingPeriod: billingPeriod.present
+        ? billingPeriod.value
+        : this.billingPeriod,
     featureFlagsJson: featureFlagsJson ?? this.featureFlagsJson,
     maxBranches: maxBranches.present ? maxBranches.value : this.maxBranches,
     maxSeats: maxSeats.present ? maxSeats.value : this.maxSeats,
@@ -29860,6 +29902,9 @@ class EntitlementCacheRow extends DataClass
       cloudEnabled: data.cloudEnabled.present
           ? data.cloudEnabled.value
           : this.cloudEnabled,
+      billingPeriod: data.billingPeriod.present
+          ? data.billingPeriod.value
+          : this.billingPeriod,
       featureFlagsJson: data.featureFlagsJson.present
           ? data.featureFlagsJson.value
           : this.featureFlagsJson,
@@ -29904,6 +29949,7 @@ class EntitlementCacheRow extends DataClass
           ..write('planVersion: $planVersion, ')
           ..write('status: $status, ')
           ..write('cloudEnabled: $cloudEnabled, ')
+          ..write('billingPeriod: $billingPeriod, ')
           ..write('featureFlagsJson: $featureFlagsJson, ')
           ..write('maxBranches: $maxBranches, ')
           ..write('maxSeats: $maxSeats, ')
@@ -29928,6 +29974,7 @@ class EntitlementCacheRow extends DataClass
     planVersion,
     status,
     cloudEnabled,
+    billingPeriod,
     featureFlagsJson,
     maxBranches,
     maxSeats,
@@ -29951,6 +29998,7 @@ class EntitlementCacheRow extends DataClass
           other.planVersion == this.planVersion &&
           other.status == this.status &&
           other.cloudEnabled == this.cloudEnabled &&
+          other.billingPeriod == this.billingPeriod &&
           other.featureFlagsJson == this.featureFlagsJson &&
           other.maxBranches == this.maxBranches &&
           other.maxSeats == this.maxSeats &&
@@ -29973,6 +30021,7 @@ class EntitlementCacheTableCompanion
   final Value<int> planVersion;
   final Value<String> status;
   final Value<bool> cloudEnabled;
+  final Value<String?> billingPeriod;
   final Value<String> featureFlagsJson;
   final Value<int?> maxBranches;
   final Value<int?> maxSeats;
@@ -29993,6 +30042,7 @@ class EntitlementCacheTableCompanion
     this.planVersion = const Value.absent(),
     this.status = const Value.absent(),
     this.cloudEnabled = const Value.absent(),
+    this.billingPeriod = const Value.absent(),
     this.featureFlagsJson = const Value.absent(),
     this.maxBranches = const Value.absent(),
     this.maxSeats = const Value.absent(),
@@ -30014,6 +30064,7 @@ class EntitlementCacheTableCompanion
     this.planVersion = const Value.absent(),
     this.status = const Value.absent(),
     this.cloudEnabled = const Value.absent(),
+    this.billingPeriod = const Value.absent(),
     this.featureFlagsJson = const Value.absent(),
     this.maxBranches = const Value.absent(),
     this.maxSeats = const Value.absent(),
@@ -30035,6 +30086,7 @@ class EntitlementCacheTableCompanion
     Expression<int>? planVersion,
     Expression<String>? status,
     Expression<bool>? cloudEnabled,
+    Expression<String>? billingPeriod,
     Expression<String>? featureFlagsJson,
     Expression<int>? maxBranches,
     Expression<int>? maxSeats,
@@ -30056,6 +30108,7 @@ class EntitlementCacheTableCompanion
       if (planVersion != null) 'plan_version': planVersion,
       if (status != null) 'status': status,
       if (cloudEnabled != null) 'cloud_enabled': cloudEnabled,
+      if (billingPeriod != null) 'billing_period': billingPeriod,
       if (featureFlagsJson != null) 'feature_flags_json': featureFlagsJson,
       if (maxBranches != null) 'max_branches': maxBranches,
       if (maxSeats != null) 'max_seats': maxSeats,
@@ -30079,6 +30132,7 @@ class EntitlementCacheTableCompanion
     Value<int>? planVersion,
     Value<String>? status,
     Value<bool>? cloudEnabled,
+    Value<String?>? billingPeriod,
     Value<String>? featureFlagsJson,
     Value<int?>? maxBranches,
     Value<int?>? maxSeats,
@@ -30100,6 +30154,7 @@ class EntitlementCacheTableCompanion
       planVersion: planVersion ?? this.planVersion,
       status: status ?? this.status,
       cloudEnabled: cloudEnabled ?? this.cloudEnabled,
+      billingPeriod: billingPeriod ?? this.billingPeriod,
       featureFlagsJson: featureFlagsJson ?? this.featureFlagsJson,
       maxBranches: maxBranches ?? this.maxBranches,
       maxSeats: maxSeats ?? this.maxSeats,
@@ -30134,6 +30189,9 @@ class EntitlementCacheTableCompanion
     }
     if (cloudEnabled.present) {
       map['cloud_enabled'] = Variable<bool>(cloudEnabled.value);
+    }
+    if (billingPeriod.present) {
+      map['billing_period'] = Variable<String>(billingPeriod.value);
     }
     if (featureFlagsJson.present) {
       map['feature_flags_json'] = Variable<String>(featureFlagsJson.value);
@@ -30188,6 +30246,7 @@ class EntitlementCacheTableCompanion
           ..write('planVersion: $planVersion, ')
           ..write('status: $status, ')
           ..write('cloudEnabled: $cloudEnabled, ')
+          ..write('billingPeriod: $billingPeriod, ')
           ..write('featureFlagsJson: $featureFlagsJson, ')
           ..write('maxBranches: $maxBranches, ')
           ..write('maxSeats: $maxSeats, ')
@@ -30596,6 +30655,402 @@ class ResourceUsageCacheTableCompanion
   }
 }
 
+class $EntitlementLocksTableTable extends EntitlementLocksTable
+    with TableInfo<$EntitlementLocksTableTable, EntitlementLockRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $EntitlementLocksTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _resourceKindMeta = const VerificationMeta(
+    'resourceKind',
+  );
+  @override
+  late final GeneratedColumn<String> resourceKind = GeneratedColumn<String>(
+    'resource_kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _resourceIdMeta = const VerificationMeta(
+    'resourceId',
+  );
+  @override
+  late final GeneratedColumn<String> resourceId = GeneratedColumn<String>(
+    'resource_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lockedAtMeta = const VerificationMeta(
+    'lockedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lockedAt = GeneratedColumn<DateTime>(
+    'locked_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _lockedUnderPlanMeta = const VerificationMeta(
+    'lockedUnderPlan',
+  );
+  @override
+  late final GeneratedColumn<String> lockedUnderPlan = GeneratedColumn<String>(
+    'locked_under_plan',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('free'),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    businessId,
+    resourceKind,
+    resourceId,
+    lockedAt,
+    lockedUnderPlan,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'entitlement_locks';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<EntitlementLockRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('resource_kind')) {
+      context.handle(
+        _resourceKindMeta,
+        resourceKind.isAcceptableOrUnknown(
+          data['resource_kind']!,
+          _resourceKindMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_resourceKindMeta);
+    }
+    if (data.containsKey('resource_id')) {
+      context.handle(
+        _resourceIdMeta,
+        resourceId.isAcceptableOrUnknown(data['resource_id']!, _resourceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_resourceIdMeta);
+    }
+    if (data.containsKey('locked_at')) {
+      context.handle(
+        _lockedAtMeta,
+        lockedAt.isAcceptableOrUnknown(data['locked_at']!, _lockedAtMeta),
+      );
+    }
+    if (data.containsKey('locked_under_plan')) {
+      context.handle(
+        _lockedUnderPlanMeta,
+        lockedUnderPlan.isAcceptableOrUnknown(
+          data['locked_under_plan']!,
+          _lockedUnderPlanMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {
+    businessId,
+    resourceKind,
+    resourceId,
+  };
+  @override
+  EntitlementLockRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return EntitlementLockRow(
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      resourceKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}resource_kind'],
+      )!,
+      resourceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}resource_id'],
+      )!,
+      lockedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}locked_at'],
+      )!,
+      lockedUnderPlan: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}locked_under_plan'],
+      )!,
+    );
+  }
+
+  @override
+  $EntitlementLocksTableTable createAlias(String alias) {
+    return $EntitlementLocksTableTable(attachedDatabase, alias);
+  }
+}
+
+class EntitlementLockRow extends DataClass
+    implements Insertable<EntitlementLockRow> {
+  final String businessId;
+
+  /// One of [EntitlementLockKinds].
+  final String resourceKind;
+
+  /// Branch id or employee id, depending on [resourceKind].
+  final String resourceId;
+  final DateTime lockedAt;
+
+  /// Plan code in force when the lock was applied — lets the UI say "locked
+  /// when you moved to Free" rather than a bare "locked".
+  final String lockedUnderPlan;
+  const EntitlementLockRow({
+    required this.businessId,
+    required this.resourceKind,
+    required this.resourceId,
+    required this.lockedAt,
+    required this.lockedUnderPlan,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['business_id'] = Variable<String>(businessId);
+    map['resource_kind'] = Variable<String>(resourceKind);
+    map['resource_id'] = Variable<String>(resourceId);
+    map['locked_at'] = Variable<DateTime>(lockedAt);
+    map['locked_under_plan'] = Variable<String>(lockedUnderPlan);
+    return map;
+  }
+
+  EntitlementLocksTableCompanion toCompanion(bool nullToAbsent) {
+    return EntitlementLocksTableCompanion(
+      businessId: Value(businessId),
+      resourceKind: Value(resourceKind),
+      resourceId: Value(resourceId),
+      lockedAt: Value(lockedAt),
+      lockedUnderPlan: Value(lockedUnderPlan),
+    );
+  }
+
+  factory EntitlementLockRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return EntitlementLockRow(
+      businessId: serializer.fromJson<String>(json['businessId']),
+      resourceKind: serializer.fromJson<String>(json['resourceKind']),
+      resourceId: serializer.fromJson<String>(json['resourceId']),
+      lockedAt: serializer.fromJson<DateTime>(json['lockedAt']),
+      lockedUnderPlan: serializer.fromJson<String>(json['lockedUnderPlan']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'businessId': serializer.toJson<String>(businessId),
+      'resourceKind': serializer.toJson<String>(resourceKind),
+      'resourceId': serializer.toJson<String>(resourceId),
+      'lockedAt': serializer.toJson<DateTime>(lockedAt),
+      'lockedUnderPlan': serializer.toJson<String>(lockedUnderPlan),
+    };
+  }
+
+  EntitlementLockRow copyWith({
+    String? businessId,
+    String? resourceKind,
+    String? resourceId,
+    DateTime? lockedAt,
+    String? lockedUnderPlan,
+  }) => EntitlementLockRow(
+    businessId: businessId ?? this.businessId,
+    resourceKind: resourceKind ?? this.resourceKind,
+    resourceId: resourceId ?? this.resourceId,
+    lockedAt: lockedAt ?? this.lockedAt,
+    lockedUnderPlan: lockedUnderPlan ?? this.lockedUnderPlan,
+  );
+  EntitlementLockRow copyWithCompanion(EntitlementLocksTableCompanion data) {
+    return EntitlementLockRow(
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      resourceKind: data.resourceKind.present
+          ? data.resourceKind.value
+          : this.resourceKind,
+      resourceId: data.resourceId.present
+          ? data.resourceId.value
+          : this.resourceId,
+      lockedAt: data.lockedAt.present ? data.lockedAt.value : this.lockedAt,
+      lockedUnderPlan: data.lockedUnderPlan.present
+          ? data.lockedUnderPlan.value
+          : this.lockedUnderPlan,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('EntitlementLockRow(')
+          ..write('businessId: $businessId, ')
+          ..write('resourceKind: $resourceKind, ')
+          ..write('resourceId: $resourceId, ')
+          ..write('lockedAt: $lockedAt, ')
+          ..write('lockedUnderPlan: $lockedUnderPlan')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    businessId,
+    resourceKind,
+    resourceId,
+    lockedAt,
+    lockedUnderPlan,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is EntitlementLockRow &&
+          other.businessId == this.businessId &&
+          other.resourceKind == this.resourceKind &&
+          other.resourceId == this.resourceId &&
+          other.lockedAt == this.lockedAt &&
+          other.lockedUnderPlan == this.lockedUnderPlan);
+}
+
+class EntitlementLocksTableCompanion
+    extends UpdateCompanion<EntitlementLockRow> {
+  final Value<String> businessId;
+  final Value<String> resourceKind;
+  final Value<String> resourceId;
+  final Value<DateTime> lockedAt;
+  final Value<String> lockedUnderPlan;
+  final Value<int> rowid;
+  const EntitlementLocksTableCompanion({
+    this.businessId = const Value.absent(),
+    this.resourceKind = const Value.absent(),
+    this.resourceId = const Value.absent(),
+    this.lockedAt = const Value.absent(),
+    this.lockedUnderPlan = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  EntitlementLocksTableCompanion.insert({
+    required String businessId,
+    required String resourceKind,
+    required String resourceId,
+    this.lockedAt = const Value.absent(),
+    this.lockedUnderPlan = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : businessId = Value(businessId),
+       resourceKind = Value(resourceKind),
+       resourceId = Value(resourceId);
+  static Insertable<EntitlementLockRow> custom({
+    Expression<String>? businessId,
+    Expression<String>? resourceKind,
+    Expression<String>? resourceId,
+    Expression<DateTime>? lockedAt,
+    Expression<String>? lockedUnderPlan,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (businessId != null) 'business_id': businessId,
+      if (resourceKind != null) 'resource_kind': resourceKind,
+      if (resourceId != null) 'resource_id': resourceId,
+      if (lockedAt != null) 'locked_at': lockedAt,
+      if (lockedUnderPlan != null) 'locked_under_plan': lockedUnderPlan,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  EntitlementLocksTableCompanion copyWith({
+    Value<String>? businessId,
+    Value<String>? resourceKind,
+    Value<String>? resourceId,
+    Value<DateTime>? lockedAt,
+    Value<String>? lockedUnderPlan,
+    Value<int>? rowid,
+  }) {
+    return EntitlementLocksTableCompanion(
+      businessId: businessId ?? this.businessId,
+      resourceKind: resourceKind ?? this.resourceKind,
+      resourceId: resourceId ?? this.resourceId,
+      lockedAt: lockedAt ?? this.lockedAt,
+      lockedUnderPlan: lockedUnderPlan ?? this.lockedUnderPlan,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (resourceKind.present) {
+      map['resource_kind'] = Variable<String>(resourceKind.value);
+    }
+    if (resourceId.present) {
+      map['resource_id'] = Variable<String>(resourceId.value);
+    }
+    if (lockedAt.present) {
+      map['locked_at'] = Variable<DateTime>(lockedAt.value);
+    }
+    if (lockedUnderPlan.present) {
+      map['locked_under_plan'] = Variable<String>(lockedUnderPlan.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('EntitlementLocksTableCompanion(')
+          ..write('businessId: $businessId, ')
+          ..write('resourceKind: $resourceKind, ')
+          ..write('resourceId: $resourceId, ')
+          ..write('lockedAt: $lockedAt, ')
+          ..write('lockedUnderPlan: $lockedUnderPlan, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -30678,6 +31133,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $EntitlementCacheTableTable(this);
   late final $ResourceUsageCacheTableTable resourceUsageCacheTable =
       $ResourceUsageCacheTableTable(this);
+  late final $EntitlementLocksTableTable entitlementLocksTable =
+      $EntitlementLocksTableTable(this);
   late final AuthContextDao authContextDao = AuthContextDao(
     this as AppDatabase,
   );
@@ -30800,6 +31257,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     productBarcodesTable,
     entitlementCacheTable,
     resourceUsageCacheTable,
+    entitlementLocksTable,
   ];
 }
 
@@ -44799,6 +45257,7 @@ typedef $$EntitlementCacheTableTableCreateCompanionBuilder =
       Value<int> planVersion,
       Value<String> status,
       Value<bool> cloudEnabled,
+      Value<String?> billingPeriod,
       Value<String> featureFlagsJson,
       Value<int?> maxBranches,
       Value<int?> maxSeats,
@@ -44821,6 +45280,7 @@ typedef $$EntitlementCacheTableTableUpdateCompanionBuilder =
       Value<int> planVersion,
       Value<String> status,
       Value<bool> cloudEnabled,
+      Value<String?> billingPeriod,
       Value<String> featureFlagsJson,
       Value<int?> maxBranches,
       Value<int?> maxSeats,
@@ -44868,6 +45328,11 @@ class $$EntitlementCacheTableTableFilterComposer
 
   ColumnFilters<bool> get cloudEnabled => $composableBuilder(
     column: $table.cloudEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get billingPeriod => $composableBuilder(
+    column: $table.billingPeriod,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -44971,6 +45436,11 @@ class $$EntitlementCacheTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get billingPeriod => $composableBuilder(
+    column: $table.billingPeriod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get featureFlagsJson => $composableBuilder(
     column: $table.featureFlagsJson,
     builder: (column) => ColumnOrderings(column),
@@ -45064,6 +45534,11 @@ class $$EntitlementCacheTableTableAnnotationComposer
 
   GeneratedColumn<bool> get cloudEnabled => $composableBuilder(
     column: $table.cloudEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get billingPeriod => $composableBuilder(
+    column: $table.billingPeriod,
     builder: (column) => column,
   );
 
@@ -45178,6 +45653,7 @@ class $$EntitlementCacheTableTableTableManager
                 Value<int> planVersion = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<bool> cloudEnabled = const Value.absent(),
+                Value<String?> billingPeriod = const Value.absent(),
                 Value<String> featureFlagsJson = const Value.absent(),
                 Value<int?> maxBranches = const Value.absent(),
                 Value<int?> maxSeats = const Value.absent(),
@@ -45198,6 +45674,7 @@ class $$EntitlementCacheTableTableTableManager
                 planVersion: planVersion,
                 status: status,
                 cloudEnabled: cloudEnabled,
+                billingPeriod: billingPeriod,
                 featureFlagsJson: featureFlagsJson,
                 maxBranches: maxBranches,
                 maxSeats: maxSeats,
@@ -45220,6 +45697,7 @@ class $$EntitlementCacheTableTableTableManager
                 Value<int> planVersion = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<bool> cloudEnabled = const Value.absent(),
+                Value<String?> billingPeriod = const Value.absent(),
                 Value<String> featureFlagsJson = const Value.absent(),
                 Value<int?> maxBranches = const Value.absent(),
                 Value<int?> maxSeats = const Value.absent(),
@@ -45240,6 +45718,7 @@ class $$EntitlementCacheTableTableTableManager
                 planVersion: planVersion,
                 status: status,
                 cloudEnabled: cloudEnabled,
+                billingPeriod: billingPeriod,
                 featureFlagsJson: featureFlagsJson,
                 maxBranches: maxBranches,
                 maxSeats: maxSeats,
@@ -45511,6 +45990,233 @@ typedef $$ResourceUsageCacheTableTableProcessedTableManager =
       ResourceUsageCacheRow,
       PrefetchHooks Function()
     >;
+typedef $$EntitlementLocksTableTableCreateCompanionBuilder =
+    EntitlementLocksTableCompanion Function({
+      required String businessId,
+      required String resourceKind,
+      required String resourceId,
+      Value<DateTime> lockedAt,
+      Value<String> lockedUnderPlan,
+      Value<int> rowid,
+    });
+typedef $$EntitlementLocksTableTableUpdateCompanionBuilder =
+    EntitlementLocksTableCompanion Function({
+      Value<String> businessId,
+      Value<String> resourceKind,
+      Value<String> resourceId,
+      Value<DateTime> lockedAt,
+      Value<String> lockedUnderPlan,
+      Value<int> rowid,
+    });
+
+class $$EntitlementLocksTableTableFilterComposer
+    extends Composer<_$AppDatabase, $EntitlementLocksTableTable> {
+  $$EntitlementLocksTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get resourceKind => $composableBuilder(
+    column: $table.resourceKind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get resourceId => $composableBuilder(
+    column: $table.resourceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lockedAt => $composableBuilder(
+    column: $table.lockedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lockedUnderPlan => $composableBuilder(
+    column: $table.lockedUnderPlan,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$EntitlementLocksTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $EntitlementLocksTableTable> {
+  $$EntitlementLocksTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get resourceKind => $composableBuilder(
+    column: $table.resourceKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get resourceId => $composableBuilder(
+    column: $table.resourceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lockedAt => $composableBuilder(
+    column: $table.lockedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lockedUnderPlan => $composableBuilder(
+    column: $table.lockedUnderPlan,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$EntitlementLocksTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $EntitlementLocksTableTable> {
+  $$EntitlementLocksTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get resourceKind => $composableBuilder(
+    column: $table.resourceKind,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get resourceId => $composableBuilder(
+    column: $table.resourceId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lockedAt =>
+      $composableBuilder(column: $table.lockedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get lockedUnderPlan => $composableBuilder(
+    column: $table.lockedUnderPlan,
+    builder: (column) => column,
+  );
+}
+
+class $$EntitlementLocksTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $EntitlementLocksTableTable,
+          EntitlementLockRow,
+          $$EntitlementLocksTableTableFilterComposer,
+          $$EntitlementLocksTableTableOrderingComposer,
+          $$EntitlementLocksTableTableAnnotationComposer,
+          $$EntitlementLocksTableTableCreateCompanionBuilder,
+          $$EntitlementLocksTableTableUpdateCompanionBuilder,
+          (
+            EntitlementLockRow,
+            BaseReferences<
+              _$AppDatabase,
+              $EntitlementLocksTableTable,
+              EntitlementLockRow
+            >,
+          ),
+          EntitlementLockRow,
+          PrefetchHooks Function()
+        > {
+  $$EntitlementLocksTableTableTableManager(
+    _$AppDatabase db,
+    $EntitlementLocksTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$EntitlementLocksTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$EntitlementLocksTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$EntitlementLocksTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> businessId = const Value.absent(),
+                Value<String> resourceKind = const Value.absent(),
+                Value<String> resourceId = const Value.absent(),
+                Value<DateTime> lockedAt = const Value.absent(),
+                Value<String> lockedUnderPlan = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => EntitlementLocksTableCompanion(
+                businessId: businessId,
+                resourceKind: resourceKind,
+                resourceId: resourceId,
+                lockedAt: lockedAt,
+                lockedUnderPlan: lockedUnderPlan,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String businessId,
+                required String resourceKind,
+                required String resourceId,
+                Value<DateTime> lockedAt = const Value.absent(),
+                Value<String> lockedUnderPlan = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => EntitlementLocksTableCompanion.insert(
+                businessId: businessId,
+                resourceKind: resourceKind,
+                resourceId: resourceId,
+                lockedAt: lockedAt,
+                lockedUnderPlan: lockedUnderPlan,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$EntitlementLocksTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $EntitlementLocksTableTable,
+      EntitlementLockRow,
+      $$EntitlementLocksTableTableFilterComposer,
+      $$EntitlementLocksTableTableOrderingComposer,
+      $$EntitlementLocksTableTableAnnotationComposer,
+      $$EntitlementLocksTableTableCreateCompanionBuilder,
+      $$EntitlementLocksTableTableUpdateCompanionBuilder,
+      (
+        EntitlementLockRow,
+        BaseReferences<
+          _$AppDatabase,
+          $EntitlementLocksTableTable,
+          EntitlementLockRow
+        >,
+      ),
+      EntitlementLockRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -45616,4 +46322,6 @@ class $AppDatabaseManager {
         _db,
         _db.resourceUsageCacheTable,
       );
+  $$EntitlementLocksTableTableTableManager get entitlementLocksTable =>
+      $$EntitlementLocksTableTableTableManager(_db, _db.entitlementLocksTable);
 }

@@ -75,7 +75,7 @@ SELECT id, cloud_gate_enforced, trial_days FROM billing_settings;   --> EXPECT 1
 --   INSERT INTO plans (code, version, name, price_monthly, is_active)
 --     VALUES ('growth', 2, 'Growth', 699, true);
 --   INSERT INTO plan_limits (plan_code, plan_version, cloud_enabled, max_branches, max_seats, max_devices, feature_flags)
---     VALUES ('growth', 2, true, 3, 10, 5, '{"crm":"full","procurement":true,"reports":"full","cloud_audit":true}');
+--     VALUES ('growth', 2, true, 5, 15, NULL, '{"crm":"full","procurement":true,"reports":"full","audit":"full"}');
 --   SELECT (entitlement_snapshot->>'price_monthly') FROM subscriptions WHERE business_id = '<biz>';
 --     --> EXPECT: 499  (NOT 699 — the existing sub keeps its sold price)
 

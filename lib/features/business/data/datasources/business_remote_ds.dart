@@ -17,67 +17,11 @@ class BusinessRemoteDs {
     return List<Map<String, dynamic>>.from(response);
   }
 
-  /// Create a new business (upsert so re-sync never fails with duplicate key).
-  Future<Map<String, dynamic>> createBusiness({
-    required String id,
-    required String name,
-    required String ownerId,
-    required String templateId,
-  }) async {
-    // Stamp the device uid so grant_initial_trial can dedup trials per device
-    // (anti-farming §6.2). Identity failure must never block signup.
-    String? deviceUid;
-    try {
-      deviceUid = await _identity.getDeviceUid();
-    } catch (e, st) {
-      debugPrint('[BusinessRemoteDs] Error in createBusiness device uid: $e\n$st');
-    }
-
-    final response = await client
-        .from('businesses')
-        .upsert({
-          'id': id,
-          'name': name,
-          'owner_id': ownerId,
-          'template_id': templateId,
-          'is_active': true,
-          'signup_device_uid': ?deviceUid,
-        })
-        .select()
-        .single();
-
-    return Map<String, dynamic>.from(response);
-  }
-
-  /// Create user with Business Owner role for a business
-  Future<Map<String, dynamic>> createUserForBusiness({
-    required String businessId,
-    required String userId,
-    required String email,
-    required String? fullName,
-    required String ownerRoleId,
-  }) async {
-    final defaultFullName = fullName ?? _extractNameFromEmail(email);
-
-    final userData = {
-      'id': userId,
-      'business_id': businessId,
-      'email': email,
-      'full_name': defaultFullName,
-      'role_id': ownerRoleId,
-      'is_active': true,
-    };
-
-    // Upsert because the auth trigger may have already created a minimal row
-    // (id + email) when the user signed up. We update it with full business context.
-    final response = await client
-        .from('users')
-        .upsert(userData, onConflict: 'id')
-        .select()
-        .single();
-
-    return Map<String, dynamic>.from(response);
-  }
+  // NOTE: createBusiness / applyBusinessTemplate / createUserForBusiness were
+  // removed on 2026-07-31. Provisioning a business piecemeal over several
+  // auto-committing round-trips is what allowed a half-built tenant to exist at
+  // all; createBusinessOnboarding below does the whole thing in one
+  // transaction. Do not reintroduce a partial path.
 
   /// Extract first name from email (part before the first separator or @).
   /// e.g. "john.doe@gmail.com" → "John", "janedoe@mail.com" → "Janedoe"
@@ -90,34 +34,68 @@ class BusinessRemoteDs {
     return firstName[0].toUpperCase() + firstName.substring(1).toLowerCase();
   }
 
-  /// Apply the business template server-side (atomic, idempotent).
+  /// Get business by owner ID.
   ///
-  /// Calls the `apply_business_template` Postgres function which:
-  ///   - Creates the 4 standard roles with correct permission maps
-  ///   - Seeds product categories from the template's default_categories list
-  ///   - Initialises receipt_settings for the business
-  ///
-  /// Returns the Business Owner role UUID so the caller can link the owner.
-  Future<String> applyBusinessTemplate({
-    required String businessId,
-    required String templateId,
-  }) async {
-    final result = await client.rpc(
-      'apply_business_template',
-      params: {'p_business_id': businessId, 'p_template_id': templateId},
-    );
-    return result as String;
-  }
-
-  /// Get business by owner ID
+  /// Ordered + limited rather than a bare `.maybeSingle()`: that form THROWS on
+  /// more than one row, so the 2026-07-26 duplicate-signup bug left the affected
+  /// account unable to start online at all. A unique index now prevents
+  /// duplicates, but this must never be the thing that bricks a user again.
   Future<Map<String, dynamic>?> getBusinessByOwner(String ownerId) async {
     final response = await client
         .from('businesses')
         .select()
         .eq('owner_id', ownerId)
+        .order('created_at')
+        .limit(1)
         .maybeSingle();
 
     return response != null ? Map<String, dynamic>.from(response) : null;
+  }
+
+  /// Provision a whole business in ONE transaction: business + branch + roles +
+  /// permissions + modules + categories + receipt settings + the owner's user
+  /// row. Replaces the old four-round-trip sequence, where a failure part-way
+  /// left a committed but unusable business behind (and a retry made another).
+  ///
+  /// The RPC is idempotent per owner — a retry returns the existing business
+  /// rather than creating a second one. Ids are client-minted so the local
+  /// offline-first rows keep their identity.
+  Future<Map<String, dynamic>> createBusinessOnboarding({
+    required String businessId,
+    required String name,
+    required String templateId,
+    required String branchId,
+    required String branchName,
+    String? fullName,
+    String? email,
+  }) async {
+    // Same display-name fallback the old users upsert applied, kept so an owner
+    // without a full_name still gets a readable name rather than null.
+    final resolvedFullName = (fullName != null && fullName.trim().isNotEmpty)
+        ? fullName
+        : (email != null && email.isNotEmpty
+            ? _extractNameFromEmail(email)
+            : null);
+
+    // Identity failure must never block signup (same rule as the old path).
+    String? deviceUid;
+    try {
+      deviceUid = await _identity.getDeviceUid();
+    } catch (e, st) {
+      debugPrint('[BusinessRemoteDs] Error in onboarding device uid: $e\n$st');
+    }
+
+    final result = await client.rpc('create_business_onboarding', params: {
+      'p_business_id': businessId,
+      'p_name': name,
+      'p_template_id': templateId,
+      'p_branch_id': branchId,
+      'p_branch_name': branchName,
+      'p_full_name': resolvedFullName,
+      'p_signup_device_uid': deviceUid,
+    });
+
+    return Map<String, dynamic>.from(result as Map);
   }
 
   /// Mirror the unified business logo URL onto the business row so the app

@@ -12,6 +12,7 @@ import 'package:pos/core/session/active_business_context.dart';
 import 'package:pos/core/sync/sync_status.dart';
 import 'package:pos/features/alert/data/alert_model.dart';
 import 'package:pos/features/alert/presentation/cubit/fraud_cubit.dart';
+import 'package:pos/features/alert/presentation/cubit/fraud_state.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 
 class MockPermissionService extends Mock implements PermissionService {}
@@ -52,12 +53,7 @@ void main() {
       ),
     ).thenAnswer((_) async {});
     context = ActiveBusinessContext()
-      ..set(
-        userId: 'me1',
-        businessId: 'biz1',
-        branchId: 'br1',
-        fullName: 'Me',
-      );
+      ..set(userId: 'me1', businessId: 'biz1', branchId: 'br1', fullName: 'Me');
   });
 
   tearDown(() async {
@@ -83,7 +79,9 @@ void main() {
   }
 
   Future<void> seedFlag(String id, {String? branchId = 'br1'}) {
-    return db.into(db.fraudFlagsTable).insert(
+    return db
+        .into(db.fraudFlagsTable)
+        .insert(
           FraudFlagsTableCompanion.insert(
             id: id,
             businessId: 'biz1',
@@ -121,14 +119,206 @@ void main() {
     );
   }
 
-  Future<FraudFlagRow> flag(String id) =>
-      (db.select(db.fraudFlagsTable)..where((t) => t.id.equals(id)))
-          .getSingle();
+  Future<FraudFlagRow> flag(String id) => (db.select(
+    db.fraudFlagsTable,
+  )..where((t) => t.id.equals(id))).getSingle();
+
+  Future<void> seedRichFlag(
+    String id, {
+    String severity = 'high',
+    String status = 'new',
+    String title = 't',
+    String description = 'd',
+    String? subjectUserId,
+    String? branchId = 'br1',
+  }) {
+    return db
+        .into(db.fraudFlagsTable)
+        .insert(
+          FraudFlagsTableCompanion.insert(
+            id: id,
+            businessId: 'biz1',
+            branchId: Value(branchId),
+            subjectUserId: Value(subjectUserId),
+            ruleCode: 'HIGH_DISCOUNT',
+            severity: severity,
+            status: Value(status),
+            title: title,
+            description: description,
+            detectedAt: DateTime(2026, 7, 1),
+            dedupeKey: 'HIGH_DISCOUNT|$id',
+            syncStatus: Value(SyncStatus.synced.toInt()),
+          ),
+        );
+  }
+
+  Future<void> seedBranch(String id, String name) {
+    return db
+        .into(db.branchesTable)
+        .insert(
+          BranchesTableCompanion.insert(
+            id: id,
+            businessId: 'biz1',
+            name: name,
+            syncStatus: Value(SyncStatus.synced.toInt()),
+          ),
+        );
+  }
+
+  Future<void> seedEmployee(String userId, String fullName) {
+    return db
+        .into(db.employeesTable)
+        .insert(
+          EmployeesTableCompanion.insert(
+            id: 'emp-$userId',
+            businessId: 'biz1',
+            userId: Value(userId),
+            fullName: Value(fullName),
+          ),
+        );
+  }
+
+  /// The cubit fills its list from a stream, so the first FraudLoaded lands
+  /// after load() returns — every filter test has to wait for it.
+  Future<FraudCubit> loadedCubit() async {
+    final cubit = buildCubit();
+    await cubit.load();
+    await cubit.stream.firstWhere((s) => s is FraudLoaded);
+    return cubit;
+  }
+
+  List<String> idsOf(FraudCubit cubit) => [
+    for (final a in (cubit.state as FraudLoaded).visibleAlerts) a.id,
+  ];
+
+  group('filtering', () {
+    test('no filter shows everything', () async {
+      await seedRichFlag('f1');
+      await seedRichFlag('f2', severity: 'low', status: 'resolved');
+      final cubit = await loadedCubit();
+
+      expect(idsOf(cubit), ['f1', 'f2']);
+      expect((cubit.state as FraudLoaded).isFiltered, isFalse);
+      await cubit.close();
+    });
+
+    test('status and severity compose with the search query', () async {
+      await seedRichFlag('f1', title: 'Refund spike');
+      await seedRichFlag('f2', title: 'Refund spike', severity: 'low');
+      await seedRichFlag('f3', title: 'Discount spike');
+      await seedRichFlag('f4', title: 'Refund spike', status: 'resolved');
+      final cubit = await loadedCubit();
+
+      cubit.setStatusFilter(AlertStatus.newAlert);
+      cubit.setSeverityFilter(AlertSeverity.high);
+      cubit.search('refund');
+
+      expect(idsOf(cubit), ['f1']);
+      expect((cubit.state as FraudLoaded).isFiltered, isTrue);
+      await cubit.close();
+    });
+
+    test('the Dismissed filter also matches false positives', () async {
+      await seedRichFlag('f1', status: 'dismissed');
+      await seedRichFlag('f2', status: 'false_positive');
+      await seedRichFlag('f3', status: 'new');
+      final cubit = await loadedCubit();
+
+      cubit.setStatusFilter(AlertStatus.dismissed);
+
+      expect(idsOf(cubit), ['f1', 'f2']);
+      await cubit.close();
+    });
+
+    test('search is case-insensitive and covers employee and branch', () async {
+      await seedBranch('br1', 'Makati Store');
+      await seedBranch('br2', 'Cebu Store');
+      await seedEmployee('u1', 'Ana Cruz');
+      await seedRichFlag('f1', subjectUserId: 'u1', branchId: 'br1');
+      await seedRichFlag('f2', branchId: 'br2');
+      final cubit = await loadedCubit();
+
+      cubit.search('ANA');
+      expect(idsOf(cubit), ['f1']);
+
+      cubit.search('cebu');
+      expect(idsOf(cubit), ['f2']);
+
+      cubit.search('  Store  ');
+      expect(idsOf(cubit), ['f1', 'f2']);
+      await cubit.close();
+    });
+
+    test('clearFilters resets every axis', () async {
+      await seedRichFlag('f1', title: 'Refund spike');
+      await seedRichFlag('f2', title: 'Discount spike', severity: 'low');
+      final cubit = await loadedCubit();
+
+      cubit.setStatusFilter(AlertStatus.newAlert);
+      cubit.setSeverityFilter(AlertSeverity.high);
+      cubit.search('refund');
+      expect(idsOf(cubit), ['f1']);
+
+      cubit.clearFilters();
+
+      expect(idsOf(cubit), ['f1', 'f2']);
+      expect((cubit.state as FraudLoaded).isFiltered, isFalse);
+      await cubit.close();
+    });
+
+    test(
+      'statusCounts stay unfiltered so the chip badges keep their totals',
+      () async {
+        await seedRichFlag('f1');
+        await seedRichFlag('f2', status: 'resolved');
+        await seedRichFlag('f3', status: 'resolved');
+        final cubit = await loadedCubit();
+
+        cubit.setStatusFilter(AlertStatus.newAlert);
+
+        final loaded = cubit.state as FraudLoaded;
+        expect(loaded.visibleAlerts.length, 1);
+        expect(loaded.statusCounts[AlertStatus.newAlert], 1);
+        expect(loaded.statusCounts[AlertStatus.resolved], 2);
+        await cubit.close();
+      },
+    );
+
+    test('a stream re-emit keeps the active filters', () async {
+      // The regression this design exists to prevent: a background sync must
+      // not reset what the operator is looking at mid-triage.
+      await seedRichFlag('f1', title: 'Refund spike');
+      await seedRichFlag('f2', title: 'Discount spike');
+      final cubit = await loadedCubit();
+
+      cubit.search('refund');
+      expect(idsOf(cubit), ['f1']);
+
+      await seedRichFlag('f3', title: 'Refund structuring');
+      await cubit.stream.firstWhere(
+        (s) => s is FraudLoaded && s.alerts.length == 3,
+      );
+
+      expect(idsOf(cubit), ['f1', 'f3']);
+      expect((cubit.state as FraudLoaded).query, 'refund');
+      await cubit.close();
+    });
+
+    test('filters are ignored before the list loads', () async {
+      final cubit = buildCubit();
+
+      cubit.setStatusFilter(AlertStatus.resolved);
+
+      expect(cubit.state, isA<FraudLoading>());
+      await cubit.close();
+    });
+  });
 
   group('triage denial mirror', () {
     test('denies without fraud.resolve', () async {
-      when(() => permissions.can(PermissionKeys.fraudResolve))
-          .thenReturn(false);
+      when(
+        () => permissions.can(PermissionKeys.fraudResolve),
+      ).thenReturn(false);
       final cubit = buildCubit();
 
       expect(cubit.canResolveAlert(alertOf()), isFalse);
@@ -180,8 +370,9 @@ void main() {
     });
 
     test('denies business-wide alerts without cross-branch access', () async {
-      when(() => permissions.can(PermissionKeys.dataCrossBranchAccess))
-          .thenReturn(false);
+      when(
+        () => permissions.can(PermissionKeys.dataCrossBranchAccess),
+      ).thenReturn(false);
       final cubit = buildCubit();
 
       final result = await cubit.setStatus(
@@ -194,10 +385,10 @@ void main() {
       await cubit.close();
     });
 
-    test("denies another branch's alert without cross-branch access",
-        () async {
-      when(() => permissions.can(PermissionKeys.dataCrossBranchAccess))
-          .thenReturn(false);
+    test("denies another branch's alert without cross-branch access", () async {
+      when(
+        () => permissions.can(PermissionKeys.dataCrossBranchAccess),
+      ).thenReturn(false);
       final cubit = buildCubit();
 
       final result = await cubit.setStatus(
@@ -211,8 +402,9 @@ void main() {
     });
 
     test('allows own-branch alerts without cross-branch access', () async {
-      when(() => permissions.can(PermissionKeys.dataCrossBranchAccess))
-          .thenReturn(false);
+      when(
+        () => permissions.can(PermissionKeys.dataCrossBranchAccess),
+      ).thenReturn(false);
       await seedFlag('f1');
       final cubit = buildCubit();
 

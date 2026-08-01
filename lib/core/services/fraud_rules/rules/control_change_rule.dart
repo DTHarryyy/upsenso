@@ -87,7 +87,7 @@ class ControlChangeRule implements FraudRule {
       drafts.add(FraudFlagDraft(
         ruleCode: code,
         severity: FraudSeverity.medium,
-        title: 'Fraud-control setting changed',
+        title: 'Security setting changed',
         description: concern,
         dedupeKey: '$code|$id',
         detectedAt: createdAt,
@@ -119,8 +119,8 @@ class ControlChangeRule implements FraudRule {
     switch (r.read<String>('action_type')) {
       case 'BUSINESS_MODULE_CHANGED':
         if (meta['module'] == 'audit' && meta['enabled'] == false) {
-          return 'The Audit module was switched OFF — audit and fraud UI '
-              'surfaces are hidden while it stays off (detection itself keeps '
+          return 'The Audit module was switched OFF — audit and unusual-activity '
+              'screens are hidden while it stays off (detection itself keeps '
               'running).';
         }
         return null;
@@ -223,7 +223,7 @@ class _OverrideGroup {
     return FraudFlagDraft(
       ruleCode: code,
       severity: FraudSeverity.medium,
-      title: 'Fraud-control setting changed',
+      title: 'Security setting changed',
       description: description,
       // Day-scoped so the same burst re-detects to one flag, not N.
       dedupeKey: '$code|override|$actor|$day',

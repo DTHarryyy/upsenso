@@ -5,9 +5,15 @@ import 'package:go_router/go_router.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/permissions/app_feature.dart';
+import 'package:pos/core/permissions/entitlement_service.dart';
+import 'package:pos/core/permissions/feature_plan_requirement.dart';
 import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/routes/app_routes.dart';
+import 'package:pos/core/widgets/plan_badge.dart';
+import 'package:pos/core/widgets/plan_lock_badge.dart';
+import 'package:pos/core/widgets/upgrade_prompt.dart';
 import 'package:pos/core/widgets/user_avatar.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
@@ -15,7 +21,6 @@ import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/expenses/presentation/expenses_page.dart';
 import 'package:pos/features/sales/presentation/sales_history.dart';
 import 'package:pos/features/drafts/presentation/held_sales_page.dart';
-import 'package:pos/features/audit_logs/presentation/pages/audit_log_page.dart';
 import 'package:pos/features/employees/presentation/pages/employees_page.dart';
 
 class MorePage extends StatefulWidget {
@@ -97,6 +102,15 @@ class _MorePageState extends State<MorePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Repaint on every entitlement change so a plan switch updates the lock
+    // badges without a restart — same wiring PlanBadge already uses.
+    return ValueListenableBuilder<int>(
+      valueListenable: sl<EntitlementService>().entitlementRevision,
+      builder: (context, _, _) => _buildDrawer(context),
+    );
+  }
+
+  Widget _buildDrawer(BuildContext context) {
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, state) {
         final user = state is AuthAuthenticated ? state.user : null;
@@ -135,6 +149,16 @@ class _MorePageState extends State<MorePage> {
         final canSeeFraud =
             permService.can(PermissionKeys.navFraud) &&
             permService.isModuleEnabled('audit');
+
+        // Plan locks are deliberately NOT folded into the canSee* flags above.
+        // Permission and module say "hide"; the plan says "show it locked", so
+        // the merchant can see what upgrading buys instead of the item silently
+        // vanishing — or worse, navigating into the router's entitlement guard
+        // and bouncing back to the dashboard with no explanation.
+        final procurementLock = planLockFor(AppFeature.procurement);
+        final customersLock = planLockFor(AppFeature.customerDirectory);
+        final auditLogsLock = planLockFor(AppFeature.auditLogs);
+        final fraudLock = planLockFor(AppFeature.fraudAlerts);
         // Sales history: permission only — no module gate (see AppFeature.salesHistory).
         final canSeeSalesHistory = permService.can(
           PermissionKeys.navSalesHistory,
@@ -186,11 +210,13 @@ class _MorePageState extends State<MorePage> {
                         _DrawerTile(
                           icon: IconlyLight.bag_2,
                           label: 'Purchase Orders',
+                          lockedPlan: procurementLock,
                           onTap: () => _navigate(AppRoutes.purchaseOrders),
                         ),
                         _DrawerTile(
                           icon: IconlyLight.work,
                           label: 'Suppliers',
+                          lockedPlan: procurementLock,
                           onTap: () => _navigate(AppRoutes.suppliers),
                         ),
                         const SizedBox(height: 4),
@@ -204,6 +230,7 @@ class _MorePageState extends State<MorePage> {
                         _DrawerTile(
                           icon: IconlyLight.profile,
                           label: 'Customers',
+                          lockedPlan: customersLock,
                           onTap: () => _navigate(AppRoutes.customers),
                         ),
                         const SizedBox(height: 4),
@@ -250,16 +277,22 @@ class _MorePageState extends State<MorePage> {
                             label: 'Employees',
                             onTap: () => _pushFullPage(const EmployeesPage()),
                           ),
+                        // Both go through GoRouter so the router's entitlement
+                        // guard actually applies. Audit Logs used to bypass it
+                        // via _pushFullPage, which let Starter open a Growth-only
+                        // screen on mobile while the desktop sidebar refused.
                         if (canSeeAuditLogs)
                           _DrawerTile(
                             icon: IconlyLight.shield_done,
                             label: 'Audit Logs',
-                            onTap: () => _pushFullPage(const AuditLogPage()),
+                            lockedPlan: auditLogsLock,
+                            onTap: () => _navigate(AppRoutes.auditLogs),
                           ),
                         if (canSeeFraud)
                           _DrawerTile(
                             icon: IconlyLight.shield_fail,
-                            label: 'Fraud & Risk',
+                            label: 'Unusual Activity',
+                            lockedPlan: fraudLock,
                             onTap: () => _navigate(AppRoutes.fraud),
                           ),
                         const SizedBox(height: 4),
@@ -373,6 +406,15 @@ class _DrawerHeader extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(width: 8),
+            // Closes the drawer itself before pushing — PlanBadge's default
+            // tap would otherwise stack Billing behind the still-open drawer.
+            PlanBadge(
+              onTap: () {
+                Navigator.of(context).pop();
+                context.push(AppRoutes.billing);
+              },
+            ),
           ],
         ),
       ),
@@ -387,25 +429,50 @@ class _DrawerTile extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
 
+  /// Plan code required to actually open this destination, or null when the
+  /// current plan includes it. When set the tile stays visible but wears a
+  /// [PlanLockBadge] and taps open the upgrade sheet instead of navigating —
+  /// never a visible control wired to a guard it can't pass.
+  final String? lockedPlan;
+
   const _DrawerTile({
     required this.icon,
     required this.label,
     required this.onTap,
+    this.lockedPlan,
   });
 
   @override
   Widget build(BuildContext context) {
+    final locked = lockedPlan != null;
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
+        onTap: locked
+            ? () {
+                Navigator.of(context).pop(); // close drawer first
+                showUpgradePrompt(
+                  context,
+                  UpgradeMoment.lockedModule,
+                  requiredPlan: lockedPlan,
+                  // The title names the tier; the body says what they get.
+                  detail:
+                      'Upgrade to turn on $label — your current work is never '
+                      'blocked.',
+                );
+              }
+            : onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
             child: Row(
               children: [
-                Icon(icon, size: 20, color: AppColors.textSecondary),
+                Icon(
+                  icon,
+                  size: 20,
+                  color: locked ? AppColors.textMuted : AppColors.textSecondary,
+                ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Text(
@@ -415,15 +482,20 @@ class _DrawerTile extends StatelessWidget {
                     style: getOutfitStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: AppColors.textPrimary,
+                      color: locked
+                          ? AppColors.textSecondary
+                          : AppColors.textPrimary,
                     ),
                   ),
                 ),
-                const Icon(
-                  Icons.north_east_rounded,
-                  size: 16,
-                  color: AppColors.textMuted,
-                ),
+                if (locked)
+                  PlanLockBadge(planCode: lockedPlan!)
+                else
+                  const Icon(
+                    Icons.north_east_rounded,
+                    size: 16,
+                    color: AppColors.textMuted,
+                  ),
               ],
             ),
           ),

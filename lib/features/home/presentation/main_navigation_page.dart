@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:iconly/iconly.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pos/app_router.dart' show lockedFeatureParam;
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/core/branch/branch_state.dart';
@@ -13,18 +14,30 @@ import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/permissions/app_feature.dart';
+import 'package:pos/core/permissions/entitlement_service.dart';
+import 'package:pos/core/permissions/feature_plan_requirement.dart';
 import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
+import 'package:pos/core/permissions/plan_display.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_service.dart';
 import 'package:pos/core/ui/widgets/app_bottom_nav.dart';
 import 'package:pos/core/ui/widgets/custom_app_bar.dart';
+import 'package:pos/core/widgets/plan_badge.dart';
+import 'package:pos/core/widgets/plan_enforcement_banners.dart';
+import 'package:pos/core/widgets/plan_lock_badge.dart';
+import 'package:pos/core/widgets/upgrade_prompt.dart';
 import 'package:pos/core/widgets/user_avatar.dart';
 import 'package:pos/features/auth/domain/entities/app_user.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/more/presentation/more_page.dart';
+import 'package:pos/features/notifications/domain/billing_notice_service.dart';
+import 'package:pos/features/notifications/domain/entities/billing_notice.dart';
+import 'package:pos/features/notifications/domain/entities/notification_item.dart';
+import 'package:pos/features/notifications/domain/repositories/i_notifications_repository.dart';
 import 'package:pos/features/settings/data/receipt_settings_repository.dart';
 import 'package:pos/features/settings/domain/receipt_settings.dart';
 
@@ -53,6 +66,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   bool _sidebarInitialized = false;
   String? _lastUserContextKey;
   bool _syncInitialized = false;
+  String? _lockedFeatureShown;
 
   int get _currentIndex => widget.navigationShell.currentIndex;
 
@@ -82,6 +96,27 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
       index,
       initialLocation: index == _currentIndex,
     );
+  }
+
+  /// The router bounced a plan-locked route here. Explain it once, then strip
+  /// the marker so a rebuild or a back-navigation doesn't re-open the sheet.
+  void _consumeLockedFeature(String raw) {
+    if (_lockedFeatureShown == raw) return;
+    _lockedFeatureShown = raw;
+    final feature = AppFeature.values.where((f) => f.name == raw).firstOrNull;
+    if (feature == null) return;
+    final plan = requiredPlanFor(feature);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showUpgradePrompt(
+        context,
+        UpgradeMoment.lockedModule,
+        requiredPlan: plan,
+        detail:
+            'Upgrade to turn on ${feature.displayLabel} — your current work is '
+            'never blocked.',
+      );
+    });
   }
 
   void _scheduleBranchLoad(AppUser user) {
@@ -152,7 +187,12 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
             // reached via context.push (drawer) which stacks them on the
             // active branch's navigator without changing currentIndex — so we
             // detect them by location, not branch index, to drop shell chrome.
-            final location = GoRouterState.of(context).uri.path;
+            final routerState = GoRouterState.of(context);
+            final lockedFeature =
+                routerState.uri.queryParameters[lockedFeatureParam];
+            if (lockedFeature != null) _consumeLockedFeature(lockedFeature);
+
+            final location = routerState.uri.path;
             final isStackedSubPage =
                 location.startsWith(AppRoutes.suppliers) ||
                 location.startsWith(AppRoutes.purchaseOrders) ||
@@ -168,159 +208,184 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
               child: widget.navigationShell,
             );
 
-            if (isTablet) {
-              return _SyncStatusProvider(
-                builder: (isOnline, pendingSyncCount) => Scaffold(
-                  body: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1980),
-                      child: Row(
-                        children: [
-                          // ── Sidebar ──────────────────────────────────────────
-                          if (!isPosTab)
-                            _AppSidebar(
-                              expanded: _sidebarExpanded,
-                              currentIndex: _currentIndex,
-                              onNavTap: _onNavTap,
-                              onToggle: () => setState(
-                                () => _sidebarExpanded = !_sidebarExpanded,
-                              ),
-                              userName: userName,
-                              userRole: userRole,
-                              userEmail: userEmail,
-                              userAvatar: userAvatar,
-                              businessName: businessName,
-                              businessId: authState.user.businessId,
-                              isOnline: isOnline,
-                              pendingSyncCount: pendingSyncCount,
-                              branches: visibleBranches,
-                              selectedBranch: selectedBranch,
-                              canSwitchBranches: branchState.canSwitchBranches,
-                            ),
-
-                          // ── Right column: top bar + page content ─────────────
-                          Expanded(
-                            child: Column(
-                              children: [
-                                // Shared top bar — same component as mobile so
-                                // branch selector, sync status, and user section
-                                // are always consistent across breakpoints.
-                                if (!isPosTab)
-                                  CustomAppBar(
-                                    branches: visibleBranches,
-                                    selectedBranch: selectedBranch,
-                                    onBranchChanged:
-                                        branchState.canSwitchBranches
-                                        ? (branch) => context
-                                              .read<BranchCubit>()
-                                              .selectBranch(branch)
-                                        : null,
-                                    userName: userName,
-                                    userRole: userRole,
-                                    userEmail: userEmail,
-                                    userId: userId,
-                                    userAvatar: userAvatar,
-                                    businessName: businessName,
-                                    isOnline: isOnline,
-                                    pendingSyncCount: pendingSyncCount,
-                                    onNotificationTapped: () =>
-                                        context.push(AppRoutes.notifications),
-                                    showThemeToggle: false,
+            return _NotificationsBadgeProvider(
+              businessId: authState.user.businessId,
+              builder: (unreadCount, onNotificationTapped) {
+                if (isTablet) {
+                  return _SyncStatusProvider(
+                    builder: (isOnline, pendingSyncCount) => Scaffold(
+                      body: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 1980),
+                          child: Row(
+                            children: [
+                              // ── Sidebar ──────────────────────────────────────
+                              if (!isPosTab)
+                                _AppSidebar(
+                                  expanded: _sidebarExpanded,
+                                  currentIndex: _currentIndex,
+                                  onNavTap: _onNavTap,
+                                  onToggle: () => setState(
+                                    () => _sidebarExpanded = !_sidebarExpanded,
                                   ),
-
-                                // Page content.  We override AppBarTheme with
-                                // toolbarHeight: 0 so any per-page AppBar that
-                                // individual pages declare occupies no space and
-                                // is visually hidden — the top bar above provides
-                                // all the chrome the user needs on desktop.
-                                Expanded(
-                                  child: Theme(
-                                    data: Theme.of(context).copyWith(
-                                      appBarTheme: Theme.of(context).appBarTheme
-                                          .copyWith(
-                                            toolbarHeight: 0,
-                                            elevation: 0,
-                                            scrolledUnderElevation: 0,
-                                            backgroundColor: Colors.transparent,
-                                            surfaceTintColor:
-                                                Colors.transparent,
-                                            shadowColor: Colors.transparent,
-                                          ),
-                                    ),
-                                    child: shell,
-                                  ),
+                                  userName: userName,
+                                  userRole: userRole,
+                                  userEmail: userEmail,
+                                  userAvatar: userAvatar,
+                                  businessName: businessName,
+                                  businessId: authState.user.businessId,
+                                  isOnline: isOnline,
+                                  pendingSyncCount: pendingSyncCount,
+                                  branches: visibleBranches,
+                                  selectedBranch: selectedBranch,
+                                  canSwitchBranches:
+                                      branchState.canSwitchBranches,
                                 ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }
 
-            return _SyncStatusProvider(
-              builder: (isOnline, pendingSyncCount) => Scaffold(
-                key: _scaffoldKey,
-                // The nav is an opaque strip now — content stops above it
-                // instead of scrolling underneath and getting hidden.
-                extendBody: false,
-                drawer: const Drawer(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.zero,
-                  ),
-                  child: MorePage(),
-                ),
-                appBar: (isPosTab || isStackedSubPage)
-                    ? null
-                    : CustomAppBar(
-                        branches: visibleBranches,
-                        selectedBranch: selectedBranch,
-                        onBranchChanged: branchState.canSwitchBranches
-                            ? (branch) => context
-                                  .read<BranchCubit>()
-                                  .selectBranch(branch)
-                            : null,
-                        userName: userName,
-                        userRole: userRole,
-                        userEmail: userEmail,
-                        userId: userId,
-                        userAvatar: userAvatar,
-                        businessName: businessName,
-                        isOnline: isOnline,
-                        pendingSyncCount: pendingSyncCount,
-                        onNotificationTapped: () =>
-                            context.push(AppRoutes.notifications),
-                        onMenuTapped: () =>
-                            _scaffoldKey.currentState?.openDrawer(),
-                        showThemeToggle: false,
-                      ),
-                body: shell,
-                // AI assistant floats over every bottom-bar page (native runs
-                // the on-device model, web falls back to the rule-based parser).
-                // Hidden on the POS terminal and full-screen stacked sub-pages,
-                // which own their chrome and have no bottom bar.
-                floatingActionButton: (isPosTab || isStackedSubPage)
-                    ? null
-                    : FloatingActionButton(
-                        heroTag: 'aiAssistantFab',
-                        onPressed: () => context.push(AppRoutes.aiChat),
-                        backgroundColor: AppColors.surface,
-                        shape: const CircleBorder(),
-                        child: const Icon(
-                          Icons.chat_bubble_outline_rounded,
-                          color: AppColors.textPrimary,
+                              // ── Right column: top bar + page content ───────
+                              Expanded(
+                                child: Column(
+                                  children: [
+                                    // Shared top bar — same component as
+                                    // mobile so branch selector, sync status,
+                                    // and user section are always consistent
+                                    // across breakpoints.
+                                    if (!isPosTab)
+                                      CustomAppBar(
+                                        branches: visibleBranches,
+                                        selectedBranch: selectedBranch,
+                                        onBranchChanged:
+                                            branchState.canSwitchBranches
+                                            ? (branch) => context
+                                                  .read<BranchCubit>()
+                                                  .selectBranch(branch)
+                                            : null,
+                                        userName: userName,
+                                        userRole: userRole,
+                                        userEmail: userEmail,
+                                        userId: userId,
+                                        userAvatar: userAvatar,
+                                        businessName: businessName,
+                                        isOnline: isOnline,
+                                        pendingSyncCount: pendingSyncCount,
+                                        notificationCount: unreadCount,
+                                        onNotificationTapped:
+                                            onNotificationTapped,
+                                        showThemeToggle: false,
+                                      ),
+
+                                    // Collapses to nothing on a healthy plan.
+                                    if (!isPosTab)
+                                      const PlanEnforcementBanners(),
+
+                                    // Page content.  We override AppBarTheme
+                                    // with toolbarHeight: 0 so any per-page
+                                    // AppBar that individual pages declare
+                                    // occupies no space and is visually
+                                    // hidden — the top bar above provides all
+                                    // the chrome the user needs on desktop.
+                                    Expanded(
+                                      child: Theme(
+                                        data: Theme.of(context).copyWith(
+                                          appBarTheme: Theme.of(context)
+                                              .appBarTheme
+                                              .copyWith(
+                                                toolbarHeight: 0,
+                                                elevation: 0,
+                                                scrolledUnderElevation: 0,
+                                                backgroundColor:
+                                                    Colors.transparent,
+                                                surfaceTintColor:
+                                                    Colors.transparent,
+                                                shadowColor: Colors.transparent,
+                                              ),
+                                        ),
+                                        child: shell,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                bottomNavigationBar: (isPosTab || isStackedSubPage)
-                    ? null
-                    : AppBottomNav(
-                        currentIndex: _currentIndex,
-                        onTap: _onNavTap,
+                    ),
+                  );
+                }
+
+                return _SyncStatusProvider(
+                  builder: (isOnline, pendingSyncCount) => Scaffold(
+                    key: _scaffoldKey,
+                    // The nav is an opaque strip now — content stops above it
+                    // instead of scrolling underneath and getting hidden.
+                    extendBody: false,
+                    drawer: const Drawer(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.zero,
                       ),
-              ),
+                      child: MorePage(),
+                    ),
+                    appBar: (isPosTab || isStackedSubPage)
+                        ? null
+                        : CustomAppBar(
+                            branches: visibleBranches,
+                            selectedBranch: selectedBranch,
+                            onBranchChanged: branchState.canSwitchBranches
+                                ? (branch) => context
+                                      .read<BranchCubit>()
+                                      .selectBranch(branch)
+                                : null,
+                            userName: userName,
+                            userRole: userRole,
+                            userEmail: userEmail,
+                            userId: userId,
+                            userAvatar: userAvatar,
+                            businessName: businessName,
+                            isOnline: isOnline,
+                            pendingSyncCount: pendingSyncCount,
+                            notificationCount: unreadCount,
+                            onNotificationTapped: onNotificationTapped,
+                            onMenuTapped: () =>
+                                _scaffoldKey.currentState?.openDrawer(),
+                            showThemeToggle: false,
+                          ),
+                    body: (isPosTab || isStackedSubPage)
+                        ? shell
+                        // Collapses to nothing on a healthy plan. Kept off the
+                        // POS tab: nothing may push the till around mid-sale.
+                        : Column(
+                            children: [
+                              const PlanEnforcementBanners(),
+                              Expanded(child: shell),
+                            ],
+                          ),
+                    // AI assistant floats over every bottom-bar page (native
+                    // runs the on-device model, web falls back to the
+                    // rule-based parser). Hidden on the POS terminal and
+                    // full-screen stacked sub-pages, which own their chrome
+                    // and have no bottom bar.
+                    floatingActionButton: (isPosTab || isStackedSubPage)
+                        ? null
+                        : FloatingActionButton(
+                            heroTag: 'aiAssistantFab',
+                            onPressed: () => context.push(AppRoutes.aiChat),
+                            backgroundColor: AppColors.surface,
+                            shape: const CircleBorder(),
+                            child: const Icon(
+                              Icons.chat_bubble_outline_rounded,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                    bottomNavigationBar: (isPosTab || isStackedSubPage)
+                        ? null
+                        : AppBottomNav(
+                            currentIndex: _currentIndex,
+                            onTap: _onNavTap,
+                          ),
+                  ),
+                );
+              },
             );
           },
         );
@@ -377,6 +442,131 @@ class _SyncStatusProviderState extends State<_SyncStatusProvider> {
   @override
   Widget build(BuildContext context) =>
       widget.builder(_isOnline, _pendingSyncCount);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Notification bell badge — live unread count for the shell app bar: real
+// unread rows from the repository, plus the synthetic billing notice when one
+// is due. BillingNoticeService owns that rule so this and NotificationsCubit
+// can't drift apart on when a notice counts.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _NotificationsBadgeProvider extends StatefulWidget {
+  final String? businessId;
+  final Widget Function(int unreadCount, VoidCallback onNotificationTapped)
+  builder;
+
+  const _NotificationsBadgeProvider({
+    required this.businessId,
+    required this.builder,
+  });
+
+  @override
+  State<_NotificationsBadgeProvider> createState() =>
+      _NotificationsBadgeProviderState();
+}
+
+class _NotificationsBadgeProviderState
+    extends State<_NotificationsBadgeProvider> {
+  late final INotificationsRepository _repository;
+  late final BillingNoticeService _notices;
+  List<NotificationItem> _items = const [];
+  VoidCallback? _unsubscribe;
+  BillingNoticeKind? _notice;
+
+  @override
+  void initState() {
+    super.initState();
+    _repository = sl<INotificationsRepository>();
+    _notices = sl<BillingNoticeService>();
+    _notices.revision.addListener(_onNoticesChanged);
+    _refreshNotice();
+    _load();
+  }
+
+  Future<void> _openNotifications() async {
+    await context.push(AppRoutes.notifications);
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void didUpdateWidget(_NotificationsBadgeProvider oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.businessId != oldWidget.businessId) {
+      _unsubscribe?.call();
+      _unsubscribe = null;
+      _items = const [];
+      _refreshNotice();
+      _load();
+    }
+  }
+
+  void _onNoticesChanged() {
+    final businessId = widget.businessId;
+    if (businessId != null) unawaited(_notices.reArm(businessId));
+    _refreshNotice();
+  }
+
+  void _refreshNotice() {
+    final businessId = widget.businessId;
+    final next = businessId == null ? null : _notices.visibleKind(businessId);
+    if (next == _notice) return;
+    if (mounted) {
+      setState(() => _notice = next);
+    } else {
+      _notice = next; // initState — no element to mark dirty yet
+    }
+  }
+
+  Future<void> _load() async {
+    final businessId = widget.businessId;
+    if (businessId == null) return;
+    try {
+      final items = await _repository.fetchAll(businessId);
+      if (!mounted) return;
+      setState(() => _items = items);
+      _subscribe(businessId);
+    } catch (e, st) {
+      debugPrint('[NotificationsBadge] Error in _load: $e\n$st');
+    }
+  }
+
+  void _subscribe(String businessId) {
+    _unsubscribe?.call();
+    _unsubscribe = _repository.subscribe(
+      businessId: businessId,
+      onInsert: (item) {
+        if (!mounted) return;
+        setState(() => _items = [item, ..._items]);
+      },
+      onUpdate: (item) {
+        if (!mounted) return;
+        setState(
+          () => _items = _items.map((n) => n.id == item.id ? item : n).toList(),
+        );
+      },
+      onDelete: (id) {
+        if (!mounted) return;
+        setState(() => _items = _items.where((n) => n.id != id).toList());
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _unsubscribe?.call();
+    _notices.revision.removeListener(_onNoticesChanged);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dbUnread = _items.where((n) => !n.isRead).length;
+    return widget.builder(
+      dbUnread + (_notice != null ? 1 : 0),
+      _openNotifications,
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -517,8 +707,25 @@ class _AppSidebarState extends State<_AppSidebar> {
   bool get _sidebarShowIngredients =>
       _permService.can(PermissionKeys.navRecipes) &&
       _permService.isModuleEnabled('ingredients');
+
+  // Plan locks stay out of the _sidebarShow* getters on purpose: permission and
+  // module mean "hide", the plan means "show it wearing the tier it needs".
+  String? get _procurementLock => planLockFor(AppFeature.procurement);
+  String? get _customersLock => planLockFor(AppFeature.customerDirectory);
+  String? get _auditLogsLock => planLockFor(AppFeature.auditLogs);
+  String? get _fraudLock => planLockFor(AppFeature.fraudAlerts);
+
   @override
   Widget build(BuildContext context) {
+    // Repaint on every entitlement change so a plan switch updates the lock
+    // badges without a restart — same wiring PlanBadge already uses.
+    return ValueListenableBuilder<int>(
+      valueListenable: sl<EntitlementService>().entitlementRevision,
+      builder: (context, _, _) => _buildSidebar(context),
+    );
+  }
+
+  Widget _buildSidebar(BuildContext context) {
     final w = widget.expanded ? _kSidebarExpanded : _kSidebarCollapsed;
     final layoutExpanded = _layoutExpanded;
 
@@ -567,6 +774,8 @@ class _AppSidebarState extends State<_AppSidebar> {
                           ),
                         ),
                       ),
+                      const PlanBadge(),
+                      const SizedBox(width: 4),
                       Material(
                         color: Colors.transparent,
                         child: InkWell(
@@ -732,6 +941,7 @@ class _AppSidebarState extends State<_AppSidebar> {
                       currentIndex: widget.currentIndex,
                       expanded: layoutExpanded,
                       onTap: widget.onNavTap,
+                      lockedPlan: _procurementLock,
                     ),
                     _NavItem(
                       icon: IconlyLight.work,
@@ -741,6 +951,7 @@ class _AppSidebarState extends State<_AppSidebar> {
                       currentIndex: widget.currentIndex,
                       expanded: layoutExpanded,
                       onTap: widget.onNavTap,
+                      lockedPlan: _procurementLock,
                     ),
                   ],
 
@@ -758,6 +969,7 @@ class _AppSidebarState extends State<_AppSidebar> {
                       currentIndex: widget.currentIndex,
                       expanded: layoutExpanded,
                       onTap: widget.onNavTap,
+                      lockedPlan: _customersLock,
                     ),
                   ],
 
@@ -811,20 +1023,25 @@ class _AppSidebarState extends State<_AppSidebar> {
                         context,
                       ).matchedLocation,
                     ),
+                    const SizedBox(height: 6),
+                  ],
 
+                  // ── ADMIN section ──
+                  // Sits outside the SETTINGS block: each tile carries its own
+                  // gate. Nesting it under Settings → Audit Logs used to hide
+                  // Unusual Activity from anyone holding fraud.view without
+                  // nav.settings or audit_logs.view, while the mobile drawer
+                  // showed it — same account, two different answers.
+                  if (_sidebarShowAuditLogs || _sidebarShowFraud) ...[
                     const SizedBox(height: 6),
                     const Divider(height: 1, color: AppColors.borderSoft),
                     const SizedBox(height: 6),
-
-                    // ── ADMIN section ──
-                    if (_sidebarShowAuditLogs) ...[
-                      if (layoutExpanded) const _SectionLabel(label: 'ADMIN'),
-                      _EmployeesNavTile(
-                        expanded: layoutExpanded,
-                        currentLocation: GoRouterState.of(
-                          context,
-                        ).matchedLocation,
-                      ),
+                    if (layoutExpanded) const _SectionLabel(label: 'ADMIN'),
+                    _EmployeesNavTile(
+                      expanded: layoutExpanded,
+                      currentLocation: GoRouterState.of(context).matchedLocation,
+                    ),
+                    if (_sidebarShowAuditLogs)
                       _NavItem(
                         icon: IconlyLight.shield_done,
                         activeIcon: IconlyBold.shield_done,
@@ -833,18 +1050,19 @@ class _AppSidebarState extends State<_AppSidebar> {
                         currentIndex: widget.currentIndex,
                         expanded: layoutExpanded,
                         onTap: widget.onNavTap,
+                        lockedPlan: _auditLogsLock,
                       ),
-                      if (_sidebarShowFraud)
-                        _NavItem(
-                          icon: IconlyLight.shield_fail,
-                          activeIcon: IconlyBold.shield_fail,
-                          label: 'Fraud & Risk',
-                          index: 13,
-                          currentIndex: widget.currentIndex,
-                          expanded: layoutExpanded,
-                          onTap: widget.onNavTap,
-                        ),
-                    ],
+                    if (_sidebarShowFraud)
+                      _NavItem(
+                        icon: IconlyLight.shield_fail,
+                        activeIcon: IconlyBold.shield_fail,
+                        label: 'Unusual Activity',
+                        index: 13,
+                        currentIndex: widget.currentIndex,
+                        expanded: layoutExpanded,
+                        onTap: widget.onNavTap,
+                        lockedPlan: _fraudLock,
+                      ),
                     const SizedBox(height: 6),
                   ],
                 ],
@@ -970,6 +1188,11 @@ class _NavItem extends StatelessWidget {
   final ValueChanged<int> onTap;
   final bool accent;
 
+  /// Plan code required to open this branch, or null when the current plan
+  /// includes it. Locked items stay visible, wear a [PlanLockBadge] and open
+  /// the upgrade sheet on tap — see the drawer's _DrawerTile for the rationale.
+  final String? lockedPlan;
+
   const _NavItem({
     required this.icon,
     this.activeIcon,
@@ -979,20 +1202,32 @@ class _NavItem extends StatelessWidget {
     required this.expanded,
     required this.onTap,
     this.accent = false,
+    this.lockedPlan,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isActive = currentIndex == index;
-    final color = isActive || accent
-        ? AppColors.brand
-        : AppColors.textSecondary;
+    final locked = lockedPlan != null;
+    final isActive = !locked && currentIndex == index;
+    final color = locked
+        ? AppColors.textMuted
+        : (isActive || accent ? AppColors.brand : AppColors.textSecondary);
     final bg = isActive ? AppColors.brandSoft : Colors.transparent;
 
     final item = Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => onTap(index),
+        onTap: locked
+            ? () => showUpgradePrompt(
+                context,
+                UpgradeMoment.lockedModule,
+                requiredPlan: lockedPlan,
+                // The title names the tier; the body says what they get.
+                detail:
+                    'Upgrade to turn on $label — your current work is never '
+                    'blocked.',
+              )
+            : () => onTap(index),
         borderRadius: BorderRadius.circular(10),
         mouseCursor: SystemMouseCursors.click,
         splashColor: AppColors.brand.withAlpha(20),
@@ -1027,7 +1262,16 @@ class _NavItem extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (locked) PlanLockBadge(planCode: lockedPlan!),
               ],
+              // Collapsed rail: same crown, smaller, and no tooltip of its own —
+              // the whole tile is already wrapped in one that names the tier.
+              if (locked && !expanded)
+                PlanLockBadge(
+                  planCode: lockedPlan!,
+                  size: 14,
+                  showTooltip: false,
+                ),
             ],
           ),
         ),
@@ -1039,9 +1283,12 @@ class _NavItem extends StatelessWidget {
       child: item,
     );
 
+    final tooltip = locked
+        ? '$label — ${planLabelOf(lockedPlan!)}'
+        : label;
     return expanded
         ? padded
-        : Tooltip(message: label, preferBelow: false, child: padded);
+        : Tooltip(message: tooltip, preferBelow: false, child: padded);
   }
 }
 

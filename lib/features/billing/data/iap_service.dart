@@ -36,6 +36,21 @@ class IapService {
 
   IapService(this._iap);
 
+  /// Android `applicationId`. Play's subscription deep link needs it and no
+  /// runtime API here exposes it — kept beside the billing code it serves so a
+  /// rename shows up next to the purchase flow it would break.
+  static const playPackageName = 'com.ledgidy.pos';
+
+  /// Deep link to Google Play's subscription management screen — the only place
+  /// a subscription can legitimately be changed or cancelled. Without
+  /// [productId] it opens the user's subscription list, which is still the right
+  /// destination.
+  static Uri manageSubscriptionUri({String? productId}) {
+    final base = 'https://play.google.com/store/account/subscriptions';
+    if (productId == null || productId.isEmpty) return Uri.parse(base);
+    return Uri.parse('$base?sku=$productId&package=$playPackageName');
+  }
+
   /// Play Billing exists only on Android. Web/desktop/iOS return false so the
   /// billing UI routes to the read-only "manage on the Android app" path.
   bool get isSupportedPlatform =>

@@ -1,17 +1,25 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/errors/app_error_mapper.dart';
+import 'package:pos/features/notifications/domain/billing_notice_service.dart';
+import 'package:pos/features/notifications/domain/entities/billing_notice.dart';
 import 'package:pos/features/notifications/domain/entities/notification_item.dart';
 import 'package:pos/features/notifications/domain/repositories/i_notifications_repository.dart';
 import 'package:pos/features/notifications/presentation/cubit/notifications_state.dart';
 
 class NotificationsCubit extends Cubit<NotificationsState> {
   final INotificationsRepository _repository;
+  final BillingNoticeService _notices;
 
   String? _businessId;
   VoidCallback? _unsubscribe;
 
-  NotificationsCubit(this._repository) : super(const NotificationsInitial());
+  NotificationsCubit(this._repository, this._notices)
+    : super(const NotificationsInitial()) {
+    _notices.revision.addListener(_onNoticesChanged);
+  }
 
   // ── Load ────────────────────────────────────────────────────────────────────
 
@@ -19,13 +27,34 @@ class NotificationsCubit extends Cubit<NotificationsState> {
     _businessId = businessId;
     emit(const NotificationsLoading());
     try {
+      await _notices.reArm(businessId);
       final items = await _repository.fetchAll(businessId);
-      emit(NotificationsLoaded(allItems: items));
+      emit(NotificationsLoaded(allItems: _withBillingNotice(items)));
       _subscribeRealtime(businessId);
     } catch (e, st) {
       debugPrint('[Notifications] Error in load: $e\n$st');
       emit(NotificationsError(AppErrorMapper.message(e)));
     }
+  }
+
+  // A trial ending, a payment recovering, or a reactivation can all happen
+  // while this page is open — keep the synthetic notice in step.
+  void _onNoticesChanged() {
+    final current = state;
+    if (current is! NotificationsLoaded) return;
+    final businessId = _businessId;
+    if (businessId != null) unawaited(_notices.reArm(businessId));
+    emit(current.copyWith(allItems: _withBillingNotice(current.allItems)));
+  }
+
+  List<NotificationItem> _withBillingNotice(List<NotificationItem> items) {
+    final real = items
+        .where((n) => !BillingNoticeService.isSyntheticId(n.id))
+        .toList();
+    final businessId = _businessId;
+    if (businessId == null) return real;
+    final notice = _notices.build(businessId);
+    return notice == null ? real : [notice, ...real];
   }
 
   /// Re-fetches data after an error. Keeps the same business ID.
@@ -48,6 +77,12 @@ class NotificationsCubit extends Cubit<NotificationsState> {
   // ── Actions ─────────────────────────────────────────────────────────────────
 
   Future<void> markAsRead(String notificationId) async {
+    // Synthetic — no row to update. Acknowledging it removes it outright
+    // rather than leaving a read-but-visible row that never goes away.
+    if (BillingNoticeService.isSyntheticId(notificationId)) {
+      await _acknowledgeNotice(notificationId);
+      return;
+    }
     _optimisticallyUpdate(notificationId, (n) => n.copyWith(isRead: true));
     try {
       await _repository.markAsRead(notificationId);
@@ -61,10 +96,19 @@ class NotificationsCubit extends Cubit<NotificationsState> {
     final current = state;
     if (current is! NotificationsLoaded) return;
 
+    // Synthetic notices have no row to mark — acknowledging drops them
+    // outright rather than leaving a read-but-visible row forever.
+    final synthetic = current.allItems
+        .where((n) => BillingNoticeService.isSyntheticId(n.id))
+        .toList();
     final updated = current.allItems
+        .where((n) => !BillingNoticeService.isSyntheticId(n.id))
         .map((n) => n.copyWith(isRead: true))
         .toList();
     emit(current.copyWith(allItems: updated));
+    for (final n in synthetic) {
+      await _persistAck(n.id);
+    }
 
     try {
       await _repository.markAllAsRead(businessId: _businessId!);
@@ -73,7 +117,33 @@ class NotificationsCubit extends Cubit<NotificationsState> {
     }
   }
 
+  Future<void> _acknowledgeNotice(String id) async {
+    final current = state;
+    if (current is NotificationsLoaded) {
+      emit(
+        current.copyWith(
+          allItems: current.allItems.where((n) => n.id != id).toList(),
+        ),
+      );
+    }
+    await _persistAck(id);
+  }
+
+  Future<void> _persistAck(String id) async {
+    final businessId = _businessId;
+    if (businessId == null) return;
+    for (final kind in BillingNoticeKind.values) {
+      if (kind.id == id) {
+        await _notices.acknowledge(kind, businessId);
+        return;
+      }
+    }
+  }
+
   Future<void> delete(String notificationId) async {
+    // Synthetic — no delete affordance is shown for it in the UI; guard
+    // anyway rather than sending a fake id to the repository.
+    if (BillingNoticeService.isSyntheticId(notificationId)) return;
     _removeItem(notificationId);
     try {
       await _repository.delete(notificationId);
@@ -138,6 +208,7 @@ class NotificationsCubit extends Cubit<NotificationsState> {
   @override
   Future<void> close() {
     _unsubscribe?.call();
+    _notices.revision.removeListener(_onNoticesChanged);
     return super.close();
   }
 }

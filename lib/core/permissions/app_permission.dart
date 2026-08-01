@@ -382,9 +382,9 @@ extension AppPermissionX on AppPermission {
       case AppPermission.manageCustomers:
         return 'Manage Customers';
       case AppPermission.viewFraudAlerts:
-        return 'View Fraud Alerts';
+        return 'View Unusual Activity';
       case AppPermission.resolveFraudAlerts:
-        return 'Resolve Fraud Alerts';
+        return 'Resolve Unusual Activity';
       case AppPermission.viewProcurement:
         return 'View Procurement';
       case AppPermission.createPurchaseOrder:

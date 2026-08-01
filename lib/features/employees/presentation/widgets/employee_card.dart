@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:iconly/iconly.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
+import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/permissions/entitlement_enforcement_service.dart';
 import 'package:pos/core/widgets/user_avatar.dart';
 import 'package:pos/features/employees/domain/entities/employee.dart';
 import 'package:pos/features/employees/presentation/widgets/employee_role_badge.dart';
@@ -170,7 +172,12 @@ class _CardContent extends StatelessWidget {
                                       roleName: employee.roleName,
                                     ),
                                     const SizedBox(width: 6),
-                                    EmployeeStatusBadge(isActive: isActive),
+                                    EmployeeStatusBadge(
+                                      isActive: isActive,
+                                      needsSeat: sl<
+                                        EntitlementEnforcementService
+                                      >().isEmployeeSuspended(employee.id),
+                                    ),
                                     if (branchName != null) ...[
                                       const SizedBox(width: 6),
                                       const Icon(

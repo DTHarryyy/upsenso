@@ -19,6 +19,33 @@ extension AlertSeverityX on AlertSeverity {
         return AlertSeverity.low;
     }
   }
+
+  String get dbValue {
+    switch (this) {
+      case AlertSeverity.critical:
+        return 'critical';
+      case AlertSeverity.high:
+        return 'high';
+      case AlertSeverity.medium:
+        return 'medium';
+      case AlertSeverity.low:
+        return 'low';
+    }
+  }
+
+  /// Short label for the triage UI.
+  String get label {
+    switch (this) {
+      case AlertSeverity.critical:
+        return 'Critical';
+      case AlertSeverity.high:
+        return 'High';
+      case AlertSeverity.medium:
+        return 'Medium';
+      case AlertSeverity.low:
+        return 'Low';
+    }
+  }
 }
 
 extension AlertStatusX on AlertStatus {
@@ -125,8 +152,7 @@ class FraudAlert {
       description: row.description,
       severity: AlertSeverityX.fromDb(row.severity),
       status: AlertStatusX.fromDb(row.status),
-      author:
-          row.subjectUserId == null ? '—' : nameFor(row.subjectUserId!),
+      author: row.subjectUserId == null ? '—' : nameFor(row.subjectUserId!),
       subjectUserId: row.subjectUserId,
       branchId: row.branchId,
       store: branchNameFor(row.branchId),

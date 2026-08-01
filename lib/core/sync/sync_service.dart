@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/auth_context_dao.dart';
 import 'package:pos/core/errors/audit_chain_conflict_exception.dart';
@@ -379,6 +380,13 @@ class SyncService {
     if (!await _connectivityService.isConnected) return;
     final ok = await _entitlementService.syncEntitlement();
     if (!ok) debugPrint('[SYNC] Periodic entitlement refresh did not land.');
+    // Re-check registration on the same tick. Without this, a device revoked
+    // from another device kept syncing until the app was restarted, and a
+    // device that hit the cap never noticed a slot being freed for it.
+    await _deviceRegistrationService.ensureRegistered();
+    // Heartbeat so `registered_devices.last_seen_at` is real — it's what the
+    // owner sorts by when deciding which stale device to revoke.
+    await _deviceRegistrationService.touch();
   }
 
   void dispose() {
@@ -1945,17 +1953,35 @@ class SyncService {
     );
   }
 
+  /// A business created OFFLINE lands here on first sync. It must go through the
+  /// same atomic onboarding RPC as an online signup — pushing the bare business
+  /// row (what this used to do) produced a half-built tenant on the server: no
+  /// roles, no receipt_settings, no owner user row, which is the exact shape of
+  /// the orphans the 2026-07-26 duplicate-signup bug left behind.
+  ///
+  /// The RPC is idempotent per owner, so re-running this is safe.
   Future<void> _handlePendingUpload(BusinessesTableData record) async {
-    await _businessRemoteDs.createBusiness(
-      id: record.id,
+    final localBranches = await _branchesDao.getByBusinessId(record.id);
+    final branch = localBranches.isNotEmpty ? localBranches.first : null;
+
+    await _businessRemoteDs.createBusinessOnboarding(
+      businessId: record.id,
       name: record.name,
-      ownerId: record.ownerId,
       templateId: record.templateId,
+      branchId: branch?.id ?? const Uuid().v4(),
+      branchName: branch?.name ?? 'Main Branch',
     );
+
     await _businessesDao.updateSyncStatus(
       id: record.id,
       status: SyncStatus.synced,
     );
+    if (branch != null) {
+      await _branchesDao.updateSyncStatus(
+        id: branch.id,
+        status: SyncStatus.synced,
+      );
+    }
   }
 
   Future<void> _handlePendingUpdate(BusinessesTableData record) async {

@@ -3,13 +3,16 @@ import 'dart:convert';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import 'package:uuid/uuid.dart';
 import 'package:pos/core/audit/audit_log_service.dart';
+import 'package:pos/core/branch/add_branch_result.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/core/permissions/data_scope.dart';
+import 'package:pos/core/permissions/entitlement_enforcement_service.dart';
 import 'package:pos/core/permissions/entitlement_service.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/permissions/role_permission_matrix.dart';
@@ -382,14 +385,24 @@ class BranchCubit extends Cubit<BranchState> {
     return options.isNotEmpty ? options.first : 'Branch';
   }
 
-  /// Select a different branch (only for Business Owner)
-  Future<void> selectBranch(String branchName) async {
-    if (!state.canSwitchBranches) return;
-    if (!state.availableBranches.contains(branchName)) return;
+  /// Select a different branch (only for Business Owner).
+  ///
+  /// Returns false when the branch is held above the plan's cap — the caller
+  /// shows the upgrade moment rather than silently doing nothing.
+  Future<bool> selectBranch(String branchName) async {
+    if (!state.canSwitchBranches) return false;
+    if (!state.availableBranches.contains(branchName)) return false;
 
     final selectedId = branchName == allBranchesLabel
         ? null
         : (_branchIdsByName[branchName] ?? state.selectedBranchId);
+
+    // A locked branch stays readable elsewhere (reports, export) but must not
+    // become the till's active branch — that's the whole point of the lock.
+    if (sl<EntitlementEnforcementService>().isBranchLocked(selectedId)) {
+      debugPrint('[BranchCubit] Branch $branchName is over the plan cap');
+      return false;
+    }
 
     emit(
       BranchState(
@@ -400,12 +413,14 @@ class BranchCubit extends Cubit<BranchState> {
         roleName: state.roleName,
       ),
     );
+    sl<EntitlementEnforcementService>().noteActiveBranch(selectedId);
 
     await _saveSelectedBranch(
       businessId: _currentBusinessId,
       branchName: branchName,
       branchId: selectedId,
     );
+    return true;
   }
 
   /// Get the currently selected branch ID (for filtering)
@@ -417,20 +432,39 @@ class BranchCubit extends Cubit<BranchState> {
     return state.selectedBranchId;
   }
 
+  /// Is [branchId] writable under the current plan? The single question every
+  /// write path asks — see EntitlementEnforcementService for the policy.
+  ///
+  /// Null (the owner's "All Branches" view) is writable: writes always resolve
+  /// to a concrete branch before they land, and that one gets checked.
+  bool canWriteToBranch(String? branchId) =>
+      !sl<EntitlementEnforcementService>().isBranchLocked(branchId);
+
+  /// Branch-switcher convenience: is the branch shown as [branchName] locked?
+  /// "All Branches" is never locked — it's a view, not a till.
+  bool isBranchNameLocked(String branchName) {
+    if (branchName == allBranchesLabel) return false;
+    return sl<EntitlementEnforcementService>().isBranchLocked(
+      _branchIdsByName[branchName],
+    );
+  }
+
   /// Add a new branch (Business Owner only)
-  Future<String?> addBranch({
+  Future<AddBranchResult> addBranch({
     required String businessId,
     required String name,
     String? location,
   }) async {
-    if (!state.canSwitchBranches) return null;
+    if (!state.canSwitchBranches) {
+      return const AddBranchResult(AddBranchOutcome.notPermitted);
+    }
     // Branch-cap pre-check, counted live from local Drift. Server RLS enforces
     // it for real on cloud tiers; a denied create is surfaced by the caller as
     // the upgrade moment (§4.3).
     if (!await sl<EntitlementService>()
         .canAddAnother(EntitlementResource.branches)) {
       debugPrint('[BranchCubit] Branch cap reached for current plan');
-      return null;
+      return const AddBranchResult(AddBranchOutcome.capReached);
     }
 
     final id = const Uuid().v4();
@@ -455,7 +489,21 @@ class BranchCubit extends Cubit<BranchState> {
         location: branch.location,
       );
       await branchesDao.updateSyncStatus(id: id, status: SyncStatus.synced);
+    } on PostgrestException catch (e, st) {
+      // A cap rejection is permanent — the RESTRICTIVE branches_cap_insert
+      // policy will refuse this row on every retry. Keeping it would leave a
+      // ghost branch in the switcher and a sync that never drains, so drop it
+      // and report the cap. Any other Postgrest error is treated as transient.
+      if (_isCapRejection(e)) {
+        debugPrint('[BranchCubit] Branch rejected by server cap: $e\n$st');
+        await branchesDao.hardDelete(id);
+        await sl<EntitlementService>().recomputeLocalUsage();
+        return const AddBranchResult(AddBranchOutcome.rejectedByServer);
+      }
+      debugPrint('[BranchCubit] Remote branch creation failed: $e\n$st');
     } catch (e, st) {
+      // Offline or transient: the local row stays queued and SyncService
+      // retries. This is the offline-first path, not an error to undo.
       debugPrint('[BranchCubit] Remote branch creation failed: $e\n$st');
     }
 
@@ -508,7 +556,22 @@ class BranchCubit extends Cubit<BranchState> {
       businessId: businessId,
     );
 
-    return id;
+    // Keep the usage meter and the lock set honest immediately. The employees
+    // path already did this; branches didn't, so the Billing meter read stale
+    // until the next full load.
+    await sl<EntitlementService>().recomputeLocalUsage();
+    await sl<EntitlementEnforcementService>().reconcile();
+
+    return AddBranchResult.created(id);
+  }
+
+  /// Does this Postgrest failure mean "the plan says no", rather than "the
+  /// network is having a bad day"? RLS refusals surface as 42501; the cap
+  /// policies also spell themselves out in the message.
+  static bool _isCapRejection(PostgrestException e) {
+    if (e.code == '42501') return true;
+    final msg = e.message.toLowerCase();
+    return msg.contains('row-level security') || msg.contains('cap_insert');
   }
 
   /// Returns the branch name for a given [branchId], or `null` if unknown.

@@ -8,6 +8,7 @@ enum NotificationType {
   poApproval,
   cashDiscrepancy,
   system,
+  billing,
 }
 
 enum NotificationSeverity { high, medium, low }
@@ -111,6 +112,8 @@ class NotificationItem extends Equatable {
         return NotificationType.poApproval;
       case 'cash_discrepancy':
         return NotificationType.cashDiscrepancy;
+      case 'billing':
+        return NotificationType.billing;
       default:
         return NotificationType.system;
     }
@@ -132,6 +135,8 @@ class NotificationItem extends Equatable {
         return 'cash_discrepancy';
       case NotificationType.system:
         return 'system';
+      case NotificationType.billing:
+        return 'billing';
     }
   }
 

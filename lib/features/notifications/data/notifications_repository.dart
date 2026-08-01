@@ -43,7 +43,10 @@ class NotificationsRepository implements INotificationsRepository {
   Future<void> delete(String notificationId) async {
     await _client
         .from('notifications')
-        .update({'is_deleted': true, 'deleted_at': DateTime.now().toUtc().toIso8601String()})
+        .update({
+          'is_deleted': true,
+          'deleted_at': DateTime.now().toUtc().toIso8601String(),
+        })
         .eq('id', notificationId);
   }
 

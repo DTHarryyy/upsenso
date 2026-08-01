@@ -376,7 +376,7 @@ class FraudDetectionEngine {
       actionType: AuditLogActionType.fraudFlagRaised,
       entityType: 'fraud_flag',
       description:
-          '${raised.length} fraud flag(s) raised this sweep [worst: '
+          '${raised.length} unusual-activity alert(s) raised this sweep [worst: '
           '${worst.toUpperCase()}]',
       metadata: {
         'count': raised.length,

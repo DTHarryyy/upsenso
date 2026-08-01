@@ -37,6 +37,12 @@ class AppDropdown<T> extends FormField<T> {
   final ValueChanged<T?>? onChanged;
   final bool dense;
 
+  /// Shrinks the closed trigger's vertical padding and chevron icon size for
+  /// tight filter rows — independent of [dense] (which controls label
+  /// weight/size), so existing `dense: true` call sites are unaffected unless
+  /// they also opt into this. Defaults to false.
+  final bool compact;
+
   /// Label for the inline "add new item" action shown at the top of the list.
   final String? addItemLabel;
 
@@ -55,6 +61,7 @@ class AppDropdown<T> extends FormField<T> {
     required this.items,
     this.onChanged,
     this.dense = false,
+    this.compact = false,
     this.addItemLabel,
     this.onAddItem,
     this.searchable = false,
@@ -198,7 +205,7 @@ class _AppDropdownState<T> extends FormFieldState<T> {
               duration: const Duration(milliseconds: 180),
               padding: EdgeInsets.symmetric(
                 horizontal: 8,
-                vertical: _w.dense ? 12 : 14,
+                vertical: _w.compact ? 8 : (_w.dense ? 12 : 14),
               ),
               decoration: BoxDecoration(
                 color: AppColors.surface,
@@ -235,10 +242,10 @@ class _AppDropdownState<T> extends FormFieldState<T> {
                   AnimatedRotation(
                     duration: const Duration(milliseconds: 200),
                     turns: _isOpen ? 0.5 : 0,
-                    child: const Icon(
+                    child: Icon(
                       IconlyLight.arrow_down_2,
                       color: AppColors.textMuted,
-                      size: 20,
+                      size: _w.compact ? 18 : 20,
                     ),
                   ),
                 ],

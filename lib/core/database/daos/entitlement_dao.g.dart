@@ -8,6 +8,8 @@ mixin _$EntitlementDaoMixin on DatabaseAccessor<AppDatabase> {
       attachedDatabase.entitlementCacheTable;
   $ResourceUsageCacheTableTable get resourceUsageCacheTable =>
       attachedDatabase.resourceUsageCacheTable;
+  $EntitlementLocksTableTable get entitlementLocksTable =>
+      attachedDatabase.entitlementLocksTable;
   EntitlementDaoManager get managers => EntitlementDaoManager(this);
 }
 
@@ -23,5 +25,10 @@ class EntitlementDaoManager {
       $$ResourceUsageCacheTableTableTableManager(
         _db.attachedDatabase,
         _db.resourceUsageCacheTable,
+      );
+  $$EntitlementLocksTableTableTableManager get entitlementLocksTable =>
+      $$EntitlementLocksTableTableTableManager(
+        _db.attachedDatabase,
+        _db.entitlementLocksTable,
       );
 }

@@ -134,6 +134,14 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
       ));
     } on EmployeeDuplicateException catch (e) {
       emit(EmployeeValidationFailure(fieldErrors: e.fieldErrors, loaded: current));
+    } on EmployeeSeatLimitException catch (e) {
+      // Not bad input — the plan is full. Flagged so the form can offer the
+      // upgrade rather than leaving a dead-end inline error.
+      emit(EmployeeValidationFailure(
+        fieldErrors: {'form': e.message},
+        loaded: current,
+        seatLimitReached: true,
+      ));
     } catch (e, st) {
       debugPrint('[EmployeeBloc] Error: $e\n$st');
       // Surface inline in the form (and keep the list) rather than as a
@@ -256,6 +264,14 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
 
     try {
       await _repository.reactivateEmployee(event.id);
+    } on EmployeeSeatLimitException catch (e) {
+      // The plan is full, not a failure — flagged so the list can offer the
+      // upgrade instead of a full-screen error that loses the employees.
+      emit(EmployeeValidationFailure(
+        fieldErrors: {'form': e.message},
+        loaded: current,
+        seatLimitReached: true,
+      ));
     } catch (e, st) {
       debugPrint('[EmployeeBloc] Error: $e\n$st');
       emit(EmployeeError(AppErrorMapper.message(e)));

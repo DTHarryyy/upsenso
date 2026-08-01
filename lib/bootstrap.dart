@@ -10,6 +10,7 @@ import 'package:pos/core/env/app_env.dart';
 import 'package:pos/app_bootstrap.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/device/device_registration_service.dart';
+import 'package:pos/core/permissions/entitlement_enforcement_service.dart';
 import 'package:pos/core/permissions/entitlement_service.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
@@ -92,6 +93,9 @@ Future<Widget> bootstrap() async {
     // Plan entitlement must be cached before SyncService arms (it decides
     // whether the tenant may sync at all — M7.1 §7.1). Offline-safe.
     await sl<EntitlementService>().loadFromCache();
+    // Over-cap locks must be in memory before the first frame, or a downgraded
+    // tenant briefly sees every branch unlocked and then watches them snap shut.
+    await sl<EntitlementEnforcementService>().load();
     // Sync from Supabase in the background — does not block startup.
 
     sl<PermissionService>().syncPermissions(u.id).ignore();
@@ -133,6 +137,7 @@ Future<Widget> bootstrap() async {
         });
       }
       sl<EntitlementService>().loadFromCache().then((_) {
+        sl<EntitlementEnforcementService>().load();
         sl<EntitlementService>().syncEntitlement().then((_) {
           sl<DeviceRegistrationService>().ensureRegistered();
         });
@@ -146,6 +151,7 @@ Future<Widget> bootstrap() async {
       );
       // Entitlement is tenant state — never carry it across accounts.
       sl<EntitlementService>().clear().ignore();
+      sl<EntitlementEnforcementService>().clear().ignore();
     }
   });
 

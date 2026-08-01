@@ -8,7 +8,7 @@ import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
-import 'package:pos/core/ui/widgets/user_profile_section.dart';
+import 'package:pos/core/widgets/upgrade_prompt.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 
@@ -151,7 +151,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
                 const SizedBox(width: 4),
               ],
 
-              // Right: theme toggle + notifications + avatar
+              // Right: theme toggle + notifications
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -195,14 +195,18 @@ class _CustomAppBarState extends State<CustomAppBar> {
                       ),
                       if (widget.notificationCount > 0)
                         Positioned(
-                          right: 4,
-                          top: 4,
+                          right: 2,
+                          top: 2,
                           child: Container(
-                            width: 20,
-                            height: 20,
+                            width: 16,
+                            height: 16,
                             decoration: BoxDecoration(
                               color: AppColors.error,
                               shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppColors.surface,
+                                width: 1.5,
+                              ),
                             ),
                             child: Center(
                               child: Text(
@@ -210,7 +214,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
                                     ? '9+'
                                     : widget.notificationCount.toString(),
                                 style: getOutfitStyle(
-                                  fontSize: 10,
+                                  fontSize: 8,
                                   fontWeight: FontWeight.bold,
                                   color: AppColors.textInverse,
                                 ),
@@ -219,13 +223,6 @@ class _CustomAppBarState extends State<CustomAppBar> {
                           ),
                         ),
                     ],
-                  ),
-                  SizedBox(width: isMobile ? 4 : 12),
-
-                  UserProfileSection(
-                    userName: widget.userName,
-                    userRole: widget.userRole,
-                    userAvatar: widget.userAvatar,
                   ),
                 ],
               ),
@@ -387,13 +384,19 @@ class _CustomAppBarState extends State<CustomAppBar> {
 
                 Navigator.of(dialogContext).pop();
 
-                await context.read<BranchCubit>().addBranch(
+                final result = await context.read<BranchCubit>().addBranch(
                   businessId: businessId,
                   name: nameController.text,
                   location: addressController.text.isEmpty
                       ? null
                       : addressController.text,
                 );
+
+                // The result now says *why*, so we only sell an upgrade that
+                // would actually have helped — no second cap query to guess.
+                if (result.isCapped && context.mounted) {
+                  await showUpgradePrompt(context, UpgradeMoment.branchCap);
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.brand,
@@ -432,6 +435,10 @@ class _CustomAppBarState extends State<CustomAppBar> {
           onSelected: (value) {
             if (value == _addNewBranchValue) {
               _showAddBranchDialog(context);
+            } else if (context.read<BranchCubit>().isBranchNameLocked(value)) {
+              // Held above the plan cap — sell the fix instead of pretending
+              // the tap did nothing.
+              unawaited(showUpgradePrompt(context, UpgradeMoment.branchCap));
             } else if (widget.onBranchChanged != null && canSwitch) {
               unawaited(context.read<BranchCubit>().selectBranch(value));
               widget.onBranchChanged?.call(value);
@@ -443,15 +450,19 @@ class _CustomAppBarState extends State<CustomAppBar> {
             borderRadius: BorderRadius.circular(12),
           ),
           itemBuilder: (context) {
+            final cubit = context.read<BranchCubit>();
             final items = <PopupMenuEntry<String>>[];
             for (final branch in branches) {
+              final locked = cubit.isBranchNameLocked(branch);
               items.add(
                 PopupMenuItem<String>(
                   value: branch,
                   child: Row(
                     children: [
                       Icon(
-                        branch == BranchCubit.allBranchesLabel
+                        locked
+                            ? Icons.lock_outline_rounded
+                            : branch == BranchCubit.allBranchesLabel
                             ? Icons.all_inclusive_rounded
                             : Icons.store_rounded,
                         size: 18,
@@ -469,13 +480,24 @@ class _CustomAppBarState extends State<CustomAppBar> {
                             fontWeight: branch == selectedBranch
                                 ? FontWeight.w700
                                 : FontWeight.w500,
-                            color: branch == selectedBranch
+                            color: locked
+                                ? AppColors.textMuted
+                                : branch == selectedBranch
                                 ? AppColors.brand
                                 : AppColors.textPrimary,
                           ),
                         ),
                       ),
-                      if (branch == selectedBranch)
+                      if (locked)
+                        Text(
+                          'Locked',
+                          style: getOutfitStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textMuted,
+                          ),
+                        )
+                      else if (branch == selectedBranch)
                         const Icon(
                           Icons.check_rounded,
                           size: 18,
@@ -566,15 +588,19 @@ class _CustomAppBarState extends State<CustomAppBar> {
                   final RenderBox box = context.findRenderObject() as RenderBox;
                   final Offset offset = box.localToGlobal(Offset.zero);
 
+                  final cubit = context.read<BranchCubit>();
                   final items = <PopupMenuEntry<String>>[];
                   for (final branch in branches) {
+                    final locked = cubit.isBranchNameLocked(branch);
                     items.add(
                       PopupMenuItem<String>(
                         value: branch,
                         child: Row(
                           children: [
                             Icon(
-                              branch == BranchCubit.allBranchesLabel
+                              locked
+                                  ? Icons.lock_outline_rounded
+                                  : branch == BranchCubit.allBranchesLabel
                                   ? Icons.all_inclusive_rounded
                                   : Icons.store_rounded,
                               size: 16,
@@ -592,13 +618,24 @@ class _CustomAppBarState extends State<CustomAppBar> {
                                   fontWeight: branch == selectedBranch
                                       ? FontWeight.w700
                                       : FontWeight.w500,
-                                  color: branch == selectedBranch
+                                  color: locked
+                                      ? AppColors.textMuted
+                                      : branch == selectedBranch
                                       ? AppColors.brand
                                       : AppColors.textPrimary,
                                 ),
                               ),
                             ),
-                            if (branch == selectedBranch)
+                            if (locked)
+                              Text(
+                                'Locked',
+                                style: getOutfitStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textMuted,
+                                ),
+                              )
+                            else if (branch == selectedBranch)
                               const Icon(
                                 Icons.check_rounded,
                                 size: 16,
@@ -653,6 +690,12 @@ class _CustomAppBarState extends State<CustomAppBar> {
                     if (!context.mounted) return;
                     if (value == _addNewBranchValue) {
                       _showAddBranchDialog(context);
+                    } else if (context
+                        .read<BranchCubit>()
+                        .isBranchNameLocked(value)) {
+                      unawaited(
+                        showUpgradePrompt(context, UpgradeMoment.branchCap),
+                      );
                     } else {
                       unawaited(
                         context.read<BranchCubit>().selectBranch(value),

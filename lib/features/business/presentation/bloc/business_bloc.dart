@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:uuid/uuid.dart';
 import 'package:pos/core/errors/app_error_mapper.dart';
 import 'package:pos/features/auth/domain/repositories/auth_repository.dart';
 import 'package:pos/features/business/domain/repositories/business_repository.dart';
@@ -9,6 +10,11 @@ import 'package:pos/features/business/presentation/bloc/business_state.dart';
 class BusinessBloc extends Bloc<BusinessEvent, BusinessState> {
   final BusinessRepository businessRepository;
   final AuthRepository authRepository;
+
+  // Survive across retries of the same signup so a second attempt reuses one
+  // identity instead of provisioning another business. Cleared on success.
+  String? _pendingBusinessId;
+  String? _pendingBranchId;
 
   BusinessBloc({required this.businessRepository, required this.authRepository})
     : super(BusinessInitial()) {
@@ -55,13 +61,24 @@ class BusinessBloc extends Bloc<BusinessEvent, BusinessState> {
         return;
       }
 
+      // One identity for the whole attempt sequence. This bloc re-emits the
+      // templates state on failure so the user can retry, and a retry MUST
+      // reuse these ids — a fresh uuid per attempt is what left 8 orphaned
+      // businesses on the server on 2026-07-26.
+      _pendingBusinessId ??= const Uuid().v4();
+      _pendingBranchId ??= const Uuid().v4();
+
       final business = await businessRepository.createBusiness(
         name: event.name,
         ownerId: currentUser.id,
         templateId: event.templateId,
         branchName: event.branchName,
+        businessId: _pendingBusinessId,
+        branchId: _pendingBranchId,
       );
 
+      _pendingBusinessId = null;
+      _pendingBranchId = null;
       emit(BusinessCreated(business));
     } catch (e, st) {
       debugPrint('[BusinessBloc] Error creating business: $e\n$st');

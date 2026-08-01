@@ -295,6 +295,210 @@ From `CLAUDE.md` — a step isn't `[x]` until all hold:
 
 ## 📌 Current position / session handoff
 
+> **2026-08-01 — Audit gate split: log viewer drops to Starter. CODE COMPLETE,
+> NO SUPABASE CHANGE, NO MIGRATION NEEDED.**
+>
+> `audit` was always a three-rung flag (`local|cloud|full`) but both
+> `AppFeature.auditLogs` and `fraudAlerts` gated on `full`, so **Starter paid for
+> a `cloud` rung that unlocked nothing** — its chain was backed up off-device and
+> it still couldn't open it. Now:
+>
+> | Tier | flag | Audit log viewer | Unusual Activity |
+> |---|---|---|---|
+> | Free | `local` | — | — |
+> | Starter | `cloud` | **✅ new** | — |
+> | Growth | `full` | ✅ | ✅ |
+>
+> - `featureAllowed` splits the two cases: `auditLogs` → `auditRank != 'local'`,
+>   `fraudAlerts` → `auditFull`. `requiredPlanFor` moves in lockstep
+>   (`auditLogs → starter`), and `feature_plan_requirement_test` fails the suite
+>   if the two ever disagree.
+> - **No migration.** `plan_limits.feature_flags` already carried exactly these
+>   values since the 2026-07-31 retune; only the client's reading changed, so
+>   live tenants pick it up on their next entitlement sync.
+> - Router guards and both nav builders already treated the two features
+>   separately, so they needed no edit — the Audit Logs crown just became a
+>   **Starter** crown on Free by itself.
+> - Plan cards: Starter now reads "Audit log / Open every action in-app…";
+>   Growth reads "Audit log & unusual-activity alerts / Everything in the log,
+>   plus automatic warnings when voids, discounts or refunds look wrong".
+>
+> ⬜ On-device QA: confirm a Starter account opens Audit Logs with no crown and
+> still sees a Growth crown on Unusual Activity.
+
+> **2026-08-01 — Full subscription-limit enforcement. CODE COMPLETE, NO
+> SUPABASE CHANGE. Analyze clean, 341 tests green (was 307).** Plan at
+> `C:\Users\User\.claude\plans\iwamt-you-to-imoplement-stateless-kazoo.md`.
+>
+> **The bug that started it:** "Unusual Activity" navigated nowhere. The
+> 2026-07-31 retune added `AppRoutes.fraud → AppFeature.fraudAlerts` to
+> `routeEntitlementGuards` but left both nav builders rendering a plain,
+> tappable item — on every tier below Growth it silently redirected to the
+> dashboard. Fixed by making the nav rule explicit and testable.
+>
+> - **Plan badges in drawer + sidebar.** New `planLockFor()` +
+>   `PlanLockBadge`. Rule: permission ✗ → hidden, module ✗ → hidden, plan ✗ →
+>   **visible with the required tier badge**, tap opens the upgrade sheet.
+>   `feature_plan_requirement_test` asserts `planLockFor` and `featureAllowed`
+>   agree on every tier, so this class of bug can't come back silently.
+> - **The one-month loophole is closed.** ₱499 once used to buy five permanent
+>   branches: caps were checked on insert and never again. New
+>   `EntitlementEnforcementService` + local-only `entitlement_locks` table
+>   (**Drift 59 → 60**) keeps exactly N active and locks the excess read-only.
+>   Nothing is ever deleted; upgrading releases every lock automatically. The
+>   branch open in POS is always in the default active set — a downgrade can
+>   never stop a till mid-shift.
+> - **Offline verification window.** New `unverified` status keeps a paid tier
+>   (and cloud) alive for 14 days / 30 annual past `current_period_end` when we
+>   simply can't reach the server, anchored on `last_server_sync_at`. Play
+>   renews silently, so without it a merchant who'd been charged got downgraded
+>   for having no signal. Documented in §7.4 since forever, never coded.
+> - **Devices actually say something.** `capReached` was set and never
+>   rendered; now `DeviceStatusBanner` explains it with Manage-devices, sync
+>   re-verifies registration on the entitlement tick (so a remote revoke lands
+>   without a restart), and `touch_device` finally gets called so `last_seen_at`
+>   is real. Wired the dead `UpgradeMoment.secondDevice`.
+> - **Branch-create correctness:** typed `AddBranchResult` (cap vs permission
+>   denial were both bare `null`), local rollback on a server cap rejection
+>   instead of a row retrying forever, usage recompute after create, and
+>   `countForBusiness` now excludes pending-delete rows — deleting a branch used
+>   to free no headroom until the delete synced, i.e. offline, never.
+> - **AlertPage was a dead end on mobile** (stacked sub-page, no back control) —
+>   now owns an `AppSubPageBar`. Audit Logs was opening via `_pushFullPage`,
+>   bypassing GoRouter and its new guard entirely on mobile; routed properly.
+>
+> ⬜ **REMAINING — two things, both yours:**
+> 1. **On-device QA on Android** (see the plan file's Verification section).
+> 2. **The cloud gate is still FALSE in prod**, so all of the above is a UX gate
+>    on an unsigned local cache. Runbook written:
+>    `docs/UPSENSO_CLOUD_GATE_CUTOVER.md`. Until you flip it, the paywall is
+>    advisory — this work is not "enforcement" without it.
+
+> **2026-08-01 — Billing Plans tab overhaul. CODE COMPLETE, NO SUPABASE
+> CHANGE. Analyze clean, 266 tests green.** Plan at
+> `C:\Users\User\.claude\plans\in-subscription-and-billing-snuggly-bachman.md`.
+> Four things, all client-side:
+> - **Fixed the stale "Price locked at ₱499/mo" chip.** `grandfathered_price`
+>   outlives the subscription on the `subscriptions` row, so a lapsed Growth
+>   tenant fell back to Free and the Free card inherited their ₱499. The card no
+>   longer decides: `BillingPlansTab._lockedPriceFor` shows a lock only when the
+>   tenant is in a paying status, on that exact tier, on a paid tier, and the
+>   locked figure is genuinely *below* today's list price. **The SQL was always
+>   right** (a plan change re-locks at list) — this was display-only.
+> - **Subscribed = summary, not a ladder.** `active`/`past_due` on a paid tier
+>   now renders one `CurrentPlanCard` (tier, price, renewal date, benefits,
+>   usage meters) with **Manage subscription** deep-linking to Play's
+>   subscriptions screen, and the cards behind a **Change plan** reveal (Free
+>   filtered out there). Renders offline from the entitlement cache.
+> - **Restore is fully automatic — the button is gone.** Startup, page open,
+>   resume, connectivity return, backoff retry. `load({restorePurchases})` lets
+>   the grant-driven reload skip it explicitly. Manual fallbacks: pull-to-refresh
+>   and the stuck-purchase dialog's Try again.
+> - **"Check billing setup" deleted end to end** (button, cubit method, state
+>   fields, remote-DS call, `BillingProbeCheck`). The edge function's
+>   `{"probe": true}` branch stays — it's support-only; the curl is now in
+>   `UPSENSO_PLAY_BILLING.md`.
+> - Plan cards now explain themselves: a plain-language gloss per capability
+>   row, a ₱/day line on paid tiers, and Free naming the two things it does not
+>   give you. All derived from `plan_limits` in one shared `plan_benefits.dart`.
+> - **Drift schema 58 → 59** — additive nullable `entitlement_cache.billing_period`
+>   (the summary card must say "/month" vs "/year" offline; `get_my_entitlement()`
+>   already returned it). Rollback: harmless to leave; v58 never reads it.
+> - ⬜ **REMAINING — on-device QA on Android** (`--dart-define-from-file=flavors/dev.json`),
+>   per the plan's verification section: 58→59 upgrade over a previous install
+>   with no data loss and Billing still painting in airplane mode; buy Starter as
+>   a licence tester → grid collapses to the summary; Manage subscription opens
+>   Play and returning refreshes without a duplicate restore; cancel in Play →
+>   summary survives `past_due`, then falls back to the ladder once lapsed with
+>   **no ₱499 chip on Free**.
+
+> **2026-07-31 — DUPLICATE-SIGNUP BUG: root-caused, cleaned up, and fixed.
+> BOTH MIGRATIONS APPLIED TO PROD.** Found while applying the plan retune: prod
+> held **8 identical "Cruz Store" businesses**, all owned by one auth user,
+> created within 100 seconds on 2026-07-26.
+>
+> **Root cause (proven).** `business_repository_impl.createBusiness` minted a
+> fresh `Uuid().v4()` *inside* the method, so every retry of a failing signup
+> created a whole new server-side business. The `businesses` INSERT commits on
+> its own; the flow then died before branches/roles/receipt_settings/users
+> landed, and the catch only marked the LOCAL row sync-failed — it never reused
+> the id nor cleaned up the remote orphan. 8 taps → 8 orphans. Each carried only
+> the business row + trigger output (subscription, subscription_events,
+> business_modules, 16 provisioning audit rows).
+> **The precipitating error itself is NOT recoverable** — Postgres logs from
+> 2026-07-26 are past retention. Ruled out by direct inspection: branches RLS
+> (all 4 policies pass), table grants, createBranch payload vs schema, triggers/
+> constraints on branches, and RPC arity. The retry gap pattern (29s then 3s,
+> 17s, 20s, 21s, 2s, 8s) reads as a timeout followed by impatient re-taps.
+>
+> **Blast radius:** `getBusinessByOwner` used `.maybeSingle()`, which THROWS on
+> >1 row — that account could no longer start online or sync at all.
+>
+> - `20260731131524_cleanup_orphan_businesses.sql` — deleted the 8. Asserts each
+>   target holds no real data first. **Gotcha worth remembering:** the
+>   `log_permission_change()` trigger on `business_modules` /
+>   `user_permissions` / `branch_permissions` INSERTs into `audit_logs` on
+>   DELETE, and `audit_logs.business_id` is FK'd NO ACTION — so letting them go
+>   via the businesses cascade fails with an FK violation against the row being
+>   deleted. Those three must be drained explicitly *before* the parent.
+> - `20260731131554_atomic_onboarding.sql` — (1) `my_business_id()` now ORDER BYs
+>   (its `LIMIT 1` was non-deterministic for a multi-business owner, and it feeds
+>   `has_permission()`'s owner fast-path + `effective_limits()`); (2) unique index
+>   `businesses_owner_id_key`; (3) `create_business_onboarding()` does business +
+>   branch + template + owner user row in ONE transaction, idempotent per owner.
+> - Client: one RPC call replaces four round-trips; `BusinessBloc` holds stable
+>   business/branch ids across retries; the local Drift inserts became
+>   `insertOnConflictUpdate` (a retry reusing ids used to hit a UNIQUE
+>   constraint — caught by the new test); `getBusinessByOwner` orders + limits.
+>   `SyncService._handlePendingUpload` now also goes through the atomic RPC —
+>   it used to push a bare business row, i.e. the same half-built tenant via the
+>   offline door. Dead partial-provisioning methods removed from the remote DS.
+> - Verified post-apply: 1 business remains; 0 owners with duplicates; a
+>   duplicate INSERT is rejected by the index; the previously-bricked account now
+>   resolves to 0 businesses so it routes cleanly to onboarding.
+> - Tests: `test/features/business/business_repository_impl_test.dart` (4 new) +
+>   `tool/onboarding_checks.sql`. Suite 210 green, analyze clean.
+> - ⬜ Remaining: on-device end-to-end signup QA (kill the network mid-signup and
+>   confirm zero partial rows land, and that retrying doesn't duplicate).
+
+> **2026-07-31 — M7.1 plan retune. CODE COMPLETE, MIGRATION APPLIED TO PROD.**
+> Plan at `C:\Users\User\.claude\plans\lively-bubbling-sedgewick.md`.
+> Product decision: **Growth = every feature unlocked** (unlimited devices,
+> 5 branches, 15 seats), **Starter = 1 branch / 3 seats / 3 devices**, Free
+> unchanged. Prices unchanged (₱199/₱499) → **no Play Console work**,
+> `play_product_map` untouched.
+> - `20260731124330_plan_limits_retune.sql` edits `plan_limits` **v1 in place**,
+>   applied via MCP `apply_migration` 2026-07-31 (user-approved) and verified
+>   read-only. It opens with a guard that ABORTs if any **provider-backed** sub
+>   is inside a live window.
+> - **Prod tenant reality found while applying** (contradicted the "no users"
+>   assumption, but did not change the decision): 9 businesses / 9 subs —
+>   8 × "Cruz Store" are the 2026-07-26 phantom-trial duplicates (no provider,
+>   0 txns, 0 employees, trials expire 2026-08-09) and 1 × "Heaven brew" is a
+>   `google_play` license-tester purchase that lapsed 2026-07-31 12:34 UTC.
+>   None were harmed: live subs resolve limits from their **pinned
+>   entitlement_snapshot**, not from `plan_limits`, so the UPDATE cannot change
+>   what anyone was sold. Verified post-apply: Heaven brew (lapsed) now resolves
+>   the new free row (`audit: local`); Cruz Store (trialing) still resolves its
+>   old pinned snapshot (`cloud_audit: true`, 2 devices) — proof the snapshot
+>   mechanism holds.
+> - ⬜ **Cleanup candidate (not done, needs a decision):** the 8 phantom-trial
+>   Cruz Store rows are junk test tenants carrying the old flag shape. Left
+>   untouched deliberately — deleting business data is not a migration's call.
+> - `cloud_audit` (bool) → **`audit` (`local`|`cloud`|`full`)**. The chain
+>   records on every tier; only `full` (Growth) sells the Audit Logs viewer +
+>   Fraud dashboard, now enforced via `EntitlementService.featureAllowed` +
+>   `routeEntitlementGuards`.
+> - Closed two flags that were **read but never acted on**: `reports: full` now
+>   gates the Branch Comparison tab + report PDF/Excel export; the audit flag
+>   now gates the viewer. Before this, Starter silently got everything.
+> - `audit_logs` added to the always-free Data Export — the compliance guard
+>   rail that makes the viewer gate defensible (§4.7 + BIR retrievability).
+> - `UpgradeMoment` prompts had **zero call sites**; branchCap, seatCap and
+>   lockedModule are now wired.
+> - REMAINING: apply the migration (approval gate), then on-device QA of the
+>   Starter-shaped tier per the plan's verification section.
+
 > Live status so any session (or a fresh Claude one — no memory between sessions)
 > resumes exactly here. **Last updated: 2026-07-03 (later session) — M1 (audit
 > chain + fraud engine) CODE COMPLETE + BOTH MIGRATIONS APPLIED to prod, per

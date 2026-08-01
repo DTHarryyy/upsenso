@@ -9,16 +9,20 @@ import 'package:pos/core/const/font_utils.dart';
 /// - Shows an animated clear (×) button when text is non-empty
 /// - [hint] defaults to `'Search...'`
 /// - [onChanged] fires on every keystroke
+/// - [compact] shrinks vertical padding and icon size for tight filter rows —
+///   defaults to false so every existing call site is unaffected.
 class AppSearchBar extends StatefulWidget {
   final ValueChanged<String>? onChanged;
   final String hint;
   final TextEditingController? controller;
+  final bool compact;
 
   const AppSearchBar({
     super.key,
     this.onChanged,
     this.hint = 'Search...',
     this.controller,
+    this.compact = false,
   });
 
   @override
@@ -77,16 +81,16 @@ class _AppSearchBarState extends State<AppSearchBar> {
           filled: true,
           fillColor: AppColors.surface,
           isDense: false,
-          contentPadding: const EdgeInsets.symmetric(
+          contentPadding: EdgeInsets.symmetric(
             horizontal: 14,
-            vertical: 13,
+            vertical: widget.compact ? 8 : 13,
           ),
-          prefixIcon: const Padding(
-            padding: EdgeInsets.only(left: 12, right: 8),
+          prefixIcon: Padding(
+            padding: const EdgeInsets.only(left: 12, right: 8),
             child: Icon(
               IconlyLight.search,
               color: AppColors.textPrimary,
-              size: 20,
+              size: widget.compact ? 18 : 20,
             ),
           ),
 
@@ -96,9 +100,9 @@ class _AppSearchBarState extends State<AppSearchBar> {
           ),
           suffixIcon: _hasText
               ? IconButton(
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.close,
-                    size: 18,
+                    size: widget.compact ? 16 : 18,
                     color: AppColors.textPrimary,
                   ),
                   splashRadius: 16,

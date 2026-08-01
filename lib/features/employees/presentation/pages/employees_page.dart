@@ -13,6 +13,7 @@ import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/widgets/app_filled_button.dart';
 import 'package:pos/core/widgets/app_toast.dart';
+import 'package:pos/core/widgets/upgrade_prompt.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/business/domain/entities/branch.dart';
@@ -221,6 +222,14 @@ class _EmployeesViewState extends State<_EmployeesView> {
               AppToast.show(ctx, '${state.message} successfully');
             }
           },
+        ),
+        // Reactivating at the seat cap surfaces here rather than in the form —
+        // it's a list action, so there's no inline field to write the error to.
+        BlocListener<EmployeeBloc, EmployeeState>(
+          listenWhen: (prev, curr) =>
+              curr is EmployeeValidationFailure && curr.seatLimitReached,
+          listener: (ctx, _) =>
+              showUpgradePrompt(ctx, UpgradeMoment.seatCap),
         ),
       ],
       child: Scaffold(

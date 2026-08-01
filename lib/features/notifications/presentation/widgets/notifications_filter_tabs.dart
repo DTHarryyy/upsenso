@@ -27,7 +27,8 @@ class NotificationsFilterTabs extends StatelessWidget {
         filter: NotificationFilter.unread,
         badge: unreadCount,
       ),
-      _Tab(label: 'Fraud', filter: NotificationFilter.fraud),
+      // Short form of "unusual activity" — the tab row has no space for it.
+      _Tab(label: 'Unusual', filter: NotificationFilter.fraud),
       _Tab(label: 'Stock', filter: NotificationFilter.stock),
       _Tab(label: 'Approvals', filter: NotificationFilter.approvals),
     ];

@@ -15,7 +15,9 @@ import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/database/app_database.dart';
+import 'package:pos/core/permissions/entitlement_enforcement_service.dart';
 import 'package:pos/core/services/checkout_service.dart';
+import 'package:pos/core/widgets/upgrade_prompt.dart';
 import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
@@ -297,6 +299,13 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
           },
         ),
       );
+    } on BranchLockedException catch (e, st) {
+      // Not a failure to save — the plan doesn't cover this branch.
+      debugPrint('[ProductCheckoutPage] Sale on a locked branch: $e\n$st');
+      if (mounted) {
+        AppToast.show(context, e.message, variant: AppToastVariant.warning);
+        await showUpgradePrompt(context, UpgradeMoment.branchCap);
+      }
     } catch (e, st) {
       debugPrint('[ProductCheckoutPage] Error saving transaction: $e\n$st');
       if (mounted) {

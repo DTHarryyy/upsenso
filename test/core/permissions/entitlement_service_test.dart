@@ -67,14 +67,16 @@ void main() {
     DateTime? currentPeriodEnd,
     DateTime? graceUntil,
     DateTime? lastServerSyncAt,
-    int maxBranches = 3,
-    int maxSeats = 10,
-    int maxDevices = 5,
+    String? billingPeriod,
+    int? maxBranches = 3,
+    int? maxSeats = 10,
+    int? maxDevices = 5,
   }) async {
     await db.entitlementDao.saveEntitlement(EntitlementCacheTableCompanion(
       businessId: const Value(biz),
       planCode: Value(cloudEnabled ? 'growth' : 'free'),
       status: Value(status),
+      billingPeriod: Value(billingPeriod),
       cloudEnabled: Value(cloudEnabled),
       featureFlagsJson: Value(json.encode(flags)),
       maxBranches: Value(maxBranches),
@@ -147,6 +149,95 @@ void main() {
     });
   });
 
+  // Play renews silently; the client only learns about it via
+  // get_my_entitlement(). Without this window a paying merchant who is offline
+  // over their renewal date gets downgraded despite having been charged.
+  group('offline verification window (§7.4)', () {
+    test('period ended with no server contact keeps the plan alive', () async {
+      await seed(
+        status: 'active',
+        currentPeriodEnd: now.subtract(const Duration(days: 2)),
+        lastServerSyncAt: now.subtract(const Duration(days: 3)),
+      );
+      expect(service.effectiveStatus, 'unverified');
+      // Cloud stays ON: they most likely paid, and cutting backup off is the
+      // one failure mode that loses real data.
+      expect(service.cloudEnabled, isTrue);
+      expect(service.verificationDaysLeft, greaterThan(0));
+    });
+
+    test('degrades to lapsed once the 14-day window closes', () async {
+      await seed(
+        status: 'active',
+        currentPeriodEnd: now.subtract(const Duration(days: 20)),
+        lastServerSyncAt: now.subtract(const Duration(days: 15)),
+      );
+      expect(service.effectiveStatus, 'lapsed');
+      expect(service.cloudEnabled, isFalse);
+      expect(service.verificationDaysLeft, isNull);
+    });
+
+    test('annual gets 30 days, so day 20 is still covered', () async {
+      await seed(
+        status: 'active',
+        billingPeriod: 'annual',
+        currentPeriodEnd: now.subtract(const Duration(days: 19)),
+        lastServerSyncAt: now.subtract(const Duration(days: 20)),
+      );
+      expect(service.effectiveStatus, 'unverified');
+
+      // ...and the same 20 days on monthly has already expired.
+      await seed(
+        status: 'active',
+        billingPeriod: 'monthly',
+        currentPeriodEnd: now.subtract(const Duration(days: 19)),
+        lastServerSyncAt: now.subtract(const Duration(days: 20)),
+      );
+      expect(service.effectiveStatus, 'lapsed');
+    });
+
+    test('no window once the server itself has confirmed the lapse', () async {
+      // We DID reach the server after the period ended and it still said over.
+      // That's knowledge, not silence — nothing left to verify.
+      await seed(
+        status: 'active',
+        currentPeriodEnd: now.subtract(const Duration(days: 10)),
+        lastServerSyncAt: now.subtract(const Duration(days: 1)),
+      );
+      expect(service.effectiveStatus, 'lapsed');
+    });
+
+    test('a cancelled subscription never gets the benefit of the doubt', () async {
+      await seed(
+        status: 'canceled',
+        currentPeriodEnd: now.subtract(const Duration(days: 1)),
+        lastServerSyncAt: now.subtract(const Duration(days: 2)),
+      );
+      expect(service.effectiveStatus, 'lapsed');
+    });
+
+    test('grace still wins over the window while it is running', () async {
+      await seed(
+        status: 'active',
+        currentPeriodEnd: now.subtract(const Duration(days: 1)),
+        graceUntil: now.add(const Duration(days: 5)),
+        lastServerSyncAt: now.subtract(const Duration(days: 2)),
+      );
+      expect(service.effectiveStatus, 'past_due');
+    });
+
+    test('rolling the clock back cannot reopen a closed window', () async {
+      // Anchor is 40 days in the FUTURE relative to the (rewound) device clock;
+      // the clamp pulls "now" forward past the window either way.
+      await seed(
+        status: 'active',
+        currentPeriodEnd: now.add(const Duration(days: 1)),
+        lastServerSyncAt: now.add(const Duration(days: 40)),
+      );
+      expect(service.effectiveStatus, 'lapsed');
+    });
+  });
+
   group('featureAllowed', () {
     test('CRM directory allowed on basic and full, denied when false', () async {
       await seed(status: 'active', currentPeriodEnd: now.add(const Duration(days: 10)), flags: {'crm': 'basic'});
@@ -174,6 +265,57 @@ void main() {
       expect(service.featureAllowed(AppFeature.posTerminal), isTrue);
       expect(service.featureAllowed(AppFeature.inventoryManagement), isTrue);
       expect(service.featureAllowed(AppFeature.expensesModule), isTrue);
+    });
+
+    // The two audit surfaces sit on different rungs: `cloud` (Starter) makes
+    // the chain browsable, `full` (Growth) adds the Unusual Activity dashboard.
+    // Before the split both gated on `full`, so Starter paid for a rung that
+    // unlocked nothing.
+    test('audit log opens on cloud; unusual activity needs full', () async {
+      final live = now.add(const Duration(days: 10));
+
+      // Growth: both surfaces.
+      await seed(status: 'active', currentPeriodEnd: live, flags: {'audit': 'full'});
+      expect(service.featureAllowed(AppFeature.auditLogs), isTrue);
+      expect(service.featureAllowed(AppFeature.fraudAlerts), isTrue);
+      expect(service.auditFull, isTrue);
+      expect(service.auditCloudBacked, isTrue);
+
+      // Starter: the log is backed up AND readable; the dashboard is not sold.
+      await seed(status: 'active', currentPeriodEnd: live, flags: {'audit': 'cloud'});
+      expect(service.featureAllowed(AppFeature.auditLogs), isTrue);
+      expect(service.featureAllowed(AppFeature.fraudAlerts), isFalse);
+      expect(service.auditFull, isFalse);
+      expect(service.auditCloudBacked, isTrue);
+
+      // Free: local chain only — neither surface, and the split must not have
+      // loosened this.
+      await seed(status: 'free', cloudEnabled: false, flags: {'audit': 'local'});
+      expect(service.featureAllowed(AppFeature.auditLogs), isFalse);
+      expect(service.featureAllowed(AppFeature.fraudAlerts), isFalse);
+      expect(service.auditCloudBacked, isFalse);
+    });
+
+    test('a missing audit flag falls back to local, never to a paid rung',
+        () async {
+      await seed(
+        status: 'active',
+        currentPeriodEnd: now.add(const Duration(days: 10)),
+        flags: {},
+      );
+      expect(service.auditRank, 'local');
+      expect(service.featureAllowed(AppFeature.auditLogs), isFalse);
+      expect(service.featureAllowed(AppFeature.fraudAlerts), isFalse);
+    });
+
+    test('reportsFull tracks the reports flag', () async {
+      final live = now.add(const Duration(days: 10));
+
+      await seed(status: 'active', currentPeriodEnd: live, flags: {'reports': 'full'});
+      expect(service.reportsFull, isTrue);
+
+      await seed(status: 'active', currentPeriodEnd: live, flags: {'reports': 'basic'});
+      expect(service.reportsFull, isFalse);
     });
 
     test('fail-open with no cache: premium UI is not bricked, but cloud is off',
@@ -218,6 +360,30 @@ void main() {
     test('unknown cap (no cache) never blocks a create', () async {
       expect(await service.canAddAnother(EntitlementResource.seats), isTrue);
       expect(service.effectiveMax(EntitlementResource.seats), isNull);
+    });
+
+    test('Growth: a null device cap means unlimited, never a block', () async {
+      await seed(
+        status: 'active',
+        currentPeriodEnd: now.add(const Duration(days: 10)),
+        maxDevices: null,
+      );
+      expect(service.effectiveMax(EntitlementResource.devices), isNull);
+      expect(await service.canAddAnother(EntitlementResource.devices), isTrue);
+    });
+
+    test('Starter shape: 3 seats and 1 branch both block at the cap', () async {
+      await seed(
+        status: 'active',
+        currentPeriodEnd: now.add(const Duration(days: 10)),
+        maxSeats: 3,
+        maxBranches: 1,
+        maxDevices: 3,
+      );
+      await addActiveEmployees(3);
+      await addBranches(1);
+      expect(await service.canAddAnother(EntitlementResource.seats), isFalse);
+      expect(await service.canAddAnother(EntitlementResource.branches), isFalse);
     });
   });
 }

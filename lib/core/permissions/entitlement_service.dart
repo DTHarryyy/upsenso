@@ -56,11 +56,11 @@ class EntitlementService {
     required ActiveBusinessContext activeBusinessContext,
     required EmployeesDao employeesDao,
     required BranchesDao branchesDao,
-  })  : _dao = entitlementDao,
-        _remoteDs = entitlementRemoteDs,
-        _activeBusinessContext = activeBusinessContext,
-        _employeesDao = employeesDao,
-        _branchesDao = branchesDao;
+  }) : _dao = entitlementDao,
+       _remoteDs = entitlementRemoteDs,
+       _activeBusinessContext = activeBusinessContext,
+       _employeesDao = employeesDao,
+       _branchesDao = branchesDao;
 
   bool get hasEntitlementData => _cached != null;
 
@@ -104,7 +104,8 @@ class EntitlementService {
       // never reach the UI.
       _entitlementRevision.value++;
       debugPrint(
-          '[EntitlementService] synced — plan=${_cached?.planCode} status=$effectiveStatus');
+        '[EntitlementService] synced — plan=${_cached?.planCode} status=$effectiveStatus',
+      );
       return true;
     } catch (e, st) {
       // Offline or pre-migration server: cached snapshot stays authoritative.
@@ -118,34 +119,45 @@ class EntitlementService {
         ? Map<String, dynamic>.from(data['usage'] as Map)
         : const <String, dynamic>{};
 
-    await _dao.saveEntitlement(EntitlementCacheTableCompanion(
-      businessId: Value(businessId),
-      planCode: Value((data['plan_code'] as String?) ?? 'free'),
-      planVersion: Value((data['plan_version'] as num?)?.toInt() ?? 1),
-      status: Value((data['status'] as String?) ?? 'free'),
-      cloudEnabled: Value(data['cloud_enabled'] == true),
-      featureFlagsJson: Value(json.encode(data['feature_flags'] ?? {})),
-      maxBranches: Value((data['max_branches'] as num?)?.toInt()),
-      maxSeats: Value((data['max_seats'] as num?)?.toInt()),
-      maxDevices: Value((data['max_devices'] as num?)?.toInt()),
-      deviceAddons: Value((data['device_addons'] as num?)?.toInt() ?? 0),
-      branchAddons: Value((data['branch_addons'] as num?)?.toInt() ?? 0),
-      seatAddons: Value((data['seat_addons'] as num?)?.toInt() ?? 0),
-      trialEnd: Value(_parseTs(data['trial_end'])),
-      currentPeriodEnd: Value(_parseTs(data['current_period_end'])),
-      graceUntil: Value(_parseTs(data['grace_until'])),
-      grandfatheredPrice: Value((data['grandfathered_price'] as num?)?.toDouble()),
-      lastServerSyncAt: Value(_parseTs(data['server_time']) ?? DateTime.now()),
-      updatedAt: Value(DateTime.now()),
-    ));
+    await _dao.saveEntitlement(
+      EntitlementCacheTableCompanion(
+        businessId: Value(businessId),
+        planCode: Value((data['plan_code'] as String?) ?? 'free'),
+        planVersion: Value((data['plan_version'] as num?)?.toInt() ?? 1),
+        status: Value((data['status'] as String?) ?? 'free'),
+        billingPeriod: Value(data['billing_period'] as String?),
+        cloudEnabled: Value(data['cloud_enabled'] == true),
+        featureFlagsJson: Value(json.encode(data['feature_flags'] ?? {})),
+        maxBranches: Value((data['max_branches'] as num?)?.toInt()),
+        maxSeats: Value((data['max_seats'] as num?)?.toInt()),
+        maxDevices: Value((data['max_devices'] as num?)?.toInt()),
+        deviceAddons: Value((data['device_addons'] as num?)?.toInt() ?? 0),
+        branchAddons: Value((data['branch_addons'] as num?)?.toInt() ?? 0),
+        seatAddons: Value((data['seat_addons'] as num?)?.toInt() ?? 0),
+        trialEnd: Value(_parseTs(data['trial_end'])),
+        currentPeriodEnd: Value(_parseTs(data['current_period_end'])),
+        graceUntil: Value(_parseTs(data['grace_until'])),
+        grandfatheredPrice: Value(
+          (data['grandfathered_price'] as num?)?.toDouble(),
+        ),
+        lastServerSyncAt: Value(
+          _parseTs(data['server_time']) ?? DateTime.now(),
+        ),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
 
-    await _dao.saveUsage(ResourceUsageCacheTableCompanion(
-      businessId: Value(businessId),
-      branchCount: Value((usage['branch_count'] as num?)?.toInt() ?? 0),
-      activeSeatCount: Value((usage['active_seat_count'] as num?)?.toInt() ?? 0),
-      deviceCount: Value((usage['device_count'] as num?)?.toInt() ?? 0),
-      syncedAt: Value(DateTime.now()),
-    ));
+    await _dao.saveUsage(
+      ResourceUsageCacheTableCompanion(
+        businessId: Value(businessId),
+        branchCount: Value((usage['branch_count'] as num?)?.toInt() ?? 0),
+        activeSeatCount: Value(
+          (usage['active_seat_count'] as num?)?.toInt() ?? 0,
+        ),
+        deviceCount: Value((usage['device_count'] as num?)?.toInt() ?? 0),
+        syncedAt: Value(DateTime.now()),
+      ),
+    );
   }
 
   /// Logout / account-switch hygiene — entitlement never leaks across tenants.
@@ -163,7 +175,22 @@ class EntitlementService {
 
   // ── Status (mirrors SQL effective_sub_status, clock-tamper clamped) ───────
 
-  /// trialing | active | past_due | free | lapsed.
+  /// How long a paid tier survives past its cached period end when the device
+  /// simply cannot reach the server (§7.4). Play renews automatically and the
+  /// client only learns about it via `get_my_entitlement()` — without this
+  /// window a paying merchant with a dead connection over their renewal date
+  /// gets silently downgraded despite having been charged.
+  ///
+  /// Annual gets longer: the renewal is rarer, higher-value, and a wrong call
+  /// costs the merchant twelve months of standing rather than one.
+  static const Duration _monthlyVerificationWindow = Duration(days: 14);
+  static const Duration _annualVerificationWindow = Duration(days: 30);
+
+  Duration get _verificationWindow => _cached?.billingPeriod == 'annual'
+      ? _annualVerificationWindow
+      : _monthlyVerificationWindow;
+
+  /// trialing | active | unverified | past_due | free | lapsed.
   ///
   /// Derived from cached timestamps so transitions (trial expiry, grace end)
   /// take effect offline. The clock is clamped to the last server contact:
@@ -186,15 +213,53 @@ class EntitlementService {
         row.status != 'canceled') {
       return 'past_due';
     }
+    if (_isWithinVerificationWindow(row, now)) return 'unverified';
     final trialEnd = row.trialEnd;
-    if (row.status == 'trialing' && trialEnd != null && now.isBefore(trialEnd)) {
+    if (row.status == 'trialing' &&
+        trialEnd != null &&
+        now.isBefore(trialEnd)) {
       return 'trialing';
     }
     return periodEnd == null ? 'free' : 'lapsed';
   }
 
-  bool get _statusHasCloud =>
-      const {'trialing', 'active', 'past_due'}.contains(effectiveStatus);
+  /// True when the period lapsed but we have not actually heard the server say
+  /// so — "we don't know", as opposed to `past_due`'s "we know they failed".
+  ///
+  /// Anchored on [lastServerSyncAt], never the device clock alone, so going
+  /// offline deliberately buys at most one window and rewinding the clock buys
+  /// nothing. When the last sync happened *after* the period end, the server
+  /// has already confirmed the lapse — there is nothing left to verify.
+  bool _isWithinVerificationWindow(EntitlementCacheRow row, DateTime now) {
+    final periodEnd = row.currentPeriodEnd;
+    final anchor = row.lastServerSyncAt;
+    if (periodEnd == null || anchor == null) return false;
+    if (row.status == 'canceled') return false;
+    if (anchor.isAfter(periodEnd)) return false;
+    return !now.isAfter(anchor.add(_verificationWindow));
+  }
+
+  /// Days left before an [effectiveStatus] of `unverified` degrades to
+  /// `lapsed`, for the "connect to keep your plan" banner. Null otherwise.
+  int? get verificationDaysLeft {
+    final row = _cached;
+    if (row == null) return null;
+    var now = DateTime.now();
+    final anchor = row.lastServerSyncAt;
+    if (anchor != null && anchor.isAfter(now)) now = anchor;
+    if (!_isWithinVerificationWindow(row, now)) return null;
+    final d = anchor!.add(_verificationWindow).difference(now).inDays;
+    return d < 0 ? 0 : d;
+  }
+
+  // `unverified` keeps cloud on: the tenant most likely did pay, and cutting
+  // their backup off is the one failure mode that loses real data.
+  bool get _statusHasCloud => const {
+    'trialing',
+    'active',
+    'past_due',
+    'unverified',
+  }.contains(effectiveStatus);
 
   /// The v2 core gate (§7.1): may this tenant sync business data to the cloud?
   /// Fail-closed without entitlement data — there is nothing to sync against
@@ -213,6 +278,7 @@ class EntitlementService {
       'trialing' => row.trialEnd,
       'active' => row.currentPeriodEnd,
       'past_due' => row.graceUntil,
+      'unverified' => row.lastServerSyncAt?.add(_verificationWindow),
       _ => null,
     };
     if (until == null) return null;
@@ -222,6 +288,14 @@ class EntitlementService {
 
   String get planCode => _cached?.planCode ?? 'free';
   double? get grandfatheredPrice => _cached?.grandfatheredPrice;
+
+  /// monthly | annual, or null when the tenant has no paid subscription (or the
+  /// cache predates v59). Callers must render the price without a period suffix
+  /// rather than assume monthly.
+  String? get billingPeriod => _cached?.billingPeriod;
+
+  /// End of the paid period — the date the subscription next renews.
+  DateTime? get renewsOn => _cached?.currentPeriodEnd;
 
   // ── Plan feature gate (consulted by PermissionService.canAccessFeature) ───
 
@@ -238,6 +312,17 @@ class EntitlementService {
       case AppFeature.procurement:
       case AppFeature.supplierDirectory:
         return _featureFlags['procurement'] == true;
+      // The audit RECORD runs on every tier; the two surfaces above it are
+      // sold separately, one per paid rung. Retrievability is preserved on
+      // every tier by the always-free Data Export, which carries the audit rows.
+      case AppFeature.auditLogs:
+        // Starter and up. If the chain is backed up it's also browsable —
+        // otherwise `cloud` is a rung a merchant pays for and can never reach.
+        return auditRank != 'local';
+      case AppFeature.fraudAlerts:
+        // Growth only. Detection runs everywhere; triaging what it found is
+        // the premium surface.
+        return auditFull;
       default:
         return true;
     }
@@ -250,8 +335,23 @@ class EntitlementService {
   /// Full reports incl. export (Growth+); Free/Starter get basic reports.
   bool get reportsFull => _featureFlags['reports'] == 'full';
 
-  /// Cloud-anchored audit chain + cross-device fraud sync (paid tiers).
-  bool get cloudAuditEnabled => _featureFlags['cloud_audit'] == true;
+  /// Audit depth: `local` (record only) | `cloud` (record backed up **and**
+  /// browsable) | `full` (adds the Unusual Activity dashboard + cross-device
+  /// fraud sync). The chain itself always runs — these only gate what the tier
+  /// can *look at*.
+  String get auditRank => switch (_featureFlags['audit']) {
+    'full' => 'full',
+    'cloud' => 'cloud',
+    _ => 'local',
+  };
+
+  /// Growth+: the Unusual Activity dashboard. The Audit Logs viewer is a rung
+  /// lower — see [featureAllowed].
+  bool get auditFull => auditRank == 'full';
+
+  /// Paid tiers: the chain is anchored server-side. A property of having cloud
+  /// sync rather than a capability of its own — used for plan-card copy.
+  bool get auditCloudBacked => auditRank != 'local';
 
   // ── Structural limits + usage (UX pre-checks and meters only) ─────────────
 
@@ -314,13 +414,15 @@ class EntitlementService {
       final seats = await _employeesDao.countActiveForBusiness(businessId);
       final branches = await _branchesDao.countForBusiness(businessId);
       final existing = await _dao.getUsage(businessId);
-      await _dao.saveUsage(ResourceUsageCacheTableCompanion(
-        businessId: Value(businessId),
-        branchCount: Value(branches),
-        activeSeatCount: Value(seats),
-        deviceCount: Value(existing?.deviceCount ?? 0),
-        syncedAt: Value(DateTime.now()),
-      ));
+      await _dao.saveUsage(
+        ResourceUsageCacheTableCompanion(
+          businessId: Value(businessId),
+          branchCount: Value(branches),
+          activeSeatCount: Value(seats),
+          deviceCount: Value(existing?.deviceCount ?? 0),
+          syncedAt: Value(DateTime.now()),
+        ),
+      );
       _usage = await _dao.getUsage(businessId);
       _entitlementRevision.value++;
     } catch (e, st) {

@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/routes/app_routes.dart';
+import 'package:pos/features/notifications/domain/entities/billing_notice.dart';
 import 'package:pos/features/notifications/domain/entities/notification_item.dart';
 import 'package:pos/features/notifications/presentation/cubit/notifications_cubit.dart';
+import 'package:pos/features/notifications/presentation/widgets/billing_notice_visuals.dart';
 
 /// A single row in the notification list.
 class NotificationTile extends StatelessWidget {
@@ -16,7 +18,10 @@ class NotificationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final config = _NotificationConfig.of(item);
+    // Null for every real row. Resolved once so the three branches below all
+    // key off the same answer.
+    final notice = billingNoticeKindOf(item);
+    final config = _NotificationConfig.of(item, notice);
 
     return Container(
       color: item.isRead ? AppColors.surface : AppColors.brand.withAlpha(6),
@@ -72,14 +77,18 @@ class NotificationTile extends StatelessWidget {
                     color: AppColors.textSecondary,
                   ),
                 ),
-                const SizedBox(height: 5),
-                Text(
-                  _timeAgo(item.createdAt),
-                  style: getOutfitStyle(
-                    fontSize: 11,
-                    color: AppColors.textMuted,
+                // A standing status notice, not a one-time event — no
+                // "time ago" to show for it.
+                if (notice == null) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    _timeAgo(item.createdAt),
+                    style: getOutfitStyle(
+                      fontSize: 11,
+                      color: AppColors.textMuted,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -87,33 +96,44 @@ class NotificationTile extends StatelessWidget {
           // Actions
           Row(
             mainAxisSize: MainAxisSize.min,
-            children: [
-              NotificationActionBtn(
-                label: 'View',
-                onTap: () {
-                  if (!item.isRead) {
-                    context.read<NotificationsCubit>().markAsRead(item.id);
-                  }
-                  _openReference(context);
-                },
-              ),
-              if (!item.isRead) ...[
-                const SizedBox(width: 4),
-                NotificationIconBtn(
-                  icon: IconlyLight.tick_square,
-                  tooltip: 'Mark as read',
-                  onTap: () =>
-                      context.read<NotificationsCubit>().markAsRead(item.id),
-                ),
-              ],
-              const SizedBox(width: 4),
-              NotificationIconBtn(
-                icon: IconlyLight.delete,
-                tooltip: 'Delete',
-                color: AppColors.error,
-                onTap: () => context.read<NotificationsCubit>().delete(item.id),
-              ),
-            ],
+            children: notice != null
+                ? [
+                    NotificationActionBtn(
+                      label: notice.ctaLabel,
+                      onTap: () => context.push(AppRoutes.billing),
+                    ),
+                  ]
+                : [
+                    NotificationActionBtn(
+                      label: 'View',
+                      onTap: () {
+                        if (!item.isRead) {
+                          context.read<NotificationsCubit>().markAsRead(
+                            item.id,
+                          );
+                        }
+                        _openReference(context);
+                      },
+                    ),
+                    if (!item.isRead) ...[
+                      const SizedBox(width: 4),
+                      NotificationIconBtn(
+                        icon: IconlyLight.tick_square,
+                        tooltip: 'Mark as read',
+                        onTap: () => context
+                            .read<NotificationsCubit>()
+                            .markAsRead(item.id),
+                      ),
+                    ],
+                    const SizedBox(width: 4),
+                    NotificationIconBtn(
+                      icon: IconlyLight.delete,
+                      tooltip: 'Delete',
+                      color: AppColors.error,
+                      onTap: () =>
+                          context.read<NotificationsCubit>().delete(item.id),
+                    ),
+                  ],
           ),
         ],
       ),
@@ -220,7 +240,17 @@ class _NotificationConfig {
     required this.softColor,
   });
 
-  factory _NotificationConfig.of(NotificationItem item) {
+  factory _NotificationConfig.of(
+    NotificationItem item,
+    BillingNoticeKind? notice,
+  ) {
+    if (notice != null) {
+      return _NotificationConfig(
+        icon: notice.icon,
+        color: notice.color,
+        softColor: notice.softColor,
+      );
+    }
     switch (item.type) {
       case NotificationType.fraud:
         return _NotificationConfig(
@@ -267,6 +297,12 @@ class _NotificationConfig {
           icon: IconlyLight.notification,
           color: AppColors.textMuted,
           softColor: AppColors.surfaceAlt,
+        );
+      case NotificationType.billing:
+        return const _NotificationConfig(
+          icon: Icons.cloud_off_outlined,
+          color: AppColors.warning,
+          softColor: AppColors.warningSoft,
         );
     }
   }

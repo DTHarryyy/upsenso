@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/features/billing/domain/billing_models.dart';
+import 'package:pos/features/billing/domain/plan_benefits.dart';
+import 'package:pos/features/billing/presentation/billing_formats.dart';
+import 'package:pos/features/billing/presentation/widgets/locked_price_chip.dart';
 
 /// One plan tier in the picker — a centered price header, a full-width CTA, and
 /// a checklist of what's included. The recommended tier gets a filled brand-dark
@@ -32,7 +35,10 @@ class PlanCard extends StatelessWidget {
   final bool busy;
   final bool canManage;
 
-  /// Locked legacy price, shown on the current card only (§4.9 grandfathering).
+  /// Legacy price this tenant is locked into, below today's list price
+  /// (§4.9 grandfathering). The CALLER decides whether a lock is real — this
+  /// renders the chip whenever it's non-null. Passing the entitlement's raw
+  /// value here is what put a lapsed Growth tenant's "₱499" on the Free card.
   final double? grandfatheredPrice;
 
   final VoidCallback onSelect;
@@ -93,9 +99,19 @@ class PlanCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _price(onDark),
-          if (isCurrent && (grandfatheredPrice ?? 0) > 0) ...[
+          if (grandfatheredPrice != null) ...[
             const SizedBox(height: 8),
-            _grandfatherChip(),
+            LockedPriceChip(price: grandfatheredPrice!),
+          ] else if (_perDay != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              _perDay!,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
+                color: onDark ? Colors.white60 : AppColors.textMuted,
+              ),
+            ),
           ],
           const SizedBox(height: 10),
           Text(
@@ -110,7 +126,7 @@ class PlanCard extends StatelessWidget {
           const SizedBox(height: 22),
           _cta(onDark),
           const SizedBox(height: 24),
-          ..._labels().map((l) => _featureRow(l, onDark)),
+          ..._rows().map((r) => PlanBenefitRow(benefit: r, onDark: onDark)),
         ],
       ),
     );
@@ -135,32 +151,45 @@ class PlanCard extends StatelessWidget {
     final free = plan.priceMonthly == 0;
     final price = annual ? plan.priceAnnual : plan.priceMonthly;
     final suffix = free ? '/forever' : (annual ? '/year' : '/month');
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Text(
-          free ? '₱0' : '₱${_fmt(price)}',
-          style: TextStyle(
-            fontSize: 38,
-            fontWeight: FontWeight.w800,
-            height: 1,
-            color: onDark ? Colors.white : AppColors.textPrimary,
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(bottom: 5, left: 3),
-          child: Text(
-            suffix,
+    // Scale down rather than clip: three cards side by side leave ~200px each,
+    // which an annual price ("₱4,990 /year") does not fit at 38px.
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            free ? '₱0' : '₱${formatPlanPrice(price)}',
             style: TextStyle(
-              fontSize: 14.5,
-              fontWeight: FontWeight.w500,
-              color: onDark ? Colors.white70 : AppColors.textSecondary,
+              fontSize: 38,
+              fontWeight: FontWeight.w800,
+              height: 1,
+              color: onDark ? Colors.white : AppColors.textPrimary,
             ),
           ),
-        ),
-      ],
+          Padding(
+            padding: const EdgeInsets.only(bottom: 5, left: 3),
+            child: Text(
+              suffix,
+              style: TextStyle(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w500,
+                color: onDark ? Colors.white70 : AppColors.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  /// A monthly figure is easy to flinch at; the same number as a daily one is
+  /// what a shop owner can compare against a day's takings.
+  String? get _perDay {
+    if (plan.priceMonthly <= 0) return null;
+    final perDay = annual ? plan.priceAnnual / 365.0 : plan.perDay;
+    return 'About ₱${perDay.toStringAsFixed(0)} a day';
   }
 
   String get _tagline => switch (plan.code) {
@@ -170,24 +199,6 @@ class PlanCard extends StatelessWidget {
         'business' => 'For large operations',
         _ => 'Run your business smarter',
       };
-
-  Widget _grandfatherChip() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.successSoft,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        'Price locked at ₱${grandfatheredPrice!.toStringAsFixed(0)}/mo',
-        style: const TextStyle(
-          fontSize: 11.5,
-          fontWeight: FontWeight.w700,
-          color: AppColors.success,
-        ),
-      ),
-    );
-  }
 
   // ── CTA ─────────────────────────────────────────────────────────────────────
   Widget _cta(bool onDark) {
@@ -281,77 +292,23 @@ class PlanCard extends StatelessWidget {
   }
 
   // ── Feature checklist ───────────────────────────────────────────────────────
-  Widget _featureRow(String label, bool onDark) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            Icons.check_circle,
-            size: 18,
-            color: onDark ? Colors.white : AppColors.brand,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 13.5,
-                height: 1.35,
-                color: onDark ? Colors.white : AppColors.textPrimary,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<String> _labels() {
+  List<PlanBenefit> _rows() {
     if (leadWithEverything && previousTier != null) {
+      final delta =
+          planBenefits(plan, previous: previousTier).where((r) => r.changed);
+      // Two tiers with identical limits would leave the card selling nothing
+      // but its own name — fall back to the full list rather than a bare lead.
+      if (delta.isEmpty) return planBenefits(plan);
       return [
-        'Everything in ${previousTier!.name}',
-        ..._caps(plan, previousTier).where((r) => r.changed).map((r) => r.label),
+        (
+          label: 'Everything in ${previousTier!.name}',
+          detail: null,
+          changed: true,
+        ),
+        ...delta,
       ];
     }
-    return _caps(plan, null).map((r) => r.label).toList();
-  }
-
-  /// Capability rows for [p]. When [prev] is given, `changed` marks the rows
-  /// that differ from the tier below (used to build the delta list).
-  List<({String label, bool changed})> _caps(PlanOption p, PlanOption? prev) {
-    final rows = <({String label, bool changed})>[];
-    void add(String label, bool changed) => rows.add((label: label, changed: changed));
-
-    add(
-      p.cloudEnabled ? 'Cloud backup & sync' : 'Works fully offline',
-      prev == null || p.cloudEnabled != prev.cloudEnabled,
-    );
-    add(_count(p.maxDevices, 'device', 'devices'),
-        prev == null || p.maxDevices != prev.maxDevices);
-    add(_count(p.maxBranches, 'branch', 'branches'),
-        prev == null || p.maxBranches != prev.maxBranches);
-    add(_count(p.maxSeats, 'team member', 'team members'),
-        prev == null || p.maxSeats != prev.maxSeats);
-
-    final crm = _crmRank(p.featureFlags['crm']);
-    if (crm > 0) {
-      add(crm == 2 ? 'Full CRM & customer insights' : 'Customer directory (CRM)',
-          prev == null || crm != _crmRank(prev.featureFlags['crm']));
-    }
-    if (p.featureFlags['procurement'] == true) {
-      add('Procurement & suppliers',
-          prev == null || prev.featureFlags['procurement'] != true);
-    }
-    final rep = _reportsRank(p.featureFlags['reports']);
-    add(rep == 2 ? 'Advanced reports & export' : 'Sales & inventory reports',
-        prev == null || rep != _reportsRank(prev.featureFlags['reports']));
-    if (p.featureFlags['cloud_audit'] == true) {
-      add('Cloud audit trail',
-          prev == null || prev.featureFlags['cloud_audit'] != true);
-    }
-    return rows;
+    return planBenefits(plan);
   }
 
   // ── Badge ───────────────────────────────────────────────────────────────────
@@ -371,22 +328,64 @@ class PlanCard extends StatelessWidget {
       ),
     );
   }
+}
 
-  // ── Helpers ─────────────────────────────────────────────────────────────────
-  static int _crmRank(Object? v) => v == 'full' ? 2 : (v == 'basic' ? 1 : 0);
+/// One checklist line: a tick, the capability, and the plain-language gloss
+/// under it. Always a tick — a plan card states what a tier gives you, never
+/// what it withholds.
+class PlanBenefitRow extends StatelessWidget {
+  final PlanBenefit benefit;
+  final bool onDark;
 
-  static int _reportsRank(Object? v) => v == 'full' ? 2 : 1;
+  const PlanBenefitRow({
+    super.key,
+    required this.benefit,
+    this.onDark = false,
+  });
 
-  static String _count(int? n, String one, String many) =>
-      n == null ? 'Unlimited $many' : '$n ${n == 1 ? one : many}';
+  @override
+  Widget build(BuildContext context) {
+    final iconColor = onDark ? Colors.white : AppColors.brand;
+    final labelColor = onDark ? Colors.white : AppColors.textPrimary;
 
-  static String _fmt(double v) {
-    final s = v.toStringAsFixed(0);
-    final buf = StringBuffer();
-    for (int i = 0; i < s.length; i++) {
-      if (i > 0 && (s.length - i) % 3 == 0) buf.write(',');
-      buf.write(s[i]);
-    }
-    return buf.toString();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.check_circle, size: 18, color: iconColor),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  benefit.label,
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    height: 1.35,
+                    fontWeight: FontWeight.w500,
+                    color: labelColor,
+                  ),
+                ),
+                if (benefit.detail != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      benefit.detail!,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        height: 1.35,
+                        color:
+                            onDark ? Colors.white60 : AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

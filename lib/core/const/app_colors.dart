@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  static const Color brand = Color(0xFF557FF4);
-  static const Color brandDark = Color(0xFF3B5BDB);
-  static const Color brandSoft = Color(0xFFEAF0FF);
+  static const Color brand = Color(0xFF0057FF);
+  static const Color brandDark = Color(0xFF0046CC);
+  static const Color brandSoft = Color(0xFFE6EEFF);
 
   // Accent (used for highlights, charts, links)
   static const Color accent = Color(0xFF22C55E); // green (positive money)
@@ -30,6 +30,15 @@ class AppColors {
 
   static const Color warning = Color(0xFFF59E0B);
   static const Color warningSoft = Color(0xFFFEF3C7);
+
+  /// Paid-tier accent — the crown on a plan-locked control and the hero on the
+  /// upgrade sheet. Deliberately its own name despite sharing today's hex with
+  /// [warning]: a crown is an invitation, not a problem, and retuning the
+  /// warning palette must not quietly recolour every premium affordance.
+  ///
+  /// Accent only, never an action — upgrade buttons stay [brand].
+  static const Color premium = Color(0xFFF59E0B);
+  static const Color premiumSoft = Color(0xFFFEF3C7);
 
   static const Color error = Color.fromARGB(255, 255, 87, 87);
   static const Color errorSoft = Color(0xFFFEE2E2);

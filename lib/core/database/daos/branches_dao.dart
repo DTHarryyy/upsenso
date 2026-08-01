@@ -36,12 +36,19 @@ class BranchesDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Branch count for a business — the local source of truth behind the branch
-  /// cap. Matches the server's `count(branches WHERE business_id = …)`.
+  /// cap. Excludes rows queued for deletion so removing a branch frees headroom
+  /// immediately, exactly as [EmployeesDao.countActiveForBusiness] does for
+  /// seats. Counting them kept a tenant at their cap until the delete synced,
+  /// which offline meant indefinitely.
   Future<int> countForBusiness(String businessId) async {
     final countExp = branchesTable.id.count();
     final query = selectOnly(branchesTable)
       ..addColumns([countExp])
-      ..where(branchesTable.businessId.equals(businessId));
+      ..where(
+        branchesTable.businessId.equals(businessId) &
+            branchesTable.syncStatus
+                .isNotIn([SyncStatus.pendingDelete.toInt()]),
+      );
     final row = await query.getSingle();
     return row.read(countExp) ?? 0;
   }
@@ -54,8 +61,10 @@ class BranchesDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Insert a new branch (locally created, pending upload)
+  /// Insert the local branch row. Idempotent by id for the same reason as
+  /// [BusinessesDao.insertBusiness] — a signup retry reuses the branch id.
   Future<void> insertBranch(Branch branch) async {
-    await into(branchesTable).insert(
+    await into(branchesTable).insertOnConflictUpdate(
       BranchesTableCompanion.insert(
         id: branch.id,
         businessId: branch.businessId,

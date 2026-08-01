@@ -117,8 +117,14 @@ extension AppFeatureX on AppFeature {
         return 'Recipes';
       case AppFeature.auditLogs:
         return 'Audit Logs';
+      // Reads as "unusual activity" everywhere a user can see it. The enum,
+      // the `fraud_flags` table, the `fraud.view`/`fraud.resolve` permission
+      // codes and the FRAUD_FLAG_* audit action types all keep the old name:
+      // they cross the wire, and the action types are hashed into the
+      // tamper-evident audit chain. Don't reconcile the two with a
+      // find-and-replace — it would break RLS and chain verification.
       case AppFeature.fraudAlerts:
-        return 'Fraud & Risk';
+        return 'Unusual Activity';
       case AppFeature.profileSettings:
         return 'Profile Settings';
       case AppFeature.salesHistory:

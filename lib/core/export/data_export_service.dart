@@ -29,23 +29,43 @@ class DataExportService {
     'expenses',
     'customers',
     'stock_ledger',
+    // The audit trail ships on every tier even though only Growth gets the
+    // in-app viewer — the record must always be retrievable (§4.7, and BIR
+    // expects it available to a revenue officer).
+    'audit_logs',
   ];
+
+  /// Tables this export covers, in bundle order.
+  @visibleForTesting
+  static List<String> get exportedTables => List.unmodifiable(_tables);
+
+  /// Renders every non-empty table to CSV, keyed by table name. Split out from
+  /// [exportCsvBundle] so the bundle's contents can be asserted without the
+  /// platform share sheet.
+  @visibleForTesting
+  Future<Map<String, String>> buildCsvBundle() async {
+    final bundle = <String, String>{};
+    for (final table in _tables) {
+      try {
+        final csv = await _tableToCsv(table);
+        if (csv == null) continue;
+        bundle[table] = csv;
+      } catch (e, st) {
+        // One bad table must not sink the whole export.
+        debugPrint('[DataExport] Error exporting $table: $e\n$st');
+      }
+    }
+    return bundle;
+  }
 
   /// Builds the zip and opens the share/download sheet. Returns false when
   /// there was nothing to export.
   Future<bool> exportCsvBundle() async {
     final archive = Archive();
 
-    for (final table in _tables) {
-      try {
-        final csv = await _tableToCsv(table);
-        if (csv == null) continue;
-        final bytes = utf8.encode(csv);
-        archive.addFile(ArchiveFile('$table.csv', bytes.length, bytes));
-      } catch (e, st) {
-        // One bad table must not sink the whole export.
-        debugPrint('[DataExport] Error exporting $table: $e\n$st');
-      }
+    for (final entry in (await buildCsvBundle()).entries) {
+      final bytes = utf8.encode(entry.value);
+      archive.addFile(ArchiveFile('${entry.key}.csv', bytes.length, bytes));
     }
 
     if (archive.isEmpty) return false;

@@ -51,6 +51,22 @@ class DeviceRegistrationService {
 
   DeviceRegistrationStatus get status => _status;
 
+  /// This device is over the plan's device cap: it works normally, but nothing
+  /// on it reaches the cloud until a slot is freed or the plan grows.
+  bool get isCapReached => _status == DeviceRegistrationStatus.capReached;
+
+  /// The cap that turned us away, for the banner's "3 of 3 in use" line.
+  int? get deviceCap => _entitlement.effectiveMax(EntitlementResource.devices);
+
+  /// A one-device plan hitting the cap *is* the "second device" moment (§4.3) —
+  /// the merchant just tried to use their phone as well as their tablet. Any
+  /// higher cap is a device-management problem, not an upsell.
+  ///
+  /// A Free tenant who is offline on both devices is undetectable by
+  /// construction: nothing registers and nothing syncs, so there is no shared
+  /// fact to compare against. This catches every case we can actually see.
+  bool get isSecondDeviceMoment => isCapReached && deviceCap == 1;
+
   /// Bumps when registration status changes — SyncService listens so a
   /// successful registration (or a revoke) re-arms/pauses sync.
   ValueListenable<int> get registrationRevision => _registrationRevision;
@@ -101,6 +117,17 @@ class DeviceRegistrationService {
       debugPrint('[DeviceRegistration] Error in ensureRegistered: $e\n$st');
       // Network/transient failure: leave the cached flag untouched.
       return _status;
+    }
+  }
+
+  /// Bump this device's `last_seen_at`. Best-effort and silent — a failed
+  /// heartbeat must never disturb sync or registration state.
+  Future<void> touch() async {
+    if (!isRegistered || !_entitlement.cloudEnabled) return;
+    try {
+      await _remoteDs.touch(await _identity.getDeviceUid());
+    } catch (e, st) {
+      debugPrint('[DeviceRegistration] Error in touch: $e\n$st');
     }
   }
 

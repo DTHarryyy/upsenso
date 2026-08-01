@@ -430,7 +430,7 @@ class _ActionButtonsState extends State<_ActionButtons> {
               ? null
               : () => _withNote(AlertStatus.falsePositive),
           icon: const Icon(IconlyLight.shield_done, size: 16),
-          label: const Text('Not fraud (false positive)'),
+          label: const Text('Not an issue (false positive)'),
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.textSecondary,
             side: const BorderSide(color: AppColors.borderSoft),

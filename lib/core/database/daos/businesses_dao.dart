@@ -43,8 +43,11 @@ class BusinessesDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Insert a new business (locally created, pending upload)
+  /// Insert the local business row. Idempotent by id: signup retries reuse the
+  /// same id on purpose (a fresh one per attempt is what orphaned 8 businesses
+  /// on 2026-07-26), so a second attempt must overwrite rather than collide.
   Future<void> insertBusiness(Business business) async {
-    await into(businessesTable).insert(
+    await into(businessesTable).insertOnConflictUpdate(
       BusinessesTableCompanion.insert(
         id: business.id,
         name: business.name,

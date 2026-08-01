@@ -89,15 +89,19 @@ class BusinessRepositoryImpl implements BusinessRepository {
     required String ownerId,
     required String templateId,
     required String branchName,
+    String? businessId,
+    String? branchId,
   }) async {
-    // 1. Generate UUIDs locally
-    final businessId = const Uuid().v4();
-    final branchId = const Uuid().v4();
+    // 1. Ids. The CALLER owns these across retries — minting a fresh uuid here
+    // is what turned one failed signup into 8 orphaned businesses on
+    // 2026-07-26 (each retry created a whole new server-side identity).
+    final resolvedBusinessId = businessId ?? const Uuid().v4();
+    final resolvedBranchId = branchId ?? const Uuid().v4();
     final now = DateTime.now();
 
     // 2. Create business entity
     final business = Business(
-      id: businessId,
+      id: resolvedBusinessId,
       name: name,
       ownerId: ownerId,
       templateId: templateId,
@@ -107,8 +111,8 @@ class BusinessRepositoryImpl implements BusinessRepository {
 
     // 3. Create initial branch entity
     final branch = Branch(
-      id: branchId,
-      businessId: businessId,
+      id: resolvedBranchId,
+      businessId: resolvedBusinessId,
       name: branchName,
     );
 
@@ -118,7 +122,7 @@ class BusinessRepositoryImpl implements BusinessRepository {
 
     // 5. Seed default categories locally (offline-first fallback)
     await categoriesDao.insertDefaults(
-      businessId: businessId,
+      businessId: resolvedBusinessId,
       categories: DefaultCategories.forTemplateId(templateId),
     );
 
@@ -126,72 +130,60 @@ class BusinessRepositoryImpl implements BusinessRepository {
     final online = await connectivity.isConnected;
     if (online) {
       try {
-        // Upload business to Supabase
-        final serverData = await remote.createBusiness(
-          id: businessId,
-          name: name,
-          ownerId: ownerId,
-          templateId: templateId,
-        );
-
-        // Upload branch to Supabase
-        await remote.createBranch(
-          id: branchId,
-          businessId: businessId,
-          name: branchName,
-        );
-
-        // Apply template server-side: creates all 4 roles, seeds server categories,
-        // and initialises receipt_settings in one atomic RPC call.
-        // Returns the Business Owner role UUID so we can link the owner.
-        final ownerRoleId = await remote.applyBusinessTemplate(
-          businessId: businessId,
-          templateId: templateId,
-        );
+        // ONE transactional call: business + branch + roles + permissions +
+        // modules + categories + receipt_settings + the owner's user row. This
+        // used to be four separate round-trips, each auto-committing, so a
+        // failure part-way left a committed-but-unusable business behind.
+        // The RPC is idempotent per owner, so a retry adopts the existing one.
         final currentUser = authRepository.getCurrentUser();
-        await remote.createUserForBusiness(
-          businessId: businessId,
-          userId: ownerId,
-          email: currentUser?.email ?? '',
+        final result = await remote.createBusinessOnboarding(
+          businessId: resolvedBusinessId,
+          name: name,
+          templateId: templateId,
+          branchId: resolvedBranchId,
+          branchName: branchName,
           fullName: currentUser?.fullName,
-          ownerRoleId: ownerRoleId,
+          email: currentUser?.email,
         );
 
-        // Update local business record with server response and mark as synced
-        final serverBusiness = BusinessModel.fromJson(serverData);
+        final serverBusiness = BusinessModel.fromJson(
+          Map<String, dynamic>.from(result['business'] as Map),
+        );
 
         // Keep local cache aligned with server payload.
         await businessesDao.upsertFromServer(serverBusiness);
 
-        // The RPC seeded categories on the server with server-generated UUIDs.
-        // Pull them back and replace the client-seeded local rows (different UUIDs)
-        // so the sync service won't push duplicates on next run.
+        // The RPC seeded categories server-side with its own UUIDs. Pull them
+        // back and replace the client-seeded local rows so the sync service
+        // won't push duplicates on the next run.
         final serverCategories =
-            await remote.getCategoriesByBusiness(businessId);
-        await categoriesDao.deleteAllForBusiness(businessId);
+            await remote.getCategoriesByBusiness(serverBusiness.id);
+        await categoriesDao.deleteAllForBusiness(serverBusiness.id);
         for (final row in serverCategories) {
           await categoriesDao.upsertFromServer(row);
         }
 
-        // Mark business as synced
         await businessesDao.updateSyncStatus(
           id: serverBusiness.id,
           status: SyncStatus.synced,
         );
 
-        // Mark branch as synced
+        // On the reuse path the server may hand back a branch we didn't mint
+        // (a retry after the local state was lost) — mark whichever is real.
+        final serverBranchId =
+            (result['branch_id'] as String?) ?? resolvedBranchId;
         await branchesDao.updateSyncStatus(
-          id: branchId,
+          id: serverBranchId,
           status: SyncStatus.synced,
         );
 
         return serverBusiness;
       } catch (e, st) {
         debugPrint('[BusinessRepo] Error syncing business: $e\n$st');
-        // Sync failed, but local data is saved
-        // Will retry on next sync cycle
+        // Local data is saved; the caller retries with the SAME ids, and the
+        // RPC's owner guard means that can never mint a second business.
         await businessesDao.updateSyncStatus(
-          id: businessId,
+          id: resolvedBusinessId,
           status: SyncStatus.failed,
           error: e.toString(),
         );

@@ -334,10 +334,11 @@ extension AuditLogActionTypeX on AuditLogActionType {
         return 'Module Setting Changed';
       case AuditLogActionType.refundSettingsChanged:
         return 'Refund Approval Settings Changed';
+      // Display only — the FRAUD_FLAG_* dbValues are hash-chained, see below.
       case AuditLogActionType.fraudFlagRaised:
-        return 'Fraud Alert Raised';
+        return 'Unusual Activity Raised';
       case AuditLogActionType.fraudFlagResolved:
-        return 'Fraud Alert Resolved';
+        return 'Unusual Activity Resolved';
       case AuditLogActionType.auditChainReconciled:
         return 'Audit Chain Reconciled';
       case AuditLogActionType.permissionDenied:

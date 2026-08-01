@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/permissions/entitlement_service.dart';
+import 'package:pos/core/permissions/plan_display.dart';
 import 'package:pos/core/routes/app_routes.dart';
 
 /// A calm, always-honest account-status strip (§4.6). Never a lockout, never
@@ -83,6 +84,21 @@ class AccountStatusBanner extends StatelessWidget {
               : 'Payment didn\'t go through — your POS keeps working.',
           cta: 'Fix payment',
           icon: Icons.schedule_rounded,
+          fg: AppColors.warning,
+          bg: AppColors.warningSoft,
+        );
+      case 'unverified':
+        // We can't reach the server, so we don't actually know they lapsed —
+        // most of these have renewed and simply have no signal. Ask, don't
+        // accuse, and keep the plan running until the window closes.
+        final left = e.verificationDaysLeft;
+        return _BannerInfo(
+          message: left != null
+              ? 'Connect to the internet to keep ${planLabelOf(e.planCode)} — '
+                    '$left ${_dayWord(left)} left to check.'
+              : 'Connect to the internet so we can check your subscription.',
+          cta: 'Details',
+          icon: Icons.cloud_sync_outlined,
           fg: AppColors.warning,
           bg: AppColors.warningSoft,
         );

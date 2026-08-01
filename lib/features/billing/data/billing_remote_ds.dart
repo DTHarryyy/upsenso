@@ -169,31 +169,10 @@ class BillingRemoteDs {
     }
   }
 
-  /// Ask the server to self-check its Play configuration. No purchase involved,
-  /// so this is safe to run any number of times. Throws [PlayVerifyException] if
-  /// the call itself couldn't complete — a check that merely *failed* comes back
-  /// as a normal result with `ok: false`.
-  Future<List<BillingProbeCheck>> probePlayConfig() async {
-    try {
-      final res = await _client.functions
-          .invoke('verify-play-purchase', body: {'probe': true});
-      return _checksOf(res.data, res.status);
-    } on FunctionException catch (e) {
-      throw _exceptionOf(e.details, e.status);
-    }
-  }
-
-  static List<BillingProbeCheck> _checksOf(dynamic data, int status) {
-    final raw = data is Map ? data['checks'] : null;
-    if (raw is! List) throw _exceptionOf(data, status);
-    return raw.whereType<Map>().map((c) {
-      return BillingProbeCheck(
-        stage: c['stage']?.toString() ?? 'unknown',
-        ok: c['ok'] == true,
-        detail: c['detail']?.toString() ?? '',
-      );
-    }).toList();
-  }
+  // The `verify-play-purchase` function also answers {"probe": true} with a
+  // config health report. That stays server-side and support-only: it describes
+  // OUR configuration, which a shop owner can neither read nor act on, and a red
+  // row there reads to them as "the app is broken".
 
   static PlayVerifyException _exceptionOf(dynamic data, int status) {
     final map = data is Map ? data : const {};

@@ -5,14 +5,59 @@ import 'package:pos/core/const/font_utils.dart';
 class EmployeeStatusBadge extends StatelessWidget {
   final bool isActive;
 
-  const EmployeeStatusBadge({super.key, required this.isActive});
+  /// Suspended because the plan ran out of seats, not because anyone chose to
+  /// deactivate them. Worth its own pill: "Inactive" reads as a decision the
+  /// owner made, and sends them hunting for a toggle that won't help.
+  final bool needsSeat;
+
+  const EmployeeStatusBadge({
+    super.key,
+    required this.isActive,
+    this.needsSeat = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    if (needsSeat) return const _NeedsSeatPill();
     if (isActive) {
       return _ActivePill();
     }
     return const _InactivePill();
+  }
+}
+
+class _NeedsSeatPill extends StatelessWidget {
+  const _NeedsSeatPill();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.warningSoft,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.lock_outline_rounded,
+            size: 11,
+            color: AppColors.warning,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'Needs a seat',
+            style: getOutfitStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.warning,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

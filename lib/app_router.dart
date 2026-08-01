@@ -92,6 +92,11 @@ class _AuthRefreshNotifier extends ChangeNotifier {
   }
 }
 
+/// Query parameter the entitlement guard attaches when it bounces a locked
+/// route back to the dashboard. The shell reads it once and opens the upgrade
+/// sheet, so a plan block is never indistinguishable from a crash.
+const String lockedFeatureParam = 'locked_feature';
+
 class AppRouter {
   static final GoRouter router = GoRouter(
     initialLocation: AppRoutes.dashboard,
@@ -264,11 +269,21 @@ class AppRouter {
           AppRoutes.purchaseOrders: AppFeature.procurement,
           AppRoutes.poForm: AppFeature.procurement,
           AppRoutes.poDetail: AppFeature.procurement,
+          // The chain still records on every tier — only the viewer is Growth.
+          AppRoutes.auditLogs: AppFeature.auditLogs,
+          AppRoutes.fraud: AppFeature.fraudAlerts,
         };
         final requiredFeature = routeEntitlementGuards[location];
         if (requiredFeature != null &&
             !sl<EntitlementService>().featureAllowed(requiredFeature)) {
-          return AppRoutes.dashboard;
+          // Carry the reason so the dashboard can explain itself instead of
+          // silently swallowing the tap. Nav badges stop most people ever
+          // getting here; this covers deep links and a session restored onto a
+          // page the plan stopped covering while the app was closed.
+          return Uri(
+            path: AppRoutes.dashboard,
+            queryParameters: {lockedFeatureParam: requiredFeature.name},
+          ).toString();
         }
       }
 

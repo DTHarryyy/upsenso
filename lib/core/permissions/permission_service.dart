@@ -213,7 +213,11 @@ class PermissionService {
       case 'nav.procurement':
         return const ['procurement.view'];
       case 'nav.recipes':
-        return const ['recipes.manage', 'ingredients.view', 'ingredients.manage'];
+        return const [
+          'recipes.manage',
+          'ingredients.view',
+          'ingredients.manage',
+        ];
       case 'nav.billing':
         return const ['billing.view', 'billing.manage'];
       default:
@@ -377,7 +381,9 @@ class PermissionService {
         );
       }
     } catch (e, st) {
-      debugPrint('[PermissionService] module sync skipped (offline?) — $e\n$st');
+      debugPrint(
+        '[PermissionService] module sync skipped (offline?) — $e\n$st',
+      );
     }
   }
 
@@ -437,8 +443,7 @@ class PermissionService {
     if (hasPermission(permission)) return const PermissionResult.granted();
 
     // Role name for the denial log — from the authoritative active session.
-    final roleName =
-        _activeBusinessContext.roleName ?? _roleKey ?? 'unknown';
+    final roleName = _activeBusinessContext.roleName ?? _roleKey ?? 'unknown';
     final reason = permission.deniedMessage;
 
     await _auditLogService.log(
@@ -522,8 +527,7 @@ class PermissionService {
   }) async {
     if (canAccessFeature(feature)) return const PermissionResult.granted();
 
-    final roleName =
-        _activeBusinessContext.roleName ?? _roleKey ?? 'unknown';
+    final roleName = _activeBusinessContext.roleName ?? _roleKey ?? 'unknown';
 
     await _auditLogService.log(
       actionType: AuditLogActionType.permissionDenied,

@@ -13,10 +13,17 @@ class BillingState extends Equatable {
 
   // Current plan (from EntitlementService cache).
   final String planCode;
-  final String effectiveStatus; // trialing|active|past_due|free|lapsed
+  final String effectiveStatus; // trialing|active|unverified|past_due|free|lapsed
   final bool cloudEnabled;
   final int? daysRemaining;
   final double? grandfatheredPrice;
+
+  /// monthly | annual, null on Free — the summary card omits the period suffix
+  /// rather than assuming monthly.
+  final String? billingPeriod;
+
+  /// End of the paid period; the date the plan next renews.
+  final DateTime? renewsOn;
 
   // Usage vs cap (null cap = unlimited/unknown).
   final int branchUsage;
@@ -48,8 +55,17 @@ class BillingState extends Equatable {
   /// `play_product_map` ⨝ live Play prices. Empty until Play is configured.
   final List<PlayPlanOffer> playOffers;
 
-  /// A Play purchase or restore is mid-flight — CTAs show a spinner/disable.
+  /// The Play product this device knows the tenant owns — narrows the "Manage
+  /// subscription" deep link to the exact subscription.
+  final String? ownedProductId;
+
+  /// A Play purchase is mid-flight — CTAs show a spinner/disable.
   final bool purchaseInProgress;
+
+  /// An automatic restore is talking to Play. Separate from
+  /// [purchaseInProgress] because restore now runs on its own (there is no
+  /// button), and silent background work on a billing page reads as a hang.
+  final bool restoreInProgress;
 
   /// Last purchase/restore failure, surfaced to the user then cleared.
   final String? purchaseError;
@@ -69,16 +85,6 @@ class BillingState extends Equatable {
   /// because the plan really is active.
   final String? purchaseNotice;
 
-  /// Result of the last Play config health check; empty until it runs.
-  final List<BillingProbeCheck> probeChecks;
-
-  /// The health check is in flight.
-  final bool probeRunning;
-
-  /// The health check couldn't run at all — distinct from a check that ran and
-  /// reported a problem, which lives in [probeChecks].
-  final String? probeError;
-
   const BillingState({
     this.status = BillingStatus.loading,
     this.errorMessage,
@@ -87,6 +93,8 @@ class BillingState extends Equatable {
     this.cloudEnabled = false,
     this.daysRemaining,
     this.grandfatheredPrice,
+    this.billingPeriod,
+    this.renewsOn,
     this.branchUsage = 0,
     this.seatUsage = 0,
     this.deviceUsage = 0,
@@ -100,14 +108,13 @@ class BillingState extends Equatable {
     this.catalogFailed = false,
     this.playSupported = false,
     this.playOffers = const [],
+    this.ownedProductId,
     this.purchaseInProgress = false,
+    this.restoreInProgress = false,
     this.purchaseError,
     this.storeNotice,
     this.purchaseAlert,
     this.purchaseNotice,
-    this.probeChecks = const [],
-    this.probeRunning = false,
-    this.probeError,
   });
 
   BillingState copyWith({
@@ -118,6 +125,8 @@ class BillingState extends Equatable {
     bool? cloudEnabled,
     int? daysRemaining,
     double? grandfatheredPrice,
+    String? billingPeriod,
+    DateTime? renewsOn,
     int? branchUsage,
     int? seatUsage,
     int? deviceUsage,
@@ -131,15 +140,14 @@ class BillingState extends Equatable {
     bool? catalogFailed,
     bool? playSupported,
     List<PlayPlanOffer>? playOffers,
+    String? ownedProductId,
     bool? purchaseInProgress,
+    bool? restoreInProgress,
     String? purchaseError,
     String? storeNotice,
     String? purchaseAlert,
     String? purchaseNotice,
-    List<BillingProbeCheck>? probeChecks,
-    bool? probeRunning,
-    String? probeError,
-    bool clearProbeError = false,
+    bool clearOwnedProductId = false,
     bool clearPurchaseError = false,
     bool clearStoreNotice = false,
     bool clearPurchaseAlert = false,
@@ -162,6 +170,11 @@ class BillingState extends Equatable {
       grandfatheredPrice: overwriteEntitlementNulls
           ? grandfatheredPrice
           : (grandfatheredPrice ?? this.grandfatheredPrice),
+      billingPeriod: overwriteEntitlementNulls
+          ? billingPeriod
+          : (billingPeriod ?? this.billingPeriod),
+      renewsOn:
+          overwriteEntitlementNulls ? renewsOn : (renewsOn ?? this.renewsOn),
       branchUsage: branchUsage ?? this.branchUsage,
       seatUsage: seatUsage ?? this.seatUsage,
       deviceUsage: deviceUsage ?? this.deviceUsage,
@@ -180,7 +193,11 @@ class BillingState extends Equatable {
       catalogFailed: catalogFailed ?? this.catalogFailed,
       playSupported: playSupported ?? this.playSupported,
       playOffers: playOffers ?? this.playOffers,
+      ownedProductId: clearOwnedProductId
+          ? null
+          : (ownedProductId ?? this.ownedProductId),
       purchaseInProgress: purchaseInProgress ?? this.purchaseInProgress,
+      restoreInProgress: restoreInProgress ?? this.restoreInProgress,
       purchaseError:
           clearPurchaseError ? null : (purchaseError ?? this.purchaseError),
       storeNotice:
@@ -190,9 +207,6 @@ class BillingState extends Equatable {
       // Never sticky: a notice describes one moment, so it must not survive the
       // next state change the way an unresolved error legitimately does.
       purchaseNotice: clearPurchaseNotice ? null : purchaseNotice,
-      probeChecks: probeChecks ?? this.probeChecks,
-      probeRunning: probeRunning ?? this.probeRunning,
-      probeError: clearProbeError ? null : (probeError ?? this.probeError),
     );
   }
 
@@ -205,6 +219,8 @@ class BillingState extends Equatable {
         cloudEnabled,
         daysRemaining,
         grandfatheredPrice,
+        billingPeriod,
+        renewsOn,
         branchUsage,
         seatUsage,
         deviceUsage,
@@ -218,13 +234,12 @@ class BillingState extends Equatable {
         catalogFailed,
         playSupported,
         playOffers,
+        ownedProductId,
         purchaseInProgress,
+        restoreInProgress,
         purchaseError,
         storeNotice,
         purchaseAlert,
         purchaseNotice,
-        probeChecks,
-        probeRunning,
-        probeError,
       ];
 }

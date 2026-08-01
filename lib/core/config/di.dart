@@ -148,11 +148,14 @@ import 'package:pos/features/settings/data/receipt_settings_repository.dart';
 import 'package:pos/features/settings/data/refund_settings_repository.dart';
 import 'package:pos/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:pos/features/settings/services/receipt_printer_service.dart';
+import 'package:pos/features/notifications/data/billing_notice_ack.dart';
+import 'package:pos/features/notifications/domain/billing_notice_service.dart';
 import 'package:pos/features/notifications/data/notifications_repository.dart';
 import 'package:pos/features/notifications/domain/repositories/i_notifications_repository.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/permissions/data_scoping_layer.dart';
 import 'package:pos/core/permissions/data/permission_remote_ds.dart';
+import 'package:pos/core/permissions/entitlement_enforcement_service.dart';
 import 'package:pos/core/permissions/entitlement_service.dart';
 import 'package:pos/core/permissions/data/entitlement_remote_ds.dart';
 import 'package:pos/core/database/daos/entitlement_dao.dart';
@@ -722,6 +725,19 @@ Future<void> initDI() async {
     return service;
   });
 
+  // Over-cap enforcement (downgrade / lapse below current usage). Separate from
+  // EntitlementService: that one answers "what does the plan allow", this one
+  // answers "what do we do about what they already have".
+  sl.registerLazySingleton<EntitlementEnforcementService>(
+    () => EntitlementEnforcementService(
+      entitlementDao: sl<EntitlementDao>(),
+      entitlementService: sl<EntitlementService>(),
+      branchesDao: sl<BranchesDao>(),
+      employeesDao: sl<EmployeesDao>(),
+      activeBusinessContext: sl<ActiveBusinessContext>(),
+    ),
+  );
+
   sl.registerLazySingleton<DataScopingLayer>(
     () => DataScopingLayer(permissionService: sl<PermissionService>()),
   );
@@ -767,6 +783,7 @@ Future<void> initDI() async {
       invoiceNumberService: sl<InvoiceNumberService>(),
       auditLogService: sl<AuditLogService>(),
       fraudEngine: sl<FraudDetectionEngine>(),
+      enforcement: sl<EntitlementEnforcementService>(),
     ),
   );
 
@@ -836,6 +853,12 @@ Future<void> initDI() async {
 
   sl.registerLazySingleton<INotificationsRepository>(
     () => NotificationsRepository(sl<SupabaseClient>()),
+  );
+  sl.registerLazySingleton<BillingNoticeAck>(
+    () => BillingNoticeAck(sl<SharedPreferences>()),
+  );
+  sl.registerLazySingleton<BillingNoticeService>(
+    () => BillingNoticeService(sl<EntitlementService>(), sl<BillingNoticeAck>()),
   );
 
   // Ensures businessId is available immediately on startup

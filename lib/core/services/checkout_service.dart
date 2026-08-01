@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:pos/core/audit/audit_log_service.dart';
 import 'package:pos/core/database/app_database.dart';
 import 'package:pos/core/database/daos/transactions_dao.dart';
+import 'package:pos/core/permissions/entitlement_enforcement_service.dart';
 import 'package:pos/core/services/fraud_detection_engine.dart';
 import 'package:pos/core/services/invoice_number_service.dart';
 import 'package:pos/core/utils/formatters.dart';
@@ -26,6 +27,7 @@ class CheckoutService {
   final InvoiceNumberService _invoiceNumberService;
   final AuditLogService _auditLogService;
   final FraudDetectionEngine? _fraudEngine;
+  final EntitlementEnforcementService? _enforcement;
 
   CheckoutService({
     required AppDatabase db,
@@ -34,12 +36,14 @@ class CheckoutService {
     required InvoiceNumberService invoiceNumberService,
     required AuditLogService auditLogService,
     FraudDetectionEngine? fraudEngine,
+    EntitlementEnforcementService? enforcement,
   })  : _db = db,
         _transactionsDao = transactionsDao,
         _inventoryRepository = inventoryRepository,
         _invoiceNumberService = invoiceNumberService,
         _auditLogService = auditLogService,
-        _fraudEngine = fraudEngine;
+        _fraudEngine = fraudEngine,
+        _enforcement = enforcement;
 
   /// Persists [transaction] + [items] and deducts [deductions] atomically.
   /// Claims the next invoice number (server RPC when online, local counter
@@ -57,6 +61,11 @@ class CheckoutService {
     required String? branchId,
     required String transactionId,
   }) async {
+    // A branch held above the plan cap is read-only: its history stays intact
+    // and readable, but no new sale lands on it. Checked before the invoice
+    // number is claimed so a refused sale doesn't burn a number.
+    _enforcement?.assertBranchWritable(branchId);
+
     // Claim the invoice number BEFORE opening the DB transaction so a server
     // roundtrip (when online) doesn't hold the SQLite write lock.
     final invoiceNumber = await _invoiceNumberService.claimNext(businessId);

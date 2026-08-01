@@ -11,6 +11,7 @@ import 'package:pos/core/widgets/app_input_decoration.dart';
 import 'package:pos/core/widgets/app_section_card.dart';
 import 'package:pos/core/widgets/app_sticky_action_bar.dart';
 import 'package:pos/core/widgets/app_sub_page_bar.dart';
+import 'package:pos/core/widgets/upgrade_prompt.dart';
 import 'package:pos/features/business/domain/entities/branch.dart';
 import 'package:pos/features/employees/domain/entities/employee.dart';
 import 'package:pos/features/employees/presentation/bloc/employee_bloc.dart';
@@ -518,6 +519,11 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
                 .join(' • ');
             _formError = otherErrors.isNotEmpty ? otherErrors : null;
           });
+          // The plan is full, not the form wrong — offer the upgrade on top of
+          // the inline message. The form stays open and filled in (§4.3).
+          if (state.seatLimitReached) {
+            showUpgradePrompt(context, UpgradeMoment.seatCap);
+          }
         } else if (state is EmployeeError) {
           setState(() {
             _submitting = false;

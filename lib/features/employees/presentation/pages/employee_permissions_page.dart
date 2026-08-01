@@ -316,18 +316,20 @@ const _kGroups = <_PermGroup>[
     ],
   ),
   _PermGroup(
-    label: 'Fraud & Risk',
-    description: 'Alerts raised by the on-device fraud detection engine',
+    label: 'Unusual Activity',
+    description: 'Alerts raised automatically on this device',
     icon: IconlyLight.shield_done,
     permissions: [
+      // The 'fraud.*' codes are server-side permission keys — display copy
+      // only says "unusual activity".
       _PermEntry(
         'fraud.view',
-        'View Fraud Alerts',
-        'See fraud and risk alerts for their branch',
+        'View Unusual Activity',
+        'See unusual activity for their branch',
       ),
       _PermEntry(
         'fraud.resolve',
-        'Resolve Fraud Alerts',
+        'Resolve Unusual Activity',
         'Investigate, resolve, or dismiss alerts (never their own)',
       ),
       _PermEntry(

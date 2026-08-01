@@ -24,8 +24,91 @@ resource is created in.* Seats and branches live locally → count locally.
 |---|---|---|---|
 | **Team members** (seats) | `EntitlementService.canAddAnother(seats)` — live Drift count, in `employees_repository_impl.addEmployee` | RPC `create_employee_auth_account` (`SEAT_LIMIT_REACHED`) + `employees_cap_insert` RLS + `enforce_seat_cap_on_reactivate` trigger | `entitlement_service_test` "seat cap blocks…"; runbook §3 |
 | **Branches** | `canAddAnother(branches)` — live Drift count, in `branch_cubit.addBranch` | `branches_cap_insert` RLS (`count < effective_limits().max_branches`) | `entitlement_service_test` "branch cap blocks…"; runbook §3 |
-| **Devices** | (registration is online-only; no local create) | RPC `register_device` returns `cap_reached` at `max_devices` | runbook §4 |
-| **Checkout attempts** | — | `create-checkout` edge fn: `billing.manage` + ≤5 pending/hr → 429 | runbook §9–§10 |
+| **Devices** | (registration is online-only; no local create) — `DeviceStatusBanner` surfaces `capReached`, re-verified on the SyncService entitlement tick | RPC `register_device` returns `cap_reached` at `max_devices` | runbook §4 |
+| **Over-cap holdings** (downgrade / lapse) | `EntitlementEnforcementService.reconcile()` locks the excess; `assertBranchWritable` guards every write | Existing rows are never rejected server-side — only new INSERTs are. This layer is client-only by nature | `entitlement_enforcement_service_test` |
+
+> The `create-checkout` edge function row was removed on 2026-08-01: the
+> function was deleted during the PayMongo → Play Billing move (`PLAY_BILLING`
+> §5), so there is no longer a checkout-attempt limit to document.
+
+### Over-cap enforcement — the one-month loophole (added 2026-08-01)
+
+`canAddAnother` only stops the *next* create. Before this, buying one month of
+Growth, creating five branches and twelve staff logins, then cancelling kept all
+of it working forever — the caps were checked on insert and never again.
+
+`EntitlementEnforcementService` closes that. Exactly N branches / seats stay
+**active** (N = the plan cap); the excess is **locked**, never deleted:
+
+- Locked branches stay readable, reportable and exportable. They cannot be sold
+  on, written to, or selected in the branch switcher.
+- Suspended staff keep their record and their history; they just don't hold a
+  seat. Reactivating one at the cap is refused (and the server's
+  `enforce_seat_cap_on_reactivate` trigger refuses it too).
+- **Nothing ever stops mid-shift.** The branch currently open in POS is always
+  in the default active set. The owner re-picks from Billing → Usage.
+- Upgrading releases every lock automatically — no manual cleanup.
+
+State lives in the local-only Drift table `entitlement_locks` (schema v60). It
+has no Supabase counterpart on purpose: a lapsed tenant has cloud sync off
+anyway, so there is nothing to reconcile. The trade-off is that two devices on a
+*paid* downgrade can pick different active sets until the owner confirms one;
+the server caps still bound the total.
+
+### Offline verification window (added 2026-08-01)
+
+Google Play renews silently and the client only learns about it through
+`get_my_entitlement()`. A paying merchant offline over their renewal date used
+to be downgraded on the spot despite having been charged.
+
+`effectiveStatus` now returns **`unverified`** between `current_period_end` and
+`last_server_sync_at + window` (14 days monthly, 30 annual). Inside the window
+the tier — and cloud sync — stay live behind a "connect to keep your plan"
+banner. It is anchored on the server timestamp, never the device clock alone, so
+going offline deliberately buys at most one window and rewinding the clock buys
+nothing. Distinct from `past_due`, which means *we know the payment failed*;
+`unverified` means *we don't know*.
+
+### Feature gates are a different animal — UX only, by design
+
+The plan also gates **capabilities** (not counts) through `feature_flags`:
+`crm`, `procurement`, `reports`, and `audit`. These resolve client-side in
+`EntitlementService.featureAllowed()` → `PermissionService.canAccessFeature()`,
+which drives `PermissionGate` and the router's `routeEntitlementGuards`.
+
+**Nav is the exception, and getting this wrong caused a real bug.** Nav items do
+*not* consult `featureAllowed` to decide visibility — they consult
+`planLockFor()` (`core/permissions/feature_plan_requirement.dart`) to decide
+which **tier badge** to render. The rule, applied identically in `more_page.dart`
+and `main_navigation_page.dart`:
+
+```
+permission ✗  → hidden           (RBAC boundary — never an upsell)
+module     ✗  → hidden           (the owner's own toggle)
+plan       ✗  → VISIBLE + badge  (the upsell; tap opens the upgrade sheet)
+```
+
+On 2026-07-31 `AppRoutes.fraud` gained a `routeEntitlementGuards` entry while
+both nav builders kept rendering a plain, tappable "Unusual Activity" item. On
+Free and Starter it was a visible control wired to a guard it could never pass:
+tapping it silently redirected to the dashboard. If you add a
+`routeEntitlementGuards` entry, add the matching `requiredPlanFor` case in the
+same commit — `feature_plan_requirement_test` asserts the two agree on every
+tier.
+
+**There is no server cap behind them, and that is deliberate.** They gate
+*local, already-downloaded* data — hiding the Audit Logs page does not protect
+anything cloud-priced, and the row-level tenant policies still apply to every
+read. Do not mistake a feature gate for a security boundary: the structural caps
+above are enforced server-side because they cost us money; feature flags are
+packaging.
+
+| Flag | Value | What it gates |
+|---|---|---|
+| `audit` | `local` \| `cloud` \| `full` | Two surfaces on two rungs (split 2026-08-01): `cloud` → the **Audit Logs viewer** (`AppFeature.auditLogs`); `full` → adds the **Unusual Activity** dashboard (`AppFeature.fraudAlerts`) + cross-device fraud sync. The chain records on every tier; audit rows always ship in the free Data Export, so the record stays retrievable (§4.7 + BIR). Before the split both gated on `full`, leaving Starter paying for a `cloud` rung it could never reach. |
+| `reports` | `basic` \| `full` | `full` → Branch Comparison tab + report PDF/Excel export. Sales / Inventory / Profit are ungated. **Not** the full Data Export, which is tier-free. |
+| `crm` | `false` \| `basic` \| `full` | directory access; `full` unlocks the deeper views |
+| `procurement` | `bool` | procurement + supplier directory |
 
 Verified deployed to prod 2026-07-18 (`npx supabase db query --linked`): all
 five server objects above are present and carry their cap logic.

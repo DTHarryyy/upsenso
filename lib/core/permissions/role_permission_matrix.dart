@@ -31,8 +31,7 @@ class RolePermissionMatrix {
     // ── Business Owner — unrestricted ────────────────────────────────────────
     businessOwner: AppPermission.values.toSet(),
     superAdmin: AppPermission.values.toSet(), // alias kept for old DB data
-    owner: AppPermission.values.toSet(),      // alias kept for old DB data
-
+    owner: AppPermission.values.toSet(), // alias kept for old DB data
     // ── Branch Manager — operational control over ONE branch ────────────────
     branchManager: {
       // POS — full till operation in addition to oversight (a manager can

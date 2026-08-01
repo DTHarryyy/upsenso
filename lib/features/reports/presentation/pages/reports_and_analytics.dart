@@ -9,6 +9,8 @@ import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/errors/app_error_mapper.dart';
+import 'package:pos/core/permissions/entitlement_service.dart';
+import 'package:pos/core/widgets/upgrade_prompt.dart';
 import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
@@ -21,7 +23,6 @@ import 'package:pos/features/reports/presentation/cubit/reports_state.dart';
 import 'package:pos/features/reports/presentation/widgets/branch_comparison.dart';
 import 'package:pos/features/reports/presentation/widgets/inventory_health_tab.dart';
 import 'package:pos/features/reports/presentation/widgets/profit_summary_tab.dart';
-import 'package:pos/features/reports/presentation/widgets/report_tab_bar.dart';
 import 'package:pos/features/reports/presentation/widgets/reports_header.dart';
 import 'package:pos/features/reports/presentation/widgets/reports_skeleton.dart';
 import 'package:pos/features/reports/presentation/widgets/sales_report_tab.dart';
@@ -115,12 +116,30 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
 
   // Export handlers
 
+  // Report export is a Growth capability. The button stays visible and a tap
+  // opens the upgrade sheet instead of exporting — never a hidden control
+  // (§4.7). Data Export (the full backup of their own data) is tier-free and
+  // deliberately untouched by this.
+  bool _canExportReport() {
+    if (sl<EntitlementService>().reportsFull) return true;
+    showUpgradePrompt(
+      context,
+      UpgradeMoment.lockedModule,
+      // The title carries "Growth" — saying it again here read as a stutter.
+      requiredPlan: 'growth',
+      detail: 'Export your reports as PDF or Excel. Your full data export '
+          'stays free on every plan.',
+    );
+    return false;
+  }
+
   Future<void> _onExportPdf(
     ReportsData data,
     String businessName,
     String branchLabel,
   ) async {
     if (_exportingPdf || _exportingExcel) return;
+    if (!_canExportReport()) return;
     setState(() => _exportingPdf = true);
     try {
       final delivered = await ReportPdfExporter.export(
@@ -151,6 +170,7 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
     String branchLabel,
   ) async {
     if (_exportingPdf || _exportingExcel) return;
+    if (!_canExportReport()) return;
     setState(() => _exportingExcel = true);
     try {
       final delivered = await ReportExcelExporter.export(
@@ -229,7 +249,11 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
             // (nothing to compare), so hide it rather than show a one-row table.
             final hasMultipleBranches =
                 ctx.read<BranchCubit>().getAvailableBranchOptions().length > 1;
-            final visibleTabs = hasMultipleBranches
+            // Branch comparison needs both the branches and the tier. Dropping
+            // the tab beats a locked one: a single-branch shop has nothing to
+            // compare, so a padlock would read as punitive rather than honest.
+            final reportsFull = sl<EntitlementService>().reportsFull;
+            final visibleTabs = hasMultipleBranches && reportsFull
                 ? _tabs
                 : _tabs.sublist(0, _tabs.length - 1);
             final effectiveSelectedTab = _selectedTab < visibleTabs.length
@@ -241,7 +265,7 @@ class _ReportsAndAnalyticsPageState extends State<ReportsAndAnalyticsPage> {
             const hp = 16.0;
             final isPhone = Breakpoints.isPhone(context);
 
-            final navBar = ReportTabBar(
+            final navBar = AppTabBar(
               tabs: visibleTabs,
               selectedIndex: effectiveSelectedTab,
               onTabSelected: (i) => setState(() => _selectedTab = i),

@@ -14,7 +14,12 @@ const _free = PlanOption(
   maxBranches: 1,
   maxSeats: 2,
   maxDevices: 1,
-  featureFlags: {'crm': false, 'procurement': false, 'reports': 'basic'},
+  featureFlags: {
+    'crm': false,
+    'procurement': false,
+    'reports': 'basic',
+    'audit': 'local',
+  },
 );
 
 const _starter = PlanOption(
@@ -26,8 +31,8 @@ const _starter = PlanOption(
   cloudEnabled: true,
   maxBranches: 1,
   maxSeats: 3,
-  maxDevices: 2,
-  featureFlags: {'crm': 'basic', 'reports': 'basic', 'cloud_audit': true},
+  maxDevices: 3,
+  featureFlags: {'crm': 'basic', 'reports': 'basic', 'audit': 'cloud'},
 );
 
 const _growth = PlanOption(
@@ -37,14 +42,14 @@ const _growth = PlanOption(
   priceMonthly: 499,
   isActive: true,
   cloudEnabled: true,
-  maxBranches: 3,
-  maxSeats: 10,
-  maxDevices: 5,
+  maxBranches: 5,
+  maxSeats: 15,
+  maxDevices: null, // unlimited
   featureFlags: {
     'crm': 'full',
     'procurement': true,
     'reports': 'full',
-    'cloud_audit': true,
+    'audit': 'full',
   },
 );
 
@@ -140,10 +145,30 @@ void main() {
 
     expect(find.text('Everything in Starter'), findsOneWidget);
     expect(find.text('Procurement & suppliers'), findsOneWidget);
-    expect(find.text('3 branches'), findsOneWidget);
+    expect(find.text('5 branches'), findsOneWidget);
+    expect(find.text('Unlimited devices'), findsOneWidget);
+    // Audit deepens cloud → full, so it belongs in the delta with Growth's copy.
+    expect(find.text('Audit log & unusual-activity alerts'), findsOneWidget);
     // Shared with Starter → covered by the "Everything in" line, not repeated.
     expect(find.text('Cloud backup & sync'), findsNothing);
-    expect(find.text('Cloud audit trail'), findsNothing);
+    expect(find.text('Cloud-backed audit log'), findsNothing);
+  });
+
+  testWidgets('local audit is not sold as a feature row', (tester) async {
+    await tester.pumpWidget(_wrap(_card(_free)));
+    expect(find.textContaining('audit'), findsNothing);
+    expect(find.textContaining('Audit'), findsNothing);
+  });
+
+  // Starter sells the log viewer; the unusual-activity alerts stay a Growth
+  // line, so the two cards must not both advertise the same thing.
+  testWidgets('starter card sells the audit log, not the alerts', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_wrap(_card(_starter, previousTier: _free)));
+    expect(find.text('Audit log'), findsOneWidget);
+    expect(find.text('Audit log & unusual-activity alerts'), findsNothing);
+    expect(find.text('3 devices'), findsOneWidget);
   });
 
   testWidgets('non-ladder card renders the full capability list',
@@ -170,13 +195,69 @@ void main() {
     expect(find.text('/year'), findsOneWidget);
   });
 
-  testWidgets('grandfathered price chip shows on the current card only',
+  testWidgets('paid card states the daily equivalent under the price',
+      (tester) async {
+    await tester.pumpWidget(_wrap(_card(_starter, previousTier: _free)));
+    expect(find.text('About ₱7 a day'), findsOneWidget);
+  });
+
+  testWidgets('free card has no per-day line', (tester) async {
+    await tester.pumpWidget(_wrap(_card(_free)));
+    expect(find.textContaining('a day'), findsNothing);
+  });
+
+  // Whether a lock is real depends on status and tier, which only the tab
+  // knows — the card renders exactly what it is handed. Passing the raw
+  // entitlement value here is what put a lapsed tenant's ₱499 on the Free card.
+  testWidgets('locked-price chip renders whatever the caller validated',
       (tester) async {
     await tester.pumpWidget(
         _wrap(_card(_starter, isCurrent: true, grandfatheredPrice: 149)));
-    expect(find.text('Price locked at ₱149/mo'), findsOneWidget);
+    expect(find.text('Your locked price · ₱149/mo'), findsOneWidget);
 
-    await tester.pumpWidget(_wrap(_card(_starter, grandfatheredPrice: 149)));
-    expect(find.text('Price locked at ₱149/mo'), findsNothing);
+    await tester.pumpWidget(_wrap(_card(_starter, isCurrent: true)));
+    expect(find.textContaining('locked price'), findsNothing);
+  });
+
+  testWidgets('the locked chip replaces the per-day line, never stacks on it',
+      (tester) async {
+    await tester.pumpWidget(
+        _wrap(_card(_starter, isCurrent: true, grandfatheredPrice: 149)));
+    expect(find.textContaining('a day'), findsNothing);
+  });
+
+  // Every row is a capability now. The grey dash rows the entry tier used to
+  // append read as a crippled product rather than an honest one.
+  testWidgets('no card renders an unchecked row', (tester) async {
+    await tester.pumpWidget(_wrap(_card(_free)));
+
+    expect(find.byIcon(Icons.remove_circle_outline), findsNothing);
+    expect(find.byIcon(Icons.check_circle), findsWidgets);
+    expect(find.text('No cloud backup'), findsNothing);
+  });
+
+  // The disclosure the removed exclusions used to carry now rides on Free's
+  // own capability row, so nobody reads the tier as backed up.
+  testWidgets('free card still warns that nothing leaves the device', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_wrap(_card(_free)));
+
+    expect(
+      find.text('Stays on this device — lose or reset it and the data goes '
+          'with it'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('capability rows carry a plain-language explanation',
+      (tester) async {
+    await tester.pumpWidget(_wrap(_card(_starter, previousTier: _free)));
+
+    expect(
+      find.text('Phones, tablets or computers signed in at the same time'),
+      findsOneWidget,
+    );
+    expect(find.text('Staff accounts that can log in and sell'), findsOneWidget);
   });
 }

@@ -78,6 +78,7 @@ import 'package:pos/core/database/daos/devices_dao.dart';
 import 'package:pos/core/database/tables/product_barcodes_table.dart';
 import 'package:pos/core/database/daos/product_barcodes_dao.dart';
 import 'package:pos/core/database/tables/entitlement_cache_table.dart';
+import 'package:pos/core/database/tables/entitlement_locks_table.dart';
 import 'package:pos/core/database/tables/resource_usage_cache_table.dart';
 import 'package:pos/core/database/daos/entitlement_dao.dart';
 
@@ -125,6 +126,7 @@ part 'app_database.g.dart';
     ProductBarcodesTable,
     EntitlementCacheTable,
     ResourceUsageCacheTable,
+    EntitlementLocksTable,
   ],
   daos: [
     AuthContextDao,
@@ -183,7 +185,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 58;
+  int get schemaVersion => 60;
 
   @override
   MigrationStrategy get migration {
@@ -1067,6 +1069,33 @@ class AppDatabase extends _$AppDatabase {
           } catch (e, st) {
             debugPrint(
                 '[AppDatabase] v58 resource_usage_cache create skipped: $e\n$st');
+          }
+        }
+        if (from < 59) {
+          // The billing summary card names the period ("/month" vs "/year"),
+          // and it has to do that offline — get_my_entitlement already returns
+          // billing_period, we just never kept it. Additive, nullable.
+          // Rollback: harmless to leave (v58 never reads it), or
+          // ALTER TABLE entitlement_cache DROP COLUMN billing_period.
+          try {
+            await m.addColumn(
+                entitlementCacheTable, entitlementCacheTable.billingPeriod);
+          } catch (e, st) {
+            debugPrint(
+                '[AppDatabase] v59 billing_period add skipped: $e\n$st');
+          }
+        }
+        if (from < 60) {
+          // M7.1 over-cap enforcement: which branches/seats are held above the
+          // plan's cap after a downgrade or lapse. Local-only (no Supabase
+          // counterpart) and additive — an empty table means "nothing locked",
+          // which is exactly the pre-upgrade behaviour.
+          // Rollback: DROP TABLE entitlement_locks.
+          try {
+            await m.createTable(entitlementLocksTable);
+          } catch (e, st) {
+            debugPrint(
+                '[AppDatabase] v60 entitlement_locks create skipped: $e\n$st');
           }
         }
       },

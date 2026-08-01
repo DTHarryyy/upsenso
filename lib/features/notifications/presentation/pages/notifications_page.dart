@@ -5,6 +5,7 @@ import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/widgets/app_sub_page_bar.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
+import 'package:pos/features/notifications/domain/billing_notice_service.dart';
 import 'package:pos/features/notifications/domain/repositories/i_notifications_repository.dart';
 import 'package:pos/features/notifications/presentation/cubit/notifications_cubit.dart';
 import 'package:pos/features/notifications/presentation/cubit/notifications_state.dart';
@@ -13,7 +14,6 @@ import 'package:pos/features/notifications/presentation/widgets/notifications_em
 import 'package:pos/features/notifications/presentation/widgets/notifications_error_state.dart';
 import 'package:pos/features/notifications/presentation/widgets/notifications_filter_tabs.dart';
 import 'package:pos/features/notifications/presentation/widgets/notifications_skeleton.dart';
-import 'package:pos/features/notifications/presentation/widgets/notifications_summary_row.dart';
 
 /// Root entry-point for the Notifications shell branch.
 ///
@@ -32,7 +32,10 @@ class NotificationsPage extends StatelessWidget {
 
         return BlocProvider(
           create: (ctx) {
-            final cubit = NotificationsCubit(sl<INotificationsRepository>());
+            final cubit = NotificationsCubit(
+              sl<INotificationsRepository>(),
+              sl<BillingNoticeService>(),
+            );
             if (businessId != null) cubit.load(businessId);
             return cubit;
           },
@@ -73,12 +76,7 @@ class _NotificationsView extends StatelessWidget {
         builder: (context, state) {
           return CustomScrollView(
             slivers: [
-              SliverToBoxAdapter(
-                child: NotificationsSummaryRow(state: state),
-              ),
-              SliverToBoxAdapter(
-                child: NotificationsFilterTabs(state: state),
-              ),
+              SliverToBoxAdapter(child: NotificationsFilterTabs(state: state)),
               const SliverToBoxAdapter(child: SizedBox(height: 16)),
               _buildBody(context, state),
             ],
