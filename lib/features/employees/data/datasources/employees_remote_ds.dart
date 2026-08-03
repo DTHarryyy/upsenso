@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class EmployeesRemoteDs {
@@ -93,23 +94,48 @@ class EmployeesRemoteDs {
   }
 
   /// Emails the new employee their login credentials via the
-  /// `send-employee-credentials` edge function. Best-effort: callers should
-  /// treat a failure as non-fatal since the account already exists.
+  /// `send-employee-credentials` edge function. Throws on any non-success
+  /// response so the caller can tell whether delivery actually happened — the
+  /// account already exists either way, so treating this as non-fatal is the
+  /// *caller's* decision, not something to hide here.
   Future<void> sendCredentialsEmail({
     required String email,
     required String password,
     required String fullName,
     String? businessName,
   }) async {
-    await client.functions.invoke(
-      'send-employee-credentials',
-      body: {
-        'email': email,
-        'password': password,
-        'fullName': fullName,
-        'businessName': ?businessName,
-      },
+    try {
+      final res = await client.functions.invoke(
+        'send-employee-credentials',
+        body: {
+          'email': email,
+          'password': password,
+          'fullName': fullName,
+          'businessName': ?businessName,
+        },
+      );
+      final data = res.data;
+      if (res.status == 200 && data is Map && data['ok'] == true) return;
+      throw Exception(_stageMessage(data, res.status));
+    } on FunctionException catch (e) {
+      // supabase_flutter throws this for any non-2xx before the 200-check
+      // above ever runs — the real reason (our own {error, stage} body) only
+      // survives on `e.details`. Without this the caller only ever sees an
+      // opaque FunctionException, which is what made this silently
+      // undiagnosable in the field.
+      throw Exception(_stageMessage(e.details, e.status));
+    }
+  }
+
+  String _stageMessage(dynamic data, int status) {
+    final map = data is Map ? data : const {};
+    final stage = map['stage']?.toString();
+    final error = map['error']?.toString();
+    debugPrint(
+      '[EmployeesRemoteDs] send-employee-credentials failed '
+      '(status: $status, stage: $stage): $error',
     );
+    return error ?? 'send-employee-credentials failed ($status)';
   }
 
   /// Creates a Supabase Auth user for the employee and returns the new UUID.

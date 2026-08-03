@@ -1,16 +1,19 @@
 import 'package:pos/features/employees/domain/entities/employee.dart';
+import 'package:pos/features/employees/domain/entities/employee_creation_result.dart';
 
 abstract class IEmployeesRepository {
   Stream<List<Employee>> watchEmployees(String businessId);
   Future<List<Employee>> loadEmployees(String businessId);
   Future<Employee?> getById(String id);
 
-  Future<void> addEmployee({
+  /// Generates the employee's temporary password internally — callers never
+  /// see or choose it. See [EmployeeCreationResult] for how delivery is
+  /// reported back.
+  Future<EmployeeCreationResult> addEmployee({
     required String businessId,
     required String branchId,
     required String fullName,
     required String email,
-    required String password,
     String? roleId,
     String? roleName,
     bool isActive = true,

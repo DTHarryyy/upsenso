@@ -14,6 +14,7 @@ import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/auth/presentation/widgets/auth_layout.dart';
 import 'package:pos/features/auth/presentation/widgets/auth_options.dart';
+import 'package:pos/features/auth/presentation/widgets/oauth_in_progress_view.dart';
 
 class SignIn extends StatefulWidget {
   const SignIn({super.key});
@@ -79,31 +80,9 @@ class _SignInState extends State<SignIn> {
       },
       builder: (context, state) {
         if (state is AuthOAuthInProgress) {
-          return Scaffold(
-            body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Completing ${state.provider == 'google' ? 'Google' : 'Facebook'} sign-in…',
-                    style: AppTextStyles.body(context).copyWith(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Please wait while we finish setting up your account',
-                    style: AppTextStyles.caption(
-                      context,
-                    ).copyWith(color: AppColors.textSecondary),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
+          return OAuthInProgressView(
+            provider: state.provider,
+            actionLabel: 'sign-in',
           );
         }
 

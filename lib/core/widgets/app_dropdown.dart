@@ -54,6 +54,23 @@ class AppDropdown<T> extends FormField<T> {
   final bool searchable;
   final String searchHint;
 
+  /// Corner radius of the closed trigger. Defaults to the standard 12 used
+  /// everywhere this widget appears; override per call site to match a
+  /// surrounding surface that uses a different radius.
+  final double borderRadius;
+
+  /// Whether the closed trigger renders its default drop shadow. Defaults to
+  /// true (today's look everywhere); set false to sit flush inside a flat,
+  /// bordered container instead.
+  final bool showShadow;
+
+  /// Forces a permanent hairline border (the same `borderSoft` used by role
+  /// cards / settings sections) on the closed trigger, even when it isn't
+  /// focused or in error. Defaults to false, preserving today's borderless
+  /// look everywhere else — the error/focus border still takes priority when
+  /// this is on.
+  final bool showBorder;
+
   AppDropdown({
     super.key,
     T? value,
@@ -66,6 +83,9 @@ class AppDropdown<T> extends FormField<T> {
     this.onAddItem,
     this.searchable = false,
     this.searchHint = 'Search...',
+    this.borderRadius = 12,
+    this.showShadow = true,
+    this.showBorder = false,
     super.validator,
     super.autovalidateMode = AutovalidateMode.disabled,
   }) : super(
@@ -179,12 +199,15 @@ class _AppDropdownState<T> extends FormFieldState<T> {
   Widget _buildWidget() {
     final displayError = errorText; // from FormFieldState (validator result)
     final hasError = displayError != null;
-    // Border only surfaces for error/focus states; otherwise the trigger is
-    // a flat, borderless chip that relies on shadow for separation.
+    // Border only surfaces for error/focus states by default; otherwise the
+    // trigger is a flat, borderless chip that relies on shadow for
+    // separation — unless [showBorder] opts into a permanent hairline.
     final border = hasError
         ? Border.all(color: AppColors.error, width: 1)
         : _isOpen
         ? Border.all(color: AppColors.brand, width: 1)
+        : _w.showBorder
+        ? Border.all(color: AppColors.borderSoft, width: 1)
         : null;
     // Dense dropdowns are filter controls — the hint ("All X") is itself a
     // meaningful selection, not an unfilled required field, so it reads as
@@ -209,15 +232,17 @@ class _AppDropdownState<T> extends FormFieldState<T> {
               ),
               decoration: BoxDecoration(
                 color: AppColors.surface,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(_w.borderRadius),
                 border: border,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                boxShadow: _w.showShadow
+                    ? [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.06),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : null,
               ),
               child: Row(
                 children: [

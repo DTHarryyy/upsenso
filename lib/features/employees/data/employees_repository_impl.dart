@@ -11,10 +11,13 @@ import 'package:pos/core/permissions/default_permission_matrix.dart';
 import 'package:pos/core/permissions/entitlement_enforcement_service.dart';
 import 'package:pos/core/permissions/entitlement_service.dart';
 import 'package:pos/core/permissions/role_permission_matrix.dart';
+import 'package:pos/core/session/active_business_context.dart';
 import 'package:pos/core/sync/sync_status.dart';
+import 'package:pos/core/utils/temp_password_generator.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/features/employees/data/datasources/employees_remote_ds.dart';
 import 'package:pos/features/employees/domain/entities/employee.dart';
+import 'package:pos/features/employees/domain/entities/employee_creation_result.dart';
 import 'package:pos/features/employees/domain/errors/employee_errors.dart';
 import 'package:pos/features/employees/domain/repositories/i_employees_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -65,7 +68,9 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
   Future<String?> _resolveRoleId(String businessId, String? roleName) async {
     if (roleName == null || roleName.trim().isEmpty) return null;
     try {
-      final roles = await _remoteDs.getRolesByBusiness(businessId);
+      final roles = await _remoteDs
+          .getRolesByBusiness(businessId)
+          .timeout(const Duration(seconds: 10));
       return roles[roleName.toLowerCase().trim()];
     } catch (e, st) {
       debugPrint('[EmployeesRepo] Error in _resolveRoleId: $e\n$st');
@@ -74,18 +79,20 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
   }
 
   @override
-  Future<void> addEmployee({
+  Future<EmployeeCreationResult> addEmployee({
     required String businessId,
     required String branchId,
     required String fullName,
     required String email,
-    required String password,
     String? roleId,
     String? roleName,
     bool isActive = true,
   }) async {
     final id = _uuid.v4();
     final now = DateTime.now();
+    // The creator never sees or picks this — it exists only long enough to
+    // mint the auth account and email it below.
+    final tempPassword = generateTemporaryPassword();
 
     // Seat-cap pre-check before the auth account is minted — counted live from
     // local Drift. The server RPC enforces the same cap for cloud tiers (M7.1
@@ -106,14 +113,16 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
     // so the form can show it inline rather than as a generic snackbar.
     final String authUserId;
     try {
-      authUserId = await _remoteDs.createAuthAccount(
-        email: email,
-        password: password,
-        businessId: businessId,
-        branchId: branchId.isEmpty ? null : branchId,
-        fullName: fullName,
-        roleId: roleId,
-      );
+      authUserId = await _remoteDs
+          .createAuthAccount(
+            email: email,
+            password: tempPassword,
+            businessId: businessId,
+            branchId: branchId.isEmpty ? null : branchId,
+            fullName: fullName,
+            roleId: roleId,
+          )
+          .timeout(const Duration(seconds: 15));
     } on PostgrestException catch (e) {
       // The RPC's own RAISE EXCEPTION is the normal path; the raw Postgres
       // unique-violation code (23505) is a backstop for the rare race where
@@ -126,24 +135,33 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
           'email': 'This email is already registered to an employee.',
         });
       }
+      // The RPC's seat cap (M7.1 §6.2) is authoritative server-side — the
+      // client-side pre-check above is only a courtesy for the common case.
+      if (e.message.contains('SEAT_LIMIT_REACHED')) {
+        throw const EmployeeSeatLimitException();
+      }
       rethrow;
     }
 
     // Step 2: Upsert the employee row and branch assignment to Supabase.
     // This is also required: without the employee row in Supabase the new
     // user's my_business_id() call returns null and they cannot log in.
-    await _remoteDs.upsertEmployee(
-      id: id,
-      businessId: businessId,
-      authUserId: authUserId,
-      fullName: fullName,
-      email: email,
-      roleId: roleId,
-      roleName: roleName,
-      isActive: isActive,
-    );
+    await _remoteDs
+        .upsertEmployee(
+          id: id,
+          businessId: businessId,
+          authUserId: authUserId,
+          fullName: fullName,
+          email: email,
+          roleId: roleId,
+          roleName: roleName,
+          isActive: isActive,
+        )
+        .timeout(const Duration(seconds: 15));
     if (branchId.isNotEmpty) {
-      await _remoteDs.assignBranch(employeeId: id, branchId: branchId);
+      await _remoteDs
+          .assignBranch(employeeId: id, branchId: branchId)
+          .timeout(const Duration(seconds: 15));
     }
 
     // Step 3: Derive role-default permissions for local cache seeding.
@@ -162,7 +180,9 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
     // (best-effort — the snapshot will be rebuilt on next login if this fails).
     if (branchId.isNotEmpty) {
       try {
-        await _permissionRemoteDs.computePermissions(id, branchId);
+        await _permissionRemoteDs
+            .computePermissions(id, branchId)
+            .timeout(const Duration(seconds: 10));
       } catch (e, st) {
         debugPrint('[EmployeesRepo] Permission snapshot seeding failed: $e\n$st');
       }
@@ -216,15 +236,31 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
 
     // Step 7: Email the employee their login credentials. Best-effort — the
     // account already exists, so a delivery failure must not fail creation.
+    // The generated password is only kept around long enough to report it
+    // back to the caller if this fails — never persisted.
+    var credentialsEmailed = true;
     try {
-      await _remoteDs.sendCredentialsEmail(
-        email: email,
-        password: password,
-        fullName: fullName,
-      );
+      // Short timeout — this is the last thing gating dialog dismissal, so it
+      // must never let a Deno cold start or a slow Resend call dominate the
+      // wait the way it used to when this had no timeout at all.
+      await _remoteDs
+          .sendCredentialsEmail(
+            email: email,
+            password: tempPassword,
+            fullName: fullName,
+          )
+          .timeout(const Duration(seconds: 8));
     } catch (e, st) {
+      credentialsEmailed = false;
       debugPrint('[EmployeesRepo] Credential email failed: $e\n$st');
     }
+
+    return EmployeeCreationResult(
+      employeeId: id,
+      email: email,
+      credentialsEmailed: credentialsEmailed,
+      temporaryPassword: credentialsEmailed ? null : tempPassword,
+    );
   }
 
   @override
@@ -281,10 +317,23 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
   Future<void> reactivateEmployee(String id) =>
       _setActive(id, true, AuditLogActionType.employeeStatusChanged, 'active');
 
-  // Owner / Super Admin accounts are protected: the DB rejects deactivating
-  // them, so we block it here too rather than letting it fail during sync.
+  // Owner-tier accounts are protected from deactivation by anyone — except
+  // the real Business Owner removing one they created (an owner-tier
+  // *employee* trying to remove another owner-tier employee is still
+  // blocked, same as before).
   static bool _isOwnerRole(String? roleName) =>
       RolePermissionMatrix.isOwnerRoleName(roleName);
+
+  // The real Business Owner has no row in `employees` at all — they're
+  // created directly in `users` at onboarding and never get an employee
+  // record. A Business-Owner-tier *employee*, by contrast, always has one.
+  // So "no employee row matches my session" is what tells the two apart.
+  Future<bool> _actingAsLiteralOwner(String businessId) async {
+    final activeUserId = sl<ActiveBusinessContext>().userId;
+    if (activeUserId == null) return false;
+    final rows = await _dao.getByBusinessId(businessId);
+    return !rows.any((e) => e.authUserId == activeUserId);
+  }
 
   Future<void> _setActive(
     String id,
@@ -295,7 +344,12 @@ class EmployeesRepositoryImpl implements IEmployeesRepository {
     final existing = await _dao.getById(id);
 
     if (!active && _isOwnerRole(existing?.roleName)) {
-      throw const EmployeeProtectedException();
+      final businessId = existing?.businessId;
+      final isLiteralOwner =
+          businessId != null && await _actingAsLiteralOwner(businessId);
+      if (!isLiteralOwner) {
+        throw const EmployeeProtectedException();
+      }
     }
 
     // Reactivating consumes a seat exactly like hiring does. Without this a

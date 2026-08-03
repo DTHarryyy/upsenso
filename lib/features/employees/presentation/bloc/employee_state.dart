@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:pos/features/employees/domain/entities/employee.dart';
+import 'package:pos/features/employees/domain/entities/employee_creation_result.dart';
 
 abstract class EmployeeState extends Equatable {
   const EmployeeState();
@@ -120,7 +121,16 @@ class EmployeeValidationFailure extends EmployeeState {
 class EmployeeOperationSuccess extends EmployeeState {
   final String message;
   final EmployeeLoaded loaded;
-  const EmployeeOperationSuccess({required this.message, required this.loaded});
+
+  /// Set only for a create — carries whether the credential email went out
+  /// (and the temporary password, when it didn't). Null for update/delete.
+  final EmployeeCreationResult? creation;
+
+  const EmployeeOperationSuccess({
+    required this.message,
+    required this.loaded,
+    this.creation,
+  });
   @override
-  List<Object?> get props => [message, loaded];
+  List<Object?> get props => [message, loaded, creation];
 }

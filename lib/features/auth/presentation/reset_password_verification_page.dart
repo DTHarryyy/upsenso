@@ -11,6 +11,7 @@ import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/auth/presentation/widgets/auth_layout.dart';
+import 'package:pos/features/auth/presentation/widgets/resend_code_button.dart';
 
 class ResetPasswordVerificationPage extends StatefulWidget {
   final String email;
@@ -232,28 +233,11 @@ class _ResetPasswordVerificationPageState
               const SizedBox(height: 20),
 
               // Resend
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    "Didn't receive it? ",
-                    style: AppTextStyles.body(context).copyWith(
-                      color: AppColors.textSecondary,
-                      fontSize: 13,
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: isLoading ? null : _resendCode,
-                    child: Text(
-                      'Resend code',
-                      style: AppTextStyles.body(context).copyWith(
-                        color: AppColors.brand,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                ],
+              ResendCodeButton(
+                promptText: "Didn't receive it? ",
+                label: 'Resend code',
+                enabled: !isLoading,
+                onResend: _resendCode,
               ),
             ],
           ),

@@ -1,4 +1,5 @@
 import 'package:pos/features/employees/domain/entities/employee.dart';
+import 'package:pos/features/employees/domain/entities/employee_creation_result.dart';
 import 'package:pos/features/employees/domain/repositories/i_employees_repository.dart';
 
 class LoadEmployeesUseCase {
@@ -12,12 +13,11 @@ class AddEmployeeUseCase {
   final IEmployeesRepository _repository;
   AddEmployeeUseCase(this._repository);
 
-  Future<void> call({
+  Future<EmployeeCreationResult> call({
     required String businessId,
     required String branchId,
     required String fullName,
     required String email,
-    required String password,
     String? roleId,
     bool isActive = true,
   }) => _repository.addEmployee(
@@ -25,7 +25,6 @@ class AddEmployeeUseCase {
     branchId: branchId,
     fullName: fullName,
     email: email,
-    password: password,
     roleId: roleId,
     isActive: isActive,
   );

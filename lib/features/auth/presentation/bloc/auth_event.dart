@@ -34,6 +34,10 @@ class AuthFacebookSignInRequested extends AuthEvent {
   const AuthFacebookSignInRequested();
 }
 
+class AuthOAuthCancelled extends AuthEvent {
+  const AuthOAuthCancelled();
+}
+
 class AuthRegisterRequested extends AuthEvent {
   final String email;
   final String password;

@@ -7,8 +7,8 @@ import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/widgets/app_dropdown.dart';
 import 'package:pos/core/widgets/app_filled_button.dart';
+import 'package:pos/core/widgets/app_inline_banner.dart';
 import 'package:pos/core/widgets/app_input_decoration.dart';
-import 'package:pos/core/widgets/app_section_card.dart';
 import 'package:pos/core/widgets/app_sticky_action_bar.dart';
 import 'package:pos/core/widgets/app_sub_page_bar.dart';
 import 'package:pos/core/widgets/upgrade_prompt.dart';
@@ -164,14 +164,10 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
-  final _passwordCtrl = TextEditingController();
-  final _confirmPasswordCtrl = TextEditingController();
 
   EmployeeRole _role = EmployeeRole.cashier;
   String? _selectedBranchId;
   bool _submitting = false;
-  bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
 
   // Server-side field error shown inline under the email field.
   String? _serverEmailError;
@@ -180,9 +176,11 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
 
   bool get _isEditing => widget.employee != null;
 
+  // Which roles (including whether Business Owner is offered at all) is
+  // decided entirely by the caller per actor tier — see
+  // `employees_page.dart`'s `_allowedRoles()`.
   List<EmployeeRole> get _availableRoles =>
-      widget.allowedRoles ??
-      EmployeeRole.values.where((r) => r != EmployeeRole.owner).toList();
+      widget.allowedRoles ?? EmployeeRole.values.toList();
 
   @override
   void initState() {
@@ -210,9 +208,22 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
   void dispose() {
     _nameCtrl.dispose();
     _emailCtrl.dispose();
-    _passwordCtrl.dispose();
-    _confirmPasswordCtrl.dispose();
     super.dispose();
+  }
+
+  // Closes this form and nothing else. A bare `Navigator.pop()` is wrong here:
+  // the page's success listener runs first and may already have pushed the
+  // temp-password sheet on top, so pop() would dismiss that instead and leave
+  // the form stuck open.
+  void _closeSelf() {
+    final route = ModalRoute.of(context);
+    if (route == null) return;
+    final navigator = Navigator.of(context);
+    if (route.isCurrent) {
+      navigator.pop(); // keeps the dismiss animation in the normal case
+    } else {
+      navigator.removeRoute(route);
+    }
   }
 
   void _submit() {
@@ -229,8 +240,7 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
     // The actor's allowed role set is enforced again in the bloc; passing it
     // here is what lets that business-logic check run (the dropdown alone is
     // only UX, not access control).
-    final allowedRoleNames =
-        _availableRoles.map((r) => r.displayName).toList();
+    final allowedRoleNames = _availableRoles.map((r) => r.displayName).toList();
 
     if (_isEditing) {
       context.read<EmployeeBloc>().add(
@@ -245,10 +255,11 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
     } else {
       context.read<EmployeeBloc>().add(
         AddEmployee(
-          branchId: _selectedBranchId!,
+          // Business Owner has no single branch — leaving this empty is what
+          // gives them all-branch access, same as the real owner (§4).
+          branchId: _role == EmployeeRole.owner ? '' : _selectedBranchId!,
           fullName: _nameCtrl.text.trim(),
           email: _emailCtrl.text.trim().toLowerCase(),
-          password: _passwordCtrl.text,
           roleName: _role.displayName,
           allowedRoleNames: allowedRoleNames,
         ),
@@ -282,7 +293,7 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
             ],
 
             // ── Personal Information ──────────────────────────────────
-            AppSectionCard(
+            _FormSectionCard(
               title: 'Personal Information',
               icon: IconlyLight.profile,
               children: [
@@ -307,7 +318,9 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
                           label: 'Work Email',
                         ).copyWith(
                           errorText: _serverEmailError,
-                          helperText: 'Used for the employee\'s login account',
+                          helperText:
+                              'A temporary password will be generated and '
+                              'emailed to this address',
                           helperStyle: getOutfitStyle(
                             fontSize: 11,
                             color: AppColors.textMuted,
@@ -333,97 +346,25 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
               ],
             ),
 
-            // ── Login Credentials (create mode only) ──────────────────
-            if (!_isEditing) ...[
-              const SizedBox(height: 14),
-              AppSectionCard(
-                title: 'Login Credentials',
-                icon: IconlyLight.lock,
-                children: [
-                  TextFormField(
-                    controller: _passwordCtrl,
-                    obscureText: _obscurePassword,
-                    decoration:
-                        appInputDeco(
-                          'Min. 6 characters',
-                          label: 'Password',
-                        ).copyWith(
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
-                              size: 20,
-                              color: AppColors.textMuted,
-                            ),
-                            onPressed: () => setState(
-                              () => _obscurePassword = !_obscurePassword,
-                            ),
-                          ),
-                        ),
-                    textInputAction: TextInputAction.next,
-                    validator: (v) {
-                      if (v == null || v.isEmpty) return 'Required';
-                      if (v.length < 6) {
-                        return 'Password must be at least 6 characters';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  // Live password strength indicator
-                  ListenableBuilder(
-                    listenable: _passwordCtrl,
-                    builder: (context, _) =>
-                        _PasswordStrengthBar(password: _passwordCtrl.text),
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _confirmPasswordCtrl,
-                    obscureText: _obscureConfirmPassword,
-                    decoration:
-                        appInputDeco(
-                          'Re-enter password',
-                          label: 'Confirm Password',
-                        ).copyWith(
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscureConfirmPassword
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
-                              size: 20,
-                              color: AppColors.textMuted,
-                            ),
-                            onPressed: () => setState(
-                              () => _obscureConfirmPassword =
-                                  !_obscureConfirmPassword,
-                            ),
-                          ),
-                        ),
-                    textInputAction: TextInputAction.done,
-                    validator: (v) {
-                      if (v == null || v.isEmpty) return 'Required';
-                      if (v != _passwordCtrl.text) {
-                        return 'Passwords do not match';
-                      }
-                      return null;
-                    },
-                  ),
-                ],
-              ),
-            ],
-
             const SizedBox(height: 14),
 
             // ── Assignment ────────────────────────────────────────────
-            AppSectionCard(
+            _FormSectionCard(
               title: 'Assignment',
               icon: IconlyLight.work,
               children: [
-                if (widget.lockedBranchId == null) ...[
+                if (_role == EmployeeRole.owner) ...[
+                  const AppInlineBanner(
+                    message: 'Business Owner has access to all branches.',
+                    variant: AppInlineBannerVariant.info,
+                  ),
+                ] else if (widget.lockedBranchId == null) ...[
                   AppDropdown<String>(
                     value: _selectedBranchId,
                     hint: 'Select branch',
+                    borderRadius: 10,
+                    showShadow: false,
+                    showBorder: true,
                     items: widget.branches
                         .map((b) => AppDropdownItem(value: b.id, label: b.name))
                         .toList(),
@@ -467,9 +408,9 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: _submitting
-                          ? null
-                          : () => Navigator.of(context).pop(),
+                      // Stays enabled even mid-submit — a stalled network call
+                      // must never trap the user behind a barrier with no exit.
+                      onPressed: () => Navigator.of(context).pop(),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         side: const BorderSide(color: AppColors.borderSoft),
@@ -508,7 +449,8 @@ class _EmployeeFormBodyState extends State<_EmployeeFormBody> {
       listener: (context, state) {
         if (!mounted) return;
         if (state is EmployeeOperationSuccess) {
-          Navigator.of(context).pop();
+          setState(() => _submitting = false);
+          _closeSelf();
         } else if (state is EmployeeValidationFailure) {
           setState(() {
             _submitting = false;
@@ -580,6 +522,67 @@ class _DialogHeader extends StatelessWidget {
           color: AppColors.textMuted,
         ),
       ],
+    );
+  }
+}
+
+// ── Section card ────────────────────────────────────────────────────────────
+
+/// Icon-badge + title header (matching [AppSectionCard]'s layout) over a flat
+/// Settings-page-style container (matching `SettingsSection`'s decoration:
+/// see `lib/core/widgets/settings_tile.dart`) — radius 14, hairline border, no
+/// shadow. Kept local to this form rather than promoted to `core/widgets/`
+/// since nothing else uses this exact combination.
+class _FormSectionCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final List<Widget> children;
+
+  const _FormSectionCard({
+    required this.title,
+    required this.icon,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.borderSoft),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.brand.withAlpha(18),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Icon(icon, size: 17, color: AppColors.brand),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  style: AppTextStyles.caption(context).copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...children,
+        ],
+      ),
     );
   }
 }
@@ -727,93 +730,6 @@ extension _EmployeeRoleUI on EmployeeRole {
       case EmployeeRole.inventoryStaff:
         return 'Stock control & adjustments';
     }
-  }
-}
-
-// ── Password strength bar ─────────────────────────────────────────────────────
-
-class _PasswordStrengthBar extends StatelessWidget {
-  final String password;
-
-  const _PasswordStrengthBar({required this.password});
-
-  int get _strength {
-    if (password.isEmpty) return 0;
-    if (password.length < 6) return 1;
-    int s = 2;
-    if (password.length >= 8) s++;
-    if (RegExp(r'[A-Z]').hasMatch(password) &&
-        RegExp(r'[0-9!@#$%^&*]').hasMatch(password)) {
-      s++;
-    }
-    return s;
-  }
-
-  String get _label {
-    switch (_strength) {
-      case 1:
-        return 'Weak';
-      case 2:
-        return 'Fair';
-      case 3:
-        return 'Good';
-      case 4:
-        return 'Strong';
-      default:
-        return '';
-    }
-  }
-
-  Color get _color {
-    switch (_strength) {
-      case 1:
-        return AppColors.error;
-      case 2:
-        return AppColors.warning;
-      case 3:
-        return AppColors.info;
-      default:
-        return AppColors.success;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (password.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    final strength = _strength;
-    final color = _color;
-    return Row(
-      children: [
-        Expanded(
-          child: Row(
-            children: List.generate(4, (i) {
-              final filled = i < strength;
-              return Expanded(
-                child: Container(
-                  margin: EdgeInsets.only(right: i < 3 ? 4 : 0),
-                  height: 3,
-                  decoration: BoxDecoration(
-                    color: filled ? color : AppColors.borderSoft,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              );
-            }),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Text(
-          _label,
-          style: getOutfitStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: color,
-          ),
-        ),
-      ],
-    );
   }
 }
 

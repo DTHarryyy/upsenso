@@ -56,7 +56,10 @@ extension EmployeeRoleX on EmployeeRole {
   String get displayName {
     switch (this) {
       case EmployeeRole.owner:
-        return 'Owner';
+        // Must match the seeded per-business role row name exactly — the
+        // repository resolves this string to a role UUID by name lookup, and
+        // the server RPC's escalation gate only runs when that resolves.
+        return 'Business Owner';
       case EmployeeRole.branchManager:
         return 'Branch Manager';
       case EmployeeRole.cashier:

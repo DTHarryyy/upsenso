@@ -127,7 +127,14 @@ class SyncService {
   /// mirror from going stale for days.
   static const _entitlementRefreshInterval = Duration(hours: 6);
   bool _isSyncing = false;
-  bool _initCalled = false;
+  // Guards against double-registering the connectivity listener/retry timer.
+  // Armed once per login regardless of plan — pull must keep working on a
+  // free/lapsed/over-cap device, only push is gated (see _cloudAllowed).
+  bool _timersArmed = false;
+  // Tracks the push gate's last known value so _onEntitlementChanged can tell
+  // a genuine gain/loss transition apart from a no-op call. Baselined to the
+  // current value the first time init() runs.
+  bool _wasCloudAllowed = false;
   // Holds the most recent businessId provided to syncAll() while a sync was
   // already running. After the current sync finishes we re-run pullFromServer
   // with this id so no data is missed.
@@ -288,44 +295,55 @@ class SyncService {
   /// (Added 2026-07-04 for local-DB testing.)
   static const bool syncEnabled = true;
 
-  /// M7.1 §7.1: cloud sync is a paid entitlement. Free = local-only — Drift
-  /// is the sole store and no business data ever leaves the device. This is
-  /// the UX gate; the server enforces the same rule with has_cloud_access()
-  /// RESTRICTIVE RLS, so a tampered client gains nothing.
-  /// Cloud sync requires BOTH a cloud entitlement AND this device being
-  /// registered under the plan's device cap (M7.1 §6.3). A registered device
-  /// that gets revoked, or a device over the cap, stops syncing — the server
-  /// enforces the same via register_device / has_cloud_access.
+  /// M7.1 §7.1: cloud sync PUSH is a paid entitlement. Free/lapsed/over-cap =
+  /// no writes ever leave the device. This is the UX gate; the server enforces
+  /// the same rule with has_cloud_access() RESTRICTIVE RLS, so a tampered
+  /// client gains nothing. Cloud push requires BOTH a cloud entitlement AND
+  /// this device being registered under the plan's device cap (M7.1 §6.3).
+  ///
+  /// This does NOT gate pull — the server's RLS is deliberately write-only
+  /// (20260708000001_cloud_gate_rls.sql: "SELECT is deliberately NOT gated: a
+  /// lapsed tenant keeps reading their frozen cloud copy"). A free/lapsed/
+  /// over-cap device still downloads its own previously-synced data via
+  /// [pullFromServer] — see [syncAll]. Without this, a business that ever
+  /// paid loses its own data on every new device or reinstall.
   bool get _cloudAllowed =>
       _entitlementService.cloudEnabled &&
       _deviceRegistrationService.isRegistered;
 
-  /// Re-arm/pause when the plan changes (upgrade lands, trial expires, lapse
-  /// confirmed) or device registration status changes. Hooked once; survives
-  /// pause() so a later upgrade/registration can re-arm.
+  /// Re-arm push (and fire the upgrade backfill) when the plan/device gate
+  /// flips on; just log when it flips off — pull keeps running either way via
+  /// the timers armed in [init], which are no longer plan-conditional.
   bool _entitlementHooked = false;
 
   void _onEntitlementChanged() {
-    if (_cloudAllowed && !_initCalled) {
-      debugPrint('[SYNC] Cloud entitlement gained — backfill + arm sync.');
-      // Re-queue previously-synced rows first (§7.2), then arm; the first
+    final allowed = _cloudAllowed;
+    if (allowed && !_wasCloudAllowed) {
+      debugPrint('[SYNC] Cloud entitlement gained — backfill + push armed.');
+      // Re-queue previously-synced rows first (§7.2), then sync; the first
       // syncAll then pushes a complete snapshot. Fire-and-forget: the mark is
-      // idempotent and init() will also retry via the periodic timer.
+      // idempotent and the periodic retry timer (already armed) will also
+      // retry if this attempt fails.
       final backfill = onCloudGained;
       if (backfill != null) {
-        backfill().whenComplete(init);
+        backfill().whenComplete(() => syncAll().ignore());
       } else {
-        init();
+        syncAll().ignore();
       }
-    } else if (!_cloudAllowed && _initCalled) {
-      debugPrint('[SYNC] Cloud entitlement lost — pausing sync.');
-      pause();
+    } else if (!allowed && _wasCloudAllowed) {
+      debugPrint('[SYNC] Cloud entitlement lost — push paused, pull continues.');
     }
+    _wasCloudAllowed = allowed;
   }
 
   /// Initialize sync service and listen for connectivity changes.
   /// Guards against being called multiple times (e.g. if MainNavigationPage
   /// is rebuilt) so we never accumulate duplicate listeners.
+  ///
+  /// Timers are armed regardless of the push gate ([_cloudAllowed]): a
+  /// free/lapsed/over-cap tenant still needs periodic pulls of its own frozen
+  /// cloud copy (see [_cloudAllowed] doc). [syncAll] itself decides push vs.
+  /// pull internally on every tick.
   void init() {
     if (!syncEnabled) {
       debugPrint('[SYNC] Disabled (syncEnabled=false) — local-only test mode.');
@@ -340,20 +358,19 @@ class SyncService {
         _onEntitlementChanged,
       );
     }
-    // Armed regardless of the cloud gate, and before the early return below:
-    // it has to catch entitlement moving in BOTH directions — a plan bought on
-    // another device, and one revoked out from under a running session.
+    // Armed regardless of the push gate: it has to catch entitlement moving in
+    // BOTH directions — a plan bought on another device, and one revoked out
+    // from under a running session.
     _entitlementTimer ??= Timer.periodic(
       _entitlementRefreshInterval,
       (_) => _refreshEntitlement(),
     );
 
-    if (!_cloudAllowed) {
-      debugPrint('[SYNC] Cloud sync off — local plan (M7.1 §7.1).');
-      return;
-    }
-    if (_initCalled) return;
-    _initCalled = true;
+    if (_timersArmed) return;
+    _timersArmed = true;
+    // Baseline so the first _onEntitlementChanged() call after this doesn't
+    // read as a spurious gain/loss transition.
+    _wasCloudAllowed = _cloudAllowed;
 
     // Sync immediately if already online at startup.
     _connectivityService.isConnected.then((online) {
@@ -399,18 +416,22 @@ class SyncService {
   /// Stop all background sync triggers on logout so no timer- or
   /// connectivity-driven pull can run while no account is active (which is when
   /// a stale tenant could otherwise be resolved). [init] re-arms on next login.
+  ///
+  /// Only called from logout paths now — entitlement/registration loss no
+  /// longer pauses sync (see [_onEntitlementChanged]), since pull must keep
+  /// working on a free/lapsed/over-cap device.
   void pause() {
     _retryTimer?.cancel();
     _retryTimer = null;
     _connectivitySubscription?.cancel();
     _connectivitySubscription = null;
     _pendingBusinessId = null;
-    _initCalled = false;
-    // _entitlementTimer deliberately survives. pause() also runs when cloud
-    // access is LOST, and stopping the refresh there would leave a lapsed
-    // account with no way back — nothing else re-arms it until a restart.
-    // It is safe across a logout too: syncEntitlement() resolves the active
-    // business at call time and no-ops when there isn't one.
+    _timersArmed = false;
+    _wasCloudAllowed = false;
+    // _entitlementTimer deliberately survives logout — syncEntitlement()
+    // resolves the active business at call time and no-ops when there isn't
+    // one, so leaving it running is harmless and avoids re-plumbing it on
+    // every login.
   }
 
   /// Wipe all business-specific local data on logout so the next account
@@ -650,6 +671,11 @@ class SyncService {
     return controller.stream;
   }
 
+  /// A no-op push result used when [_cloudAllowed] is false — pending rows
+  /// stay local; [pullFromServer] still runs (see [syncAll]).
+  SyncResult _pushSkipped() =>
+      SyncResult(success: true, message: 'Push skipped — local plan/over cap.');
+
   /// Push all pending local changes to Supabase, then pull from server.
   Future<SyncResult> syncAll({String? businessId}) async {
     if (!syncEnabled) {
@@ -657,11 +683,6 @@ class SyncService {
         success: true,
         message: 'Sync disabled — local-only test mode',
       );
-    }
-    if (!_cloudAllowed) {
-      // Not an error: on a local plan, pending rows simply stay local. They
-      // are pushed by the first-sync backfill when the tenant upgrades.
-      return SyncResult(success: true, message: 'Cloud sync off — local plan');
     }
     if (_isSyncing) {
       // If the caller provided a businessId, keep it so the running sync (or
@@ -687,41 +708,92 @@ class SyncService {
     }
 
     try {
-      // upload na here  bag o i pull
-      final branchResult = await _syncBranches();
-      final businessResult = await _syncBusinesses();
-      final categoryResult = await _syncCategories();
-      final productResult = await _syncProducts();
-      final variantResult = await _syncProductVariants();
-      final barcodeResult = await _syncProductBarcodes();
-      final orderResult = await _syncTransactions();
-      // Refunds push after transactions so the FK parent already exists
-      // on the server when the refund row is inserted.
-      // Materialize any staged audit entries, then push audit logs BEFORE the
-      // records they explain (refunds/ledger). Otherwise a refund can reach
-      // the server in a cycle that's interrupted before its audit row does,
-      // leaving a transient "refund with no audit trail" a server-side check
-      // would false-positive on.
-      if (drainAuditOutbox != null) await drainAuditOutbox!();
-      final auditResult = await _syncAuditLogs();
-      final refundResult = await _syncRefunds();
-      final expenseResult = await _syncExpenses();
-      final inventoryResult = await _syncInventoryLevels();
-      // Purchase orders push before the stock ledger so a same-session
-      // create-PO-then-receive flow already has its parent PO on the server
-      // when the ledger's purchase_order source-document check runs.
-      final poResult = await _syncPurchaseOrders();
-      final ledgerResult = await _syncStockLedger();
-      await _syncReceiptSettings(); // fire-and-forget style; errors logged internally
-      await _syncDevices(); // fire-and-forget style; errors logged internally
-      final fraudResult = await _syncFraudFlags();
-      final employeeResult = await _syncEmployees();
-      final supplierResult = await _syncSuppliers();
-      final customerResult = await _syncCustomers();
-      final polResult = await _syncPurchaseOrderLines();
-      final grResult = await _syncGoodsReceipts();
-      final griResult = await _syncGoodsReceiptItems();
-      final recipeResult = await _syncRecipeLines();
+      final SyncResult branchResult;
+      final SyncResult businessResult;
+      final SyncResult categoryResult;
+      final SyncResult productResult;
+      final SyncResult variantResult;
+      final SyncResult barcodeResult;
+      final SyncResult orderResult;
+      final ({int syncedCount, int failedCount}) auditResult;
+      final SyncResult refundResult;
+      final SyncResult expenseResult;
+      final SyncResult inventoryResult;
+      final SyncResult poResult;
+      final SyncResult ledgerResult;
+      final ({int syncedCount, int failedCount}) fraudResult;
+      final SyncResult employeeResult;
+      final SyncResult supplierResult;
+      final SyncResult customerResult;
+      final SyncResult polResult;
+      final SyncResult grResult;
+      final SyncResult griResult;
+      final SyncResult recipeResult;
+
+      if (_cloudAllowed) {
+        // upload na here  bag o i pull
+        branchResult = await _syncBranches();
+        businessResult = await _syncBusinesses();
+        categoryResult = await _syncCategories();
+        productResult = await _syncProducts();
+        variantResult = await _syncProductVariants();
+        barcodeResult = await _syncProductBarcodes();
+        orderResult = await _syncTransactions();
+        // Refunds push after transactions so the FK parent already exists
+        // on the server when the refund row is inserted.
+        // Materialize any staged audit entries, then push audit logs BEFORE the
+        // records they explain (refunds/ledger). Otherwise a refund can reach
+        // the server in a cycle that's interrupted before its audit row does,
+        // leaving a transient "refund with no audit trail" a server-side check
+        // would false-positive on.
+        if (drainAuditOutbox != null) await drainAuditOutbox!();
+        auditResult = await _syncAuditLogs();
+        refundResult = await _syncRefunds();
+        expenseResult = await _syncExpenses();
+        inventoryResult = await _syncInventoryLevels();
+        // Purchase orders push before the stock ledger so a same-session
+        // create-PO-then-receive flow already has its parent PO on the server
+        // when the ledger's purchase_order source-document check runs.
+        poResult = await _syncPurchaseOrders();
+        ledgerResult = await _syncStockLedger();
+        await _syncReceiptSettings(); // fire-and-forget style; errors logged internally
+        await _syncDevices(); // fire-and-forget style; errors logged internally
+        fraudResult = await _syncFraudFlags();
+        employeeResult = await _syncEmployees();
+        supplierResult = await _syncSuppliers();
+        customerResult = await _syncCustomers();
+        polResult = await _syncPurchaseOrderLines();
+        grResult = await _syncGoodsReceipts();
+        griResult = await _syncGoodsReceiptItems();
+        recipeResult = await _syncRecipeLines();
+      } else {
+        // Free/lapsed/over-cap: push stays local (M7.1 §7.1) — pending rows
+        // are re-queued by BackfillService.markAllForUpload the next time
+        // cloud access is gained (see _onEntitlementChanged). Pull still runs
+        // below so this device keeps reading its own frozen cloud copy.
+        debugPrint('[SYNC] Push skipped — local plan/over cap.');
+        branchResult = _pushSkipped();
+        businessResult = _pushSkipped();
+        categoryResult = _pushSkipped();
+        productResult = _pushSkipped();
+        variantResult = _pushSkipped();
+        barcodeResult = _pushSkipped();
+        orderResult = _pushSkipped();
+        auditResult = (syncedCount: 0, failedCount: 0);
+        refundResult = _pushSkipped();
+        expenseResult = _pushSkipped();
+        inventoryResult = _pushSkipped();
+        poResult = _pushSkipped();
+        ledgerResult = _pushSkipped();
+        fraudResult = (syncedCount: 0, failedCount: 0);
+        employeeResult = _pushSkipped();
+        supplierResult = _pushSkipped();
+        customerResult = _pushSkipped();
+        polResult = _pushSkipped();
+        grResult = _pushSkipped();
+        griResult = _pushSkipped();
+        recipeResult = _pushSkipped();
+      }
 
       final int totalSynced =
           branchResult.syncedCount +

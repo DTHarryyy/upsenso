@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pos/core/audit/audit_log_service.dart';
 import 'package:pos/core/config/di.dart';
@@ -30,7 +30,7 @@ import '../../domain/usecases/verify_sign_up_otp.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
-class AuthBloc extends Bloc<AuthEvent, AuthState> {
+class AuthBloc extends Bloc<AuthEvent, AuthState> with WidgetsBindingObserver {
   final GetCurrentUser getCurrentUser;
   final GetUserBusinessContext getUserBusinessContext;
   final ObserveAuthState observeAuthState;
@@ -315,6 +315,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthLoginRequested>(_onLogin);
     on<AuthGoogleSignInRequested>(_onGoogleSignIn);
     on<AuthFacebookSignInRequested>(_onFacebookSignIn);
+    on<AuthOAuthCancelled>(_onOAuthCancelled);
     on<AuthRegisterRequested>(_onRegister);
     on<AuthVerifySignUpCodeRequested>(_onVerifySignUpCode);
     on<AuthResendSignUpCodeRequested>(_onResendSignUpCode);
@@ -328,6 +329,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     _sub = observeAuthState().listen((user) {
       add(AuthUserChanged(user != null));
     });
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  // Deep-link OAuth returns can be missed if the platform routes them to a
+  // different app instance (see AndroidManifest launch-mode fix) — this is a
+  // safety net that resyncs from the already-persisted session on resume.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState lifecycleState) {
+    if (lifecycleState != AppLifecycleState.resumed) return;
+    if (state is! AuthOAuthInProgress) return;
+    if (getCurrentUser() == null) return;
+    add(AuthUserChanged(true));
   }
 
   Future<void> _onStarted(AuthStarted event, Emitter<AuthState> emit) async {
@@ -459,6 +472,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(AuthError(_errorMessage(err)));
       emit(AuthUnauthenticated());
     }
+  }
+
+  void _onOAuthCancelled(AuthOAuthCancelled e, Emitter<AuthState> emit) {
+    if (state is AuthOAuthInProgress) emit(AuthUnauthenticated());
   }
 
   Future<void> _onRegister(
@@ -760,6 +777,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   @override
   Future<void> close() {
     _sub?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     return super.close();
   }
 }

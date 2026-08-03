@@ -5,6 +5,7 @@ import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/branch/branch_state.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/permissions/role_permission_matrix.dart';
+import 'package:pos/core/session/active_business_context.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/font_utils.dart';
@@ -23,6 +24,7 @@ import 'package:pos/features/employees/presentation/bloc/employee_bloc.dart';
 import 'package:pos/features/employees/presentation/bloc/employee_event.dart';
 import 'package:pos/features/employees/presentation/bloc/employee_state.dart';
 import 'package:pos/features/employees/presentation/dialogs/employee_form_dialog.dart';
+import 'package:pos/features/employees/presentation/dialogs/temp_password_dialog.dart';
 import 'package:pos/features/employees/presentation/pages/employee_details_page.dart';
 import 'package:pos/features/employees/presentation/widgets/employee_card.dart';
 import 'package:pos/features/employees/presentation/widgets/employee_card_skeleton.dart';
@@ -95,13 +97,44 @@ class _EmployeesViewState extends State<_EmployeesView> {
     }
   }
 
+  List<Employee> _employeesSnapshot() {
+    final state = context.read<EmployeeBloc>().state;
+    if (state is EmployeeLoaded) return state.allEmployees;
+    if (state is EmployeeOperationInProgress) return state.previous.allEmployees;
+    if (state is EmployeeOperationSuccess) return state.loaded.allEmployees;
+    if (state is EmployeeValidationFailure) {
+      return state.loaded?.allEmployees ?? const [];
+    }
+    return const [];
+  }
+
+  // The real Business Owner has no row in `employees` at all — they're
+  // created directly in `users` at onboarding and never get an employee
+  // record. A Business-Owner-tier *employee*, by contrast, always has one.
+  // So "no employee row matches my session" is what tells the two apart.
+  bool _isLiteralOwner() {
+    final activeUserId = sl<ActiveBusinessContext>().userId;
+    if (activeUserId == null) return false;
+    return !_employeesSnapshot().any((e) => e.authUserId == activeUserId);
+  }
+
   List<EmployeeRole>? _allowedRoles() {
     final branchState = context.read<BranchCubit>().state;
     final roleKey = RolePermissionMatrix.normalise(branchState.roleName);
     if (roleKey == RolePermissionMatrix.branchManager) {
       return const [EmployeeRole.cashier, EmployeeRole.inventoryStaff];
     }
-    return null;
+    if (_isLiteralOwner()) {
+      // Unrestricted — the form offers every role, including Business Owner.
+      return null;
+    }
+    // A Business-Owner-tier employee: same set they could pick before Owner
+    // became assignable at all.
+    return const [
+      EmployeeRole.branchManager,
+      EmployeeRole.cashier,
+      EmployeeRole.inventoryStaff,
+    ];
   }
 
   String? _lockedBranchId() {
@@ -218,8 +251,37 @@ class _EmployeesViewState extends State<_EmployeesView> {
         BlocListener<EmployeeBloc, EmployeeState>(
           listenWhen: (prev, curr) => curr is EmployeeOperationSuccess,
           listener: (ctx, state) {
-            if (state is EmployeeOperationSuccess) {
+            if (state is! EmployeeOperationSuccess) return;
+            final creation = state.creation;
+            if (creation == null) {
+              // Update/delete — no credentials involved.
               AppToast.show(ctx, '${state.message} successfully');
+            } else if (creation.credentialsEmailed) {
+              AppToast.show(
+                ctx,
+                'Employee added',
+                subtitle: 'Login credentials sent to ${creation.email}',
+              );
+            } else {
+              // The account exists either way — surface the password once
+              // rather than leaving the creator with no way to hand it over.
+              AppToast.show(
+                ctx,
+                'Employee added',
+                subtitle: 'Couldn\'t email the credentials — showing them now',
+                variant: AppToastVariant.warning,
+              );
+              // Deferred a frame so the form dialog's own close (triggered by
+              // this same state) has already popped its route — otherwise
+              // this sheet would land underneath it in the same push.
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!ctx.mounted) return;
+                showTempPasswordDialog(
+                  context: ctx,
+                  email: creation.email,
+                  temporaryPassword: creation.temporaryPassword!,
+                );
+              });
             }
           },
         ),

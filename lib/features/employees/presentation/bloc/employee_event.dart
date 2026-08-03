@@ -37,7 +37,6 @@ class AddEmployee extends EmployeeEvent {
   final String branchId;
   final String fullName;
   final String email;
-  final String password;
   final String? roleId;
   final String? roleName;
 
@@ -49,7 +48,6 @@ class AddEmployee extends EmployeeEvent {
     required this.branchId,
     required this.fullName,
     required this.email,
-    required this.password,
     this.roleId,
     this.roleName,
     this.allowedRoleNames,

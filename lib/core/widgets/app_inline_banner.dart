@@ -17,7 +17,7 @@ class AppInlineBanner extends StatelessWidget {
     this.variant = AppInlineBannerVariant.error,
   });
 
-  ({Color fg, Color bg, Color border, IconData icon}) get _style {
+  ({Color fg, Color bg, Color border, IconData icon, Color fc}) get _style {
     switch (variant) {
       case AppInlineBannerVariant.error:
         return (
@@ -25,6 +25,7 @@ class AppInlineBanner extends StatelessWidget {
           bg: AppColors.errorSoft,
           border: AppColors.error,
           icon: Icons.error_outline_rounded,
+          fc: AppColors.error,
         );
       case AppInlineBannerVariant.warning:
         return (
@@ -32,6 +33,7 @@ class AppInlineBanner extends StatelessWidget {
           bg: AppColors.warningSoft,
           border: AppColors.warning,
           icon: Icons.warning_amber_rounded,
+          fc: AppColors.warning,
         );
       case AppInlineBannerVariant.info:
         return (
@@ -39,6 +41,7 @@ class AppInlineBanner extends StatelessWidget {
           bg: AppColors.infoSoft,
           border: AppColors.info,
           icon: Icons.info_outline_rounded,
+          fc: AppColors.info,
         );
       case AppInlineBannerVariant.success:
         return (
@@ -46,6 +49,7 @@ class AppInlineBanner extends StatelessWidget {
           bg: AppColors.successSoft,
           border: AppColors.success,
           icon: Icons.check_circle_outline_rounded,
+          fc: AppColors.success,
         );
     }
   }
@@ -87,7 +91,7 @@ class AppInlineBanner extends StatelessWidget {
                         style: getOutfitStyle(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w500,
-                          color: AppColors.textPrimary,
+                          color: s.fc,
                           height: 1.35,
                         ),
                       ),

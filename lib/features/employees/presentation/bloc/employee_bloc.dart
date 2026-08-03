@@ -113,12 +113,11 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
     if (current != null) emit(EmployeeOperationInProgress(current));
 
     try {
-      await _repository.addEmployee(
+      final creation = await _repository.addEmployee(
         businessId: _businessId ?? '',
         branchId: event.branchId,
         fullName: event.fullName,
         email: event.email,
-        password: event.password,
         roleId: event.roleId,
         roleName: event.roleName,
       );
@@ -131,6 +130,7 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
       emit(EmployeeOperationSuccess(
         message: 'Employee added',
         loaded: latest,
+        creation: creation,
       ));
     } on EmployeeDuplicateException catch (e) {
       emit(EmployeeValidationFailure(fieldErrors: e.fieldErrors, loaded: current));
