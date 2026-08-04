@@ -63,15 +63,6 @@ class CustomerLoaded extends CustomerState {
     return list;
   }
 
-  /// Count per filter chip (search applied, active filter ignored).
-  Map<CustomerFilter, int> get filterCounts {
-    final base = _searched;
-    return {
-      for (final f in CustomerFilter.values)
-        f: base.where((c) => _passes(f, c)).length,
-    };
-  }
-
   /// Portfolio summary for the KPI strip.
   ({int total, int active}) get kpis {
     final active = customers.where((c) => c.isActive).length;

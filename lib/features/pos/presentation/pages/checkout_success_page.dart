@@ -136,17 +136,18 @@ class _CheckoutSuccessPageState extends State<CheckoutSuccessPage> {
 
   bool get _isCash => widget.paymentMethod == 'cash';
 
-  @override
-  Widget build(BuildContext context) {
-    final isWide = Breakpoints.isTablet(context);
-    final content = Column(
-      children: [
-        const Spacer(),
+  Widget _summary(BuildContext context, bool isWide) {
+    // Shrink the confetti on short viewports (landscape phone, small web
+    // window) so the summary still fits without scrolling.
+    final lottieWidth = MediaQuery.sizeOf(context).height < 700 ? 140.0 : 220.0;
 
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
         // ── Lottie animation ─────────────────────────────────────────
         Lottie.asset(
           'assets/lotties/Action completed with confetti.json',
-          width: 220,
+          width: lottieWidth,
           repeat: false,
         ),
         const SizedBox(height: 4),
@@ -214,56 +215,74 @@ class _CheckoutSuccessPageState extends State<CheckoutSuccessPage> {
             ),
           ),
         ],
+      ],
+    );
+  }
 
-        const Spacer(),
-
-        // ── Buttons ──────────────────────────────────────────────────
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
-          child: Column(
-            children: [
-              // Print receipt → navigates to preview page first
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => _openPreview(context),
-                  icon: _autoPrinting
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.brand,
-                          ),
-                        )
-                      : const Icon(Icons.print_rounded, size: 18),
-                  label: Text(
-                    _autoPrinting ? 'Printing…' : 'Print Receipt',
-                    style: getOutfitStyle(
-                      color: AppColors.brand,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.brand,
-                    side: const BorderSide(color: AppColors.brand),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
+  // ── Buttons ──────────────────────────────────────────────────────────
+  Widget _actions(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+      child: Column(
+        children: [
+          // Print receipt → navigates to preview page first
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _openPreview(context),
+              icon: _autoPrinting
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.brand,
+                      ),
+                    )
+                  : const Icon(Icons.print_rounded, size: 18),
+              label: Text(
+                _autoPrinting ? 'Printing…' : 'Print Receipt',
+                style: getOutfitStyle(
+                  color: AppColors.brand,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
                 ),
               ),
-              const SizedBox(height: 12),
-
-              AppFilledButton(
-                label: 'New Sale',
-                onPressed: () => Navigator.of(context).pop(),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.brand,
+                side: const BorderSide(color: AppColors.brand),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-            ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          AppFilledButton(
+            label: 'New Sale',
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isWide = Breakpoints.isTablet(context);
+    final content = Column(
+      children: [
+        Expanded(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: _summary(context, isWide),
+            ),
           ),
         ),
+        _actions(context),
       ],
     );
 

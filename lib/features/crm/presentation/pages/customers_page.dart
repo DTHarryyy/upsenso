@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconly/iconly.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
@@ -11,6 +10,7 @@ import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/routes/app_routes.dart';
+import 'package:pos/core/utils/launch_external_uri.dart';
 import 'package:pos/core/widgets/app_bottom_sheet_scaffold.dart';
 import 'package:pos/core/widgets/app_empty_state.dart';
 import 'package:pos/core/widgets/app_filter_chip.dart';
@@ -99,7 +99,6 @@ class CustomersPage extends StatelessWidget {
         ),
         _FilterRow(
           current: loaded.filter,
-          counts: loaded.filterCounts,
           onChanged: (f) => context.read<CustomerCubit>().setFilter(f),
         ),
         Expanded(
@@ -240,12 +239,10 @@ class _KpiStrip extends StatelessWidget {
 
 class _FilterRow extends StatelessWidget {
   final CustomerFilter current;
-  final Map<CustomerFilter, int> counts;
   final ValueChanged<CustomerFilter> onChanged;
 
   const _FilterRow({
     required this.current,
-    required this.counts,
     required this.onChanged,
   });
 
@@ -267,7 +264,6 @@ class _FilterRow extends StatelessWidget {
             AppFilterChip(
               label: _labels[f]!,
               isSelected: current == f,
-              badgeCount: counts[f],
               onTap: () => onChanged(f),
             ),
             const SizedBox(width: 8),
@@ -358,7 +354,11 @@ class _CustomerActionsSheet extends StatelessWidget {
                   label: 'Call $phone',
                   onTap: () {
                     Navigator.pop(context);
-                    _launch(context, 'tel:$phone');
+                    launchExternalUri(
+                      context,
+                      'tel:$phone',
+                      feature: 'CustomersPage',
+                    );
                   },
                 ),
               if (email != null && email.isNotEmpty)
@@ -367,7 +367,11 @@ class _CustomerActionsSheet extends StatelessWidget {
                   label: 'Email $email',
                   onTap: () {
                     Navigator.pop(context);
-                    _launch(context, 'mailto:$email');
+                    launchExternalUri(
+                      context,
+                      'mailto:$email',
+                      feature: 'CustomersPage',
+                    );
                   },
                 ),
               if (canManage)
@@ -392,24 +396,6 @@ class _CustomerActionsSheet extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Future<void> _launch(BuildContext context, String uri) async {
-    try {
-      final ok = await launchUrl(Uri.parse(uri));
-      if (!ok && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No app available to handle that.')),
-        );
-      }
-    } catch (e, st) {
-      debugPrint('[CustomersPage] Error launching $uri: $e\n$st');
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open that link.')),
-        );
-      }
-    }
   }
 
   void _confirmArchive(BuildContext context) {

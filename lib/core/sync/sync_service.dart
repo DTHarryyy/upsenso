@@ -287,6 +287,37 @@ class SyncService {
     return resolved;
   }
 
+  static const _customerIdBackfillEntity = 'transactions_customer_backfill';
+
+  /// One-time re-queue of synced sales that carry a local customerId but
+  /// never pushed it (see TransactionsDao.queueCustomerIdBackfill and Change
+  /// 2 of the purchase-history fix). Reuses the sync_state watermark table as
+  /// a per-business "has this run" flag rather than adding a new table or a
+  /// shared-prefs flag — a non-null watermark means it already ran.
+  Future<void> _runCustomerIdBackfillOnce(String businessId) async {
+    try {
+      final watermark = await _syncStateDao.getWatermark(
+        _customerIdBackfillEntity,
+        businessId,
+      );
+      if (watermark.ts != null) return;
+      final requeued = await _transactionsDao.queueCustomerIdBackfill();
+      await _syncStateDao.setWatermark(
+        _customerIdBackfillEntity,
+        businessId,
+        DateTime.now(),
+        'done',
+      );
+      if (requeued > 0) {
+        debugPrint(
+          '[SYNC] Re-queued $requeued transaction(s) to push customer_id',
+        );
+      }
+    } catch (e, st) {
+      debugPrint('[SYNC] customer_id backfill re-queue failed: $e\n$st');
+    }
+  }
+
   /// ── LOCAL-ONLY TEST KILL SWITCH ──────────────────────────────────────────
   /// When `false`, ALL Supabase sync is disabled — no push, no pull, and no
   /// background timers/connectivity listeners. The app runs purely against the
@@ -729,6 +760,16 @@ class SyncService {
       final SyncResult grResult;
       final SyncResult griResult;
       final SyncResult recipeResult;
+
+      // One-time re-queue: sales already marked `synced` before customer_id
+      // was part of the push payload never uploaded it (see Change 2). Runs
+      // before the push below so a device that's never done this uploads the
+      // link on its very next cycle. Gated per-business via the sync_state
+      // watermark table so it only ever fires once, not every 60s cycle.
+      final earlyBusinessId = _resolveBusinessId(businessId);
+      if (earlyBusinessId != null && _cloudAllowed) {
+        await _runCustomerIdBackfillOnce(earlyBusinessId);
+      }
 
       if (_cloudAllowed) {
         // upload na here  bag o i pull
@@ -1481,6 +1522,8 @@ class SyncService {
           createdAt: tx.createdAt,
           paymentMethod: tx.paymentMethod,
           invoiceNumber: invoiceNumber,
+          customerId: tx.customerId,
+          status: tx.status,
         );
         final items = await _transactionsDao.getItemsByTransactionId(tx.id);
         if (items.isNotEmpty) {
@@ -1533,6 +1576,8 @@ class SyncService {
               createdAt: tx.createdAt,
               paymentMethod: tx.paymentMethod,
               invoiceNumber: invoiceNumber,
+              customerId: tx.customerId,
+              status: tx.status,
             );
             final items = await _transactionsDao.getItemsByTransactionId(tx.id);
             if (items.isNotEmpty) {
@@ -1542,6 +1587,11 @@ class SyncService {
                       (i) => {
                         'id': i.id,
                         'transaction_id': i.transactionId,
+                        // Tenant scope + sale time mirrored from the parent —
+                        // omitted here before, which uploaded tenant-less
+                        // items on the duplicate-invoice retry path.
+                        'business_id': tx.businessId,
+                        'created_at': tx.createdAt.toUtc().toIso8601String(),
                         'variant_id': i.variantId,
                         'product_name': i.productName,
                         'variant_name': i.variantName,
@@ -2226,6 +2276,9 @@ class SyncService {
           for (final item in items) {
             await _transactionsDao.upsertItemFromServer(item);
           }
+          // item_count has no server column — now that this page's lines are
+          // in, recompute it for any row upsertFromServer inserted as 0.
+          await _transactionsDao.recomputeItemCounts(ids);
         },
       );
     } catch (e, st) {
@@ -2631,6 +2684,16 @@ class SyncService {
       failed++;
       debugPrint('[SYNC] Pull recipe lines failed: $e\n$st');
       errors.add('Pull recipe lines: ${e.toString()}');
+    }
+
+    try {
+      // customer_name has no server column — fill it from the customers pull
+      // above, now that this device has every customer this business's
+      // pulled transactions could reference.
+      await _transactionsDao.backfillCustomerNames(businessId);
+    } catch (e, st) {
+      debugPrint('[SYNC] Backfill customer names failed: $e\n$st');
+      errors.add('Backfill customer names: ${e.toString()}');
     }
 
     return SyncResult(

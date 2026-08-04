@@ -40,6 +40,11 @@ void showProductSelectionSheet(
   } else {
     showModalBottomSheet(
       context: context,
+      // Root navigator: this page's tab lives in a StatefulShellRoute branch
+      // Navigator, which is confined to the body area below the outer shell's
+      // AI assistant FAB. Without this, the sheet renders behind the FAB
+      // instead of covering the whole screen.
+      useRootNavigator: true,
       isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Colors.transparent,

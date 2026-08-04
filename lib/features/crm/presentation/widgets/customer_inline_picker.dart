@@ -6,6 +6,7 @@ import 'package:iconly/iconly.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/const/validators.dart';
 import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/widgets/app_bottom_sheet_scaffold.dart';
@@ -337,7 +338,7 @@ class _SaveRow extends StatelessWidget {
   }
 }
 
-/// Minimal name + phone quick-add used at the till. Prefilled with the typed
+/// Minimal name + email quick-add used at the till. Prefilled with the typed
 /// name. Writes straight through the repository (audit-logged, sync-queued) and
 /// returns the created [Customer] so the picker can link it immediately.
 class _QuickAddCustomerSheet extends StatefulWidget {
@@ -356,7 +357,7 @@ class _QuickAddCustomerSheet extends StatefulWidget {
 class _QuickAddCustomerSheetState extends State<_QuickAddCustomerSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _name;
-  final _phone = TextEditingController();
+  final _email = TextEditingController();
   bool _saving = false;
 
   @override
@@ -368,7 +369,7 @@ class _QuickAddCustomerSheetState extends State<_QuickAddCustomerSheet> {
   @override
   void dispose() {
     _name.dispose();
-    _phone.dispose();
+    _email.dispose();
     super.dispose();
   }
 
@@ -380,7 +381,7 @@ class _QuickAddCustomerSheetState extends State<_QuickAddCustomerSheet> {
       final customer = await sl<ICustomerRepository>().createCustomer(
         businessId: widget.businessId,
         name: _name.text.trim(),
-        phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
+        email: _email.text.trim().isEmpty ? null : _email.text.trim(),
       );
       if (mounted) Navigator.pop(context, customer);
     } catch (e, st) {
@@ -430,17 +431,18 @@ class _QuickAddCustomerSheetState extends State<_QuickAddCustomerSheet> {
                 },
               ),
               const SizedBox(height: 14),
-              const AppFieldLabel('Phone'),
+              const AppFieldLabel('Email'),
               TextFormField(
-                controller: _phone,
-                keyboardType: TextInputType.phone,
-                maxLength: 24,
+                controller: _email,
+                keyboardType: TextInputType.emailAddress,
+                maxLength: 120,
                 buildCounter:
                     (_, {required currentLength, required isFocused, maxLength}) =>
                         null,
                 style:
                     getOutfitStyle(fontSize: 14, color: AppColors.textPrimary),
-                decoration: appInputDeco('+63 9XX XXX XXXX'),
+                decoration: appInputDeco('name@email.com'),
+                validator: Validators.email,
               ),
             ],
           ),

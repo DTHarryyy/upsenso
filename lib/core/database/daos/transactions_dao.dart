@@ -118,9 +118,11 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Upsert a transaction row pulled from Supabase (marks as synced).
-  /// payment_method is now synced via Supabase; other local-only fields
-  /// (itemCount, customerName, subtotal, amountReceived, changeDue) are
-  /// preserved if the row already exists.
+  /// payment_method, customer_id and discount_amount are synced via Supabase.
+  /// Local-only fields with no server column (customerName, itemCount) are
+  /// preserved as-is for an existing row, and best-effort recomputed by the
+  /// caller for a new one — see [recomputeItemCounts] and
+  /// [backfillCustomerNames], run by the pull after this upsert.
   ///
   /// Note: createdAt is intentionally NOT overwritten when the row exists
   /// locally, to preserve the original local timestamp (Supabase may store
@@ -131,6 +133,8 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
     // Carry the server status so reports can filter status=='completed' and
     // exclude voided/refunded sales pulled from other devices.
     final status = (row['status'] as String?) ?? 'completed';
+    final customerId = row['customer_id'] as String?;
+    final discountAmount = (row['discount_amount'] as num?)?.toDouble() ?? 0;
     final existing = await (select(
       transactionsTable,
     )..where((t) => t.id.equals(id))).getSingleOrNull();
@@ -150,10 +154,12 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
           branchId: Value(row['branch_id'] as String?),
           shiftId: Value(row['shift_id'] as String?),
           totalAmount: Value((row['total_amount'] as num).toDouble()),
+          discountAmount: Value(discountAmount),
           taxAmount: Value((row['tax_amount'] as num).toDouble()),
           status: Value(status),
           paymentMethod: Value(paymentMethod),
           invoiceNumber: Value(row['invoice_number'] as String?),
+          customerId: Value(customerId),
           syncStatus: const Value(3),
           lastSyncAttempt: Value(DateTime.now()),
         ),
@@ -162,6 +168,8 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
       // New row from server — insert with payment_method from server.
       // For new server rows, use server's created_at timestamp.
       final createdAt = DateTime.parse(row['created_at'] as String);
+      final totalAmount = (row['total_amount'] as num).toDouble();
+      final taxAmount = (row['tax_amount'] as num).toDouble();
       await into(transactionsTable).insert(
         TransactionsTableCompanion.insert(
           id: id,
@@ -172,13 +180,19 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
           businessId: Value(row['business_id'] as String?),
           branchId: Value(row['branch_id'] as String?),
           shiftId: Value(row['shift_id'] as String?),
-          totalAmount: (row['total_amount'] as num).toDouble(),
-          taxAmount: (row['tax_amount'] as num).toDouble(),
-          subtotal: (row['total_amount'] as num).toDouble(),
+          totalAmount: totalAmount,
+          discountAmount: Value(discountAmount),
+          taxAmount: taxAmount,
+          // subtotal has no server column; total = subtotal - discount + tax
+          // (see CartTotals.compute), so it's exactly reconstructible.
+          subtotal: totalAmount + discountAmount - taxAmount,
+          // itemCount has no server column either — 0 until
+          // recomputeItemCounts fills it in from the pulled line items.
           itemCount: 0,
           status: Value(status),
           paymentMethod: Value(paymentMethod),
           invoiceNumber: Value(row['invoice_number'] as String?),
+          customerId: Value(customerId),
           syncStatus: const Value(3),
           lastSyncAttempt: Value(DateTime.now()),
           createdAt: Value(createdAt),
@@ -200,6 +214,76 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
                 t.syncStatus.equals(SyncStatus.synced.toInt()),
           ))
         .write(TransactionsTableCompanion(businessId: Value(businessId)));
+  }
+
+  /// Recomputes itemCount for rows pulled from the server — item_count has no
+  /// server column, so [upsertFromServer] inserts new rows with a placeholder
+  /// 0. Counts the same way checkout does (see product_checkout_page.dart):
+  /// a whole-quantity line counts by its qty; a weighed/fractional line
+  /// counts as a single item. Only rewrites rows still at the placeholder —
+  /// a row with a real count already has it and must not be touched.
+  Future<void> recomputeItemCounts(List<String> transactionIds) async {
+    if (transactionIds.isEmpty) return;
+    final items = await getItemsForTransactions(transactionIds);
+    final counts = <String, int>{};
+    for (final item in items) {
+      final contribution =
+          item.qty == item.qty.roundToDouble() ? item.qty.round() : 1;
+      counts.update(
+        item.transactionId,
+        (n) => n + contribution,
+        ifAbsent: () => contribution,
+      );
+    }
+    await transaction(() async {
+      for (final entry in counts.entries) {
+        await (update(transactionsTable)..where(
+              (t) => t.id.equals(entry.key) & t.itemCount.equals(0),
+            ))
+            .write(TransactionsTableCompanion(itemCount: Value(entry.value)));
+      }
+    });
+  }
+
+  /// Fills the local-only customer_name snapshot for rows pulled from the
+  /// server with a customer_id but no name yet, by joining the locally-synced
+  /// customers table. Run after the customers pull so names are available.
+  /// Only fills a blank snapshot — an existing one is frozen on purpose (the
+  /// customer may have been renamed/archived since the sale).
+  Future<void> backfillCustomerNames(String businessId) {
+    return customStatement(
+      'UPDATE transactions '
+      'SET customer_name = ('
+      '  SELECT name FROM customers WHERE customers.id = transactions.customer_id'
+      ') '
+      'WHERE transactions.business_id = ? '
+      'AND transactions.customer_id IS NOT NULL '
+      "AND (transactions.customer_name IS NULL OR transactions.customer_name = '') "
+      'AND EXISTS ('
+      '  SELECT 1 FROM customers WHERE customers.id = transactions.customer_id'
+      ')',
+      [businessId],
+    );
+  }
+
+  /// One-time re-queue so sales that already reached the server before
+  /// customer_id was part of the push payload get re-uploaded with it. Marks
+  /// every synced row that has a local customerId back to pendingUpload;
+  /// idempotent (a row already pendingUpload is left alone) but the caller
+  /// (SyncService) should still gate this to run once per business via
+  /// SyncStateDao — otherwise it re-fires every sync cycle.
+  Future<int> queueCustomerIdBackfill() {
+    return (update(transactionsTable)
+          ..where(
+            (t) =>
+                t.customerId.isNotNull() &
+                t.syncStatus.equals(SyncStatus.synced.toInt()),
+          ))
+        .write(
+          TransactionsTableCompanion(
+            syncStatus: Value(SyncStatus.pendingUpload.toInt()),
+          ),
+        );
   }
 
   /// Reactive count of transactions that need syncing (for status bar).

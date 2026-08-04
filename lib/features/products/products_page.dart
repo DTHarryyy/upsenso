@@ -9,7 +9,6 @@ import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/font_utils.dart';
-import 'package:pos/core/const/qty_format.dart';
 import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/core/services/cart_service.dart';
 import 'package:pos/core/widgets/widgets.dart';
@@ -74,15 +73,6 @@ class _ProductsPageState extends State<ProductsPage> {
       unit: unit,
       qty: qty,
     );
-    final qtyText = unit != null && unit.isNotEmpty
-        ? '${qtyLabel(qty)} $unit'
-        : qtyLabel(qty);
-    final label = variant.name == 'Default'
-        ? product.name
-        : '${product.name} · ${variant.name}';
-    if (mounted) {
-      AppToast.show(context, '$label × $qtyText added to cart');
-    }
   }
 
   @override
@@ -227,7 +217,11 @@ class _ProductsPageState extends State<ProductsPage> {
 
 // ── Cart bar ──────────────────────────────────────────────────────────────────
 
-class _CartBar extends StatelessWidget {
+// Renders its pill into the root Overlay instead of this page's own Stack, so
+// it paints above the outer shell's AI assistant FAB — Scaffold composites
+// floatingActionButton above the whole body, so no local Stack ordering can
+// out-rank it.
+class _CartBar extends StatefulWidget {
   final CartService cartService;
   final double cartTotal;
   final bool visible;
@@ -239,20 +233,46 @@ class _CartBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  State<_CartBar> createState() => _CartBarState();
+}
+
+class _CartBarState extends State<_CartBar> {
+  final _controller = OverlayPortalController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Safe here only because the portal isn't attached yet, so this records a
+    // z-order index instead of calling setState. The pill then stays mounted
+    // and animates itself in and out via `visible` below.
+    _controller.show();
+  }
+
+  Widget _buildPill(BuildContext context) {
+    // StatefulShellRoute.indexedStack keeps inactive tabs alive, wrapped in
+    // Offstage/TickerMode(enabled: false). The overlay child is parented to
+    // the root theater, so Offstage never hides it — without this guard the
+    // pill would linger over other tabs while the cart is non-empty.
+    final visible = widget.visible && TickerMode.valuesOf(context).enabled;
+    // viewPadding, not padding: ancestors have already consumed the latter.
+    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
+
     return Positioned(
       left: 16,
       right: 16,
-      bottom: 12,
-      child: AnimatedSlide(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOutCubic,
-        offset: visible ? Offset.zero : const Offset(0, 1.5),
-        child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 250),
-          opacity: visible ? 1.0 : 0.0,
-          child: SafeArea(
-            top: false,
+      // AppBottomNav is 60px tall plus its own bottom safe-area padding; a
+      // root-overlay Positioned isn't clipped above it like Scaffold.body
+      // was, so that clearance has to be added back explicitly.
+      bottom: 60 + bottomInset + 12,
+      child: IgnorePointer(
+        ignoring: !visible,
+        child: AnimatedSlide(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
+          offset: visible ? Offset.zero : const Offset(0, 1.5),
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 250),
+            opacity: visible ? 1.0 : 0.0,
             child: GestureDetector(
               onTap: () => Navigator.of(context, rootNavigator: true).push(
                 MaterialPageRoute(builder: (_) => const ProductCartPage()),
@@ -285,7 +305,7 @@ class _CartBar extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        '${cartService.itemCount}',
+                        '${widget.cartService.itemCount}',
                         style: getOutfitStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
@@ -305,7 +325,7 @@ class _CartBar extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      ProductCartPage.fmtPrice(cartTotal),
+                      ProductCartPage.fmtPrice(widget.cartTotal),
                       style: getOutfitStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
@@ -325,6 +345,18 @@ class _CartBar extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return OverlayPortal(
+      controller: _controller,
+      // Root overlay puts the pill above the shell Scaffold's AI assistant
+      // FAB, while still sitting below anything pushed later (bottom sheets,
+      // ProductCartPage).
+      overlayLocation: OverlayChildLocation.rootOverlay,
+      overlayChildBuilder: _buildPill,
     );
   }
 }

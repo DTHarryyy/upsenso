@@ -108,6 +108,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> with WidgetsBindingObserver {
   /// business data + cached context so the new account can never inherit the
   /// previous tenant's records. [priorUserId] must be captured BEFORE sign-in.
   /// No-op for a fresh device or the same user re-logging in.
+  ///
+  /// Logout no longer wipes local data (same user re-logging in keeps their
+  /// cache), so this is now the only thing standing between two accounts on
+  /// one device — and the only place `clearLocalData()` can still throw: it
+  /// refuses (without `force`) to discard anything the previous account never
+  /// synced. Surface that as a specific, actionable message rather than a
+  /// generic error.
   Future<void> _resetIfAccountSwitch(
     String? priorUserId,
     String newUserId,
@@ -116,7 +123,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> with WidgetsBindingObserver {
     debugPrint('[AuthBloc] Account switch detected — clearing local data');
     sl<PermissionService>().clearPermissions();
     sl<ActiveBusinessContext>().clear();
-    await syncService?.clearLocalData();
+    try {
+      await syncService?.clearLocalData();
+    } on StateError catch (e, st) {
+      debugPrint('[AuthBloc] Error in _resetIfAccountSwitch: $e\n$st');
+      final pending = await syncService?.pendingSyncCount() ?? 0;
+      throw 'The previous account on this device has $pending unsynced '
+          'record(s). Sign in as that account with an internet connection '
+          'first, then switch accounts.';
+    }
   }
 
   /// SyncService detected an RLS rejection (42501) on a push for
@@ -580,10 +595,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> with WidgetsBindingObserver {
       );
     }
 
-    // Push everything pending to the server BEFORE wiping local data — a
-    // logout must never destroy unsynced sales/inventory. If anything is still
-    // unsynced afterwards (offline, or sync failed), keep the local data and
-    // skip the destructive wipe; it will sync on the next session instead.
+    // Logout no longer wipes local data — it stays on disk so the same user
+    // re-logging in (including offline) sees their data immediately instead
+    // of waiting on a full re-pull. Tenant isolation is still guaranteed:
+    // a DIFFERENT account logging in on this device is wiped first by
+    // _resetIfAccountSwitch before anything of theirs is pulled. Still push
+    // whatever's pending so the server has the latest before going idle.
     sl<PermissionService>().clearPermissions();
     if (syncService != null) {
       final businessId = currentState is AuthAuthenticated
@@ -592,19 +609,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> with WidgetsBindingObserver {
       if (await syncService!.isOnline) {
         await syncService!.syncAll(businessId: businessId);
       }
-      final pending = await syncService!.pendingSyncCount();
-      if (pending == 0) {
-        await syncService!.clearLocalData();
-      } else {
-        debugPrint(
-          '[AuthBloc] Logout: $pending unsynced record(s) remain — '
-          'skipping local wipe to avoid data loss',
-        );
-      }
       // Stop background sync triggers so no timer-/connectivity-driven pull
-      // runs while logged out. If the wipe above was skipped (unsynced data),
-      // the next DIFFERENT account login wipes it via _resetIfAccountSwitch
-      // before pulling, so a new account never inherits this tenant's data.
+      // runs while logged out.
       syncService!.pause();
     }
 
