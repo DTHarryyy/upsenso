@@ -239,10 +239,20 @@ Future<void> _waitForSessionRecovery() async {
       try {
         await auth.refreshSession();
       } catch (e, st) {
-        debugPrint(
-          'Session recovery: refresh token invalid at startup — signing out locally. ($e)\n$st',
-        );
-        await auth.signOut(scope: SignOutScope.local);
+        if (_isGenuinelyInvalidSession(e)) {
+          debugPrint(
+            'Session recovery: refresh token rejected by server — signing out locally. ($e)\n$st',
+          );
+          await _signOutLocalSafely(auth);
+        } else {
+          // Offline / network failure, not a rejected token. The app is
+          // offline-first — keep the cached session so the UI can still
+          // start authenticated from Drift-cached data; auto-refresh will
+          // retry once connectivity returns.
+          debugPrint(
+            'Session recovery: refresh failed due to network error — keeping cached session. ($e)\n$st',
+          );
+        }
       }
     }
     return;
@@ -267,12 +277,34 @@ Future<void> _waitForSessionRecovery() async {
     if (auth.currentUser == null) {
       try {
         await auth.refreshSession();
-      } catch (_) {
-        // Refresh token is invalid — clear the stale local session so it is
-        // not retried on the next cold start.
-        await auth.signOut(scope: SignOutScope.local);
+      } catch (e) {
+        if (_isGenuinelyInvalidSession(e)) {
+          // Refresh token was rejected by the server — clear the stale
+          // local session so it is not retried on the next cold start.
+          await _signOutLocalSafely(auth);
+        }
+        // Otherwise it's a network failure while offline with no session to
+        // recover — nothing to clear, nothing to do. Let startup continue.
       }
     }
+  }
+}
+
+/// True only when the server has explicitly rejected the refresh token
+/// (e.g. it was revoked or has expired beyond recovery). False for plain
+/// connectivity failures (SocketException/ClientException/TimeoutException),
+/// which must never be treated as "sign the user out" in an offline-first app.
+bool _isGenuinelyInvalidSession(Object error) => error is AuthException;
+
+/// `signOut(scope: local)` still performs a network call to invalidate the
+/// token server-side even though it clears the local session first — so it
+/// can throw a raw network exception while offline. That must never crash
+/// startup or be mistaken for the local clear having failed.
+Future<void> _signOutLocalSafely(GoTrueClient auth) async {
+  try {
+    await auth.signOut(scope: SignOutScope.local);
+  } catch (e, st) {
+    debugPrint('Session recovery: local sign-out network call failed (session was still cleared locally). ($e)\n$st');
   }
 }
 
