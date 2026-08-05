@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/permissions/plan_display.dart';
+import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/core/widgets/app_soft_button.dart';
 import 'package:pos/core/widgets/settings_tile.dart';
 import 'package:pos/features/billing/data/iap_service.dart';
@@ -33,6 +34,10 @@ class CurrentPlanCard extends StatelessWidget {
   /// Legacy price below list, already validated by the caller (see §4.9).
   final double? lockedPrice;
 
+  /// End of the current paid period (renewal or, on past_due, grace expiry).
+  /// Null offline before the entitlement cache has ever landed.
+  final DateTime? renewsOn;
+
   /// Play product this device knows is owned — narrows the deep link to the
   /// exact subscription instead of the account's whole list.
   final String? ownedProductId;
@@ -53,10 +58,17 @@ class CurrentPlanCard extends StatelessWidget {
     this.currentPlan,
     this.nextTier,
     this.lockedPrice,
+    this.renewsOn,
     this.ownedProductId,
   });
 
   bool get _pastDue => effectiveStatus == 'past_due';
+
+  /// "Active until"/"Access ends" rather than "Renews on" — true for both an
+  /// auto-renewing Play subscription and an admin-comped period, neither of
+  /// which we should promise will renew itself.
+  String _periodLabel(DateTime d) =>
+      '${_pastDue ? 'Access ends' : 'Active until'} ${AppFormatters.shortDate(d)}';
 
   /// Gated on the same conditions as the manage CTA — pointing someone at a
   /// ladder they can't buy from is worse than showing nothing.
@@ -89,6 +101,15 @@ class CurrentPlanCard extends StatelessWidget {
                       context,
                     ).copyWith(color: AppColors.textPrimary),
                   ),
+                  if (renewsOn != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      _periodLabel(renewsOn!),
+                      style: AppTextStyles.caption(
+                        context,
+                      ).copyWith(color: AppColors.textSecondary),
+                    ),
+                  ],
                   if (lockedPrice != null) ...[
                     const SizedBox(height: 10),
                     LockedPriceChip(price: lockedPrice!),

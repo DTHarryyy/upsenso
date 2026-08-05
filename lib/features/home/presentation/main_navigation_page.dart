@@ -14,6 +14,7 @@ import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/breakpoint.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/const/nav_feature_flags.dart';
 import 'package:pos/core/permissions/app_feature.dart';
 import 'package:pos/core/permissions/entitlement_service.dart';
 import 'package:pos/core/permissions/feature_plan_requirement.dart';
@@ -365,7 +366,8 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                     // rule-based parser). Hidden on the POS terminal and
                     // full-screen stacked sub-pages, which own their chrome
                     // and have no bottom bar.
-                    floatingActionButton: (isPosTab || isStackedSubPage)
+                    floatingActionButton:
+                        (!kShowAiAndFraudNav || isPosTab || isStackedSubPage)
                         ? null
                         : FloatingActionButton(
                             heroTag: 'aiAssistantFab',
@@ -870,14 +872,17 @@ class _AppSidebarState extends State<_AppSidebar> {
                     ),
                   // AI assistant — replaces the old floating button; available
                   // to all roles (no permission gate), pushed over the shell.
-                  _PushNavTile(
-                    icon: IconlyLight.chat,
-                    activeIcon: IconlyBold.chat,
-                    label: 'AI Assistant',
-                    route: AppRoutes.aiChat,
-                    expanded: layoutExpanded,
-                    currentLocation: GoRouterState.of(context).matchedLocation,
-                  ),
+                  if (kShowAiAndFraudNav)
+                    _PushNavTile(
+                      icon: IconlyLight.chat,
+                      activeIcon: IconlyBold.chat,
+                      label: 'AI Assistant',
+                      route: AppRoutes.aiChat,
+                      expanded: layoutExpanded,
+                      currentLocation: GoRouterState.of(
+                        context,
+                      ).matchedLocation,
+                    ),
 
                   const SizedBox(height: 6),
 
@@ -1032,7 +1037,8 @@ class _AppSidebarState extends State<_AppSidebar> {
                   // Unusual Activity from anyone holding fraud.view without
                   // nav.settings or audit_logs.view, while the mobile drawer
                   // showed it — same account, two different answers.
-                  if (_sidebarShowAuditLogs || _sidebarShowFraud) ...[
+                  if (_sidebarShowAuditLogs ||
+                      (kShowAiAndFraudNav && _sidebarShowFraud)) ...[
                     const SizedBox(height: 6),
                     const Divider(height: 1, color: AppColors.borderSoft),
                     const SizedBox(height: 6),
@@ -1052,7 +1058,7 @@ class _AppSidebarState extends State<_AppSidebar> {
                         onTap: widget.onNavTap,
                         lockedPlan: _auditLogsLock,
                       ),
-                    if (_sidebarShowFraud)
+                    if (kShowAiAndFraudNav && _sidebarShowFraud)
                       _NavItem(
                         icon: IconlyLight.shield_fail,
                         activeIcon: IconlyBold.shield_fail,

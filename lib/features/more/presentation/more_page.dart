@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/const/nav_feature_flags.dart';
 import 'package:pos/core/permissions/app_feature.dart';
 import 'package:pos/core/permissions/entitlement_service.dart';
 import 'package:pos/core/permissions/feature_plan_requirement.dart';
@@ -269,7 +270,7 @@ class _MorePageState extends State<MorePage> {
                       // ADMIN
                       if (canSeeEmployees ||
                           canSeeAuditLogs ||
-                          canSeeFraud) ...[
+                          (kShowAiAndFraudNav && canSeeFraud)) ...[
                         _SectionLabel('ADMIN'),
                         if (canSeeEmployees)
                           _DrawerTile(
@@ -288,7 +289,7 @@ class _MorePageState extends State<MorePage> {
                             lockedPlan: auditLogsLock,
                             onTap: () => _navigate(AppRoutes.auditLogs),
                           ),
-                        if (canSeeFraud)
+                        if (kShowAiAndFraudNav && canSeeFraud)
                           _DrawerTile(
                             icon: IconlyLight.shield_fail,
                             label: 'Unusual Activity',

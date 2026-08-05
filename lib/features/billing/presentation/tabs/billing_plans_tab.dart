@@ -172,6 +172,7 @@ class _BillingPlansTabState extends State<BillingPlansTab> {
       currentPlan: current,
       nextTier: above.isEmpty ? null : above.first,
       lockedPrice: current == null ? null : _lockedPriceFor(current, s),
+      renewsOn: s.renewsOn,
       ownedProductId: s.ownedProductId,
       playSupported: s.playSupported,
       canManage: _canManage,
