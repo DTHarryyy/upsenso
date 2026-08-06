@@ -49,6 +49,7 @@ ledgify-deploy-*.json
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
+functions/node_modules/
 /build/
 /coverage/
 

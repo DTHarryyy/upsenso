@@ -152,6 +152,8 @@ import 'package:pos/features/notifications/data/billing_notice_ack.dart';
 import 'package:pos/features/notifications/domain/billing_notice_service.dart';
 import 'package:pos/features/notifications/data/notifications_repository.dart';
 import 'package:pos/features/notifications/domain/repositories/i_notifications_repository.dart';
+import 'package:pos/core/notifications/fcm_notification_service.dart';
+import 'package:pos/core/notifications/low_stock_push_publisher.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/permissions/data_scoping_layer.dart';
 import 'package:pos/core/permissions/data/permission_remote_ds.dart';
@@ -180,6 +182,12 @@ Future<void> initDI() async {
     () => ThemeController(sl<SharedPreferences>()),
   );
   sl.registerLazySingleton<SecureStorageService>(() => SecureStorageService());
+  sl.registerLazySingleton<FcmNotificationService>(
+    () => FcmNotificationService(),
+  );
+  sl.registerLazySingleton<LowStockPushPublisher>(
+    () => LowStockPushPublisher(sl<SupabaseClient>()),
+  );
 
   // On web, OAuth must redirect back to an HTTP URL. On mobile, use the custom scheme.
   final oauthRedirectUrl = kIsWeb
@@ -752,6 +760,7 @@ Future<void> initDI() async {
       variantsDao: sl<ProductVariantsDao>(),
       auditLogService: sl<AuditLogService>(),
       fraudEngine: sl<FraudDetectionEngine>(),
+      lowStockPushPublisher: sl<LowStockPushPublisher>(),
     ),
   );
 
@@ -858,7 +867,8 @@ Future<void> initDI() async {
     () => BillingNoticeAck(sl<SharedPreferences>()),
   );
   sl.registerLazySingleton<BillingNoticeService>(
-    () => BillingNoticeService(sl<EntitlementService>(), sl<BillingNoticeAck>()),
+    () =>
+        BillingNoticeService(sl<EntitlementService>(), sl<BillingNoticeAck>()),
   );
 
   // Ensures businessId is available immediately on startup

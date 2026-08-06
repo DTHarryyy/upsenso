@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "91820633764",
+    "project_id": "upsenso",
+    "storage_bucket": "upsenso.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:91820633764:android:0824b61f62f4604647c031",
+        "android_client_info": {
+          "package_name": "com.ledgidy.pos"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC4rmdB_xpCazQMY7OCwqOup3GhnveIdqY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

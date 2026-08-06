@@ -11,6 +11,7 @@ import 'package:pos/core/const/app_typography.dart';
 import 'package:pos/core/const/font_utils.dart';
 import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/core/services/cart_service.dart';
+import 'package:pos/core/ui/widgets/drawer_visibility_scope.dart';
 import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
@@ -97,6 +98,7 @@ class _ProductsPageState extends State<ProductsPage> {
             final canAddEditProduct = perms.can(PermissionKeys.productsCreate) ||
                 perms.can(PermissionKeys.productsEdit);
             final canAddToCart = perms.can(PermissionKeys.posUse);
+            final drawerIsOpen = DrawerVisibilityScope.isOpenOf(context);
 
             return Scaffold(
               backgroundColor: AppColors.background,
@@ -118,7 +120,10 @@ class _ProductsPageState extends State<ProductsPage> {
                   _CartBar(
                     cartService: _cartService,
                     cartTotal: cartTotal,
-                    visible: cartNotEmpty && canAddToCart,
+                    // This bar uses the root overlay to clear the shell FAB.
+                    // Hide it while the shell drawer is open so the drawer
+                    // remains the highest visible layer.
+                    visible: cartNotEmpty && canAddToCart && !drawerIsOpen,
                   ),
                 ],
               ),

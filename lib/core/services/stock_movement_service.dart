@@ -9,6 +9,7 @@ import 'package:pos/core/database/daos/inventory_levels_dao.dart';
 import 'package:pos/core/database/daos/product_variants_dao.dart';
 import 'package:pos/core/database/daos/stock_ledger_dao.dart';
 import 'package:pos/core/services/fraud_detection_engine.dart';
+import 'package:pos/core/notifications/low_stock_push_publisher.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 
 /// Single entry point for all stock movements.
@@ -26,6 +27,7 @@ class StockMovementService {
   final ProductVariantsDao _variantsDao;
   final AuditLogService _auditLogService;
   final FraudDetectionEngine? _fraudEngine;
+  final LowStockPushPublisher? _lowStockPushPublisher;
 
   static const _uuid = Uuid();
 
@@ -35,11 +37,13 @@ class StockMovementService {
     required ProductVariantsDao variantsDao,
     required AuditLogService auditLogService,
     FraudDetectionEngine? fraudEngine,
+    LowStockPushPublisher? lowStockPushPublisher,
   }) : _ledgerDao = ledgerDao,
        _levelsDao = levelsDao,
        _variantsDao = variantsDao,
        _auditLogService = auditLogService,
-       _fraudEngine = fraudEngine;
+       _fraudEngine = fraudEngine,
+       _lowStockPushPublisher = lowStockPushPublisher;
 
   /// Apply a stock movement atomically.
   /// [isIncoming] true = stock IN, false = stock OUT.
@@ -67,6 +71,7 @@ class StockMovementService {
     // stock path that must carry its own audit entry (ORPHANED_RECORD checks
     // stock_ledger too), so it stages the entry INSIDE the transaction.
     final isManual = sourceType == null || sourceType == 'adjustment';
+    _LowStockCrossing? lowStockCrossing;
 
     await _ledgerDao.db.transaction(() async {
       final levelBefore = await _levelsDao.getLevel(variantId, branchId);
@@ -75,6 +80,23 @@ class StockMovementService {
       final double qtyAfter = allowNegativeStock
           ? rawQtyAfter
           : rawQtyAfter.clamp(0.0, 999999.0);
+      final variant = await _variantsDao.getById(variantId);
+      final threshold =
+          (levelBefore?.lowStockAlertOverride ?? variant?.lowStockAlert ?? 0)
+              .toDouble();
+      if (!isIncoming &&
+          (variant?.trackStock ?? false) &&
+          qtyBefore > threshold &&
+          qtyAfter <= threshold) {
+        lowStockCrossing = _LowStockCrossing(
+          businessId: businessId,
+          branchId: branchId,
+          variantId: variantId,
+          productName: variant?.name ?? 'Inventory item',
+          quantity: qtyAfter,
+          threshold: threshold,
+        );
+      }
 
       await _ledgerDao.insertEntry(
         StockLedgerTableCompanion.insert(
@@ -120,7 +142,6 @@ class StockMovementService {
       );
 
       if (isManual) {
-        final variant = await _variantsDao.getById(variantId);
         final label = variant?.name ?? variantId;
         // Staged with the ledger write — the adjustment and its audit intent
         // commit together, so a write-off can never exist without its audit
@@ -147,6 +168,20 @@ class StockMovementService {
         );
       }
     });
+
+    final crossing = lowStockCrossing;
+    if (crossing != null && _lowStockPushPublisher != null) {
+      unawaited(
+        _lowStockPushPublisher.publish(
+          businessId: crossing.businessId,
+          branchId: crossing.branchId,
+          variantId: crossing.variantId,
+          productName: crossing.productName,
+          quantity: crossing.quantity,
+          threshold: crossing.threshold,
+        ),
+      );
+    }
 
     if (isManual) {
       // Post-commit, fire-and-forget: materialize the staged entry, then run
@@ -184,4 +219,22 @@ class StockMovementService {
   double _effectiveQty(InventoryLevelsTableData? level) {
     return level?.quantity ?? 0.0;
   }
+}
+
+class _LowStockCrossing {
+  const _LowStockCrossing({
+    required this.businessId,
+    required this.branchId,
+    required this.variantId,
+    required this.productName,
+    required this.quantity,
+    required this.threshold,
+  });
+
+  final String businessId;
+  final String branchId;
+  final String variantId;
+  final String productName;
+  final double quantity;
+  final double threshold;
 }

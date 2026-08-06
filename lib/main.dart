@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:iconly/iconly.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:pos/bootstrap.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/errors/app_error_mapper.dart';
@@ -13,6 +14,11 @@ Future<void> main() async {
   if (kIsWeb) usePathUrlStrategy();
 
   WidgetsFlutterBinding.ensureInitialized();
+  if (!kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS)) {
+    await Firebase.initializeApp();
+  }
 
   FlutterError.onError = (FlutterErrorDetails details) {
     // In debug, keep default red-screen behaviour. In release, log silently.

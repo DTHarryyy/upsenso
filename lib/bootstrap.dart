@@ -10,7 +10,9 @@ import 'package:pos/core/env/app_env.dart';
 import 'package:pos/app_bootstrap.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/device/device_registration_service.dart';
+import 'package:pos/core/notifications/fcm_notification_service.dart';
 import 'package:pos/core/permissions/entitlement_enforcement_service.dart';
+import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/entitlement_service.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
@@ -86,6 +88,12 @@ Future<Widget> bootstrap() async {
     // CLOSED for every non-core feature — so skipping the module load left the
     // sidebar/More drawer empty offline until a relaunch.
     await sl<PermissionService>().loadPermissions(u.id);
+    await sl<FcmNotificationService>().configureLowStockTopic(
+      businessId: u.businessId,
+      mayViewStockLevels: sl<PermissionService>().can(
+        PermissionKeys.inventoryViewLevels,
+      ),
+    );
     final bid = u.businessId;
     if (bid != null && bid.isNotEmpty) {
       await sl<PermissionService>().loadEnabledModules(bid);
@@ -129,6 +137,14 @@ Future<Widget> bootstrap() async {
       // modules too keeps non-core features visible offline.
       sl<PermissionService>().loadPermissions(u.id).then((_) {
         sl<PermissionService>().syncPermissions(u.id).ignore();
+        sl<FcmNotificationService>()
+            .configureLowStockTopic(
+              businessId: u.businessId,
+              mayViewStockLevels: sl<PermissionService>().can(
+                PermissionKeys.inventoryViewLevels,
+              ),
+            )
+            .ignore();
       });
       final bid = u.businessId;
       if (bid != null && bid.isNotEmpty) {
@@ -152,6 +168,7 @@ Future<Widget> bootstrap() async {
       // Entitlement is tenant state — never carry it across accounts.
       sl<EntitlementService>().clear().ignore();
       sl<EntitlementEnforcementService>().clear().ignore();
+      sl<FcmNotificationService>().clear().ignore();
     }
   });
 
@@ -304,7 +321,9 @@ Future<void> _signOutLocalSafely(GoTrueClient auth) async {
   try {
     await auth.signOut(scope: SignOutScope.local);
   } catch (e, st) {
-    debugPrint('Session recovery: local sign-out network call failed (session was still cleared locally). ($e)\n$st');
+    debugPrint(
+      'Session recovery: local sign-out network call failed (session was still cleared locally). ($e)\n$st',
+    );
   }
 }
 

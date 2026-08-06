@@ -25,6 +25,7 @@ import 'package:pos/core/sync/connectivity_service.dart';
 import 'package:pos/core/sync/sync_service.dart';
 import 'package:pos/core/ui/widgets/app_bottom_nav.dart';
 import 'package:pos/core/ui/widgets/custom_app_bar.dart';
+import 'package:pos/core/ui/widgets/drawer_visibility_scope.dart';
 import 'package:pos/core/widgets/plan_badge.dart';
 import 'package:pos/core/widgets/plan_enforcement_banners.dart';
 import 'package:pos/core/widgets/plan_lock_badge.dart';
@@ -56,6 +57,7 @@ class MainNavigationPage extends StatefulWidget {
 
 class _MainNavigationPageState extends State<MainNavigationPage> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
+  final _drawerOpen = ValueNotifier<bool>(false);
   // Keeps the shell's element (and all page-local state — view-mode toggles,
   // scroll offsets, form input) alive when the layout flips between the phone
   // and tablet trees on a resize across 600 px. Without it, crossing the
@@ -129,6 +131,12 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
       if (!mounted) return;
       context.read<BranchCubit>().loadBranchesForUser(user);
     });
+  }
+
+  @override
+  void dispose() {
+    _drawerOpen.dispose();
+    super.dispose();
   }
 
   @override
@@ -315,8 +323,10 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                   );
                 }
 
-                return _SyncStatusProvider(
-                  builder: (isOnline, pendingSyncCount) => Scaffold(
+                return DrawerVisibilityScope(
+                  notifier: _drawerOpen,
+                  child: _SyncStatusProvider(
+                    builder: (isOnline, pendingSyncCount) => Scaffold(
                     key: _scaffoldKey,
                     // The nav is an opaque strip now — content stops above it
                     // instead of scrolling underneath and getting hidden.
@@ -327,6 +337,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                       ),
                       child: MorePage(),
                     ),
+                    onDrawerChanged: (isOpen) => _drawerOpen.value = isOpen,
                     appBar: (isPosTab || isStackedSubPage)
                         ? null
                         : CustomAppBar(
@@ -385,6 +396,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                             currentIndex: _currentIndex,
                             onTap: _onNavTap,
                           ),
+                  ),
                   ),
                 );
               },
