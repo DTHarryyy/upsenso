@@ -22,10 +22,10 @@ class RecipeConsumptionService {
     required StockLedgerDao ledgerDao,
     required ProductVariantsDao variantsDao,
     required InventoryLevelsDao levelsDao,
-  })  : _recipeLinesDao = recipeLinesDao,
-        _ledgerDao = ledgerDao,
-        _variantsDao = variantsDao,
-        _levelsDao = levelsDao;
+  }) : _recipeLinesDao = recipeLinesDao,
+       _ledgerDao = ledgerDao,
+       _variantsDao = variantsDao,
+       _levelsDao = levelsDao;
 
   /// Deducts ingredient stock for [qty] units sold of [productVariantId].
   /// [sourceId] (the sale's transaction id) is stamped on the stock ledger
@@ -36,13 +36,15 @@ class RecipeConsumptionService {
     required String businessId,
     required String branchId,
     required String sourceId,
+    bool allowNegativeStock = false,
   }) async {
     final lines = await _recipeLinesDao.getByVariantId(productVariantId);
     for (final line in lines) {
       if (line.quantity <= 0) continue;
       final needed = line.quantity * qty;
-      final ingredientVariant =
-          await _variantsDao.getById(line.ingredientVariantId);
+      final ingredientVariant = await _variantsDao.getById(
+        line.ingredientVariantId,
+      );
       if (ingredientVariant == null) {
         debugPrint(
           '[Recipe] consume: ingredient variant ${line.ingredientVariantId} not found — skipping',
@@ -51,10 +53,15 @@ class RecipeConsumptionService {
       }
 
       await _ledgerDao.db.transaction(() async {
-        final levelBefore =
-            await _levelsDao.getLevel(line.ingredientVariantId, branchId);
+        final levelBefore = await _levelsDao.getLevel(
+          line.ingredientVariantId,
+          branchId,
+        );
         final double qtyBefore = levelBefore?.quantity ?? 0.0;
-        final double qtyAfter = (qtyBefore - needed).clamp(0.0, 999999.0);
+        final rawQtyAfter = qtyBefore - needed;
+        final double qtyAfter = allowNegativeStock
+            ? rawQtyAfter
+            : rawQtyAfter.clamp(0.0, 999999.0);
 
         await _ledgerDao.insertEntry(
           StockLedgerTableCompanion.insert(
@@ -79,11 +86,27 @@ class RecipeConsumptionService {
           branchId: branchId,
           businessId: businessId,
           delta: -needed,
+          allowNegativeStock: allowNegativeStock,
         );
 
-        await _variantsDao.decrementStockIfTracked(
+        // Recompute the denormalized total from branch levels. This preserves
+        // an approved negative balance instead of silently clamping the
+        // ingredient variant to zero.
+        final allLevels = await _levelsDao.getByVariantId(
           line.ingredientVariantId,
-          needed,
+        );
+        final double newTotal = allLevels.fold(
+          0.0,
+          (sum, level) => sum + level.quantity,
+        );
+        await _variantsDao.db.customUpdate(
+          'UPDATE product_variants SET stock = ?, '
+          'sync_status = 1, local_updated_at = ? WHERE id = ?',
+          variables: [
+            Variable<double>(newTotal),
+            Variable.withDateTime(DateTime.now()),
+            Variable.withString(line.ingredientVariantId),
+          ],
         );
       });
     }
@@ -155,10 +178,7 @@ class RecipeConsumptionService {
         final allLevels = await _levelsDao.getByVariantId(
           line.ingredientVariantId,
         );
-        final double newTotal = allLevels.fold(
-          0.0,
-          (s, l) => s + l.quantity,
-        );
+        final double newTotal = allLevels.fold(0.0, (s, l) => s + l.quantity);
         await _variantsDao.db.customUpdate(
           'UPDATE product_variants SET stock = ?, '
           'sync_status = 1, local_updated_at = ? WHERE id = ?',
@@ -185,8 +205,10 @@ class RecipeConsumptionService {
     double? minUnits;
     for (final line in lines) {
       if (line.quantity <= 0) continue;
-      final level =
-          await _levelsDao.getLevel(line.ingredientVariantId, branchId);
+      final level = await _levelsDao.getLevel(
+        line.ingredientVariantId,
+        branchId,
+      );
       final available = level?.quantity ?? 0.0;
       final units = available / line.quantity;
       if (minUnits == null || units < minUnits) minUnits = units;

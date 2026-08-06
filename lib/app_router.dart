@@ -34,6 +34,7 @@ import 'package:pos/features/business/presentation/business_profile_page.dart';
 import 'package:pos/features/business/presentation/business_profile_setup.dart';
 import 'package:pos/features/home/presentation/main_navigation_page.dart';
 import 'package:pos/features/inventory/inventory.dart';
+import 'package:pos/features/inventory/presentation/inventory_navigation_args.dart';
 import 'package:pos/features/pos/presentation/pos_terminal_page.dart';
 import 'package:pos/features/products/domain/entities/product.dart';
 import 'package:pos/features/products/pages/add_products.dart';
@@ -481,7 +482,11 @@ class AppRouter {
             routes: [
               GoRoute(
                 path: AppRoutes.inventory,
-                builder: (context, _) => const Inventory(),
+                builder: (context, state) => Inventory(
+                  navigation:
+                      state.extra as InventoryNavigationArgs? ??
+                      const InventoryNavigationArgs(),
+                ),
               ),
             ],
           ),

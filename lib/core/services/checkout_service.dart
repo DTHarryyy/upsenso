@@ -8,6 +8,7 @@ import 'package:pos/core/services/invoice_number_service.dart';
 import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/features/inventory/domain/repositories/i_inventory_repository.dart';
+import 'package:pos/features/inventory/domain/entities/stock_shortage.dart';
 
 /// Single, atomic entry point for completing a sale.
 ///
@@ -37,13 +38,13 @@ class CheckoutService {
     required AuditLogService auditLogService,
     FraudDetectionEngine? fraudEngine,
     EntitlementEnforcementService? enforcement,
-  })  : _db = db,
-        _transactionsDao = transactionsDao,
-        _inventoryRepository = inventoryRepository,
-        _invoiceNumberService = invoiceNumberService,
-        _auditLogService = auditLogService,
-        _fraudEngine = fraudEngine,
-        _enforcement = enforcement;
+  }) : _db = db,
+       _transactionsDao = transactionsDao,
+       _inventoryRepository = inventoryRepository,
+       _invoiceNumberService = invoiceNumberService,
+       _auditLogService = auditLogService,
+       _fraudEngine = fraudEngine,
+       _enforcement = enforcement;
 
   /// Persists [transaction] + [items] and deducts [deductions] atomically.
   /// Claims the next invoice number (server RPC when online, local counter
@@ -60,6 +61,7 @@ class CheckoutService {
     required String businessId,
     required String? branchId,
     required String transactionId,
+    bool allowOversell = false,
   }) async {
     // A branch held above the plan cap is read-only: its history stays intact
     // and readable, but no new sale lands on it. Checked before the invoice
@@ -74,15 +76,16 @@ class CheckoutService {
       invoiceNumber: Value(invoiceNumber),
     );
 
+    List<StockShortage> shortages = const [];
     await _db.transaction(() async {
       // Validate stock inside the transaction so an oversell aborts the whole
       // sale rather than relying on adjustQuantity's silent clamp-to-zero,
       // which would record the sale while quietly under-deducting the ledger.
-      final shortages = await _inventoryRepository.checkStockAvailability(
+      shortages = await _inventoryRepository.checkStockAvailability(
         items: deductions,
         branchId: branchId,
       );
-      if (shortages.isNotEmpty) {
+      if (shortages.isNotEmpty && !allowOversell) {
         throw InsufficientStockException(shortages);
       }
 
@@ -92,6 +95,7 @@ class CheckoutService {
         businessId: businessId,
         branchId: branchId,
         sourceId: transactionId,
+        allowNegativeStock: allowOversell,
       );
     });
 
@@ -112,6 +116,17 @@ class CheckoutService {
         'payment_method': _companionValue(transaction.paymentMethod),
         'item_count': items.length,
         'invoice_number': invoiceNumber,
+        'stock_override': allowOversell && shortages.isNotEmpty,
+        if (allowOversell && shortages.isNotEmpty)
+          'stock_shortages': shortages
+              .map(
+                (shortage) => {
+                  'variant_id': shortage.variantId,
+                  'available': shortage.available,
+                  'requested': shortage.requested,
+                },
+              )
+              .toList(),
         if (_companionValue(transaction.customerId) != null)
           'customer_id': _companionValue(transaction.customerId),
       },
@@ -131,7 +146,7 @@ class CheckoutService {
 /// Raised when checkout is attempted with more quantity than available stock.
 /// Carries the per-variant shortage detail so the UI can show a clear message.
 class InsufficientStockException implements Exception {
-  final List<({String variantId, double available, double requested})> shortages;
+  final List<StockShortage> shortages;
 
   const InsufficientStockException(this.shortages);
 

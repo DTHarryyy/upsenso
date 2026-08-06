@@ -1,4 +1,5 @@
 import 'package:pos/features/inventory/data/inventory_data.dart';
+import 'package:pos/features/inventory/domain/entities/stock_shortage.dart';
 
 abstract class IInventoryRepository {
   Stream<void> watchChanges(String businessId);
@@ -27,6 +28,7 @@ abstract class IInventoryRepository {
     required String businessId,
     required String? branchId,
     required String sourceId,
+    bool allowNegativeStock = false,
   });
 
   /// Reverses [recordSaleDeductions] for refunded items — restocks tracked
@@ -42,8 +44,7 @@ abstract class IInventoryRepository {
   /// Returns the subset of [items] whose tracked stock is below the requested
   /// quantity (e.g. a held sale where stock sold out while parked). Untracked
   /// variants are ignored. Empty list = everything is in stock.
-  Future<List<({String variantId, double available, double requested})>>
-  checkStockAvailability({
+  Future<List<StockShortage>> checkStockAvailability({
     required List<({String variantId, double qty})> items,
     required String? branchId,
   });

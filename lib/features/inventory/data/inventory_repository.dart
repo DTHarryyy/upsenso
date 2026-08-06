@@ -7,6 +7,7 @@ import 'package:pos/core/database/daos/products_dao.dart';
 import 'package:pos/core/services/recipe_consumption_service.dart';
 import 'package:pos/core/services/stock_movement_service.dart';
 import 'package:pos/features/inventory/data/inventory_data.dart';
+import 'package:pos/features/inventory/domain/entities/stock_shortage.dart';
 import 'package:pos/features/inventory/domain/repositories/i_inventory_repository.dart';
 
 class InventoryRepository implements IInventoryRepository {
@@ -198,13 +199,11 @@ class InventoryRepository implements IInventoryRepository {
   }
 
   @override
-  Future<List<({String variantId, double available, double requested})>>
-  checkStockAvailability({
+  Future<List<StockShortage>> checkStockAvailability({
     required List<({String variantId, double qty})> items,
     required String? branchId,
   }) async {
-    final shortages =
-        <({String variantId, double available, double requested})>[];
+    final shortages = <StockShortage>[];
     for (final item in items) {
       if (item.qty <= 0) continue;
       final variant = await _variantsDao.getById(item.variantId);
@@ -222,11 +221,13 @@ class InventoryRepository implements IInventoryRepository {
         );
         // null means no recipe lines — treat as unlimited
         if (units != null && units < item.qty) {
-          shortages.add((
-            variantId: item.variantId,
-            available: units,
-            requested: item.qty,
-          ));
+          shortages.add(
+            StockShortage(
+              variantId: item.variantId,
+              available: units,
+              requested: item.qty,
+            ),
+          );
         }
         continue;
       }
@@ -241,11 +242,13 @@ class InventoryRepository implements IInventoryRepository {
         available = variant.stock;
       }
       if (available < item.qty) {
-        shortages.add((
-          variantId: item.variantId,
-          available: available,
-          requested: item.qty,
-        ));
+        shortages.add(
+          StockShortage(
+            variantId: item.variantId,
+            available: available,
+            requested: item.qty,
+          ),
+        );
       }
     }
     return shortages;
@@ -262,6 +265,7 @@ class InventoryRepository implements IInventoryRepository {
     required String businessId,
     required String? branchId,
     required String sourceId,
+    bool allowNegativeStock = false,
   }) async {
     if (branchId == null) {
       assert(false, 'recordSaleDeductions called without branchId');
@@ -286,6 +290,7 @@ class InventoryRepository implements IInventoryRepository {
             businessId: businessId,
             branchId: branchId,
             sourceId: sourceId,
+            allowNegativeStock: allowNegativeStock,
           );
         case 'service':
           break; // no stock impact
@@ -303,6 +308,7 @@ class InventoryRepository implements IInventoryRepository {
             reason: 'Sale',
             sourceType: 'sale',
             sourceId: sourceId,
+            allowNegativeStock: allowNegativeStock,
           );
       }
     }

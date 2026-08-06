@@ -17,40 +17,40 @@ class InventoryLevelsDao extends DatabaseAccessor<AppDatabase>
 
   /// Get all inventory level rows for a business.
   Future<List<InventoryLevelsTableData>> getByBusinessId(String businessId) {
-    return (select(inventoryLevelsTable)
-          ..where((t) => t.businessId.equals(businessId)))
-        .get();
+    return (select(
+      inventoryLevelsTable,
+    )..where((t) => t.businessId.equals(businessId))).get();
   }
 
   /// Watch all inventory level rows for a business (reactive).
   Stream<List<InventoryLevelsTableData>> watchByBusinessId(String businessId) {
-    return (select(inventoryLevelsTable)
-          ..where((t) => t.businessId.equals(businessId)))
-        .watch();
+    return (select(
+      inventoryLevelsTable,
+    )..where((t) => t.businessId.equals(businessId))).watch();
   }
 
   /// Inventory levels whose variant OR branch no longer exists locally.
   /// These can never sync (their parent is gone), so they're surfaced for
   /// admin review. This is read-only — it never deletes business data.
   Future<List<InventoryLevelsTableData>> findOrphans(String businessId) async {
-    final levels = await (select(inventoryLevelsTable)
-          ..where((t) => t.businessId.equals(businessId)))
-        .get();
+    final levels = await (select(
+      inventoryLevelsTable,
+    )..where((t) => t.businessId.equals(businessId))).get();
     if (levels.isEmpty) return const [];
 
-    final variantIds = (await customSelect('SELECT id FROM product_variants')
-            .get())
-        .map((r) => r.read<String>('id'))
-        .toSet();
-    final branchIds =
-        (await customSelect('SELECT id FROM branches').get())
-            .map((r) => r.read<String>('id'))
-            .toSet();
+    final variantIds = (await customSelect(
+      'SELECT id FROM product_variants',
+    ).get()).map((r) => r.read<String>('id')).toSet();
+    final branchIds = (await customSelect(
+      'SELECT id FROM branches',
+    ).get()).map((r) => r.read<String>('id')).toSet();
 
     return levels
-        .where((l) =>
-            !variantIds.contains(l.variantId) ||
-            !branchIds.contains(l.branchId))
+        .where(
+          (l) =>
+              !variantIds.contains(l.variantId) ||
+              !branchIds.contains(l.branchId),
+        )
         .toList();
   }
 
@@ -60,8 +60,9 @@ class InventoryLevelsDao extends DatabaseAccessor<AppDatabase>
     String branchId,
   ) {
     final id = makeId(variantId, branchId);
-    return (select(inventoryLevelsTable)..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    return (select(
+      inventoryLevelsTable,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
   /// Upsert a level row. Creates it if missing, replaces it if present.
@@ -97,14 +98,16 @@ class InventoryLevelsDao extends DatabaseAccessor<AppDatabase>
     required String branchId,
     required String businessId,
     required double delta,
+    bool allowNegativeStock = false,
   }) async {
     final id = makeId(variantId, branchId);
-    final existing = await (select(inventoryLevelsTable)
-          ..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    final existing = await (select(
+      inventoryLevelsTable,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
 
     final current = existing?.quantity ?? 0.0;
-    final next = (current + delta).clamp(0.0, 999999.0);
+    final rawNext = current + delta;
+    final next = allowNegativeStock ? rawNext : rawNext.clamp(0.0, 999999.0);
 
     await into(inventoryLevelsTable).insertOnConflictUpdate(
       InventoryLevelsTableCompanion.insert(
@@ -130,30 +133,33 @@ class InventoryLevelsDao extends DatabaseAccessor<AppDatabase>
 
   /// Get all level rows for a specific variant across all branches.
   Future<List<InventoryLevelsTableData>> getByVariantId(String variantId) {
-    return (select(inventoryLevelsTable)
-          ..where((t) => t.variantId.equals(variantId)))
-        .get();
+    return (select(
+      inventoryLevelsTable,
+    )..where((t) => t.variantId.equals(variantId))).get();
   }
 
   Stream<int> watchPendingSyncCount() {
     final countExp = inventoryLevelsTable.id.count();
     final query = selectOnly(inventoryLevelsTable)
       ..addColumns([countExp])
-      ..where(inventoryLevelsTable.syncStatus.isIn([
-            SyncStatus.pendingUpload.toInt(),
-            SyncStatus.pendingUpdate.toInt(),
-            SyncStatus.failed.toInt(),
-          ]));
+      ..where(
+        inventoryLevelsTable.syncStatus.isIn([
+          SyncStatus.pendingUpload.toInt(),
+          SyncStatus.pendingUpdate.toInt(),
+          SyncStatus.failed.toInt(),
+        ]),
+      );
     return query.watchSingle().map((row) => row.read(countExp) ?? 0);
   }
 
   Future<List<InventoryLevelsTableData>> getPendingSync() {
-    return (select(inventoryLevelsTable)
-          ..where((t) => t.syncStatus.isIn([
-                SyncStatus.pendingUpload.toInt(),
-                SyncStatus.pendingUpdate.toInt(),
-                SyncStatus.failed.toInt(),
-              ])))
+    return (select(inventoryLevelsTable)..where(
+          (t) => t.syncStatus.isIn([
+            SyncStatus.pendingUpload.toInt(),
+            SyncStatus.pendingUpdate.toInt(),
+            SyncStatus.failed.toInt(),
+          ]),
+        ))
         .get();
   }
 
@@ -181,11 +187,10 @@ class InventoryLevelsDao extends DatabaseAccessor<AppDatabase>
     // Never overwrite a row that has local changes not yet pushed to the
     // server. If we did, a failed push followed by a pull would silently
     // discard the user's offline edits.
-    final existing = await (select(inventoryLevelsTable)
-            ..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
-    if (existing != null &&
-        existing.syncStatus != SyncStatus.synced.toInt()) {
+    final existing = await (select(
+      inventoryLevelsTable,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
+    if (existing != null && existing.syncStatus != SyncStatus.synced.toInt()) {
       return;
     }
 

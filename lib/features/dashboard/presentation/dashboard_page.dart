@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:iconly/iconly.dart';
 import 'package:pos/core/branch/branch_cubit.dart';
 import 'package:pos/core/branch/branch_state.dart';
@@ -8,6 +9,7 @@ import 'package:pos/core/const/breakpoint.dart';
 // import 'package:pos/features/ai_assistant/widgets/floating_ai_assistant_bar.dart';
 import 'package:pos/core/permissions/permission_keys.dart';
 import 'package:pos/core/permissions/permission_service.dart';
+import 'package:pos/core/routes/app_routes.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/dashboard/data/dashboard_data.dart';
@@ -21,6 +23,8 @@ import 'package:pos/features/dashboard/presentation/widgets/payment_methods_char
 import 'package:pos/features/dashboard/presentation/widgets/sales_trend_chart.dart';
 import 'package:pos/core/widgets/stat_card.dart';
 import 'package:pos/features/dashboard/presentation/widgets/top_selling_items.dart';
+import 'package:pos/features/inventory/data/inventory_data.dart';
+import 'package:pos/features/inventory/presentation/inventory_navigation_args.dart';
 
 class DashboardPage extends StatefulWidget {
   final VoidCallback? onNewSale;
@@ -33,6 +37,16 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   late final DashboardCubit _cubit;
+
+  void _openLowStockInventory({String? focusedVariantId}) {
+    context.go(
+      AppRoutes.inventory,
+      extra: InventoryNavigationArgs(
+        initialStatus: StockStatus.lowStock,
+        focusedVariantId: focusedVariantId,
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -181,6 +195,13 @@ class _DashboardPageState extends State<DashboardPage> {
                                             Expanded(
                                               child: LowStockAlertsCard(
                                                 items: data.lowStockItems,
+                                                onManageStock:
+                                                    _openLowStockInventory,
+                                                onItemTap: (item) =>
+                                                    _openLowStockInventory(
+                                                      focusedVariantId:
+                                                          item.variantId,
+                                                    ),
                                               ),
                                             ),
                                             const SizedBox(width: 16),
@@ -203,6 +224,12 @@ class _DashboardPageState extends State<DashboardPage> {
                                       children: [
                                         LowStockAlertsCard(
                                           items: data.lowStockItems,
+                                          onManageStock: _openLowStockInventory,
+                                          onItemTap: (item) =>
+                                              _openLowStockInventory(
+                                                focusedVariantId:
+                                                    item.variantId,
+                                              ),
                                         ),
                                         const SizedBox(height: 16),
                                         CategoryPerformanceChart(

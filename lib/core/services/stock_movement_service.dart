@@ -35,11 +35,11 @@ class StockMovementService {
     required ProductVariantsDao variantsDao,
     required AuditLogService auditLogService,
     FraudDetectionEngine? fraudEngine,
-  })  : _ledgerDao = ledgerDao,
-        _levelsDao = levelsDao,
-        _variantsDao = variantsDao,
-        _auditLogService = auditLogService,
-        _fraudEngine = fraudEngine;
+  }) : _ledgerDao = ledgerDao,
+       _levelsDao = levelsDao,
+       _variantsDao = variantsDao,
+       _auditLogService = auditLogService,
+       _fraudEngine = fraudEngine;
 
   /// Apply a stock movement atomically.
   /// [isIncoming] true = stock IN, false = stock OUT.
@@ -57,6 +57,7 @@ class StockMovementService {
     // ledger so audit/fraud queries can tell a sale from a manual adjustment.
     String? sourceType,
     String? sourceId,
+    bool allowNegativeStock = false,
   }) async {
     assert(quantity > 0, 'quantity must be positive');
 
@@ -70,7 +71,10 @@ class StockMovementService {
     await _ledgerDao.db.transaction(() async {
       final levelBefore = await _levelsDao.getLevel(variantId, branchId);
       final double qtyBefore = _effectiveQty(levelBefore);
-      final double qtyAfter = (qtyBefore + delta).clamp(0.0, 999999.0);
+      final rawQtyAfter = qtyBefore + delta;
+      final double qtyAfter = allowNegativeStock
+          ? rawQtyAfter
+          : rawQtyAfter.clamp(0.0, 999999.0);
 
       await _ledgerDao.insertEntry(
         StockLedgerTableCompanion.insert(
@@ -98,6 +102,7 @@ class StockMovementService {
         branchId: branchId,
         businessId: businessId,
         delta: delta,
+        allowNegativeStock: allowNegativeStock,
       );
 
       // Recompute the variant-level total from the sum of all branch levels.
@@ -163,19 +168,18 @@ class StockMovementService {
     String? note,
     String? sourceType,
     String? sourceId,
-  }) =>
-      apply(
-        variantId: variantId,
-        productId: productId,
-        businessId: businessId,
-        branchId: branchId,
-        isIncoming: isIncoming,
-        quantity: quantity.toDouble(),
-        reason: reason,
-        note: note,
-        sourceType: sourceType,
-        sourceId: sourceId,
-      );
+  }) => apply(
+    variantId: variantId,
+    productId: productId,
+    businessId: businessId,
+    branchId: branchId,
+    isIncoming: isIncoming,
+    quantity: quantity.toDouble(),
+    reason: reason,
+    note: note,
+    sourceType: sourceType,
+    sourceId: sourceId,
+  );
 
   double _effectiveQty(InventoryLevelsTableData? level) {
     return level?.quantity ?? 0.0;

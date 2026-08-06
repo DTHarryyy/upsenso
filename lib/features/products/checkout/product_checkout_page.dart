@@ -27,8 +27,10 @@ import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/features/crm/presentation/widgets/customer_inline_picker.dart';
 import 'package:pos/features/crm/presentation/widgets/customer_selection.dart';
 import 'package:pos/features/drafts/domain/repositories/i_draft_sales_repository.dart';
+import 'package:pos/features/inventory/domain/repositories/i_inventory_repository.dart';
 import 'package:pos/features/pos/presentation/pages/checkout_success_page.dart';
 import 'package:pos/features/pos/presentation/widgets/denom_chip.dart';
+import 'package:pos/features/pos/presentation/widgets/interactive_checkout.dart';
 import 'package:pos/features/products/checkout/product_cart_page.dart';
 
 class ProductCheckoutPage extends StatefulWidget {
@@ -219,16 +221,18 @@ class _ProductCheckoutPageState extends State<ProductCheckoutPage> {
 
       // Record the sale and move inventory atomically — never one without the
       // other (see CheckoutService).
-      final invoiceNumber = await sl<CheckoutService>().completeSale(
+      final invoiceNumber = await completeInteractiveSale(
+        context: context,
+        checkoutService: sl<CheckoutService>(),
+        inventoryRepository: sl<IInventoryRepository>(),
         transaction: tx,
-        items: txItems,
-        deductions: widget.items
-            .map((i) => (variantId: i.variantId, qty: i.qty))
-            .toList(),
+        transactionItems: txItems,
+        cartItems: widget.items,
         businessId: businessId,
         branchId: branchId,
         transactionId: txId,
       );
+      if (invoiceNumber == null) return;
 
       // saleCreated is audit-logged inside CheckoutService.completeSale —
       // every sale path shares one chained entry point.

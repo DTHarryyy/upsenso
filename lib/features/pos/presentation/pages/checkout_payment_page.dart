@@ -22,9 +22,11 @@ import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/crm/presentation/widgets/customer_inline_picker.dart';
 import 'package:pos/features/crm/presentation/widgets/customer_selection.dart';
+import 'package:pos/features/inventory/domain/repositories/i_inventory_repository.dart';
 import 'package:pos/features/pos/data/models/cart_model.dart';
 import 'package:pos/features/pos/presentation/pages/checkout_success_page.dart';
 import 'package:pos/features/pos/presentation/widgets/denom_chip.dart';
+import 'package:pos/features/pos/presentation/widgets/interactive_checkout.dart';
 import 'package:pos/features/pos/presentation/widgets/total_banner.dart';
 
 class CheckoutPaymentPage extends StatefulWidget {
@@ -99,7 +101,9 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
     if (authState is! AuthAuthenticated) return;
 
     final branchCubit = context.read<BranchCubit>();
-    String? branchId = branchCubit.getSelectedBranchIdForFiltering() ?? authState.user.branchId;
+    String? branchId =
+        branchCubit.getSelectedBranchIdForFiltering() ??
+        authState.user.branchId;
     String? branchName = branchCubit.getSelectedBranchIdForFiltering() != null
         ? branchCubit.state.selectedBranch
         : authState.user.branchName;
@@ -201,16 +205,18 @@ class _CheckoutPaymentPageState extends State<CheckoutPaymentPage> {
 
       // Record the sale and move inventory atomically — never one without the
       // other (see CheckoutService). Returns the assigned invoice number.
-      final invoiceNumber = await sl<CheckoutService>().completeSale(
+      final invoiceNumber = await completeInteractiveSale(
+        context: context,
+        checkoutService: sl<CheckoutService>(),
+        inventoryRepository: sl<IInventoryRepository>(),
         transaction: tx,
-        items: txItems,
-        deductions: widget.items
-            .map((i) => (variantId: i.variantId, qty: i.qty))
-            .toList(),
+        transactionItems: txItems,
+        cartItems: widget.items,
         businessId: businessId,
         branchId: branchId,
         transactionId: txId,
       );
+      if (invoiceNumber == null) return;
 
       widget.onPaymentConfirmed();
       if (!mounted) return;

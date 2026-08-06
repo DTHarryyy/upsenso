@@ -20,12 +20,17 @@ class InventoryCubit extends Cubit<InventoryState> {
   // Local filter / view state preserved across reloads
   String _searchQuery = '';
   StockStatus? _statusFilter;
+  String? _focusedVariantId;
   AppViewMode _viewMode;
 
   InventoryCubit(
     IInventoryRepository repository, {
     AppViewMode initialViewMode = AppViewMode.table,
+    StockStatus? initialStatusFilter,
+    String? initialFocusedVariantId,
   }) : _repository = repository,
+       _statusFilter = initialStatusFilter,
+       _focusedVariantId = initialFocusedVariantId,
        _viewMode = initialViewMode,
        super(const InventoryInitial());
 
@@ -45,11 +50,13 @@ class InventoryCubit extends Cubit<InventoryState> {
   }
 
   void setSearchQuery(String query) {
+    _focusedVariantId = null;
     _searchQuery = query;
     _applyFilters();
   }
 
   void setStatusFilter(StockStatus? status) {
+    _focusedVariantId = null;
     _statusFilter = status;
     _applyFilters();
   }
@@ -65,6 +72,13 @@ class InventoryCubit extends Cubit<InventoryState> {
     if (current is InventoryLoaded) {
       emit(current.copyWith(viewMode: mode));
     }
+  }
+
+  void applyNavigation({StockStatus? statusFilter, String? focusedVariantId}) {
+    _searchQuery = '';
+    _statusFilter = statusFilter;
+    _focusedVariantId = focusedVariantId;
+    _applyFilters();
   }
 
   Future<void> adjustStock({
@@ -167,6 +181,17 @@ class InventoryCubit extends Cubit<InventoryState> {
   }
 
   List<InventoryItem> _filter(List<InventoryItem> items) {
+    final focusedVariantId = _focusedVariantId;
+    if (focusedVariantId != null) {
+      final focused = items
+          .where((item) => item.variantId == focusedVariantId)
+          .toList();
+      if (focused.isNotEmpty) return focused;
+      // A deleted/stale alert reference falls back to the requested status
+      // filter rather than leaving the user on an empty page.
+      _focusedVariantId = null;
+    }
+
     var result = items;
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();

@@ -15,9 +15,7 @@ import 'package:pos/core/utils/formatters.dart';
 import 'package:pos/core/widgets/widgets.dart';
 import 'package:pos/features/audit_logs/domain/audit_log_action_type.dart';
 import 'package:pos/features/drafts/domain/entities/draft_sale.dart';
-import 'package:pos/features/drafts/domain/entities/draft_sale_item.dart';
 import 'package:pos/features/drafts/domain/repositories/i_draft_sales_repository.dart';
-import 'package:pos/features/inventory/domain/repositories/i_inventory_repository.dart';
 import 'package:pos/features/drafts/presentation/cubit/drafts_cubit.dart';
 import 'package:pos/features/drafts/presentation/cubit/drafts_state.dart';
 import 'package:pos/features/drafts/presentation/draft_cart_mapper.dart';
@@ -217,21 +215,11 @@ class _HeldSalesPageState extends State<HeldSalesPage> {
     );
   }
 
-  /// Pushes checkout directly; conversion happens via [sourceDraftId].
-  /// Re-validates stock first — a parked sale can sell out while held.
+  /// Pushes checkout directly; conversion happens via [sourceDraftId]. Stock
+  /// is checked once at final payment by the shared interactive checkout flow.
   Future<void> _finish(DraftSale draft) async {
     final items = await sl<IDraftSalesRepository>().getItems(draft.id);
-    final shortages = await sl<IInventoryRepository>().checkStockAvailability(
-      items: items
-          .map((i) => (variantId: i.variantId, qty: i.qty))
-          .toList(),
-      branchId: draft.branchId,
-    );
     if (!mounted) return;
-    if (shortages.isNotEmpty) {
-      final proceed = await _confirmStockShortage(items, shortages);
-      if (proceed != true || !mounted) return;
-    }
     Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(
         builder: (_) => ProductCheckoutPage(
@@ -243,57 +231,6 @@ class _HeldSalesPageState extends State<HeldSalesPage> {
           sourceDraftId: draft.id,
           onPaymentConfirmed: () {},
         ),
-      ),
-    );
-  }
-
-  Future<bool?> _confirmStockShortage(
-    List<DraftSaleItem> items,
-    List<({String variantId, double available, double requested})> shortages,
-  ) {
-    final nameFor = {for (final i in items) i.variantId: i.productName};
-    return showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Stock may be short'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Some items have less stock than this held sale needs:',
-              style: getOutfitStyle(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 10),
-            ...shortages.map(
-              (s) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  '• ${nameFor[s.variantId] ?? 'Item'} — need '
-                  '${AppFormatters.quantity(s.requested)}, '
-                  '${AppFormatters.quantity(s.available)} in stock',
-                  style: getOutfitStyle(
-                    fontSize: 13,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Continue'),
-          ),
-        ],
       ),
     );
   }

@@ -17,13 +17,19 @@ import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/inventory/data/inventory_data.dart';
 import 'package:pos/features/inventory/presentation/cubit/inventory_cubit.dart';
 import 'package:pos/features/inventory/presentation/cubit/inventory_state.dart';
+import 'package:pos/features/inventory/presentation/inventory_navigation_args.dart';
 import 'package:pos/features/inventory/presentation/widgets/inventory_desktop_table.dart';
 import 'package:pos/features/inventory/presentation/widgets/inventory_mobile_card.dart';
 import 'package:pos/features/inventory/presentation/widgets/inventory_stats_row.dart';
 import 'package:pos/features/inventory/presentation/widgets/stock_adjustment_dialog.dart';
 
 class Inventory extends StatefulWidget {
-  const Inventory({super.key});
+  final InventoryNavigationArgs navigation;
+
+  const Inventory({
+    super.key,
+    this.navigation = const InventoryNavigationArgs(),
+  });
 
   @override
   State<Inventory> createState() => _InventoryState();
@@ -49,6 +55,8 @@ class _InventoryState extends State<Inventory> {
     _cubitCreated = true;
     _cubit = InventoryCubit(
       sl(),
+      initialStatusFilter: widget.navigation.initialStatus,
+      initialFocusedVariantId: widget.navigation.focusedVariantId,
       initialViewMode: Breakpoints.isPhone(context)
           ? AppViewMode.cards
           : AppViewMode.table,
@@ -60,6 +68,17 @@ class _InventoryState extends State<Inventory> {
     _cubit.close();
     _searchController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant Inventory oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_cubitCreated || oldWidget.navigation == widget.navigation) return;
+    _searchController.clear();
+    _cubit.applyNavigation(
+      statusFilter: widget.navigation.initialStatus,
+      focusedVariantId: widget.navigation.focusedVariantId,
+    );
   }
 
   void _triggerLoad() {

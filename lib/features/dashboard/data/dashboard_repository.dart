@@ -286,6 +286,8 @@ class DashboardRepository implements IDashboardRepository {
       final pName = productIdToName[v.productId] ?? 'Unknown';
       final display = v.name == 'Default' ? pName : '$pName (${v.name})';
       return LowStockItem(
+        productId: v.productId,
+        variantId: v.id,
         displayName: display,
         currentStock: v.stock.round(),
         reorderAt: v.lowStockAlert,

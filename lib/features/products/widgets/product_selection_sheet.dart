@@ -353,7 +353,6 @@ class _ProductSelectionSheetState extends State<_ProductSelectionSheet> {
         const SizedBox(height: 10),
         ..._active.map((v) {
           final branchQty = widget.variantStock[v.id] ?? 0.0;
-          final outOfStock = v.trackStock && !_isFraction && branchQty <= 0;
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: _VariantCard(
@@ -361,12 +360,10 @@ class _ProductSelectionSheetState extends State<_ProductSelectionSheet> {
               branchStock: branchQty,
               isSelected: _selected?.id == v.id,
               isFraction: _isFraction,
-              onTap: outOfStock
-                  ? null
-                  : () => setState(() {
-                      _selected = v;
-                      _qty = _isFraction ? 0.5 : 1;
-                    }),
+              onTap: () => setState(() {
+                _selected = v;
+                _qty = _isFraction ? 0.5 : 1;
+              }),
             ),
           );
         }),
@@ -500,9 +497,15 @@ class _ProductSelectionSheetState extends State<_ProductSelectionSheet> {
       }
       if (branchQty <= 0) return (label: '—', color: AppColors.textMuted);
       if (branchQty <= 5) {
-        return (label: '${qtyLabel(branchQty)} left', color: AppColors.lowStock);
+        return (
+          label: '${qtyLabel(branchQty)} left',
+          color: AppColors.lowStock,
+        );
       }
-      return (label: '${qtyLabel(branchQty)} in stock', color: AppColors.inStock);
+      return (
+        label: '${qtyLabel(branchQty)} in stock',
+        color: AppColors.inStock,
+      );
     }
 
     if (isFraction) {
@@ -554,7 +557,7 @@ class _VariantCard extends StatelessWidget {
     final badge = _stockBadge();
 
     return Opacity(
-      opacity: isOutOfStock ? 0.45 : 1.0,
+      opacity: isOutOfStock ? 0.7 : 1.0,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         decoration: BoxDecoration(
@@ -669,7 +672,10 @@ class _VariantCard extends StatelessWidget {
       return (label: 'Out of stock', color: AppColors.outOfStock);
     }
     if (branchStock <= 5) {
-      return (label: '${qtyLabel(branchStock)} left', color: AppColors.lowStock);
+      return (
+        label: '${qtyLabel(branchStock)} left',
+        color: AppColors.lowStock,
+      );
     }
     return (label: qtyLabel(branchStock), color: AppColors.inStock);
   }

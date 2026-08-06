@@ -45,31 +45,31 @@ class DashboardData {
   });
 
   static DashboardData empty() => const DashboardData(
-        todaySales: 0,
-        weekSales: 0,
-        todayTransactionCount: 0,
-        avgOrderValue: 0,
-        yesterdaySales: 0,
-        lastWeekSales: 0,
-        yesterdayTransactionCount: 0,
-        yesterdayAvgOrderValue: 0,
-        sevenDayTotals: [0, 0, 0, 0, 0, 0, 0],
-        sevenDayLabels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-        thirtyDayTotals: [],
-        thirtyDayLabels: [],
-        categoryStats: [],
-        topItems: [],
-        paymentBreakdown: {},
-        lowStockItems: [],
-        branchStats: [],
-        expenseSummary: ExpenseSummary(
-          todayTotal: 0,
-          monthTotal: 0,
-          pendingTotal: 0,
-          pendingCount: 0,
-          recentExpenses: [],
-        ),
-      );
+    todaySales: 0,
+    weekSales: 0,
+    todayTransactionCount: 0,
+    avgOrderValue: 0,
+    yesterdaySales: 0,
+    lastWeekSales: 0,
+    yesterdayTransactionCount: 0,
+    yesterdayAvgOrderValue: 0,
+    sevenDayTotals: [0, 0, 0, 0, 0, 0, 0],
+    sevenDayLabels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    thirtyDayTotals: [],
+    thirtyDayLabels: [],
+    categoryStats: [],
+    topItems: [],
+    paymentBreakdown: {},
+    lowStockItems: [],
+    branchStats: [],
+    expenseSummary: ExpenseSummary(
+      todayTotal: 0,
+      monthTotal: 0,
+      pendingTotal: 0,
+      pendingCount: 0,
+      recentExpenses: [],
+    ),
+  );
 }
 
 class ExpenseSummary {
@@ -88,12 +88,12 @@ class ExpenseSummary {
   });
 
   static ExpenseSummary empty() => const ExpenseSummary(
-        todayTotal: 0,
-        monthTotal: 0,
-        pendingTotal: 0,
-        pendingCount: 0,
-        recentExpenses: [],
-      );
+    todayTotal: 0,
+    monthTotal: 0,
+    pendingTotal: 0,
+    pendingCount: 0,
+    recentExpenses: [],
+  );
 }
 
 class RecentExpense {
@@ -122,15 +122,24 @@ class TopItem {
   final String name;
   final int sold;
   final double revenue;
-  const TopItem({required this.name, required this.sold, required this.revenue});
+  const TopItem({
+    required this.name,
+    required this.sold,
+    required this.revenue,
+  });
 }
 
 class LowStockItem {
+  final String productId;
+  final String variantId;
   final String displayName;
   final int currentStock;
+
   /// null means no threshold was set — item is shown only because stock == 0.
   final int? reorderAt;
   const LowStockItem({
+    required this.productId,
+    required this.variantId,
     required this.displayName,
     required this.currentStock,
     required this.reorderAt,
