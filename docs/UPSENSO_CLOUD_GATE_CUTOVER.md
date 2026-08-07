@@ -107,6 +107,6 @@ cloud **writes** only.
 - Watch `get_logs` for a spike in RLS refusals that are *not* from lapsed
   tenants — that would mean a policy is catching someone it shouldn't.
 - A lapsed tenant should hear it from the notification bell (`cloud paused`,
-  via `BillingNoticeService`), and see `OverCapBanner` / `DeviceStatusBanner` in
-  the shell if anything is actually locked. If support starts hearing "sync just
-  stopped and nothing said why", one of those isn't reaching the screen.
+  via `PlanNoticeService`), alongside any over-cap resource or device notices.
+  If support starts hearing "sync just stopped and nothing said why", those
+  notices are not reaching the Notifications page.

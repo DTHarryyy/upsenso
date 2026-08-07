@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:iconly/iconly.dart';
@@ -27,7 +27,6 @@ import 'package:pos/core/ui/widgets/app_bottom_nav.dart';
 import 'package:pos/core/ui/widgets/custom_app_bar.dart';
 import 'package:pos/core/ui/widgets/drawer_visibility_scope.dart';
 import 'package:pos/core/widgets/plan_badge.dart';
-import 'package:pos/core/widgets/plan_enforcement_banners.dart';
 import 'package:pos/core/widgets/plan_lock_badge.dart';
 import 'package:pos/core/widgets/upgrade_prompt.dart';
 import 'package:pos/core/widgets/user_avatar.dart';
@@ -36,9 +35,9 @@ import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:pos/features/more/presentation/more_page.dart';
-import 'package:pos/features/notifications/domain/billing_notice_service.dart';
-import 'package:pos/features/notifications/domain/entities/billing_notice.dart';
 import 'package:pos/features/notifications/domain/entities/notification_item.dart';
+import 'package:pos/features/notifications/domain/entities/plan_notice.dart';
+import 'package:pos/features/notifications/domain/plan_notice_service.dart';
 import 'package:pos/features/notifications/domain/repositories/i_notifications_repository.dart';
 import 'package:pos/features/settings/data/receipt_settings_repository.dart';
 import 'package:pos/features/settings/domain/receipt_settings.dart';
@@ -283,10 +282,6 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                                         showThemeToggle: false,
                                       ),
 
-                                    // Collapses to nothing on a healthy plan.
-                                    if (!isPosTab)
-                                      const PlanEnforcementBanners(),
-
                                     // Page content.  We override AppBarTheme
                                     // with toolbarHeight: 0 so any per-page
                                     // AppBar that individual pages declare
@@ -327,76 +322,67 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                   notifier: _drawerOpen,
                   child: _SyncStatusProvider(
                     builder: (isOnline, pendingSyncCount) => Scaffold(
-                    key: _scaffoldKey,
-                    // The nav is an opaque strip now — content stops above it
-                    // instead of scrolling underneath and getting hidden.
-                    extendBody: false,
-                    drawer: const Drawer(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.zero,
+                      key: _scaffoldKey,
+                      // The nav is an opaque strip now — content stops above it
+                      // instead of scrolling underneath and getting hidden.
+                      extendBody: false,
+                      drawer: const Drawer(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.zero,
+                        ),
+                        child: MorePage(),
                       ),
-                      child: MorePage(),
-                    ),
-                    onDrawerChanged: (isOpen) => _drawerOpen.value = isOpen,
-                    appBar: (isPosTab || isStackedSubPage)
-                        ? null
-                        : CustomAppBar(
-                            branches: visibleBranches,
-                            selectedBranch: selectedBranch,
-                            onBranchChanged: branchState.canSwitchBranches
-                                ? (branch) => context
-                                      .read<BranchCubit>()
-                                      .selectBranch(branch)
-                                : null,
-                            userName: userName,
-                            userRole: userRole,
-                            userEmail: userEmail,
-                            userId: userId,
-                            userAvatar: userAvatar,
-                            businessName: businessName,
-                            isOnline: isOnline,
-                            pendingSyncCount: pendingSyncCount,
-                            notificationCount: unreadCount,
-                            onNotificationTapped: onNotificationTapped,
-                            onMenuTapped: () =>
-                                _scaffoldKey.currentState?.openDrawer(),
-                            showThemeToggle: false,
-                          ),
-                    body: (isPosTab || isStackedSubPage)
-                        ? shell
-                        // Collapses to nothing on a healthy plan. Kept off the
-                        // POS tab: nothing may push the till around mid-sale.
-                        : Column(
-                            children: [
-                              const PlanEnforcementBanners(),
-                              Expanded(child: shell),
-                            ],
-                          ),
-                    // AI assistant floats over every bottom-bar page (native
-                    // runs the on-device model, web falls back to the
-                    // rule-based parser). Hidden on the POS terminal and
-                    // full-screen stacked sub-pages, which own their chrome
-                    // and have no bottom bar.
-                    floatingActionButton:
-                        (!kShowAiAndFraudNav || isPosTab || isStackedSubPage)
-                        ? null
-                        : FloatingActionButton(
-                            heroTag: 'aiAssistantFab',
-                            onPressed: () => context.push(AppRoutes.aiChat),
-                            backgroundColor: AppColors.surface,
-                            shape: const CircleBorder(),
-                            child: const Icon(
-                              Icons.chat_bubble_outline_rounded,
-                              color: AppColors.textPrimary,
+                      onDrawerChanged: (isOpen) => _drawerOpen.value = isOpen,
+                      appBar: (isPosTab || isStackedSubPage)
+                          ? null
+                          : CustomAppBar(
+                              branches: visibleBranches,
+                              selectedBranch: selectedBranch,
+                              onBranchChanged: branchState.canSwitchBranches
+                                  ? (branch) => context
+                                        .read<BranchCubit>()
+                                        .selectBranch(branch)
+                                  : null,
+                              userName: userName,
+                              userRole: userRole,
+                              userEmail: userEmail,
+                              userId: userId,
+                              userAvatar: userAvatar,
+                              businessName: businessName,
+                              isOnline: isOnline,
+                              pendingSyncCount: pendingSyncCount,
+                              notificationCount: unreadCount,
+                              onNotificationTapped: onNotificationTapped,
+                              onMenuTapped: () =>
+                                  _scaffoldKey.currentState?.openDrawer(),
+                              showThemeToggle: false,
                             ),
-                          ),
-                    bottomNavigationBar: (isPosTab || isStackedSubPage)
-                        ? null
-                        : AppBottomNav(
-                            currentIndex: _currentIndex,
-                            onTap: _onNavTap,
-                          ),
-                  ),
+                      body: shell,
+                      // AI assistant floats over every bottom-bar page (native
+                      // runs the on-device model, web falls back to the
+                      // rule-based parser). Hidden on the POS terminal and
+                      // full-screen stacked sub-pages, which own their chrome
+                      // and have no bottom bar.
+                      floatingActionButton:
+                          (!kShowAiAndFraudNav || isPosTab || isStackedSubPage)
+                          ? null
+                          : FloatingActionButton(
+                              heroTag: 'aiAssistantFab',
+                              onPressed: () => context.push(AppRoutes.aiChat),
+                              backgroundColor: AppColors.surface,
+                              shape: const CircleBorder(),
+                              child: const Icon(
+                                Icons.chat_bubble_outline_rounded,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                      bottomNavigationBar: (isPosTab || isStackedSubPage)
+                          ? null
+                          : AppBottomNav(
+                              currentIndex: _currentIndex,
+                              onTap: _onNavTap,
+                            ),
+                    ),
                   ),
                 );
               },
@@ -460,9 +446,8 @@ class _SyncStatusProviderState extends State<_SyncStatusProvider> {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Notification bell badge — live unread count for the shell app bar: real
-// unread rows from the repository, plus the synthetic billing notice when one
-// is due. BillingNoticeService owns that rule so this and NotificationsCubit
-// can't drift apart on when a notice counts.
+// unread rows from the repository, plus every active synthetic plan notice.
+// PlanNoticeService owns the rule so this and NotificationsCubit cannot drift.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _NotificationsBadgeProvider extends StatefulWidget {
@@ -483,18 +468,18 @@ class _NotificationsBadgeProvider extends StatefulWidget {
 class _NotificationsBadgeProviderState
     extends State<_NotificationsBadgeProvider> {
   late final INotificationsRepository _repository;
-  late final BillingNoticeService _notices;
+  late final PlanNoticeService _notices;
   List<NotificationItem> _items = const [];
   VoidCallback? _unsubscribe;
-  BillingNoticeKind? _notice;
+  List<PlanNoticeKind> _noticesDue = const [];
 
   @override
   void initState() {
     super.initState();
     _repository = sl<INotificationsRepository>();
-    _notices = sl<BillingNoticeService>();
+    _notices = sl<PlanNoticeService>();
     _notices.revision.addListener(_onNoticesChanged);
-    _refreshNotice();
+    _onNoticesChanged();
     _load();
   }
 
@@ -510,25 +495,29 @@ class _NotificationsBadgeProviderState
       _unsubscribe?.call();
       _unsubscribe = null;
       _items = const [];
-      _refreshNotice();
+      _onNoticesChanged();
       _load();
     }
   }
 
   void _onNoticesChanged() {
     final businessId = widget.businessId;
-    if (businessId != null) unawaited(_notices.reArm(businessId));
+    if (businessId != null) {
+      unawaited(_notices.reArm(businessId).then((_) => _refreshNotice()));
+    }
     _refreshNotice();
   }
 
   void _refreshNotice() {
     final businessId = widget.businessId;
-    final next = businessId == null ? null : _notices.visibleKind(businessId);
-    if (next == _notice) return;
+    final next = businessId == null
+        ? const <PlanNoticeKind>[]
+        : _notices.activeKinds(businessId);
+    if (listEquals(next, _noticesDue)) return;
     if (mounted) {
-      setState(() => _notice = next);
+      setState(() => _noticesDue = next);
     } else {
-      _notice = next; // initState — no element to mark dirty yet
+      _noticesDue = next; // initState — no element to mark dirty yet
     }
   }
 
@@ -576,10 +565,7 @@ class _NotificationsBadgeProviderState
   @override
   Widget build(BuildContext context) {
     final dbUnread = _items.where((n) => !n.isRead).length;
-    return widget.builder(
-      dbUnread + (_notice != null ? 1 : 0),
-      _openNotifications,
-    );
+    return widget.builder(dbUnread + _noticesDue.length, _openNotifications);
   }
 }
 
@@ -1057,7 +1043,9 @@ class _AppSidebarState extends State<_AppSidebar> {
                     if (layoutExpanded) const _SectionLabel(label: 'ADMIN'),
                     _EmployeesNavTile(
                       expanded: layoutExpanded,
-                      currentLocation: GoRouterState.of(context).matchedLocation,
+                      currentLocation: GoRouterState.of(
+                        context,
+                      ).matchedLocation,
                     ),
                     if (_sidebarShowAuditLogs)
                       _NavItem(
@@ -1301,9 +1289,7 @@ class _NavItem extends StatelessWidget {
       child: item,
     );
 
-    final tooltip = locked
-        ? '$label — ${planLabelOf(lockedPlan!)}'
-        : label;
+    final tooltip = locked ? '$label — ${planLabelOf(lockedPlan!)}' : label;
     return expanded
         ? padded
         : Tooltip(message: tooltip, preferBelow: false, child: padded);

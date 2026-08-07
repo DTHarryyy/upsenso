@@ -2,11 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:iconly/iconly.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pos/core/config/di.dart';
 import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/const/font_utils.dart';
+import 'package:pos/core/permissions/entitlement_enforcement_service.dart';
+import 'package:pos/core/permissions/permission_keys.dart';
+import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/routes/app_routes.dart';
-import 'package:pos/features/notifications/domain/entities/billing_notice.dart';
+import 'package:pos/features/billing/presentation/widgets/active_branch_chooser_sheet.dart';
 import 'package:pos/features/notifications/domain/entities/notification_item.dart';
+import 'package:pos/features/notifications/domain/entities/plan_notice.dart';
 import 'package:pos/features/notifications/presentation/cubit/notifications_cubit.dart';
 import 'package:pos/features/notifications/presentation/widgets/billing_notice_visuals.dart';
 
@@ -20,7 +25,7 @@ class NotificationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     // Null for every real row. Resolved once so the three branches below all
     // key off the same answer.
-    final notice = billingNoticeKindOf(item);
+    final notice = planNoticeKindOf(item);
     final config = _NotificationConfig.of(item, notice);
 
     return Container(
@@ -89,55 +94,75 @@ class NotificationTile extends StatelessWidget {
                     ),
                   ),
                 ],
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: _actions(context, notice),
+                ),
               ],
             ),
-          ),
-          const SizedBox(width: 12),
-          // Actions
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: notice != null
-                ? [
-                    NotificationActionBtn(
-                      label: notice.ctaLabel,
-                      onTap: () => context.push(AppRoutes.billing),
-                    ),
-                  ]
-                : [
-                    NotificationActionBtn(
-                      label: 'View',
-                      onTap: () {
-                        if (!item.isRead) {
-                          context.read<NotificationsCubit>().markAsRead(
-                            item.id,
-                          );
-                        }
-                        _openReference(context);
-                      },
-                    ),
-                    if (!item.isRead) ...[
-                      const SizedBox(width: 4),
-                      NotificationIconBtn(
-                        icon: IconlyLight.tick_square,
-                        tooltip: 'Mark as read',
-                        onTap: () => context
-                            .read<NotificationsCubit>()
-                            .markAsRead(item.id),
-                      ),
-                    ],
-                    const SizedBox(width: 4),
-                    NotificationIconBtn(
-                      icon: IconlyLight.delete,
-                      tooltip: 'Delete',
-                      color: AppColors.error,
-                      onTap: () =>
-                          context.read<NotificationsCubit>().delete(item.id),
-                    ),
-                  ],
           ),
         ],
       ),
     );
+  }
+
+  List<Widget> _actions(BuildContext context, PlanNoticeKind? notice) {
+    if (notice == null) {
+      return [
+        NotificationActionBtn(
+          label: 'View',
+          onTap: () {
+            if (!item.isRead) {
+              context.read<NotificationsCubit>().markAsRead(item.id);
+            }
+            _openReference(context);
+          },
+        ),
+        if (!item.isRead)
+          NotificationIconBtn(
+            icon: IconlyLight.tick_square,
+            tooltip: 'Mark as read',
+            onTap: () => context.read<NotificationsCubit>().markAsRead(item.id),
+          ),
+        NotificationIconBtn(
+          icon: IconlyLight.delete,
+          tooltip: 'Delete',
+          color: AppColors.error,
+          onTap: () => context.read<NotificationsCubit>().delete(item.id),
+        ),
+      ];
+    }
+
+    final actions = <Widget>[];
+    final canManage = sl<PermissionService>().can(PermissionKeys.billingManage);
+    if (canManage) {
+      if (notice == PlanNoticeKind.resourceOverCap &&
+          sl<EntitlementEnforcementService>().lockedBranchIds.isNotEmpty) {
+        actions.add(
+          NotificationActionBtn(
+            label: 'Choose branches',
+            onTap: () => ActiveBranchChooserSheet.show(context),
+          ),
+        );
+      }
+      actions.add(
+        NotificationActionBtn(
+          label: notice.ctaLabel,
+          onTap: () => context.push(AppRoutes.billing),
+        ),
+      );
+    }
+    actions.add(
+      NotificationIconBtn(
+        icon: IconlyLight.tick_square,
+        tooltip: 'Dismiss',
+        onTap: () => context.read<NotificationsCubit>().markAsRead(item.id),
+      ),
+    );
+    return actions;
   }
 
   // Deep-link to the entity that raised the notification. Only purchase-order
@@ -242,7 +267,7 @@ class _NotificationConfig {
 
   factory _NotificationConfig.of(
     NotificationItem item,
-    BillingNoticeKind? notice,
+    PlanNoticeKind? notice,
   ) {
     if (notice != null) {
       return _NotificationConfig(

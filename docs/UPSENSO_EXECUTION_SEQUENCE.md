@@ -354,7 +354,7 @@ From `CLAUDE.md` — a step isn't `[x]` until all hold:
 >   renews silently, so without it a merchant who'd been charged got downgraded
 >   for having no signal. Documented in §7.4 since forever, never coded.
 > - **Devices actually say something.** `capReached` was set and never
->   rendered; now `DeviceStatusBanner` explains it with Manage-devices, sync
+>   rendered; now `PlanNoticeService` explains it with Manage-devices, sync
 >   re-verifies registration on the entitlement tick (so a remote revoke lands
 >   without a restart), and `touch_device` finally gets called so `last_seen_at`
 >   is real. Wired the dead `UpgradeMoment.secondDevice`.

@@ -148,12 +148,13 @@ import 'package:pos/features/settings/data/receipt_settings_repository.dart';
 import 'package:pos/features/settings/data/refund_settings_repository.dart';
 import 'package:pos/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:pos/features/settings/services/receipt_printer_service.dart';
-import 'package:pos/features/notifications/data/billing_notice_ack.dart';
-import 'package:pos/features/notifications/domain/billing_notice_service.dart';
+import 'package:pos/features/notifications/data/plan_notice_ack.dart';
+import 'package:pos/features/notifications/domain/plan_notice_service.dart';
 import 'package:pos/features/notifications/data/notifications_repository.dart';
 import 'package:pos/features/notifications/domain/repositories/i_notifications_repository.dart';
 import 'package:pos/core/notifications/fcm_notification_service.dart';
 import 'package:pos/core/notifications/low_stock_push_publisher.dart';
+import 'package:pos/core/notifications/plan_alert_push_publisher.dart';
 import 'package:pos/core/permissions/permission_service.dart';
 import 'package:pos/core/permissions/data_scoping_layer.dart';
 import 'package:pos/core/permissions/data/permission_remote_ds.dart';
@@ -544,6 +545,9 @@ Future<void> initDI() async {
   sl.registerLazySingleton<DeviceRegistrationRemoteDs>(
     () => DeviceRegistrationRemoteDs(sl<SupabaseClient>()),
   );
+  sl.registerLazySingleton<PlanAlertPushPublisher>(
+    () => PlanAlertPushPublisher(sl<SupabaseClient>()),
+  );
   sl.registerLazySingleton<DeviceRegistrationService>(
     () => DeviceRegistrationService(
       remoteDs: sl<DeviceRegistrationRemoteDs>(),
@@ -553,6 +557,7 @@ Future<void> initDI() async {
       entitlementService: sl<EntitlementService>(),
       connectivityService: sl<ConnectivityService>(),
       prefs: sl<SharedPreferences>(),
+      planAlertPushPublisher: sl<PlanAlertPushPublisher>(),
     ),
   );
   sl.registerLazySingleton<AuditLogService>(
@@ -743,6 +748,7 @@ Future<void> initDI() async {
       branchesDao: sl<BranchesDao>(),
       employeesDao: sl<EmployeesDao>(),
       activeBusinessContext: sl<ActiveBusinessContext>(),
+      planAlertPushPublisher: sl<PlanAlertPushPublisher>(),
     ),
   );
 
@@ -863,12 +869,16 @@ Future<void> initDI() async {
   sl.registerLazySingleton<INotificationsRepository>(
     () => NotificationsRepository(sl<SupabaseClient>()),
   );
-  sl.registerLazySingleton<BillingNoticeAck>(
-    () => BillingNoticeAck(sl<SharedPreferences>()),
+  sl.registerLazySingleton<PlanNoticeAck>(
+    () => PlanNoticeAck(sl<SharedPreferences>()),
   );
-  sl.registerLazySingleton<BillingNoticeService>(
-    () =>
-        BillingNoticeService(sl<EntitlementService>(), sl<BillingNoticeAck>()),
+  sl.registerLazySingleton<PlanNoticeService>(
+    () => PlanNoticeService(
+      entitlement: sl<EntitlementService>(),
+      enforcement: sl<EntitlementEnforcementService>(),
+      deviceRegistration: sl<DeviceRegistrationService>(),
+      acknowledgement: sl<PlanNoticeAck>(),
+    ),
   );
 
   // Ensures businessId is available immediately on startup

@@ -702,10 +702,10 @@ drop the cache tables locally, drop billing tables + policies on the server).
   forever: delete a branch, still can't create its replacement.
 - **Device registration while offline:** not allowed — needs the server. This is
   what bounds a paid account to its device cap. A device that comes back
-  `cap_reached` keeps selling locally and says so via `DeviceStatusBanner`;
+  `cap_reached` keeps selling locally and surfaces a device-cap notification;
   only its cloud backup is affected.
 - **Trial expiry / payment failure:** `past_due` keeps full access through
-  `grace_until` with escalating banners; only then degrade.
+  `grace_until` with escalating notifications; only then degrade.
 - **Paid but unreachable** (offline over a renewal date) — `unverified` keeps the
   tier and cloud alive for 14 days (30 annual) from the last server contact,
   then degrades. Distinct from `past_due`: that means *we know it failed*, this

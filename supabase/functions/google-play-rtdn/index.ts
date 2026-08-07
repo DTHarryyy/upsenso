@@ -43,6 +43,19 @@ import {
   PlayApiError,
   verifyGooglePushToken,
 } from "../_shared/google_play.ts";
+import { evaluateAndPublishPlanAlerts } from "../_shared/plan_alerts.ts";
+
+// Plan alert delivery must never roll back or retry a valid billing mutation.
+// deno-lint-ignore no-explicit-any
+async function refreshPlanAlerts(admin: any, businessId: string) {
+  try {
+    await evaluateAndPublishPlanAlerts(admin, businessId, {
+      trigger: "entitlement_changed",
+    });
+  } catch (error) {
+    console.error(`rtdn plan-alert evaluation failed for ${businessId}`, error);
+  }
+}
 
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -332,6 +345,7 @@ serve(async (req) => {
       console.error("rtdn apply_play_subscription failed", grantErr);
       return json({ error: "grant failed" }, 500);
     }
+    await refreshPlanAlerts(admin, bizId);
 
     // Acknowledge here too. Verify was the only place that did, and a failed ack
     // there had no server-side retry — Google auto-refunds an unacknowledged
@@ -509,5 +523,6 @@ async function expireByToken(
     console.error("rtdn expire_play_subscription failed", error);
     return json({ error: "expire failed" }, 500);
   }
+  await refreshPlanAlerts(admin, tok.business_id);
   return json({ ok: true, expired: reason }, 200);
 }

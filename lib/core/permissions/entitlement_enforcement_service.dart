@@ -5,6 +5,7 @@ import 'package:pos/core/database/daos/branches_dao.dart';
 import 'package:pos/core/database/daos/employees_dao.dart';
 import 'package:pos/core/database/daos/entitlement_dao.dart';
 import 'package:pos/core/database/tables/entitlement_locks_table.dart';
+import 'package:pos/core/notifications/plan_alert_push_publisher.dart';
 import 'package:pos/core/permissions/entitlement_service.dart';
 import 'package:pos/core/permissions/role_permission_matrix.dart';
 import 'package:pos/core/session/active_business_context.dart';
@@ -56,6 +57,7 @@ class EntitlementEnforcementService {
   final BranchesDao _branchesDao;
   final EmployeesDao _employeesDao;
   final ActiveBusinessContext _activeBusinessContext;
+  final PlanAlertPushPublisher? _planAlertPushPublisher;
 
   Set<String> _lockedBranchIds = const {};
   Set<String> _suspendedEmployeeIds = const {};
@@ -70,11 +72,13 @@ class EntitlementEnforcementService {
     required BranchesDao branchesDao,
     required EmployeesDao employeesDao,
     required ActiveBusinessContext activeBusinessContext,
+    PlanAlertPushPublisher? planAlertPushPublisher,
   }) : _dao = entitlementDao,
        _entitlement = entitlementService,
        _branchesDao = branchesDao,
        _employeesDao = employeesDao,
-       _activeBusinessContext = activeBusinessContext {
+       _activeBusinessContext = activeBusinessContext,
+       _planAlertPushPublisher = planAlertPushPublisher {
     // Every plan change re-runs the policy, so an upgrade releases locks and a
     // lapse applies them without any caller remembering to ask. reconcile()
     // never bumps entitlementRevision, so this can't feed back on itself.
@@ -157,6 +161,7 @@ class EntitlementEnforcementService {
       await _reconcileBranches(businessId);
       await _reconcileSeats(businessId);
       _lockRevision.value++;
+      _planAlertPushPublisher?.evaluateEntitlement().ignore();
     } catch (e, st) {
       debugPrint('[EntitlementEnforcement] Error in reconcile: $e\n$st');
     }

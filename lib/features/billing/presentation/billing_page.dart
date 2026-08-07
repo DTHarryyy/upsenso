@@ -21,7 +21,7 @@ import 'package:pos/features/billing/presentation/tabs/billing_usage_tab.dart';
 /// Billing & subscription — four tabs (Plans / Usage / Devices / History).
 ///
 /// Nothing is pinned above the tab bar: trial, past-due and lapsed alerts all
-/// live in Notifications (see BillingNoticeService), which is where merchants
+/// live in Notifications (see PlanNoticeService), which is where merchants
 /// actually look for them.
 ///
 /// This shell owns only what every tab needs: the resume-refresh, the
@@ -181,5 +181,4 @@ class _BillingViewState extends State<_BillingView>
       ),
     );
   }
-
 }

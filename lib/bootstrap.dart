@@ -88,10 +88,13 @@ Future<Widget> bootstrap() async {
     // CLOSED for every non-core feature — so skipping the module load left the
     // sidebar/More drawer empty offline until a relaunch.
     await sl<PermissionService>().loadPermissions(u.id);
-    await sl<FcmNotificationService>().configureLowStockTopic(
+    await sl<FcmNotificationService>().configureTopics(
       businessId: u.businessId,
       mayViewStockLevels: sl<PermissionService>().can(
         PermissionKeys.inventoryViewLevels,
+      ),
+      mayManageBilling: sl<PermissionService>().can(
+        PermissionKeys.billingManage,
       ),
     );
     final bid = u.businessId;
@@ -106,7 +109,19 @@ Future<Widget> bootstrap() async {
     await sl<EntitlementEnforcementService>().load();
     // Sync from Supabase in the background — does not block startup.
 
-    sl<PermissionService>().syncPermissions(u.id).ignore();
+    sl<PermissionService>().syncPermissions(u.id).then((_) {
+      sl<FcmNotificationService>()
+          .configureTopics(
+            businessId: u.businessId,
+            mayViewStockLevels: sl<PermissionService>().can(
+              PermissionKeys.inventoryViewLevels,
+            ),
+            mayManageBilling: sl<PermissionService>().can(
+              PermissionKeys.billingManage,
+            ),
+          )
+          .ignore();
+    }).ignore();
     if (bid != null && bid.isNotEmpty) {
       sl<PermissionService>().syncModules(bid).ignore();
     }
@@ -136,15 +151,30 @@ Future<Widget> bootstrap() async {
       // switch, context refresh). setContext clears both maps; reloading
       // modules too keeps non-core features visible offline.
       sl<PermissionService>().loadPermissions(u.id).then((_) {
-        sl<PermissionService>().syncPermissions(u.id).ignore();
         sl<FcmNotificationService>()
-            .configureLowStockTopic(
+            .configureTopics(
               businessId: u.businessId,
               mayViewStockLevels: sl<PermissionService>().can(
                 PermissionKeys.inventoryViewLevels,
               ),
+              mayManageBilling: sl<PermissionService>().can(
+                PermissionKeys.billingManage,
+              ),
             )
             .ignore();
+        sl<PermissionService>().syncPermissions(u.id).then((_) {
+          sl<FcmNotificationService>()
+              .configureTopics(
+                businessId: u.businessId,
+                mayViewStockLevels: sl<PermissionService>().can(
+                  PermissionKeys.inventoryViewLevels,
+                ),
+                mayManageBilling: sl<PermissionService>().can(
+                  PermissionKeys.billingManage,
+                ),
+              )
+              .ignore();
+        }).ignore();
       });
       final bid = u.businessId;
       if (bid != null && bid.isNotEmpty) {

@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pos/core/device/device_identity_service.dart';
 import 'package:pos/core/device/device_info_service.dart';
 import 'package:pos/core/device/device_registration_remote_ds.dart';
+import 'package:pos/core/notifications/plan_alert_push_publisher.dart';
 import 'package:pos/core/permissions/entitlement_service.dart';
 import 'package:pos/core/session/active_business_context.dart';
 import 'package:pos/core/sync/connectivity_service.dart';
@@ -27,6 +28,7 @@ class DeviceRegistrationService {
   final EntitlementService _entitlement;
   final ConnectivityService _connectivity;
   final SharedPreferences _prefs;
+  final PlanAlertPushPublisher? _planAlertPushPublisher;
 
   static const _prefix = 'device_registered';
 
@@ -41,13 +43,15 @@ class DeviceRegistrationService {
     required EntitlementService entitlementService,
     required ConnectivityService connectivityService,
     required SharedPreferences prefs,
-  })  : _remoteDs = remoteDs,
-        _identity = identityService,
-        _info = infoService,
-        _activeBusinessContext = activeBusinessContext,
-        _entitlement = entitlementService,
-        _connectivity = connectivityService,
-        _prefs = prefs;
+    PlanAlertPushPublisher? planAlertPushPublisher,
+  }) : _remoteDs = remoteDs,
+       _identity = identityService,
+       _info = infoService,
+       _activeBusinessContext = activeBusinessContext,
+       _entitlement = entitlementService,
+       _connectivity = connectivityService,
+       _prefs = prefs,
+       _planAlertPushPublisher = planAlertPushPublisher;
 
   DeviceRegistrationStatus get status => _status;
 
@@ -112,6 +116,7 @@ class DeviceRegistrationService {
           ? DeviceRegistrationStatus.registered
           : DeviceRegistrationStatus.capReached;
       _set(status, biz);
+      _planAlertPushPublisher?.evaluateDevice(uid).ignore();
       return status;
     } catch (e, st) {
       debugPrint('[DeviceRegistration] Error in ensureRegistered: $e\n$st');

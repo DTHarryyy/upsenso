@@ -5,7 +5,7 @@ import 'package:pos/core/const/app_colors.dart';
 import 'package:pos/core/widgets/app_sub_page_bar.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:pos/features/auth/presentation/bloc/auth_state.dart';
-import 'package:pos/features/notifications/domain/billing_notice_service.dart';
+import 'package:pos/features/notifications/domain/plan_notice_service.dart';
 import 'package:pos/features/notifications/domain/repositories/i_notifications_repository.dart';
 import 'package:pos/features/notifications/presentation/cubit/notifications_cubit.dart';
 import 'package:pos/features/notifications/presentation/cubit/notifications_state.dart';
@@ -34,7 +34,7 @@ class NotificationsPage extends StatelessWidget {
           create: (ctx) {
             final cubit = NotificationsCubit(
               sl<INotificationsRepository>(),
-              sl<BillingNoticeService>(),
+              sl<PlanNoticeService>(),
             );
             if (businessId != null) cubit.load(businessId);
             return cubit;

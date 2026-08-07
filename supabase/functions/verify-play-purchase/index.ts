@@ -37,6 +37,19 @@ import {
   PlayApiError,
   sha256Hex,
 } from "../_shared/google_play.ts";
+import { evaluateAndPublishPlanAlerts } from "../_shared/plan_alerts.ts";
+
+// A push failure is observability-worthy but must never undo a valid purchase.
+// deno-lint-ignore no-explicit-any
+async function refreshPlanAlerts(admin: any, businessId: string) {
+  try {
+    await evaluateAndPublishPlanAlerts(admin, businessId, {
+      trigger: "entitlement_changed",
+    });
+  } catch (error) {
+    console.error(`verify plan-alert evaluation failed for ${businessId}`, error);
+  }
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -593,6 +606,7 @@ serve(async (req) => {
         500,
       );
     }
+    await refreshPlanAlerts(admin, bizId);
 
     // Ledger row for the in-app history (list price; Play holds the true receipt).
     // Non-fatal from here on: entitlement is already granted, and failing the

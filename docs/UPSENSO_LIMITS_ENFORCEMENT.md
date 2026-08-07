@@ -24,7 +24,7 @@ resource is created in.* Seats and branches live locally → count locally.
 |---|---|---|---|
 | **Team members** (seats) | `EntitlementService.canAddAnother(seats)` — live Drift count, in `employees_repository_impl.addEmployee` | RPC `create_employee_auth_account` (`SEAT_LIMIT_REACHED`) + `employees_cap_insert` RLS + `enforce_seat_cap_on_reactivate` trigger | `entitlement_service_test` "seat cap blocks…"; runbook §3 |
 | **Branches** | `canAddAnother(branches)` — live Drift count, in `branch_cubit.addBranch` | `branches_cap_insert` RLS (`count < effective_limits().max_branches`) | `entitlement_service_test` "branch cap blocks…"; runbook §3 |
-| **Devices** | (registration is online-only; no local create) — `DeviceStatusBanner` surfaces `capReached`, re-verified on the SyncService entitlement tick | RPC `register_device` returns `cap_reached` at `max_devices` | runbook §4 |
+| **Devices** | (registration is online-only; no local create) — `PlanNoticeService` surfaces `capReached` in Notifications, re-verified on the SyncService entitlement tick | RPC `register_device` returns `cap_reached` at `max_devices` | runbook §4 |
 | **Over-cap holdings** (downgrade / lapse) | `EntitlementEnforcementService.reconcile()` locks the excess; `assertBranchWritable` guards every write | Existing rows are never rejected server-side — only new INSERTs are. This layer is client-only by nature | `entitlement_enforcement_service_test` |
 
 > The `create-checkout` edge function row was removed on 2026-08-01: the
